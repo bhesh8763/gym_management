@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lockers — Gym Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body>
+  <nav class="navbar navbar-dark px-3">
+    <span class="navbar-brand">Gym Management</span>
+    <div class="d-flex align-items-center text-white">
+      <span id="userLabel" class="me-3"></span>
+      <button class="btn btn-outline-light btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="d-flex">
+    <div class="sidebar">
+      <div class="list-group list-group-flush pt-2">
+        <a href="dashboard.html" class="list-group-item"><i class="bi bi-arrow-left"></i> Dashboard</a>
+        <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> Attendance</a>
+        <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> Payments</a>
+        <a href="staff.html" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> Staff</a>
+        <a href="lockers.html" class="list-group-item list-group-item-action active"><i class="bi bi-lock"></i> Lockers</a>
+        <a href="equipment.html" class="list-group-item list-group-item-action"><i class="bi bi-tools"></i> Equipment</a>
+      </div>
+    </div>
+
+    <div class="p-4 flex-grow-1">
+      <h3>Lockers</h3>
+
+      <h5>Add Locker</h5>
+      <form id="lockerForm" class="row g-2 mb-4 align-items-end">
+        <div class="col-auto">
+          <label class="form-label">Locker Number</label>
+          <input type="text" id="lockerNumber" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Location</label>
+          <input type="text" id="location" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Monthly Fee</label>
+          <input type="number" step="0.01" min="0" id="monthlyFee" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary">Add Locker</button>
+        </div>
+      </form>
+      <div id="lockerError" class="alert alert-danger d-none"></div>
+
+      <table class="table table-bordered mb-5">
+        <thead>
+          <tr><th>ID</th><th>Number</th><th>Location</th><th>Status</th><th>Fee</th></tr>
+        </thead>
+        <tbody id="lockerTableBody"></tbody>
+      </table>
+
+      <hr>
+
+      <h3>Locker Assignments</h3>
+
+      <h5>Assign Locker to Member</h5>
+      <form id="assignForm" class="row g-2 mb-4 align-items-end">
+        <div class="col-auto">
+          <label class="form-label">Locker ID</label>
+          <input type="number" min="1" id="assignLockerId" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Member ID</label>
+          <input type="number" min="1" id="assignMemberId" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Start Date</label>
+          <input type="date" id="assignStart" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">End Date</label>
+          <input type="date" id="assignEnd" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary">Assign</button>
+        </div>
+      </form>
+      <div id="assignError" class="alert alert-danger d-none"></div>
+
+      <table class="table table-bordered">
+        <thead>
+          <tr><th>ID</th><th>Locker #</th><th>Member</th><th>Start</th><th>End</th><th>Active</th></tr>
+        </thead>
+        <tbody id="assignTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    if (!getAccessToken()) window.location.href = 'index.html';
+    document.getElementById('userLabel').textContent =
+      `${localStorage.getItem('user_name')} (${localStorage.getItem('user_role')})`;
+
+    function logout() {
+      clearTokens();
+      window.location.href = 'index.html';
+    }
+
+    async function loadLockers() {
+      const res = await apiRequest('/lockers/lockers/');
+      if (!res) return;
+      const data = await res.json();
+      const tbody = document.getElementById('lockerTableBody');
+      tbody.innerHTML = '';
+      data.results.forEach(row => {
+        const badge = row.status === 'AVAILABLE' ? 'success' : (row.status === 'OCCUPIED' ? 'warning' : 'secondary');
+        tbody.innerHTML += `
+          <tr>
+            <td>${row.id}</td><td>${row.locker_number}</td><td>${row.location}</td>
+            <td><span class="badge bg-${badge}">${row.status}</span></td><td>${row.monthly_fee}</td>
+          </tr>`;
+      });
+    }
+
+    document.getElementById('lockerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('lockerError');
+      errorBox.classList.add('d-none');
+      const payload = {
+        locker_number: document.getElementById('lockerNumber').value,
+        location: document.getElementById('location').value,
+        monthly_fee: document.getElementById('monthlyFee').value,
+      };
+      const res = await apiRequest('/lockers/lockers/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) return;
+      if (res.ok) { document.getElementById('lockerForm').reset(); loadLockers(); }
+      else {
+        const err = await res.json();
+        errorBox.textContent = JSON.stringify(err);
+        errorBox.classList.remove('d-none');
+      }
+    });
+
+    async function loadAssignments() {
+      const res = await apiRequest('/lockers/assignments/');
+      if (!res) return;
+      const data = await res.json();
+      const tbody = document.getElementById('assignTableBody');
+      tbody.innerHTML = '';
+      data.results.forEach(row => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${row.id}</td><td>${row.locker_number}</td><td>${row.member_name}</td>
+            <td>${row.start_date}</td><td>${row.end_date}</td>
+            <td>${row.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
+          </tr>`;
+      });
+    }
+
+    document.getElementById('assignForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('assignError');
+      errorBox.classList.add('d-none');
+      const payload = {
+        locker: parseInt(document.getElementById('assignLockerId').value),
+        member: parseInt(document.getElementById('assignMemberId').value),
+        start_date: document.getElementById('assignStart').value,
+        end_date: document.getElementById('assignEnd').value,
+        is_active: true,
+      };
+      const res = await apiRequest('/lockers/assignments/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) return;
+      if (res.ok) { document.getElementById('assignForm').reset(); loadAssignments(); loadLockers(); }
+      else {
+        const err = await res.json();
+        errorBox.textContent = JSON.stringify(err);
+        errorBox.classList.remove('d-none');
+      }
+    });
+
+    loadLockers();
+    loadAssignments();
+  </script>
+</body>
+</html>
