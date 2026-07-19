@@ -1,5 +1,8 @@
-from django.urls import path
+from rest_framework.routers import DefaultRouter
+from .views import EquipmentViewSet, MaintenanceRecordViewSet
 
-urlpatterns = [
-    # TODO: add equipment endpoints
-]
+router = DefaultRouter()
+router.register('equipment', EquipmentViewSet, basename='equipment')
+router.register('maintenance', MaintenanceRecordViewSet, basename='maintenance')
+
+urlpatterns = router.urls
