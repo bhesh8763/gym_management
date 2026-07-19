@@ -84,3 +84,36 @@ class Meal(models.Model):
 
     def __str__(self):
         return f'{self.diet_plan.name} — {self.meal_type}'
+    
+class MealLog(models.Model):
+    """
+    A member's actual daily food intake log — separate from the prescribed
+    DietPlan/Meal, which represents what the trainer recommends.
+    """
+    member = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='meal_logs',
+        limit_choices_to={'role': 'MEMBER'},
+    )
+    date = models.DateField()
+    food_items = models.JSONField(
+        default=list,
+        help_text='List of food items, e.g. [{"name": "Rice", "amount": "150g", "calories": 200}]'
+    )
+    total_calories = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'meal_logs'
+        verbose_name = 'Meal Log'
+        verbose_name_plural = 'Meal Logs'
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.member.get_full_name()} — {self.date}'
+
+    def save(self, *args, **kwargs):
+        self.total_calories = sum(item.get('calories', 0) for item in self.food_items)
+        super().save(*args, **kwargs)
