@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Gym Management{% endblock %}</title>
+  {% load static %}
+  <style>
+{% include "members/_theme.css" %}
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">&#127947;</div>
+    <div class="brand-text">
+      <span class="brand-name">FitLife Gym</span>
+      <span class="brand-sub">Management System</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a href="#" class="nav-item">
+      <span class="nav-icon">&#9783;</span> Dashboard
+    </a>
+
+    <div class="nav-section-label">MEMBERS</div>
+    <a href="{% url 'members:ui-list' %}" class="nav-item {% block nav_members %}{% endblock %}">
+      <span class="nav-icon">&#128101;</span> Members List
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">&#128203;</span> Membership Plans
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">&#128197;</span> Attendance
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">&#128200;</span> Progress Report
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">&#128274;</span> Lockers
+    </a>
+
+    <div class="nav-section-label">STAFF MANAGEMENT</div>
+    <a href="#" class="nav-item"><span class="nav-icon">&#128101;</span> Receptionists</a>
+    <a href="#" class="nav-item"><span class="nav-icon">&#127947;</span> Trainers</a>
+    <a href="#" class="nav-item"><span class="nav-icon">&#128197;</span> Staff Attendance</a>
+    <a href="#" class="nav-item"><span class="nav-icon">&#128203;</span> Leave Management</a>
+
+    <div class="nav-section-label">WORKOUT &amp; DIET</div>
+    <a href="#" class="nav-item"><span class="nav-icon">&#128170;</span> Workout Plan</a>
+    <a href="#" class="nav-item"><span class="nav-icon">&#127829;</span> Diet Plan</a>
+
+    <div class="nav-section-label">PAYMENTS</div>
+    <a href="#" class="nav-item"><span class="nav-icon">&#128179;</span> Transactions</a>
+
+    <div class="nav-section-label">EQUIPMENTS</div>
+    <a href="#" class="nav-item"><span class="nav-icon">&#127947;</span> Equipments</a>
+    <a href="#" class="nav-item"><span class="nav-icon">&#128295;</span> Maintenance</a>
+
+    <div class="nav-section-label">SETTINGS</div>
+    <a href="#" class="nav-item"><span class="nav-icon">&#9881;</span> Settings</a>
+  </nav>
+</aside>
+
+<!-- ── Main wrapper ────────────────────────────────────────────────── -->
+<div class="main-wrapper">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <button class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('collapsed')" aria-label="Toggle sidebar">&#9776;</button>
+    <div class="topbar-title">{% block topbar_title %}{% endblock %}</div>
+    <div class="topbar-right">
+      <div class="topbar-search">
+        <span class="topbar-search-icon">&#128269;</span>
+        <input type="text" placeholder="Search..." />
+      </div>
+      <div class="topbar-bell">&#128276;<span class="bell-badge">3</span></div>
+      <div class="topbar-user">
+        <div class="topbar-avatar">{{ request.user.first_name.0 }}{{ request.user.last_name.0 }}</div>
+        <span class="topbar-username">{{ request.user.get_full_name }}</span>
+        <span class="topbar-role">{{ request.user.role }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Alerts -->
+  {% if messages %}
+  <div class="messages-wrap">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}
+      <button class="alert-close" onclick="this.parentElement.remove()">&#10005;</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Page content -->
+  <main class="page-content">
+    {% block content %}{% endblock %}
+  </main>
+
+</div><!-- /.main-wrapper -->
+
+</body>
+</html>

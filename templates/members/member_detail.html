@@ -1,0 +1,302 @@
+{% extends "members/base.html" %}
+{% load static %}
+
+{% block title %}{{ profile.user.get_full_name }} — Member Details{% endblock %}
+{% block nav_members %}active{% endblock %}
+{% block topbar_title %}Member Details{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+  <span>Dashboard</span>
+  <span class="bc-sep">&#8250;</span>
+  <a href="{% url 'members:ui-list' %}">Members</a>
+  <span class="bc-sep">&#8250;</span>
+  <span class="bc-current">{{ profile.user.get_full_name }}</span>
+</div>
+
+<!-- Page header -->
+<div class="page-header">
+  <h1 class="page-title">Member Details</h1>
+  <div class="header-actions">
+    {% if request.user.role == 'OWNER' or request.user.role == 'STAFF' or profile.user == request.user %}
+    <a href="{% url 'members:ui-edit' profile.pk %}" class="btn btn-primary">&#9998; Edit Profile</a>
+    {% endif %}
+    <a href="{% url 'members:ui-list' %}" class="btn btn-outline">&#8592; Back to List</a>
+    <a href="{% url 'members:ui-list' %}" class="btn btn-outline" title="Close" style="padding:9px 12px;">&#10005;</a>
+  </div>
+</div>
+
+<!-- Detail card — mimics the modal from the image -->
+<div class="detail-card">
+
+  <!-- Left sidebar -->
+  <div class="detail-sidebar">
+    <div class="detail-avatar-wrap">
+      {% if profile.user.profile_picture %}
+      <img src="{{ profile.user.profile_picture.url }}" class="detail-avatar" alt="{{ profile.user.get_full_name }}" />
+      {% else %}
+      <div class="detail-avatar-placeholder">{{ profile.user.first_name.0 }}{{ profile.user.last_name.0 }}</div>
+      {% endif %}
+    </div>
+    <div class="detail-name">{{ profile.user.get_full_name }}</div>
+    <span class="status-pill {% if profile.user.is_active %}pill-active{% else %}pill-inactive{% endif %} detail-status">
+      {% if profile.user.is_active %}Active Member{% else %}Inactive{% endif %}
+    </span>
+
+    <div class="detail-meta-list">
+      <div class="detail-meta-row">
+        <span class="dmi">&#128100;</span>
+        <span class="dml">Member ID</span>
+        <span class="dmv">MEM{{ profile.pk|stringformat:"03d" }}</span>
+      </div>
+      <div class="detail-meta-row">
+        <span class="dmi">&#128222;</span>
+        <span class="dml">Phone</span>
+        <span class="dmv">{{ profile.user.phone|default:"—" }}</span>
+      </div>
+      <div class="detail-meta-row">
+        <span class="dmi">&#9993;</span>
+        <span class="dml">Email</span>
+        <span class="dmv">{{ profile.user.email }}</span>
+      </div>
+      <div class="detail-meta-row">
+        <span class="dmi">&#9899;</span>
+        <span class="dml">Gender</span>
+        <span class="dmv">{{ profile.get_gender_display|default:"—" }}</span>
+      </div>
+      <div class="detail-meta-row">
+        <span class="dmi">&#127874;</span>
+        <span class="dml">Date of Birth</span>
+        <span class="dmv">{{ profile.date_of_birth|date:"d M Y"|default:"—" }}</span>
+      </div>
+      {% if profile.emergency_contact_name %}
+      <div class="detail-meta-row">
+        <span class="dmi">&#128222;</span>
+        <span class="dml">Emergency Contact</span>
+        <span class="dmv">{{ profile.emergency_contact_name }} ({{ profile.emergency_contact_phone }})</span>
+      </div>
+      {% endif %}
+      {% if profile.address %}
+      <div class="detail-meta-row">
+        <span class="dmi">&#128205;</span>
+        <span class="dml">Address</span>
+        <span class="dmv">{{ profile.address }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Assigned Trainer -->
+    <div class="side-widget">
+      <div class="side-widget-title">ASSIGNED TRAINER</div>
+      {% if profile.assigned_trainer %}
+      <div class="trainer-row">
+        <div class="trainer-avatar">{{ profile.assigned_trainer.user.first_name.0 }}{{ profile.assigned_trainer.user.last_name.0 }}</div>
+        <div>
+          <div class="trainer-name">{{ profile.assigned_trainer.user.get_full_name }}</div>
+          <div class="trainer-role">Trainer</div>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-muted" style="margin:0;font-size:12.5px;">Not assigned yet</p>
+      {% endif %}
+    </div>
+
+    <!-- Fitness Goals -->
+    {% if profile.fitness_goal %}
+    <div class="side-widget">
+      <div class="side-widget-title">FITNESS GOALS</div>
+      <ul class="goal-list">
+        <li><span class="goal-check">&#10003;</span> {{ profile.get_fitness_goal_display }}</li>
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right body -->
+  <div class="detail-body">
+
+    <!-- Tab bar -->
+    <div class="detail-tabs">
+      <button class="dtab dtab-active" onclick="showTab(this,'tab-overview')">Overview</button>
+      <button class="dtab" onclick="showTab(this,'tab-membership')">Membership</button>
+      <button class="dtab" onclick="showTab(this,'tab-attendance')">Attendance</button>
+      <button class="dtab" onclick="showTab(this,'tab-payments')">Payments</button>
+      <button class="dtab" onclick="showTab(this,'tab-fitness')">Progress</button>
+      <button class="dtab" onclick="showTab(this,'tab-documents')">Documents</button>
+      <button class="dtab" onclick="showTab(this,'tab-notes')">Notes</button>
+    </div>
+
+    <!-- Tab: Overview -->
+    <div class="dtab-panel" id="tab-overview">
+
+      <!-- Personal Information -->
+      <div class="detail-section">
+        <h3 class="detail-section-title">Personal Information</h3>
+        <div class="info-grid-2">
+          <div class="info-pair">
+            <span class="ip-label">Full Name</span>
+            <span class="ip-value">{{ profile.user.get_full_name }}</span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Address</span>
+            <span class="ip-value">{{ profile.address|default:"—" }}</span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Date of Birth</span>
+            <span class="ip-value">{{ profile.date_of_birth|date:"d M Y"|default:"—" }}</span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Gender</span>
+            <span class="ip-value">{{ profile.get_gender_display|default:"—" }}</span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Email</span>
+            <span class="ip-value">{{ profile.user.email }}</span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Emergency Contact</span>
+            <span class="ip-value">
+              {% if profile.emergency_contact_name %}
+                {{ profile.emergency_contact_name }} ({{ profile.emergency_contact_phone }})
+              {% else %}—{% endif %}
+            </span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Phone</span>
+            <span class="ip-value">{{ profile.user.phone|default:"—" }}</span>
+          </div>
+          {% if profile.medical_conditions and request.user.role in 'OWNER,STAFF' %}
+          <div class="info-pair">
+            <span class="ip-label">Medical Condition</span>
+            <span class="ip-value">{{ profile.medical_conditions }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Quick Summary -->
+      <div class="quick-summary">
+        <div class="qs-item">
+          <span class="qs-label">Membership Plan</span>
+          <span class="qs-value">{{ profile.get_fitness_goal_display|default:"—" }}</span>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Join Date</span>
+          <span class="qs-value">{{ profile.created_at|date:"d M Y" }}</span>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Expire Date</span>
+          <span class="qs-value">{{ profile.membership_expiry|date:"d M Y"|default:"—" }}</span>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Total Check-ins</span>
+          <span class="qs-value">{{ profile.total_checkins|default:"—" }}</span>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Total Payments</span>
+          <span class="qs-value">{% if profile.total_payments %}Rs. {{ profile.total_payments }}{% else %}—{% endif %}</span>
+        </div>
+        {% if profile.bmi %}
+        <div class="qs-item">
+          <span class="qs-label">BMI</span>
+          <span class="qs-value bmi-value-sm {% if profile.bmi < 18.5 %}bmi-under{% elif profile.bmi < 25 %}bmi-normal{% elif profile.bmi < 30 %}bmi-over{% else %}bmi-obese{% endif %}">
+            {{ profile.bmi }}
+            <small>{% if profile.bmi < 18.5 %}Underweight{% elif profile.bmi < 25 %}Normal{% elif profile.bmi < 30 %}Overweight{% else %}Obese{% endif %}</small>
+          </span>
+        </div>
+        {% endif %}
+      </div>
+
+    </div><!-- /#tab-overview -->
+
+    <!-- Tab: Membership -->
+    <div class="dtab-panel" id="tab-membership" style="display:none;">
+      <div class="placeholder-panel">Membership plan history and renewal records will appear here.</div>
+    </div>
+
+    <!-- Tab: Attendance -->
+    <div class="dtab-panel" id="tab-attendance" style="display:none;">
+      <div class="placeholder-panel">Attendance and check-in history will appear here.</div>
+    </div>
+
+    <!-- Tab: Payments -->
+    <div class="dtab-panel" id="tab-payments" style="display:none;">
+      <div class="placeholder-panel">Payment and invoice history will appear here.</div>
+    </div>
+
+    <!-- Tab: Documents -->
+    <div class="dtab-panel" id="tab-documents" style="display:none;">
+      <div class="placeholder-panel">Uploaded documents will appear here.</div>
+    </div>
+
+    <!-- Tab: Progress -->
+    <div class="dtab-panel" id="tab-fitness" style="display:none;">
+      <div class="detail-section">
+        <h3 class="detail-section-title">Progress &amp; Fitness Profile</h3>
+        <div class="info-grid-2">
+          <div class="info-pair">
+            <span class="ip-label">Height</span>
+            <span class="ip-value">{% if profile.height_cm %}{{ profile.height_cm }} cm{% else %}—{% endif %}</span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Weight</span>
+            <span class="ip-value">{% if profile.weight_kg %}{{ profile.weight_kg }} kg{% else %}—{% endif %}</span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">BMI</span>
+            <span class="ip-value {% if profile.bmi %}{% if profile.bmi < 18.5 %}bmi-under{% elif profile.bmi < 25 %}bmi-normal{% elif profile.bmi < 30 %}bmi-over{% else %}bmi-obese{% endif %}{% endif %}">
+              {% if profile.bmi %}{{ profile.bmi }}{% else %}—{% endif %}
+            </span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Fitness Goal</span>
+            <span class="ip-value">{{ profile.get_fitness_goal_display|default:"—" }}</span>
+          </div>
+          <div class="info-pair">
+            <span class="ip-label">Fitness Level</span>
+            <span class="ip-value">{{ profile.get_fitness_level_display }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Notes -->
+    <div class="dtab-panel" id="tab-notes" style="display:none;">
+      {% if request.user.role == 'OWNER' or request.user.role == 'STAFF' %}
+      <div class="detail-section">
+        <h3 class="detail-section-title">Medical &amp; Notes</h3>
+        {% if profile.medical_conditions %}
+        <div class="info-pair" style="margin-bottom:12px;">
+          <span class="ip-label">Medical Conditions</span>
+          <p class="ip-value">{{ profile.medical_conditions }}</p>
+        </div>
+        {% endif %}
+        {% if profile.notes %}
+        <div class="info-pair">
+          <span class="ip-label">Notes</span>
+          <p class="ip-value">{{ profile.notes }}</p>
+        </div>
+        {% endif %}
+        {% if not profile.medical_conditions and not profile.notes %}
+        <p class="text-muted">No medical conditions or notes recorded.</p>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="text-muted" style="padding:24px;">No notes available.</p>
+      {% endif %}
+    </div>
+
+  </div><!-- /.detail-body -->
+</div><!-- /.detail-card -->
+
+<script>
+function showTab(btn, tabId) {
+  btn.closest('.detail-body').querySelectorAll('.dtab').forEach(t => t.classList.remove('dtab-active'));
+  btn.closest('.detail-body').querySelectorAll('.dtab-panel').forEach(p => p.style.display = 'none');
+  btn.classList.add('dtab-active');
+  document.getElementById(tabId).style.display = 'block';
+}
+</script>
+{% endblock %}

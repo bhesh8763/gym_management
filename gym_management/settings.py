@@ -65,13 +65,19 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
+        # Use explicit loaders so the cached.Loader is NOT used in development.
+        # APP_DIRS: True forces the cached loader even in DEBUG — we avoid that here.
+        'APP_DIRS': False,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+            ],
+            'loaders': [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
             ],
         },
     },
@@ -113,6 +119,10 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# ─── AUTH (for template views) ────────────────────────────────────────────────
+LOGIN_URL = '/api/auth/login/'
+LOGIN_REDIRECT_URL = '/members/ui/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

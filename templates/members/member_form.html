@@ -1,0 +1,241 @@
+{% extends "members/base.html" %}
+{% load static %}
+
+{% block title %}{% if action == 'create' %}Add Member{% else %}Edit — {{ profile.user.get_full_name }}{% endif %} — Gym Management{% endblock %}
+{% block nav_members %}active{% endblock %}
+{% block topbar_title %}{% if action == 'create' %}Add Member{% else %}Edit Member{% endif %}{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+  <span>Dashboard</span>
+  <span class="bc-sep">&#8250;</span>
+  <a href="{% url 'members:ui-list' %}">Members</a>
+  {% if action == 'edit' %}
+  <span class="bc-sep">&#8250;</span>
+  <a href="{% url 'members:ui-detail' profile.pk %}">{{ profile.user.get_full_name }}</a>
+  {% endif %}
+  <span class="bc-sep">&#8250;</span>
+  <span class="bc-current">{% if action == 'create' %}Add Member{% else %}Edit Profile{% endif %}</span>
+</div>
+
+<!-- Page header -->
+<div class="page-header">
+  <h1 class="page-title">{% if action == 'create' %}Add New Member{% else %}Edit Member Profile{% endif %}</h1>
+  <div class="header-actions">
+    {% if action == 'edit' %}
+    <a href="{% url 'members:ui-detail' profile.pk %}" class="btn btn-outline">Cancel</a>
+    {% else %}
+    <a href="{% url 'members:ui-list' %}" class="btn btn-outline">Cancel</a>
+    {% endif %}
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="member-form" novalidate>
+  {% csrf_token %}
+
+  <!-- Account Details (create only) -->
+  {% if action == 'create' %}
+  <div class="form-card">
+    <div class="form-card-header">Account Details</div>
+    <div class="form-card-body">
+      <div class="form-grid">
+
+        <div class="form-group {% if errors.email %}has-error{% endif %}">
+          <label>Email <span class="req">*</span></label>
+          <input type="email" name="email" value="{{ form_data.email|default:'' }}" class="form-control" placeholder="member@example.com" required />
+          {% if errors.email %}<span class="err-msg">{{ errors.email }}</span>{% endif %}
+        </div>
+
+        <div class="form-group {% if errors.password %}has-error{% endif %}">
+          <label>Password <span class="req">*</span></label>
+          <input type="password" name="password" class="form-control" placeholder="Min. 8 characters" required />
+          {% if errors.password %}<span class="err-msg">{{ errors.password }}</span>{% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Personal Details -->
+  <div class="form-card">
+    <div class="form-card-header">Personal Details</div>
+    <div class="form-card-body">
+      <div class="form-grid">
+
+        <div class="form-group {% if errors.first_name %}has-error{% endif %}">
+          <label>First Name <span class="req">*</span></label>
+          <input type="text" name="first_name"
+            value="{% if action == 'edit' %}{{ profile.user.first_name }}{% else %}{{ form_data.first_name|default:'' }}{% endif %}"
+            class="form-control" placeholder="John" required />
+          {% if errors.first_name %}<span class="err-msg">{{ errors.first_name }}</span>{% endif %}
+        </div>
+
+        <div class="form-group {% if errors.last_name %}has-error{% endif %}">
+          <label>Last Name <span class="req">*</span></label>
+          <input type="text" name="last_name"
+            value="{% if action == 'edit' %}{{ profile.user.last_name }}{% else %}{{ form_data.last_name|default:'' }}{% endif %}"
+            class="form-control" placeholder="Doe" required />
+          {% if errors.last_name %}<span class="err-msg">{{ errors.last_name }}</span>{% endif %}
+        </div>
+
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" name="phone"
+            value="{% if action == 'edit' %}{{ profile.user.phone }}{% else %}{{ form_data.phone|default:'' }}{% endif %}"
+            class="form-control" placeholder="98XXXXXXXX" />
+        </div>
+
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" name="date_of_birth"
+            value="{% if action == 'edit' and profile.date_of_birth %}{{ profile.date_of_birth|date:'Y-m-d' }}{% else %}{{ form_data.date_of_birth|default:'' }}{% endif %}"
+            class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Gender</label>
+          <select name="gender" class="form-control">
+            <option value="">-- Select --</option>
+            {% for value, label in gender_choices %}
+            <option value="{{ value }}" {% if action == 'edit' and profile.gender == value %}selected{% elif form_data.gender == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Profile Picture</label>
+          {% if action == 'edit' and profile.user.profile_picture %}
+          <div class="current-pic">
+            <img src="{{ profile.user.profile_picture.url }}" class="tbl-avatar" alt="" />
+            <small>Upload to replace</small>
+          </div>
+          {% endif %}
+          <input type="file" name="profile_picture" accept="image/*" class="form-control" />
+        </div>
+
+        <div class="form-group form-group-full">
+          <label>Address</label>
+          <textarea name="address" class="form-control" rows="2" placeholder="Kathmandu, Nepal">{% if action == 'edit' %}{{ profile.address }}{% else %}{{ form_data.address|default:'' }}{% endif %}</textarea>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Fitness Details -->
+  <div class="form-card">
+    <div class="form-card-header">Fitness Details</div>
+    <div class="form-card-body">
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label>Height (cm)</label>
+          <input type="number" name="height_cm" step="0.01" min="0" max="300"
+            value="{% if action == 'edit' and profile.height_cm %}{{ profile.height_cm }}{% else %}{{ form_data.height_cm|default:'' }}{% endif %}"
+            class="form-control" placeholder="170" />
+        </div>
+
+        <div class="form-group">
+          <label>Weight (kg)</label>
+          <input type="number" name="weight_kg" step="0.01" min="0" max="500"
+            id="weight_kg"
+            value="{% if action == 'edit' and profile.weight_kg %}{{ profile.weight_kg }}{% else %}{{ form_data.weight_kg|default:'' }}{% endif %}"
+            class="form-control" placeholder="65" />
+        </div>
+
+        <div class="form-group">
+          <label>Fitness Goal</label>
+          <select name="fitness_goal" class="form-control">
+            <option value="">-- Select --</option>
+            {% for value, label in fitness_goal_choices %}
+            <option value="{{ value }}" {% if action == 'edit' and profile.fitness_goal == value %}selected{% elif form_data.fitness_goal == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Fitness Level</label>
+          <select name="fitness_level" class="form-control">
+            {% for value, label in fitness_level_choices %}
+            <option value="{{ value }}" {% if action == 'edit' and profile.fitness_level == value %}selected{% elif form_data.fitness_level == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Emergency Contact -->
+  <div class="form-card">
+    <div class="form-card-header">Emergency Contact</div>
+    <div class="form-card-body">
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label>Contact Name</label>
+          <input type="text" name="emergency_contact_name"
+            value="{% if action == 'edit' %}{{ profile.emergency_contact_name }}{% else %}{{ form_data.emergency_contact_name|default:'' }}{% endif %}"
+            class="form-control" placeholder="Jane Doe" />
+        </div>
+
+        <div class="form-group">
+          <label>Contact Phone</label>
+          <input type="tel" name="emergency_contact_phone"
+            value="{% if action == 'edit' %}{{ profile.emergency_contact_phone }}{% else %}{{ form_data.emergency_contact_phone|default:'' }}{% endif %}"
+            class="form-control" placeholder="98XXXXXXXX" />
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Medical & Notes + Status (owner/staff only) -->
+  {% if request.user.role == 'OWNER' or request.user.role == 'STAFF' %}
+  <div class="form-card">
+    <div class="form-card-header">Medical &amp; Notes</div>
+    <div class="form-card-body">
+      <div class="form-grid">
+
+        <div class="form-group form-group-full">
+          <label>Medical Conditions</label>
+          <textarea name="medical_conditions" class="form-control" rows="3" placeholder="Any known conditions...">{% if action == 'edit' %}{{ profile.medical_conditions }}{% else %}{{ form_data.medical_conditions|default:'' }}{% endif %}</textarea>
+        </div>
+
+        <div class="form-group form-group-full">
+          <label>Notes</label>
+          <textarea name="notes" class="form-control" rows="3" placeholder="Internal notes...">{% if action == 'edit' %}{{ profile.notes }}{% else %}{{ form_data.notes|default:'' }}{% endif %}</textarea>
+        </div>
+
+        {% if action == 'edit' %}
+        <div class="form-group">
+          <label>Account Status</label>
+          <select name="is_active" class="form-control">
+            <option value="true"  {% if profile.user.is_active %}selected{% endif %}>Active</option>
+            <option value="false" {% if not profile.user.is_active %}selected{% endif %}>Inactive</option>
+          </select>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Form actions -->
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary btn-lg">
+      {% if action == 'create' %}Create Member{% else %}Save Changes{% endif %}
+    </button>
+    {% if action == 'edit' %}
+    <a href="{% url 'members:ui-detail' profile.pk %}" class="btn btn-outline btn-lg">Cancel</a>
+    {% else %}
+    <a href="{% url 'members:ui-list' %}" class="btn btn-outline btn-lg">Cancel</a>
+    {% endif %}
+  </div>
+
+</form>
+{% endblock %}

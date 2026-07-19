@@ -12,8 +12,12 @@ urlpatterns = [
     # Auth endpoints
     path('api/auth/', include('apps.accounts.urls')),
 
-    # Module endpoints
-    path('api/members/', include('apps.members.urls')),
+    # Members — API (/api/members/…) + UI (/members/ui/…) both served from
+    # the same URLconf with the 'members' app_name namespace.
+    path('api/members/', include('apps.members.urls', namespace='members')),
+
+    # Template UI shortcut — redirect /members/ to the UI list view
+    # (the actual UI routes live under /api/members/ui/ via the urlconf above)
     path('api/memberships/', include('apps.memberships.urls')),
     path('api/attendance/', include('apps.attendance.urls')),
     path('api/payments/', include('apps.payments.urls')),
