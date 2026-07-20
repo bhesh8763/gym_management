@@ -31,3 +31,14 @@ async function apiRequest(path, options = {}) {
   }
   return res;
 }
+
+function formatApiError(err) {
+  if (!err || typeof err !== 'object') return 'Something went wrong. Please try again.';
+  const lines = [];
+  for (const [field, messages] of Object.entries(err)) {
+    const msgList = Array.isArray(messages) ? messages : [messages];
+    const label = field === 'non_field_errors' ? '' : `${field}: `;
+    msgList.forEach(m => lines.push(`${label}${m}`));
+  }
+  return lines.join('\n') || 'Something went wrong. Please try again.';
+}

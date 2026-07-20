@@ -136,7 +136,7 @@
       if (res.ok) { document.getElementById('lockerForm').reset(); loadLockers(); }
       else {
         const err = await res.json();
-        errorBox.textContent = JSON.stringify(err);
+        errorBox.textContent = formatApiError(err);
         errorBox.classList.remove('d-none');
       }
     });
@@ -161,6 +161,13 @@
       e.preventDefault();
       const errorBox = document.getElementById('assignError');
       errorBox.classList.add('d-none');
+      const startVal = document.getElementById('assignStart').value;
+      const endVal = document.getElementById('assignEnd').value;
+      if (endVal < startVal) {
+         errorBox.textContent = 'End date cannot be before start date.';
+         errorBox.classList.remove('d-none');
+         return;
+      }
       const payload = {
         locker: parseInt(document.getElementById('assignLockerId').value),
         member: parseInt(document.getElementById('assignMemberId').value),
@@ -173,13 +180,16 @@
       if (res.ok) { document.getElementById('assignForm').reset(); loadAssignments(); loadLockers(); }
       else {
         const err = await res.json();
-        errorBox.textContent = JSON.stringify(err);
+        errorBox.textContent = formatApiError(err);
         errorBox.classList.remove('d-none');
       }
     });
 
     loadLockers();
     loadAssignments();
+    document.getElementById('assignStart').addEventListener('change', function() {
+  document.getElementById('assignEnd').min = this.value;
+});
   </script>
 </body>
 
