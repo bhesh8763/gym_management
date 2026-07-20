@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Memberships — Gym Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark px-3">
+    <span class="navbar-brand">Gym Management</span>
+    <div class="d-flex align-items-center text-white">
+      <span id="userLabel" class="me-3"></span>
+      <button class="btn btn-outline-light btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="d-flex">
+    <div class="sidebar">
+      <div class="list-group list-group-flush pt-2">
+        <a href="dashboard.html" class="list-group-item"><i class="bi bi-arrow-left"></i> Dashboard</a>
+        <a href="members.html" class="list-group-item list-group-item-action"><i class="bi bi-person-lines-fill"></i> Members</a>
+        <a href="memberships.html" class="list-group-item list-group-item-action active"><i class="bi bi-card-checklist"></i> Memberships</a>
+        <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> Attendance</a>
+        <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> Payments</a>
+        <a href="staff.html" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> Staff</a>
+        <a href="lockers.html" class="list-group-item list-group-item-action"><i class="bi bi-lock"></i> Lockers</a>
+        <a href="equipment.html" class="list-group-item list-group-item-action"><i class="bi bi-tools"></i> Equipment</a>
+      </div>
+    </div>
+
+    <div class="p-4 flex-grow-1">
+      <h3>Memberships</h3>
+
+      <!-- Summary -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card text-center border-success"><div class="card-body">
+            <div class="text-muted small">Active</div>
+            <h3 id="statActive" class="text-success">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-warning"><div class="card-body">
+            <div class="text-muted small">Expiring (7 days)</div>
+            <h3 id="statExpiring" class="text-warning">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-info"><div class="card-body">
+            <div class="text-muted small">Frozen</div>
+            <h3 id="statFrozen" class="text-info">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-secondary"><div class="card-body">
+            <div class="text-muted small">Expired</div>
+            <h3 id="statExpired" class="text-secondary">-</h3>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- Plans -->
+      <div class="d-flex justify-content-between align-items-center">
+        <h5>Membership Plans</h5>
+        <button class="btn btn-sm btn-outline-primary" onclick="togglePlanForm()">+ New Plan</button>
+      </div>
+
+      <form id="planForm" class="row g-2 mb-3 align-items-end d-none">
+        <div class="col-auto">
+          <label class="form-label">Name</label>
+          <input type="text" id="planName" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Billing Cycle</label>
+          <select id="planCycle" class="form-select">
+            <option value="MONTHLY">Monthly</option>
+            <option value="QUARTERLY">Quarterly (3 months)</option>
+            <option value="HALF_YEARLY">Half Yearly (6 months)</option>
+            <option value="ANNUAL">Annual</option>
+            <option value="CUSTOM">Custom</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Duration (days)</label>
+          <input type="number" id="planDuration" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Price (NPR)</label>
+          <input type="number" step="0.01" id="planPrice" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Description</label>
+          <input type="text" id="planDescription" class="form-control">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary">Save Plan</button>
+        </div>
+      </form>
+
+      <table class="table table-bordered table-sm mb-4">
+        <thead>
+          <tr><th>Name</th><th>Cycle</th><th>Duration</th><th>Price (NPR)</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody id="planTableBody"></tbody>
+      </table>
+
+      <hr>
+
+      <!-- Assign Membership -->
+      <h5>Assign Membership</h5>
+      <form id="assignForm" class="row g-2 mb-3 align-items-end">
+        <div class="col-auto">
+          <label class="form-label">Member ID</label>
+          <input type="number" id="assignMember" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Plan</label>
+          <select id="assignPlan" class="form-select" required></select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Start Date</label>
+          <input type="date" id="assignStart" class="form-control">
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Price Paid (NPR)</label>
+          <input type="number" step="0.01" id="assignPrice" class="form-control" placeholder="Defaults to plan price">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary">Assign</button>
+        </div>
+      </form>
+
+      <div id="errorBox" class="alert alert-danger d-none"></div>
+
+      <!-- Filters -->
+      <h5>Filter / Search</h5>
+      <div class="row g-2 mb-3">
+        <div class="col-auto">
+          <input type="text" id="filterSearch" class="form-control" placeholder="Search member name/email" onkeyup="if(event.key==='Enter') loadMemberships()">
+        </div>
+        <div class="col-auto">
+          <select id="filterStatus" class="form-select" onchange="loadMemberships()">
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="EXPIRED">Expired</option>
+            <option value="FROZEN">Frozen</option>
+            <option value="CANCELLED">Cancelled</option>
+            <option value="PENDING">Pending Payment</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary" onclick="loadMemberships()">Search</button>
+        </div>
+      </div>
+
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>ID</th><th>Member</th><th>Plan</th><th>Status</th>
+            <th>Start</th><th>End</th><th>Days Left</th><th>Paid (NPR)</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="membershipTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    if (!getAccessToken()) window.location.href = 'index.html';
+    document.getElementById('userLabel').textContent =
+      `${localStorage.getItem('user_name')} (${localStorage.getItem('user_role')})`;
+
+    function logout() {
+      clearTokens();
+      window.location.href = 'index.html';
+    }
+
+    function togglePlanForm() {
+      document.getElementById('planForm').classList.toggle('d-none');
+    }
+
+    function statusBadge(status) {
+      const map = {
+        ACTIVE: 'success', EXPIRED: 'secondary', FROZEN: 'info',
+        CANCELLED: 'danger', PENDING: 'warning',
+      };
+      return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+    }
+
+    async function fetchAll(path) {
+      let all = [];
+      while (path) {
+        const res = await apiRequest(path);
+        if (!res) return null;
+        if (!res.ok) return null;
+        const data = await res.json();
+        all = all.concat(data.results);
+        path = data.next ? data.next.replace(API_BASE, '') : null;
+      }
+      return all;
+    }
+
+    // ── Plans ────────────────────────────────────────────────────────────
+    let plansCache = [];
+
+    async function loadPlans() {
+      const plans = await fetchAll('/memberships/plans/');
+      if (!plans) return;
+      plansCache = plans;
+
+      const tbody = document.getElementById('planTableBody');
+      tbody.innerHTML = '';
+      plans.forEach(p => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${p.name}</td>
+            <td>${p.billing_cycle_display}</td>
+            <td>${p.duration_days} days</td>
+            <td>${p.price}</td>
+            <td>${p.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
+            <td>${p.is_active ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivatePlan(${p.id})">Deactivate</button>` : ''}</td>
+          </tr>`;
+      });
+
+      const select = document.getElementById('assignPlan');
+      select.innerHTML = '';
+      plans.filter(p => p.is_active).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.name} — NPR ${p.price} (${p.duration_days}d)`;
+        select.appendChild(opt);
+      });
+    }
+
+    document.getElementById('planForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById('planName').value.trim(),
+        billing_cycle: document.getElementById('planCycle').value,
+        duration_days: parseInt(document.getElementById('planDuration').value),
+        price: document.getElementById('planPrice').value,
+        description: document.getElementById('planDescription').value,
+      };
+      const res = await apiRequest('/memberships/plans/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) return;
+      if (res.ok) {
+        document.getElementById('planForm').reset();
+        document.getElementById('planForm').classList.add('d-none');
+        loadPlans();
+      } else {
+        const err = await res.json();
+        alert('Failed to create plan: ' + JSON.stringify(err));
+      }
+    });
+
+    async function deactivatePlan(id) {
+      if (!confirm('Deactivate this plan? Existing memberships keep it, but it will no longer be assignable.')) return;
+      const res = await apiRequest(`/memberships/plans/${id}/`, { method: 'DELETE' });
+      if (!res) return;
+      if (res.ok) loadPlans();
+      else alert('Failed to deactivate plan.');
+    }
+
+    // ── Memberships ──────────────────────────────────────────────────────
+
+    async function loadMemberships() {
+      const params = new URLSearchParams();
+      const search = document.getElementById('filterSearch').value.trim();
+      if (search) params.set('search', search);
+      const status = document.getElementById('filterStatus').value;
+      if (status) params.set('status', status);
+
+      const all = await fetchAll('/memberships/?' + params.toString());
+      if (all === null) { alert('Failed to load memberships.'); return; }
+
+      const tbody = document.getElementById('membershipTableBody');
+      tbody.innerHTML = '';
+      let active = 0, frozen = 0, expired = 0;
+
+      all.forEach(row => {
+        if (row.status === 'ACTIVE') active++;
+        if (row.status === 'FROZEN') frozen++;
+        if (row.status === 'EXPIRED') expired++;
+
+        let actions = '';
+        if (row.status === 'ACTIVE') {
+          actions += `<button class="btn btn-sm btn-outline-info" onclick="freezeMembership(${row.id})">Freeze</button> `;
+          actions += `<button class="btn btn-sm btn-outline-success" onclick="renewMembership(${row.id})">Renew</button> `;
+          actions += `<button class="btn btn-sm btn-outline-danger" onclick="cancelMembership(${row.id})">Cancel</button>`;
+        } else if (row.status === 'FROZEN') {
+          actions += `<button class="btn btn-sm btn-outline-primary" onclick="unfreezeMembership(${row.id})">Unfreeze</button> `;
+          actions += `<button class="btn btn-sm btn-outline-danger" onclick="cancelMembership(${row.id})">Cancel</button>`;
+        } else if (row.status === 'EXPIRED') {
+          actions += `<button class="btn btn-sm btn-outline-success" onclick="renewMembership(${row.id})">Renew</button>`;
+        }
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${row.id}</td>
+            <td>${row.member_name}<br><small class="text-muted">${row.member_email}</small></td>
+            <td>${row.plan_name}</td>
+            <td>${statusBadge(row.status)}</td>
+            <td>${row.start_date}</td>
+            <td>${row.end_date}</td>
+            <td>${row.days_remaining}</td>
+            <td>${row.price_paid}</td>
+            <td>${actions}</td>
+          </tr>`;
+      });
+
+      document.getElementById('statActive').textContent = active;
+      document.getElementById('statFrozen').textContent = frozen;
+      document.getElementById('statExpired').textContent = expired;
+
+      const expiring = await fetchAll('/memberships/expiring/?days=7');
+      document.getElementById('statExpiring').textContent = expiring ? expiring.length : '-';
+    }
+
+    document.getElementById('assignForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('errorBox');
+      errorBox.classList.add('d-none');
+
+      const payload = {
+        member: parseInt(document.getElementById('assignMember').value),
+        plan: parseInt(document.getElementById('assignPlan').value),
+      };
+      const start = document.getElementById('assignStart').value;
+      if (start) payload.start_date = start;
+      const price = document.getElementById('assignPrice').value;
+      if (price) payload.price_paid = price;
+
+      const res = await apiRequest('/memberships/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) return;
+
+      if (res.ok) {
+        document.getElementById('assignForm').reset();
+        loadMemberships();
+      } else {
+        const err = await res.json();
+        errorBox.textContent = JSON.stringify(err);
+        errorBox.classList.remove('d-none');
+      }
+    });
+
+    async function freezeMembership(id) {
+      const freezeStart = prompt('Freeze start date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+      if (!freezeStart) return;
+      const freezeEnd = prompt('Freeze end date (YYYY-MM-DD):');
+      if (!freezeEnd) return;
+      const reason = prompt('Reason (optional):', '') || '';
+
+      const res = await apiRequest(`/memberships/${id}/freeze/`, {
+        method: 'POST',
+        body: JSON.stringify({ freeze_start: freezeStart, freeze_end: freezeEnd, freeze_reason: reason }),
+      });
+      if (!res) return;
+      if (res.ok) loadMemberships();
+      else { const err = await res.json(); alert('Freeze failed: ' + JSON.stringify(err)); }
+    }
+
+    async function unfreezeMembership(id) {
+      if (!confirm('Resume this membership? The frozen days will be added back to the end date.')) return;
+      const res = await apiRequest(`/memberships/${id}/unfreeze/`, { method: 'POST', body: JSON.stringify({}) });
+      if (!res) return;
+      if (res.ok) loadMemberships();
+      else alert('Unfreeze failed.');
+    }
+
+    async function renewMembership(id) {
+      if (!confirm('Renew this membership for another full plan cycle?')) return;
+      const res = await apiRequest(`/memberships/${id}/renew/`, { method: 'POST', body: JSON.stringify({}) });
+      if (!res) return;
+      if (res.ok) loadMemberships();
+      else { const err = await res.json(); alert('Renew failed: ' + JSON.stringify(err)); }
+    }
+
+    async function cancelMembership(id) {
+      if (!confirm('Cancel this membership? This cannot be undone.')) return;
+      const res = await apiRequest(`/memberships/${id}/`, { method: 'DELETE' });
+      if (!res) return;
+      if (res.ok) loadMemberships();
+      else alert('Cancel failed.');
+    }
+
+    (async () => {
+      await loadPlans();
+      await loadMemberships();
+    })();
+  </script>
+</body>
+</html>

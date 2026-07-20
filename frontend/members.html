@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Members — Gym Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark px-3">
+    <span class="navbar-brand">Gym Management</span>
+    <div class="d-flex align-items-center text-white">
+      <span id="userLabel" class="me-3"></span>
+      <button class="btn btn-outline-light btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="d-flex">
+    <div class="sidebar">
+      <div class="list-group list-group-flush pt-2">
+        <a href="dashboard.html" class="list-group-item"><i class="bi bi-arrow-left"></i> Dashboard</a>
+        <a href="members.html" class="list-group-item list-group-item-action active"><i class="bi bi-person-lines-fill"></i> Members</a>
+        <a href="memberships.html" class="list-group-item list-group-item-action"><i class="bi bi-card-checklist"></i> Memberships</a>
+        <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> Attendance</a>
+        <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> Payments</a>
+        <a href="staff.html" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> Staff</a>
+        <a href="lockers.html" class="list-group-item list-group-item-action"><i class="bi bi-lock"></i> Lockers</a>
+        <a href="equipment.html" class="list-group-item list-group-item-action"><i class="bi bi-tools"></i> Equipment</a>
+      </div>
+    </div>
+
+    <div class="p-4 flex-grow-1">
+      <h3>Members</h3>
+
+      <!-- Summary -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card text-center"><div class="card-body">
+            <div class="text-muted small">Total Members</div>
+            <h3 id="statTotal">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-success"><div class="card-body">
+            <div class="text-muted small">Active</div>
+            <h3 id="statActive" class="text-success">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-danger"><div class="card-body">
+            <div class="text-muted small">Inactive</div>
+            <h3 id="statInactive" class="text-danger">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-primary"><div class="card-body">
+            <div class="text-muted small">Avg. BMI</div>
+            <h3 id="statBmi" class="text-primary">-</h3>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- Add Member -->
+      <h5>Add New Member</h5>
+      <form id="addForm" class="row g-2 mb-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label">First Name</label>
+          <input type="text" id="firstName" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Last Name</label>
+          <input type="text" id="lastName" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Email</label>
+          <input type="email" id="email" class="form-control" required>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Phone</label>
+          <input type="text" id="phone" class="form-control">
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Password</label>
+          <input type="password" id="password" class="form-control" required>
+        </div>
+      </form>
+      <form id="addForm2" class="row g-2 mb-3 align-items-end">
+        <div class="col-auto">
+          <label class="form-label">Gender</label>
+          <select id="gender" class="form-select">
+            <option value="">-</option>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+            <option value="O">Other</option>
+            <option value="N">Prefer not to say</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Date of Birth</label>
+          <input type="date" id="dob" class="form-control">
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Height (cm)</label>
+          <input type="number" step="0.01" id="heightCm" class="form-control">
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Weight (kg)</label>
+          <input type="number" step="0.01" id="weightKg" class="form-control">
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Fitness Goal</label>
+          <select id="fitnessGoal" class="form-select">
+            <option value="">-</option>
+            <option value="WEIGHT_LOSS">Weight Loss</option>
+            <option value="MUSCLE_GAIN">Muscle Gain</option>
+            <option value="ENDURANCE">Endurance</option>
+            <option value="FLEXIBILITY">Flexibility</option>
+            <option value="GENERAL">General Fitness</option>
+            <option value="REHAB">Rehabilitation</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Fitness Level</label>
+          <select id="fitnessLevel" class="form-select">
+            <option value="BEGINNER">Beginner</option>
+            <option value="INTERMEDIATE">Intermediate</option>
+            <option value="ADVANCED">Advanced</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary" id="addBtn">Add Member</button>
+        </div>
+      </form>
+
+      <div id="errorBox" class="alert alert-danger d-none"></div>
+
+      <!-- Edit panel (hidden until an Edit button is clicked) -->
+      <div id="editPanel" class="card mb-4 d-none">
+        <div class="card-body">
+          <h5 id="editTitle">Edit Member</h5>
+          <form id="editForm" class="row g-2 align-items-end">
+            <div class="col-auto">
+              <label class="form-label">Gender</label>
+              <select id="editGender" class="form-select">
+                <option value="">-</option>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+                <option value="O">Other</option>
+                <option value="N">Prefer not to say</option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <label class="form-label">Date of Birth</label>
+              <input type="date" id="editDob" class="form-control">
+            </div>
+            <div class="col-auto">
+              <label class="form-label">Height (cm)</label>
+              <input type="number" step="0.01" id="editHeightCm" class="form-control">
+            </div>
+            <div class="col-auto">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" step="0.01" id="editWeightKg" class="form-control">
+            </div>
+            <div class="col-auto">
+              <label class="form-label">Fitness Goal</label>
+              <select id="editFitnessGoal" class="form-select">
+                <option value="">-</option>
+                <option value="WEIGHT_LOSS">Weight Loss</option>
+                <option value="MUSCLE_GAIN">Muscle Gain</option>
+                <option value="ENDURANCE">Endurance</option>
+                <option value="FLEXIBILITY">Flexibility</option>
+                <option value="GENERAL">General Fitness</option>
+                <option value="REHAB">Rehabilitation</option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <label class="form-label">Fitness Level</label>
+              <select id="editFitnessLevel" class="form-select">
+                <option value="BEGINNER">Beginner</option>
+                <option value="INTERMEDIATE">Intermediate</option>
+                <option value="ADVANCED">Advanced</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <textarea id="editNotes" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <button type="button" class="btn btn-secondary" onclick="closeEdit()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <h5>Filter / Search</h5>
+      <div class="row g-2 mb-3">
+        <div class="col-auto">
+          <input type="text" id="filterSearch" class="form-control" placeholder="Search name, email, phone" onkeyup="if(event.key==='Enter') loadMembers()">
+        </div>
+        <div class="col-auto">
+          <select id="filterGoal" class="form-select" onchange="loadMembers()">
+            <option value="">All Goals</option>
+            <option value="WEIGHT_LOSS">Weight Loss</option>
+            <option value="MUSCLE_GAIN">Muscle Gain</option>
+            <option value="ENDURANCE">Endurance</option>
+            <option value="FLEXIBILITY">Flexibility</option>
+            <option value="GENERAL">General Fitness</option>
+            <option value="REHAB">Rehabilitation</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select id="filterLevel" class="form-select" onchange="loadMembers()">
+            <option value="">All Levels</option>
+            <option value="BEGINNER">Beginner</option>
+            <option value="INTERMEDIATE">Intermediate</option>
+            <option value="ADVANCED">Advanced</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select id="filterActive" class="form-select" onchange="loadMembers()">
+            <option value="">All Statuses</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary" onclick="loadMembers()">Search</button>
+        </div>
+      </div>
+
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Email</th><th>Phone</th>
+            <th>Gender</th><th>Fitness Goal</th><th>Level</th><th>BMI</th>
+            <th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="memberTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    if (!getAccessToken()) window.location.href = 'index.html';
+    document.getElementById('userLabel').textContent =
+      `${localStorage.getItem('user_name')} (${localStorage.getItem('user_role')})`;
+
+    function logout() {
+      clearTokens();
+      window.location.href = 'index.html';
+    }
+
+    function statusBadge(isActive) {
+      return isActive
+        ? '<span class="badge bg-success">Active</span>'
+        : '<span class="badge bg-danger">Inactive</span>';
+    }
+
+    let editingProfileId = null;
+
+    async function loadMembers() {
+      const params = new URLSearchParams();
+      const search = document.getElementById('filterSearch').value.trim();
+      if (search) params.set('search', search);
+      const goal = document.getElementById('filterGoal').value;
+      if (goal) params.set('fitness_goal', goal);
+      const level = document.getElementById('filterLevel').value;
+      if (level) params.set('fitness_level', level);
+      const active = document.getElementById('filterActive').value;
+      if (active) params.set('is_active', active);
+
+      let path = '/members/?' + params.toString();
+      let all = [];
+      while (path) {
+        const res = await apiRequest(path);
+        if (!res) return;
+        if (!res.ok) { alert('Failed to load members.'); return; }
+        const data = await res.json();
+        all = all.concat(data.results);
+        path = data.next ? data.next.replace(API_BASE, '') : null;
+      }
+
+      const tbody = document.getElementById('memberTableBody');
+      tbody.innerHTML = '';
+      let activeCount = 0, bmiSum = 0, bmiCount = 0;
+
+      all.forEach(row => {
+        if (row.is_active) activeCount++;
+        if (row.bmi) { bmiSum += row.bmi; bmiCount++; }
+        tbody.innerHTML += `
+          <tr>
+            <td>${row.id}</td>
+            <td>${row.full_name}</td>
+            <td>${row.email}</td>
+            <td>${row.phone || '-'}</td>
+            <td>${row.gender || '-'}</td>
+            <td>${row.fitness_goal_display || '-'}</td>
+            <td>${row.fitness_level_display || '-'}</td>
+            <td>${row.bmi ?? '-'}</td>
+            <td>${statusBadge(row.is_active)}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" onclick="openEdit(${row.id})">Edit</button>
+              ${row.is_active ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivateMember(${row.id})">Deactivate</button>` : ''}
+            </td>
+          </tr>`;
+      });
+
+      document.getElementById('statTotal').textContent = all.length;
+      document.getElementById('statActive').textContent = activeCount;
+      document.getElementById('statInactive').textContent = all.length - activeCount;
+      document.getElementById('statBmi').textContent = bmiCount ? (bmiSum / bmiCount).toFixed(1) : '-';
+    }
+
+    async function openEdit(profileId) {
+      const res = await apiRequest(`/members/${profileId}/`);
+      if (!res || !res.ok) { alert('Could not load member profile.'); return; }
+      const profile = await res.json();
+
+      editingProfileId = profileId;
+      document.getElementById('editTitle').textContent = `Edit Member: ${profile.user.full_name}`;
+      document.getElementById('editGender').value = profile.gender || '';
+      document.getElementById('editDob').value = profile.date_of_birth || '';
+      document.getElementById('editHeightCm').value = profile.height_cm || '';
+      document.getElementById('editWeightKg').value = profile.weight_kg || '';
+      document.getElementById('editFitnessGoal').value = profile.fitness_goal || '';
+      document.getElementById('editFitnessLevel').value = profile.fitness_level || 'BEGINNER';
+      document.getElementById('editNotes').value = profile.notes || '';
+      document.getElementById('editPanel').classList.remove('d-none');
+      document.getElementById('editPanel').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeEdit() {
+      editingProfileId = null;
+      document.getElementById('editPanel').classList.add('d-none');
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!editingProfileId) return;
+      const payload = {
+        gender: document.getElementById('editGender').value,
+        date_of_birth: document.getElementById('editDob').value || null,
+        height_cm: document.getElementById('editHeightCm').value || null,
+        weight_kg: document.getElementById('editWeightKg').value || null,
+        fitness_goal: document.getElementById('editFitnessGoal').value,
+        fitness_level: document.getElementById('editFitnessLevel').value,
+        notes: document.getElementById('editNotes').value,
+      };
+      const res = await apiRequest(`/members/${editingProfileId}/`, {
+        method: 'PATCH', body: JSON.stringify(payload),
+      });
+      if (!res) return;
+      if (res.ok) {
+        closeEdit();
+        loadMembers();
+      } else {
+        const err = await res.json();
+        alert('Update failed: ' + JSON.stringify(err));
+      }
+    });
+
+    async function deactivateMember(profileId) {
+      if (!confirm('Deactivate this member?')) return;
+      const res = await apiRequest(`/members/${profileId}/`, { method: 'DELETE' });
+      if (!res) return;
+      if (res.ok) {
+        loadMembers();
+      } else {
+        const err = await res.json();
+        alert('Deactivate failed: ' + JSON.stringify(err));
+      }
+    }
+
+    document.getElementById('addForm2').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('errorBox');
+      errorBox.classList.add('d-none');
+
+      const payload = {
+        first_name: document.getElementById('firstName').value.trim(),
+        last_name: document.getElementById('lastName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        password: document.getElementById('password').value,
+        gender: document.getElementById('gender').value,
+        date_of_birth: document.getElementById('dob').value || undefined,
+        height_cm: document.getElementById('heightCm').value || undefined,
+        weight_kg: document.getElementById('weightKg').value || undefined,
+        fitness_goal: document.getElementById('fitnessGoal').value,
+        fitness_level: document.getElementById('fitnessLevel').value,
+      };
+
+      const res = await apiRequest('/members/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) return;
+
+      if (res.ok) {
+        document.getElementById('addForm').reset();
+        document.getElementById('addForm2').reset();
+        loadMembers();
+      } else {
+        const err = await res.json();
+        errorBox.textContent = JSON.stringify(err);
+        errorBox.classList.remove('d-none');
+      }
+    });
+
+    loadMembers();
+  </script>
+</body>
+</html>
