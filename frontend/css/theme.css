@@ -93,3 +93,214 @@ h3, h5 {
   font-weight: 600;
   color: #1a1a1f;
 }
+/* ─── Workout Plans toolbar ─────────────────────────────────────── */
+.wp-toolbar-card {
+  border-radius: 10px;
+}
+
+.wp-toolbar-body {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.wp-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: auto;
+}
+
+.wp-title-group h4 {
+  margin: 0;
+}
+
+.wp-count-badge {
+  background-color: var(--brand-red);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.wp-search-group {
+  max-width: 320px;
+  flex: 1 1 240px;
+}
+
+.wp-search-icon {
+  background-color: #fff;
+  border-right: none;
+  color: var(--brand-red);
+}
+
+.wp-search-input {
+  border-left: none;
+}
+
+.wp-search-input:focus {
+  border-color: var(--brand-red);
+  box-shadow: none;
+}
+
+.wp-search-group:focus-within .wp-search-icon {
+  border-color: var(--brand-red);
+}
+
+.wp-create-btn {
+  white-space: nowrap;
+}
+/* ─── Topbar v2 ──────────────────────────────────────────────────── */
+.topbar {
+  background-color: #1a1a1f;
+  border-bottom: 3px solid var(--brand-red);
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.topbar .sidebar-toggle {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.topbar .navbar-brand {
+  color: #fff;
+  font-weight: 600;
+  margin-right: auto;
+}
+
+/* Notification bell */
+.topbar-icon-btn {
+  position: relative;
+  background: none;
+  border: none;
+  color: #d8d8e0;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+.topbar-icon-btn:hover { color: #fff; }
+
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background-color: var(--brand-red);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.dropdown-panel {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  min-width: 260px;
+  z-index: 1000;
+  display: none;
+  overflow: hidden;
+}
+.dropdown-panel.show { display: block; }
+
+.dropdown-panel .dropdown-header {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid #eee;
+  color: #1a1a1f;
+}
+
+.notif-item {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid #f2f2f2;
+  font-size: 0.85rem;
+  color: #333;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+/* Profile menu */
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  position: relative;
+}
+.profile-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: var(--brand-red);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.profile-trigger .profile-meta {
+  text-align: left;
+  line-height: 1.1;
+}
+.profile-trigger .profile-name { font-size: 0.85rem; font-weight: 600; }
+.profile-trigger .profile-role { font-size: 0.7rem; color: #b8b8c2; }
+
+.profile-menu a,
+.profile-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 1rem;
+  background: none;
+  border: none;
+  color: #333;
+  text-decoration: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.profile-menu a:hover,
+.profile-menu button:hover { background-color: #f4f4f6; }
+.profile-menu hr { margin: 0; border-color: #eee; }
+.profile-menu .text-danger { color: var(--brand-red) !important; }
+
+/* ─── Sidebar v2: scrollable + grouped ──────────────────────────── */
+.sidebar {
+  overflow-y: auto;
+  max-height: 100vh;
+  transition: width 0.2s ease;
+}
+.sidebar.collapsed { width: 64px; }
+.sidebar.collapsed .nav-section-label,
+.sidebar.collapsed .list-group-item span { display: none; }
+
+.nav-section-label {
+  color: #6c6c78;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 1rem 1.25rem 0.35rem;
+}

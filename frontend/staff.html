@@ -8,232 +8,283 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body>
-  <nav class="navbar navbar-dark px-3">
-    <span class="navbar-brand">Gym Management</span>
-    <div class="d-flex align-items-center text-white">
-      <span id="userLabel" class="me-3"></span>
-      <button class="btn btn-outline-light btn-sm" onclick="logout()">Logout</button>
-    </div>
-  </nav>
 
-  <div class="d-flex">
-    <div class="sidebar">
-      <div class="list-group list-group-flush pt-2">
-        <a href="dashboard.html" class="list-group-item"><i class="bi bi-arrow-left"></i> Dashboard</a>
-        <a href="members.html" class="list-group-item list-group-item-action"><i class="bi bi-person-lines-fill"></i> Members</a>
-<a href="memberships.html" class="list-group-item list-group-item-action"><i class="bi bi-card-checklist"></i> Memberships</a>
-<a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> Attendance</a>
-        <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> Payments</a>
-        <a href="staff.html" class="list-group-item list-group-item-action active"><i class="bi bi-people"></i> Staff</a>
-        <a href="lockers.html" class="list-group-item list-group-item-action"><i class="bi bi-lock"></i> Lockers</a>
-        <a href="equipment.html" class="list-group-item list-group-item-action"><i class="bi bi-tools"></i> Equipment</a>
-      </div>
-    </div>
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <span class="navbar-brand">Gym Management</span>
 
-    <div class="p-4 flex-grow-1">
-      <h3>Staff Profiles</h3>
-
-      <h5>Add Staff Profile</h5>
-      <form id="profileForm" class="row g-2 mb-4 align-items-end">
-        <div class="col-auto">
-  <label class="form-label">User ID</label>
-  <input type="number" id="userId" class="form-control" min="1" required>
-</div>
-<div class="col-auto">
-  <label class="form-label">Department</label>
-  <select id="department" class="form-select" required>
-    <option value="FRONT_DESK">Front Desk</option>
-    <option value="ACCOUNTS">Accounts</option>
-    <option value="MAINTENANCE">Maintenance</option>
-    <option value="MANAGEMENT">Management</option>
-    <option value="OTHER">Other</option>
-  </select>
-</div>
-<div class="col-auto">
-  <label class="form-label">Designation</label>
-  <input type="text" id="designation" class="form-control" required>
-</div>
-<div class="col-auto">
-  <label class="form-label">Joined Date</label>
-  <input type="date" id="joinedDate" class="form-control" required>
-</div>
-<div class="col-auto">
-  <label class="form-label">Salary</label>
-  <input type="number" step="0.01" min="0" id="salary" class="form-control" required>
-</div>
-        <div class="col-auto">
-          <button type="submit" class="btn btn-primary">Add Profile</button>
-        </div>
-      </form>
-      <div id="profileError" class="alert alert-danger d-none"></div>
-
-      <table class="table table-bordered mb-5">
-        <thead>
-          <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th>Salary</th></tr>
-        </thead>
-        <tbody id="profileTableBody"></tbody>
-      </table>
-
-      <hr>
-
-      <h3>Leave Requests</h3>
-
-      <h5>Submit Leave Request</h5>
-      <form id="leaveForm" class="row g-2 mb-4 align-items-end">
-        <div class="col-auto">
-  <label class="form-label">Type</label>
-  <select id="leaveType" class="form-select">
-    <option value="SICK">Sick Leave</option>
-    <option value="CASUAL">Casual Leave</option>
-    <option value="ANNUAL">Annual Leave</option>
-    <option value="UNPAID">Unpaid Leave</option>
-    <option value="OTHER">Other</option>
-  </select>
-</div>
-        <div class="col-auto">
-          <label class="form-label">Start Date</label>
-          <input type="date" id="startDate" class="form-control" required>
-        </div>
-        <div class="col-auto">
-          <label class="form-label">End Date</label>
-          <input type="date" id="endDate" class="form-control" required>
-        </div>
-        <div class="col-auto">
-          <label class="form-label">Reason</label>
-          <input type="text" id="reason" class="form-control" required>
-        </div>
-        <div class="col-auto">
-          <button type="submit" class="btn btn-primary">Submit Request</button>
-        </div>
-      </form>
-      <div id="leaveError" class="alert alert-danger d-none"></div>
-
-      <table class="table table-bordered">
-        <thead>
-          <tr><th>ID</th><th>Requester</th><th>Type</th><th>Start</th><th>End</th><th>Days</th><th>Reason</th><th>Status</th><th>Action</th></tr>
-        </thead>
-        <tbody id="leaveTableBody"></tbody>
-      </table>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="dropdown-header">Notifications</div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
     </div>
   </div>
 
-  <script src="js/api.js"></script>
-  <script>
-    if (!getAccessToken()) window.location.href = 'index.html';
-    document.getElementById('userLabel').textContent =
-      `${localStorage.getItem('user_name')} (${localStorage.getItem('user_role')})`;
-    const myRole = localStorage.getItem('user_role');
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-role" id="profileRole">—</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="#"><i class="bi bi-person"></i> Profile</a>
+      <a href="#"><i class="bi bi-gear"></i> Settings</a>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
 
-    function logout() {
-      clearTokens();
-      window.location.href = 'index.html';
-    }
+<div class="d-flex">
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
 
-    function statusBadge(status) {
-      const map = { APPROVED: 'success', PENDING: 'warning', REJECTED: 'danger' };
-      return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
-    }
+      <div class="nav-section-label">Members</div>
+      <a href="members.html" class="list-group-item list-group-item-action"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="memberships.html" class="list-group-item list-group-item-action"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
 
-    async function loadProfiles() {
-      const res = await apiRequest('/staff/profiles/');
-      if (!res) return;
-      const data = await res.json();
-      const tbody = document.getElementById('profileTableBody');
-      tbody.innerHTML = '';
-      data.results.forEach(row => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${row.id}</td><td>${row.user_name}</td><td>${row.user_email}</td>
-            <td>${row.department}</td><td>${row.designation}</td>
-            <td>${row.joined_date}</td><td>${row.salary}</td>
-          </tr>`;
-      });
-    }
+      <div class="nav-section-label">Staff Management</div>
+      <a href="staff.html" class="list-group-item list-group-item-action active"><i class="bi bi-people"></i> <span>Staff</span></a>
 
-    document.getElementById('profileForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const errorBox = document.getElementById('profileError');
-      errorBox.classList.add('d-none');
-      const payload = {
-        user: parseInt(document.getElementById('userId').value),
-        department: document.getElementById('department').value,
-        designation: document.getElementById('designation').value,
-        joined_date: document.getElementById('joinedDate').value,
-        salary: document.getElementById('salary').value,
-      };
-      const res = await apiRequest('/staff/profiles/', { method: 'POST', body: JSON.stringify(payload) });
-      if (!res) return;
-      if (res.ok) { document.getElementById('profileForm').reset(); loadProfiles(); }
-      else {
-        const err = await res.json();
-        errorBox.textContent = formatApiError(err);
-        errorBox.classList.remove('d-none');
-      }
+      <div class="nav-section-label">Workout & Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+
+      <div class="nav-section-label">Payments</div>
+      <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <div class="nav-section-label">Equipment</div>
+      <a href="lockers.html" class="list-group-item list-group-item-action"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+      <a href="equipment.html" class="list-group-item list-group-item-action"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+    </div>
+  </div>
+
+  <div class="p-4 flex-grow-1">
+    <h3>Staff Profiles</h3>
+
+    <h5>Add Staff Profile</h5>
+    <form id="profileForm" class="row g-2 mb-4 align-items-end">
+      <div class="col-auto">
+        <label class="form-label">User ID</label>
+        <input type="number" id="userId" class="form-control" min="1" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Department</label>
+        <select id="department" class="form-select" required>
+          <option value="FRONT_DESK">Front Desk</option>
+          <option value="ACCOUNTS">Accounts</option>
+          <option value="MAINTENANCE">Maintenance</option>
+          <option value="MANAGEMENT">Management</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Designation</label>
+        <input type="text" id="designation" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Joined Date</label>
+        <input type="date" id="joinedDate" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Salary</label>
+        <input type="number" step="0.01" min="0" id="salary" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Add Profile</button>
+      </div>
+    </form>
+    <div id="profileError" class="alert alert-danger d-none"></div>
+
+    <table class="table table-bordered mb-5">
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th>Salary</th></tr>
+      </thead>
+      <tbody id="profileTableBody"></tbody>
+    </table>
+
+    <hr>
+
+    <h3>Leave Requests</h3>
+
+    <h5>Submit Leave Request</h5>
+    <form id="leaveForm" class="row g-2 mb-4 align-items-end">
+      <div class="col-auto">
+        <label class="form-label">Type</label>
+        <select id="leaveType" class="form-select">
+          <option value="SICK">Sick Leave</option>
+          <option value="CASUAL">Casual Leave</option>
+          <option value="ANNUAL">Annual Leave</option>
+          <option value="UNPAID">Unpaid Leave</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Start Date</label>
+        <input type="date" id="startDate" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">End Date</label>
+        <input type="date" id="endDate" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Reason</label>
+        <input type="text" id="reason" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Submit Request</button>
+      </div>
+    </form>
+    <div id="leaveError" class="alert alert-danger d-none"></div>
+
+    <table class="table table-bordered">
+      <thead>
+        <tr><th>ID</th><th>Requester</th><th>Type</th><th>Start</th><th>End</th><th>Days</th><th>Reason</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody id="leaveTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  if (!getAccessToken()) window.location.href = 'index.html';
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+  }
+
+  function toggleDropdown(id) {
+    document.querySelectorAll('.dropdown-panel').forEach(p => {
+      if (p.id !== id) p.classList.remove('show');
     });
+    document.getElementById(id).classList.toggle('show');
+  }
 
-    async function loadLeaves() {
-      const res = await apiRequest('/staff/leave-requests/');
-      if (!res) return;
-      const data = await res.json();
-      const tbody = document.getElementById('leaveTableBody');
-      tbody.innerHTML = '';
-      data.results.forEach(row => {
-        const canReview = (myRole === 'OWNER' || myRole === 'STAFF') && row.status === 'PENDING';
-        const actionCell = canReview
-          ? `<button class="btn btn-sm btn-success me-1" onclick="reviewLeave(${row.id}, 'APPROVED')">Approve</button>
-             <button class="btn btn-sm btn-danger" onclick="reviewLeave(${row.id}, 'REJECTED')">Reject</button>`
-          : '-';
-        tbody.innerHTML += `
-          <tr>
-            <td>${row.id}</td><td>${row.requester_name}</td><td>${row.leave_type}</td>
-            <td>${row.start_date}</td><td>${row.end_date}</td><td>${row.duration_days}</td>
-            <td>${row.reason}</td><td>${statusBadge(row.status)}</td><td>${actionCell}</td>
-          </tr>`;
-      });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.position-relative')) {
+      document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
     }
+  });
 
-    async function reviewLeave(id, status) {
-      const res = await apiRequest(`/staff/leave-requests/${id}/review/`, {
-        method: 'POST',
-        body: JSON.stringify({ status }),
-      });
-      if (res && res.ok) loadLeaves();
-      else alert('Review action failed. Check console.');
-    }
+  const userName = localStorage.getItem('user_name') || 'User';
+  const userRole = localStorage.getItem('user_role') || '';
+  document.getElementById('profileName').textContent = userName;
+  document.getElementById('profileRole').textContent = userRole;
+  document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
 
-    document.getElementById('leaveForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const errorBox = document.getElementById('leaveError');
-      errorBox.classList.add('d-none');
-      const startVal = document.getElementById('startDate').value;
-      const endVal = document.getElementById('endDate').value;
-      if (endVal < startVal) {
-          errorBox.textContent = 'End date cannot be before start date.';
-          errorBox.classList.remove('d-none');
-          return;
-      }
+  const myRole = localStorage.getItem('user_role');
 
-      const payload = {
-        leave_type: document.getElementById('leaveType').value,
-        start_date: document.getElementById('startDate').value,
-        end_date: document.getElementById('endDate').value,
-        reason: document.getElementById('reason').value,
-      };
-      const res = await apiRequest('/staff/leave-requests/', { method: 'POST', body: JSON.stringify(payload) });
-      if (!res) return;
-      if (res.ok) { document.getElementById('leaveForm').reset(); loadLeaves(); }
-      else {
-        const err = await res.json();
-        errorBox.textContent = formatApiError(err);
-        errorBox.classList.remove('d-none');
-      }
+  function logout() {
+    clearTokens();
+    window.location.href = 'index.html';
+  }
+
+  function statusBadge(status) {
+    const map = { APPROVED: 'success', PENDING: 'warning', REJECTED: 'danger' };
+    return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+  }
+
+  async function loadProfiles() {
+    const res = await apiRequest('/staff/profiles/');
+    if (!res) return;
+    const data = await res.json();
+    const tbody = document.getElementById('profileTableBody');
+    tbody.innerHTML = '';
+    data.results.forEach(row => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${row.id}</td><td>${row.user_name}</td><td>${row.user_email}</td>
+          <td>${row.department}</td><td>${row.designation}</td>
+          <td>${row.joined_date}</td><td>${row.salary}</td>
+        </tr>`;
     });
+  }
 
-    loadProfiles();
-    loadLeaves();
-    document.getElementById('startDate').addEventListener('change', function() {
-  document.getElementById('endDate').min = this.value;
-});
-  </script>
+  document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('profileError');
+    errorBox.classList.add('d-none');
+    const payload = {
+      user: parseInt(document.getElementById('userId').value),
+      department: document.getElementById('department').value,
+      designation: document.getElementById('designation').value,
+      joined_date: document.getElementById('joinedDate').value,
+      salary: document.getElementById('salary').value,
+    };
+    const res = await apiRequest('/staff/profiles/', { method: 'POST', body: JSON.stringify(payload) });
+    if (!res) return;
+    if (res.ok) { document.getElementById('profileForm').reset(); loadProfiles(); }
+    else {
+      const err = await res.json();
+      errorBox.textContent = JSON.stringify(err);
+      errorBox.classList.remove('d-none');
+    }
+  });
+
+  async function loadLeaves() {
+    const res = await apiRequest('/staff/leave-requests/');
+    if (!res) return;
+    const data = await res.json();
+    const tbody = document.getElementById('leaveTableBody');
+    tbody.innerHTML = '';
+    data.results.forEach(row => {
+      const canReview = (myRole === 'OWNER' || myRole === 'STAFF') && row.status === 'PENDING';
+      const actionCell = canReview
+        ? `<button class="btn btn-sm btn-success me-1" onclick="reviewLeave(${row.id}, 'APPROVED')">Approve</button>
+           <button class="btn btn-sm btn-danger" onclick="reviewLeave(${row.id}, 'REJECTED')">Reject</button>`
+        : '-';
+      tbody.innerHTML += `
+        <tr>
+          <td>${row.id}</td><td>${row.requester_name}</td><td>${row.leave_type}</td>
+          <td>${row.start_date}</td><td>${row.end_date}</td><td>${row.duration_days}</td>
+          <td>${row.reason}</td><td>${statusBadge(row.status)}</td><td>${actionCell}</td>
+        </tr>`;
+    });
+  }
+
+  async function reviewLeave(id, status) {
+    const res = await apiRequest(`/staff/leave-requests/${id}/review/`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    });
+    if (res && res.ok) loadLeaves();
+    else alert('Review action failed. Check console.');
+  }
+
+  document.getElementById('leaveForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('leaveError');
+    errorBox.classList.add('d-none');
+    const payload = {
+      leave_type: document.getElementById('leaveType').value,
+      start_date: document.getElementById('startDate').value,
+      end_date: document.getElementById('endDate').value,
+      reason: document.getElementById('reason').value,
+    };
+    const res = await apiRequest('/staff/leave-requests/', { method: 'POST', body: JSON.stringify(payload) });
+    if (!res) return;
+    if (res.ok) { document.getElementById('leaveForm').reset(); loadLeaves(); }
+    else {
+      const err = await res.json();
+      errorBox.textContent = JSON.stringify(err);
+      errorBox.classList.remove('d-none');
+    }
+  });
+
+  loadProfiles();
+  loadLeaves();
+</script>
 </body>
 </html>
