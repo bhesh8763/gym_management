@@ -21,6 +21,8 @@
     <div class="sidebar">
       <div class="list-group list-group-flush pt-2">
         <a href="dashboard.html" class="list-group-item"><i class="bi bi-speedometer2"></i> Dashboard</a>
+        <a href="members.html" class="list-group-item list-group-item-action"><i class="bi bi-person-lines-fill"></i> Members</a>
+        <a href="memberships.html" class="list-group-item list-group-item-action"><i class="bi bi-card-checklist"></i> Memberships</a>
         <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> Attendance</a>
         <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> Payments</a>
         <a href="staff.html" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> Staff</a>
@@ -88,6 +90,7 @@
       <!-- Quick actions -->
       <div class="card"><div class="card-body">
         <h5>Quick Actions</h5>
+        <a href="members.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-person-lines-fill"></i> Add Member</a>
         <a href="attendance.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-calendar-check"></i> Mark Attendance</a>
         <a href="payments.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-cash-coin"></i> Record Payment</a>
         <a href="staff.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-people"></i> Manage Staff</a>
@@ -127,7 +130,6 @@
     }
 
     async function loadStats() {
-      // Total members (Bhesh's Members API — read-only usage here)
       try {
         const res = await apiRequest('/members/');
         if (res && res.ok) {
@@ -138,11 +140,9 @@
         document.getElementById('statMembers').textContent = 'N/A';
       }
 
-      // Today's attendance
       const todayAttendance = await fetchAllPaginated(`/attendance/?date=${todayStr()}`);
       document.getElementById('statAttendanceToday').textContent = todayAttendance.length;
 
-      // Revenue this month (sum of PAID payments this month)
       const allPayments = await fetchAllPaginated('/payments/?status=PAID');
       const now = new Date();
       const thisMonthTotal = allPayments
@@ -153,12 +153,10 @@
         .reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
       document.getElementById('statRevenue').textContent = 'NPR ' + thisMonthTotal.toFixed(2);
 
-      // Pending leave requests
       const allLeaves = await fetchAllPaginated('/staff/leave-requests/');
       const pending = allLeaves.filter(l => l.status === 'PENDING');
       document.getElementById('statPendingLeaves').textContent = pending.length;
 
-      // Recent activity: last 5 payments + last 5 leave requests, merged
       const recentPayments = allPayments.slice(0, 5).map(p => ({
         type: 'payment',
         text: `${p.member_name} paid NPR ${p.amount_paid} (${p.payment_for})`,
@@ -192,7 +190,7 @@
         const d = new Date();
         d.setDate(d.getDate() - i);
         const dateStr = d.toISOString().split('T')[0];
-        labels.push(dateStr.slice(5)); // MM-DD
+        labels.push(dateStr.slice(5));
         const records = await fetchAllPaginated(`/attendance/?date=${dateStr}`);
         counts.push(records.length);
       }
