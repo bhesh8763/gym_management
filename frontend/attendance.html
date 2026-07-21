@@ -150,10 +150,15 @@
 
     // Decode user id from the JWT (embedded as user_id claim)
     function getMyUserId() {
-      const token = getAccessToken();
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.user_id;
-    }
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.user_id;
+  } catch (e) {
+    return null;
+  }
+}
 
     // Excludes Saturdays (day 6) — Nepal's standard weekly gym-off day.
     // Does NOT yet account for special/festival holidays — deferred, see team notes.
@@ -169,44 +174,45 @@
     let myTodayRecord = null;
 
     async function loadMyToday() {
-      document.getElementById('todayDate').textContent = todayStr();
-      const myId = getMyUserId();
-      const res = await apiRequest(`/attendance/?user=${myId}&date=${todayStr()}`);
-      if (!res) return;
-      const data = await res.json();
-      myTodayRecord = data.results[0] || null;
+  document.getElementById('todayDate').textContent = todayStr();
+  const myId = getMyUserId();
+  if (!myId) return;
+  const res = await apiRequest(`/attendance/?user=${myId}&date=${todayStr()}`);
+  if (!res) return;
+  const data = await res.json();
+  myTodayRecord = data.results[0] || null;
 
-      const btn = document.getElementById('myActionBtn');
-      const statusBadge = document.getElementById('myStatus');
+  const btn = document.getElementById('myActionBtn');
+  const statusBadge = document.getElementById('myStatus');
 
-      if (!myTodayRecord) {
-        document.getElementById('myCheckIn').textContent = '--';
-        document.getElementById('myCheckOut').textContent = '--';
-        statusBadge.textContent = 'NOT CHECKED IN';
-        statusBadge.className = 'badge bg-secondary';
-        btn.textContent = 'Check In';
-        btn.className = 'btn btn-primary';
-        btn.disabled = false;
-        btn.onclick = doCheckIn;
-      } else {
-        document.getElementById('myCheckIn').textContent = myTodayRecord.check_in;
-        document.getElementById('myCheckOut').textContent = myTodayRecord.check_out || '--';
-        if (myTodayRecord.check_out) {
-          statusBadge.textContent = 'COMPLETED';
-          statusBadge.className = 'badge bg-success';
-          btn.textContent = 'Done for Today';
-          btn.className = 'btn btn-secondary';
-          btn.disabled = true;
-        } else {
-          statusBadge.textContent = 'PRESENT';
-          statusBadge.className = 'badge bg-warning text-dark';
-          btn.textContent = 'Check Out';
-          btn.className = 'btn btn-success';
-          btn.disabled = false;
-          btn.onclick = doCheckOut;
-        }
-      }
+  if (!myTodayRecord) {
+    document.getElementById('myCheckIn').textContent = '--';
+    document.getElementById('myCheckOut').textContent = '--';
+    statusBadge.textContent = 'NOT CHECKED IN';
+    statusBadge.className = 'badge bg-secondary';
+    btn.textContent = 'Check In';
+    btn.className = 'btn btn-primary';
+    btn.disabled = false;
+    btn.onclick = doCheckIn;
+  } else {
+    document.getElementById('myCheckIn').textContent = myTodayRecord.check_in;
+    document.getElementById('myCheckOut').textContent = myTodayRecord.check_out || '--';
+    if (myTodayRecord.check_out) {
+      statusBadge.textContent = 'COMPLETED';
+      statusBadge.className = 'badge bg-success';
+      btn.textContent = 'Done for Today';
+      btn.className = 'btn btn-secondary';
+      btn.disabled = true;
+    } else {
+      statusBadge.textContent = 'PRESENT';
+      statusBadge.className = 'badge bg-warning text-dark';
+      btn.textContent = 'Check Out';
+      btn.className = 'btn btn-success';
+      btn.disabled = false;
+      btn.onclick = doCheckOut;
     }
+  }
+}
 
     async function doCheckIn() {
       const myId = getMyUserId();
@@ -265,6 +271,7 @@
 
     async function loadMyStats() {
       const myId = getMyUserId();
+      if (!myId) return;
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth(); // 0-indexed
