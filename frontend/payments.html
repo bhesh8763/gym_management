@@ -214,7 +214,7 @@
         loadPayments();
       } else {
         const err = await res.json();
-        errorBox.textContent = JSON.stringify(err);
+        errorBox.textContent = formatApiError(err);
         errorBox.classList.remove('d-none');
       }
     });

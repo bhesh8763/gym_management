@@ -166,7 +166,7 @@
       if (res.ok) { document.getElementById('profileForm').reset(); loadProfiles(); }
       else {
         const err = await res.json();
-        errorBox.textContent = JSON.stringify(err);
+        errorBox.textContent = formatApiError(err);
         errorBox.classList.remove('d-none');
       }
     });
@@ -205,6 +205,14 @@
       e.preventDefault();
       const errorBox = document.getElementById('leaveError');
       errorBox.classList.add('d-none');
+      const startVal = document.getElementById('startDate').value;
+      const endVal = document.getElementById('endDate').value;
+      if (endVal < startVal) {
+          errorBox.textContent = 'End date cannot be before start date.';
+          errorBox.classList.remove('d-none');
+          return;
+      }
+
       const payload = {
         leave_type: document.getElementById('leaveType').value,
         start_date: document.getElementById('startDate').value,
@@ -216,13 +224,16 @@
       if (res.ok) { document.getElementById('leaveForm').reset(); loadLeaves(); }
       else {
         const err = await res.json();
-        errorBox.textContent = JSON.stringify(err);
+        errorBox.textContent = formatApiError(err);
         errorBox.classList.remove('d-none');
       }
     });
 
     loadProfiles();
     loadLeaves();
+    document.getElementById('startDate').addEventListener('change', function() {
+  document.getElementById('endDate').min = this.value;
+});
   </script>
 </body>
 </html>
