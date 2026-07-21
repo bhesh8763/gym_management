@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Progress - Gym Management</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+</head>
+
+<body>
+
+<nav class="topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <span class="navbar-brand">Gym Management</span>
+
+    <div class="position-relative">
+        <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+            <i class="bi bi-bell"></i>
+            <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+        </button>
+        <div class="dropdown-panel" id="notifPanel">
+            <div class="dropdown-header">Notifications</div>
+            <div id="notifList"><div class="notif-empty">No notifications</div></div>
+        </div>
+    </div>
+
+    <div class="position-relative">
+        <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+            <span class="profile-avatar" id="profileAvatar">?</span>
+            <span class="profile-meta">
+                <div class="profile-name" id="profileName">—</div>
+                <div class="profile-role" id="profileRole">—</div>
+            </span>
+            <i class="bi bi-chevron-down text-white-50"></i>
+        </button>
+        <div class="dropdown-panel profile-menu" id="profilePanel">
+            <a href="#"><i class="bi bi-person"></i> Profile</a>
+            <a href="#"><i class="bi bi-gear"></i> Settings</a>
+            <hr>
+            <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </div>
+    </div>
+</nav>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="list-group list-group-flush pt-2">
+            <div class="nav-section-label">Main</div>
+            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+
+            <div class="nav-section-label">Members</div>
+            <a href="members.html" class="list-group-item list-group-item-action"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+            <a href="memberships.html" class="list-group-item list-group-item-action"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+            <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+            <a href="progress.html" class="list-group-item list-group-item-action active"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+            <a href="lockers.html" class="list-group-item list-group-item-action"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+
+            <div class="nav-section-label">Staff Management</div>
+            <a href="staff.html" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> <span>Staff</span></a>
+
+            <div class="nav-section-label">Workout & Diet</div>
+            <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+            <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+
+            <div class="nav-section-label">Payments</div>
+            <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+            <div class="nav-section-label">Equipment</div>
+            <a href="equipment.html" class="list-group-item list-group-item-action"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="p-4 flex-grow-1">
+        <h3>Progress Tracking</h3>
+
+        <div class="row mt-3 g-3">
+            <div class="col-md-3">
+                <div class="card shadow-sm"><div class="card-body"><h6>Total Entries</h6><h2 id="totalEntries">0</h2></div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm"><div class="card-body"><h6>Latest Weight</h6><h2 id="latestWeight">—</h2></div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm"><div class="card-body"><h6>Latest BMI</h6><h2 id="latestBmi">—</h2></div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm"><div class="card-body"><h6>Latest Body Fat %</h6><h2 id="latestBodyFat">—</h2></div></div>
+            </div>
+        </div>
+
+        <div class="card mt-4 mb-3">
+            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-3">
+                    <h4 class="mb-0">Body Metrics History</h4>
+                    <span class="badge bg-secondary" id="entryCountBadge">0</span>
+                </div>
+                <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#createEntryModal">
+                    <i class="bi bi-plus-circle"></i> Log Entry
+                </button>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Progress Entries</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Date</th><th>Weight (kg)</th><th>BMI</th><th>Body Fat %</th><th>Muscle Mass (kg)</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entriesTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4 mb-3">
+            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="mb-0">Personal Records</h4>
+                <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#createPrModal">
+                    <i class="bi bi-plus-circle"></i> Add Record
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Personal Records</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Date</th><th>Exercise</th><th>Value</th><th>Unit</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals: Progress Entry -->
+<div class="modal fade" id="createEntryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Log Progress Entry</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-4 mb-3"><label>Date</label><input type="date" id="entryDate" class="form-control"></div>
+          <div class="col-md-4 mb-3"><label>Weight (kg)</label><input type="number" step="0.01" id="entryWeight" class="form-control"></div>
+          <div class="col-md-4 mb-3"><label>Height (cm)</label><input type="number" step="0.01" id="entryHeight" class="form-control"></div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3"><label>Body Fat %</label><input type="number" step="0.01" id="entryBodyFat" class="form-control"></div>
+          <div class="col-md-6 mb-3"><label>Muscle Mass (kg)</label><input type="number" step="0.01" id="entryMuscleMass" class="form-control"></div>
+        </div>
+        <div class="row">
+          <div class="col mb-3"><label>Chest (cm)</label><input type="number" step="0.01" id="entryChest" class="form-control"></div>
+          <div class="col mb-3"><label>Waist (cm)</label><input type="number" step="0.01" id="entryWaist" class="form-control"></div>
+          <div class="col mb-3"><label>Hips (cm)</label><input type="number" step="0.01" id="entryHips" class="form-control"></div>
+          <div class="col mb-3"><label>Bicep (cm)</label><input type="number" step="0.01" id="entryBicep" class="form-control"></div>
+          <div class="col mb-3"><label>Thigh (cm)</label><input type="number" step="0.01" id="entryThigh" class="form-control"></div>
+        </div>
+        <div class="mb-3"><label>Notes</label><textarea id="entryNotes" class="form-control" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="createEntry()">Save Entry</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editEntryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Edit Progress Entry</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="editEntryId">
+        <div class="row">
+          <div class="col-md-4 mb-3"><label>Date</label><input type="date" id="editEntryDate" class="form-control"></div>
+          <div class="col-md-4 mb-3"><label>Weight (kg)</label><input type="number" step="0.01" id="editEntryWeight" class="form-control"></div>
+          <div class="col-md-4 mb-3"><label>Height (cm)</label><input type="number" step="0.01" id="editEntryHeight" class="form-control"></div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3"><label>Body Fat %</label><input type="number" step="0.01" id="editEntryBodyFat" class="form-control"></div>
+          <div class="col-md-6 mb-3"><label>Muscle Mass (kg)</label><input type="number" step="0.01" id="editEntryMuscleMass" class="form-control"></div>
+        </div>
+        <div class="mb-3"><label>Notes</label><textarea id="editEntryNotes" class="form-control" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="updateEntry()">Update</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals: Personal Record -->
+<div class="modal fade" id="createPrModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Add Personal Record</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label>Exercise</label><select id="prExercise" class="form-select"></select></div>
+        <div class="mb-3"><label>Date</label><input type="date" id="prDate" class="form-control"></div>
+        <div class="row">
+          <div class="col mb-3"><label>Value</label><input type="number" step="0.01" id="prValue" class="form-control"></div>
+          <div class="col mb-3"><label>Unit</label><input type="text" id="prUnit" class="form-control" value="kg"></div>
+        </div>
+        <div class="mb-3"><label>Notes</label><input type="text" id="prNotes" class="form-control"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="createPr()">Save Record</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let allEntries = [];
+    let allPrs = [];
+
+    if (!getAccessToken()) window.location.href = 'index.html';
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+    }
+
+    function toggleDropdown(id) {
+        document.querySelectorAll('.dropdown-panel').forEach(p => {
+            if (p.id !== id) p.classList.remove('show');
+        });
+        document.getElementById(id).classList.toggle('show');
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.position-relative')) {
+            document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
+        }
+    });
+
+    const userName = localStorage.getItem('user_name') || 'User';
+    const userRole = localStorage.getItem('user_role') || '';
+    document.getElementById('profileName').textContent = userName;
+    document.getElementById('profileRole').textContent = userRole;
+    document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
+
+    function logout() { clearTokens(); window.location.href = 'index.html'; }
+
+    // ── Progress Entries ─────────────────────────────────────────────────
+    async function loadEntries() {
+        const response = await apiRequest('/progress/entries/');
+        if (!response || !response.ok) return;
+        const data = await response.json();
+        allEntries = data.results;
+        document.getElementById('totalEntries').textContent = data.count;
+        document.getElementById('entryCountBadge').textContent = data.count;
+
+        if (allEntries.length > 0) {
+            const latest = allEntries[0]; // ordering = ['-date']
+            document.getElementById('latestWeight').textContent = latest.weight_kg ? `${latest.weight_kg} kg` : '—';
+            document.getElementById('latestBmi').textContent = latest.bmi ?? '—';
+            document.getElementById('latestBodyFat').textContent = latest.body_fat_percentage ? `${latest.body_fat_percentage}%` : '—';
+        }
+
+        renderEntries(allEntries);
+    }
+
+    function renderEntries(entries) {
+        document.getElementById('entriesTable').innerHTML =
+            entries.map(entry => `
+            <tr>
+                <td>${entry.date}</td>
+                <td>${entry.weight_kg ?? '—'}</td>
+                <td>${entry.bmi ?? '—'}</td>
+                <td>${entry.body_fat_percentage ?? '—'}</td>
+                <td>${entry.muscle_mass_kg ?? '—'}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning"
+                        onclick="openEditEntryModal(
+                            ${entry.id},
+                            '${entry.date}',
+                            ${entry.weight_kg ?? 'null'},
+                            ${entry.height_cm ?? 'null'},
+                            ${entry.body_fat_percentage ?? 'null'},
+                            ${entry.muscle_mass_kg ?? 'null'}
+                        )">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteEntry(${entry.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function createEntry() {
+        const payload = {
+            date: document.getElementById('entryDate').value,
+            weight_kg: document.getElementById('entryWeight').value || null,
+            height_cm: document.getElementById('entryHeight').value || null,
+            body_fat_percentage: document.getElementById('entryBodyFat').value || null,
+            muscle_mass_kg: document.getElementById('entryMuscleMass').value || null,
+            chest_cm: document.getElementById('entryChest').value || null,
+            waist_cm: document.getElementById('entryWaist').value || null,
+            hips_cm: document.getElementById('entryHips').value || null,
+            bicep_cm: document.getElementById('entryBicep').value || null,
+            thigh_cm: document.getElementById('entryThigh').value || null,
+            notes: document.getElementById('entryNotes').value,
+        };
+        if (!payload.date) { alert('Please select a date'); return; }
+        const response = await apiRequest('/progress/entries/', { method: 'POST', body: JSON.stringify(payload) });
+        if (response && response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('createEntryModal')).hide();
+            loadEntries();
+            alert('Progress entry logged successfully');
+        } else {
+            const err = await response.json();
+            alert('Failed to log entry: ' + JSON.stringify(err));
+        }
+    }
+
+    function openEditEntryModal(id, date, weight, height, bodyFat, muscleMass) {
+        document.getElementById('editEntryId').value = id;
+        document.getElementById('editEntryDate').value = date;
+        document.getElementById('editEntryWeight').value = weight ?? '';
+        document.getElementById('editEntryHeight').value = height ?? '';
+        document.getElementById('editEntryBodyFat').value = bodyFat ?? '';
+        document.getElementById('editEntryMuscleMass').value = muscleMass ?? '';
+        new bootstrap.Modal(document.getElementById('editEntryModal')).show();
+    }
+
+    async function updateEntry() {
+        const id = document.getElementById('editEntryId').value;
+        const payload = {
+            date: document.getElementById('editEntryDate').value,
+            weight_kg: document.getElementById('editEntryWeight').value || null,
+            height_cm: document.getElementById('editEntryHeight').value || null,
+            body_fat_percentage: document.getElementById('editEntryBodyFat').value || null,
+            muscle_mass_kg: document.getElementById('editEntryMuscleMass').value || null,
+            notes: document.getElementById('editEntryNotes').value,
+        };
+        const response = await apiRequest(`/progress/entries/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+        if (response && response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('editEntryModal')).hide();
+            loadEntries();
+            alert('Progress entry updated');
+        } else { alert('Update failed'); }
+    }
+
+    async function deleteEntry(id) {
+        if (!confirm('Delete this progress entry?')) return;
+        const response = await apiRequest(`/progress/entries/${id}/`, { method: 'DELETE' });
+        if (response && response.ok) { loadEntries(); }
+        else { alert('Delete failed'); }
+    }
+
+    // ── Personal Records ─────────────────────────────────────────────────
+    async function loadExercisesForPrForm() {
+        const response = await apiRequest('/workouts/exercises/');
+        if (!response || !response.ok) return;
+        const data = await response.json();
+        const exercises = data.results || data;
+        const select = document.getElementById('prExercise');
+        select.innerHTML = exercises.map(ex => `<option value="${ex.id}">${ex.name}</option>`).join('');
+    }
+
+    async function loadPrs() {
+        const response = await apiRequest('/progress/personal-records/');
+        if (!response || !response.ok) return;
+        const data = await response.json();
+        allPrs = data.results;
+        renderPrs(allPrs);
+    }
+
+    function renderPrs(prs) {
+        document.getElementById('prTable').innerHTML =
+            prs.map(pr => `
+            <tr>
+                <td>${pr.date}</td>
+                <td>${pr.exercise_name}</td>
+                <td>${pr.value}</td>
+                <td>${pr.unit}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="deletePr(${pr.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function createPr() {
+        const payload = {
+            exercise: document.getElementById('prExercise').value,
+            date: document.getElementById('prDate').value,
+            value: document.getElementById('prValue').value,
+            unit: document.getElementById('prUnit').value || 'kg',
+            notes: document.getElementById('prNotes').value,
+        };
+        if (!payload.exercise || !payload.date || !payload.value) { alert('Please fill in all required fields'); return; }
+        const response = await apiRequest('/progress/personal-records/', { method: 'POST', body: JSON.stringify(payload) });
+        if (response && response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('createPrModal')).hide();
+            loadPrs();
+            alert('Personal record added');
+        } else {
+            const err = await response.json();
+            alert('Failed to add record: ' + JSON.stringify(err));
+        }
+    }
+
+    async function deletePr(id) {
+        if (!confirm('Delete this personal record?')) return;
+        const response = await apiRequest(`/progress/personal-records/${id}/`, { method: 'DELETE' });
+        if (response && response.ok) { loadPrs(); }
+        else { alert('Delete failed'); }
+    }
+
+    loadEntries();
+    loadExercisesForPrForm();
+    loadPrs();
+</script>
+</body>
+</html>

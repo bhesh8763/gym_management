@@ -42,6 +42,7 @@
 
       if (res.ok) {
         saveTokens(data.access, data.refresh);
+        localStorage.setItem('user_id', data.user.id);
         localStorage.setItem('user_role', data.user.role);
         localStorage.setItem('user_name', data.user.full_name);
         window.location.href = 'dashboard.html';
