@@ -107,13 +107,14 @@
         </div>
       </div>
     </div>
-  </div>
-</div>
+
+    
 
 <script src="js/api.js"></script>
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
+  // ── Sidebar / dropdown UI ──────────────────────────────────────────────
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('collapsed');
   }
@@ -129,119 +130,9 @@
     if (!e.target.closest('.position-relative')) {
       document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
     }
-
-
-    function todayStr() {
-      return new Date().toISOString().split('T')[0];
-    }
-
-    async function fetchAllPaginated(path) {
-      let all = [];
-      while (path) {
-        const res = await apiRequest(path);
-        if (!res || !res.ok) return all;
-        const data = await res.json();
-        all = all.concat(data.results);
-        path = data.next ? data.next.replace(API_BASE, '') : null;
-      }
-      return all;
-    }
-
-    async function loadStats() {
-      // Total members (Bhesh's Members API — read-only usage here)
-      try {
-        const res = await apiRequest('/members/');
-        if (res && res.ok) {
-          const data = await res.json();
-          document.getElementById('statMembers').textContent = data.count ?? '-';
-        }
-      } catch (e) {
-        document.getElementById('statMembers').textContent = 'N/A';
-      }
-
-      // Today's attendance
-      const todayAttendance = await fetchAllPaginated(`/attendance/?date=${todayStr()}`);
-      document.getElementById('statAttendanceToday').textContent = todayAttendance.length;
-
-      // Revenue this month (sum of PAID payments this month)
-      const allPayments = await fetchAllPaginated('/payments/?status=PAID');
-      const now = new Date();
-      const thisMonthTotal = allPayments
-        .filter(p => {
-          const d = new Date(p.paid_at || p.created_at);
-          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-        })
-        .reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
-      document.getElementById('statRevenue').textContent = 'NPR ' + thisMonthTotal.toFixed(2);
-
-      // Pending leave requests
-      const allLeaves = await fetchAllPaginated('/staff/leave-requests/');
-      const pending = allLeaves.filter(l => l.status === 'PENDING');
-      document.getElementById('statPendingLeaves').textContent = pending.length;
-
-      // Recent activity: last 5 payments + last 5 leave requests, merged
-      const recentPayments = allPayments.slice(0, 5).map(p => ({
-        type: 'payment',
-        text: `${p.member_name} paid NPR ${p.amount_paid} (${p.payment_for})`,
-        time: p.created_at,
-      }));
-      const recentLeaves = allLeaves.slice(0, 5).map(l => ({
-        type: 'leave',
-        text: `${l.requester_name} requested ${l.leave_type} leave (${l.status})`,
-        time: l.created_at,
-      }));
-      const combined = recentPayments.concat(recentLeaves)
-        .sort((a, b) => new Date(b.time) - new Date(a.time))
-        .slice(0, 6);
-
-      const listEl = document.getElementById('activityList');
-      listEl.innerHTML = '';
-      if (combined.length === 0) {
-        listEl.innerHTML = '<li class="list-group-item text-muted">No recent activity yet.</li>';
-      } else {
-        combined.forEach(item => {
-          const icon = item.type === 'payment' ? 'bi-cash-coin text-success' : 'bi-calendar-event text-warning';
-          listEl.innerHTML += `<li class="list-group-item"><i class="bi ${icon} me-2"></i>${item.text}</li>`;
-        });
-      }
-    }
-
-    async function loadAttendanceChart() {
-      const labels = [];
-      const counts = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        labels.push(dateStr.slice(5)); // MM-DD
-        const records = await fetchAllPaginated(`/attendance/?date=${dateStr}`);
-        counts.push(records.length);
-      }
-
-      new Chart(document.getElementById('attendanceChart'), {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            label: 'Check-ins',
-            data: counts,
-            backgroundColor: '#e63946',
-          }],
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-        },
-      });
-    }
-
-    loadStats();
-    loadAttendanceChart();
-
-  
-
   });
 
+  // ── Profile header ──────────────────────────────────────────────────────
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
   document.getElementById('profileName').textContent = userName;
@@ -253,32 +144,54 @@
     window.location.href = 'index.html';
   }
 
-  // Notifications — backend endpoint not built yet, stays empty until it is
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function todayStr() {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  async function fetchAllPaginated(path) {
+    let all = [];
+    while (path) {
+      const res = await apiRequest(path);
+      if (!res || !res.ok) return all;
+      const data = await res.json();
+      const results = data.results || data;
+      all = all.concat(results);
+      path = data.next ? data.next.replace(API_BASE, '') : null;
+    }
+    return all;
+  }
+
+  // ── Notifications bell ──────────────────────────────────────────────────
   async function loadNotifications() {
-    const res = await apiRequest('/notifications/');
+    const res = await apiRequest('/notifications/?is_read=false');
     if (!res || !res.ok) return;
     const data = await res.json();
     const items = data.results || data;
-    const unread = items.filter(n => !n.is_read).length;
     const badge = document.getElementById('notifCount');
-    if (unread > 0) { badge.style.display = 'inline-block'; badge.textContent = unread; }
+    if (items.length > 0) {
+      badge.style.display = 'inline-block';
+      badge.textContent = items.length;
+    } else {
+      badge.style.display = 'none';
+    }
     document.getElementById('notifList').innerHTML = items.length
       ? items.slice(0, 6).map(n => `<div class="notif-item"><strong>${n.title}</strong><br>${n.message}</div>`).join('')
       : '<div class="notif-empty">No notifications</div>';
   }
 
-  // Dashboard stats — pulled from real endpoints
+  // ── Stat cards ───────────────────────────────────────────────────────────
   async function loadStats() {
-    const [membersRes, expiringRes, attendanceRes, paymentsRes] = await Promise.all([
+    const [membersRes, expiringRes, paymentsRes] = await Promise.all([
       apiRequest('/members/'),
       apiRequest('/memberships/expiring/'),
-      apiRequest('/attendance/'),
-      apiRequest('/payments/'),
+      apiRequest('/payments/?status=PAID'),
     ]);
 
     if (membersRes && membersRes.ok) {
       const data = await membersRes.json();
-      document.getElementById('statMembers').textContent = data.count ?? (data.results || data).length;
+      const list = data.results || data;
+      document.getElementById('statMembers').textContent = data.count ?? list.length;
     }
 
     if (expiringRes && expiringRes.ok) {
@@ -287,27 +200,67 @@
       document.getElementById('statExpiring').textContent = data.count ?? list.length;
     }
 
-    if (attendanceRes && attendanceRes.ok) {
-      const data = await attendanceRes.json();
-      const list = data.results || data;
-      const today = new Date().toISOString().slice(0, 10);
-      document.getElementById('statAttendance').textContent =
-        list.filter(a => a.date === today).length;
-    }
+    const todayAttendance = await fetchAllPaginated(`/attendance/?date=${todayStr()}`);
+    document.getElementById('statAttendance').textContent = todayAttendance.length;
 
+    let allPayments = [];
     if (paymentsRes && paymentsRes.ok) {
       const data = await paymentsRes.json();
-      const list = data.results || data;
-      const now = new Date();
-      const total = list
-        .filter(p => p.status === 'PAID' && new Date(p.paid_at).getMonth() === now.getMonth()
-          && new Date(p.paid_at).getFullYear() === now.getFullYear())
-        .reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
-      document.getElementById('statRevenue').textContent = 'Rs. ' + total.toLocaleString();
+      allPayments = data.results || data;
     }
+    const now = new Date();
+    const thisMonthTotal = allPayments
+      .filter(p => {
+        const d = new Date(p.paid_at || p.created_at);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
+    document.getElementById('statRevenue').textContent = 'NPR ' + thisMonthTotal.toLocaleString();
+
+    // Recent activity: last 5 payments, most recent first
+    const recentPayments = allPayments
+      .slice()
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 6)
+      .map(p => `<li class="list-group-item"><i class="bi bi-cash-coin text-success me-2"></i>${p.member_name || 'Member'} paid NPR ${p.amount_paid} (${p.payment_for})</li>`);
+
+    document.getElementById('activityList').innerHTML = recentPayments.length
+      ? recentPayments.join('')
+      : '<li class="list-group-item text-muted">No recent activity yet.</li>';
+  }
+
+  // ── Attendance chart (last 7 days) ──────────────────────────────────────
+  async function loadAttendanceChart() {
+    const labels = [];
+    const counts = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      labels.push(dateStr.slice(5)); // MM-DD
+      const records = await fetchAllPaginated(`/attendance/?date=${dateStr}`);
+      counts.push(records.length);
+    }
+
+    new Chart(document.getElementById('attendanceChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Check-ins',
+          data: counts,
+          backgroundColor: '#e63946',
+        }],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
   }
 
   loadStats();
+  loadAttendanceChart();
   loadNotifications();
 </script>
 
