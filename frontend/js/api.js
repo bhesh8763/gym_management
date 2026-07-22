@@ -88,3 +88,51 @@ function formatApiError(err) {
   }
   return lines.join('\n') || 'Something went wrong. Please try again.';
 }
+
+// ── Role-based sidebar ──────────────────────────────────────────────────────
+// Every page shares the same sidebar markup. Links that should only be visible
+// to certain roles carry a data-roles="OWNER,STAFF" attribute (see dashboard.html
+// etc.) — links with no data-roles attribute are visible to everyone. This runs
+// automatically on every page that loads api.js, so no page needs to call it itself.
+function applySidebarRoleVisibility() {
+  const role = localStorage.getItem('user_role');
+  if (!role) return;
+
+  document.querySelectorAll('.sidebar a[data-roles]').forEach(link => {
+    const allowedRoles = link.dataset.roles.split(',');
+    link.style.display = allowedRoles.includes(role) ? '' : 'none';
+  });
+
+  // Hide a section label if every link underneath it just got hidden.
+  document.querySelectorAll('.nav-section-label').forEach(label => {
+    let sibling = label.nextElementSibling;
+    let anyVisible = false;
+    while (sibling && sibling.tagName === 'A') {
+      if (sibling.style.display !== 'none') anyVisible = true;
+      sibling = sibling.nextElementSibling;
+    }
+    label.style.display = anyVisible ? '' : 'none';
+  });
+}
+
+// Sidebar markup is always above this <script> tag in every page, so the DOM
+// is already parsed by the time this file runs — no need to wait for
+// DOMContentLoaded. On index.html (no sidebar) this is a harmless no-op.
+applySidebarRoleVisibility();
+
+// ── Page-level role guard ───────────────────────────────────────────────────
+// Restricted pages carry <body data-allowed-roles="OWNER,STAFF">. This stops
+// someone from bypassing the hidden sidebar link by typing the URL directly —
+// without this, the page shell would still render even though its data calls
+// would fail with 403 from the backend's own RBAC.
+function enforcePageRoleAccess() {
+  const allowedRoles = document.body.dataset.allowedRoles;
+  if (!allowedRoles) return; // page has no restriction
+
+  const role = localStorage.getItem('user_role');
+  if (!role || !allowedRoles.split(',').includes(role)) {
+    window.location.href = 'dashboard.html';
+  }
+}
+
+enforcePageRoleAccess();
