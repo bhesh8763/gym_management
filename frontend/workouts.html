@@ -46,35 +46,33 @@
 </nav>
 
 <div class="d-flex">
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="list-group list-group-flush pt-2">
             <div class="nav-section-label">Main</div>
             <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
 
             <div class="nav-section-label">Members</div>
-            <a href="members.html" class="list-group-item list-group-item-action"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
-            <a href="memberships.html" class="list-group-item list-group-item-action"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+            <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+            <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
             <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
             <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
-            <a href="lockers.html" class="list-group-item list-group-item-action"><i class="bi bi-lock"></i> <span>Lockers</span></a>
 
             <div class="nav-section-label">Staff Management</div>
-            <a href="staff.html" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> <span>Staff</span></a>
+            <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
 
             <div class="nav-section-label">Workout & Diet</div>
             <a href="workouts.html" class="list-group-item list-group-item-action active"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
             <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
 
             <div class="nav-section-label">Payments</div>
-            <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+            <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
 
             <div class="nav-section-label">Equipment</div>
-            <a href="equipment.html" class="list-group-item list-group-item-action"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+            <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+            <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="p-4 flex-grow-1">
         <h3>Workout Plans</h3>
 
@@ -142,6 +140,7 @@
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Create Workout Plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
+        <div class="mb-3"><label>Member</label><select id="planMember" class="form-select"><option value="">Loading members…</option></select></div>
         <div class="mb-3"><label>Plan Name</label><input type="text" id="planName" class="form-control"></div>
         <div class="mb-3"><label>Difficulty</label><select id="difficulty" class="form-select"><option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option></select></div>
         <div class="mb-3"><label>Duration (Weeks)</label><input type="number" id="durationWeeks" class="form-control"></div>
@@ -331,91 +330,100 @@
         renderPlans(plans);
     }
 
+    async function loadMembersIntoSelect(selectId) {
+        const select = document.getElementById(selectId);
+        const res = await apiRequest('/members/?is_active=true');
+        if (!res || !res.ok) {
+            select.innerHTML = '<option value="">Could not load members</option>';
+            return;
+        }
+        const data = await res.json();
+        const members = data.results || data;
+        select.innerHTML = members.length
+            ? '<option value="">Select a member…</option>' +
+              members.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
+            : '<option value="">No active members found</option>';
+    }
+
     async function createPlan() {
+        const memberId = document.getElementById('planMember').value;
         const name = document.getElementById('planName').value;
         const difficulty = document.getElementById('difficulty').value;
         const duration = document.getElementById('durationWeeks').value;
+        if (!memberId) { alert('Please select a member'); return; }
         if (!name || !duration) { alert('Please fill in all fields'); return; }
-        const payload = { name, member: localStorage.getItem('user_id'), difficulty, duration_weeks: parseInt(duration) };
+        const payload = { name, member: memberId, difficulty, duration_weeks: parseInt(duration) };
         const response = await apiRequest('/workouts/plans/', { method: 'POST', body: JSON.stringify(payload) });
         if (response && response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('createPlanModal')).hide();
             loadWorkoutPlans();
             alert('Workout plan created successfully');
-        } else { alert('Failed to create workout plan'); }
+        } else if (response) {
+            const err = await response.json();
+            alert('Failed to create workout plan:\n' + formatApiError(err));
+        } else {
+            alert('Failed to create workout plan');
+        }
     }
 
-    function renderPlans(plans) {
+    document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
+        loadMembersIntoSelect('planMember');
+    });
 
-        document.getElementById('plansTable').innerHTML =
-            plans.map(plan => `
-            <tr>
-                <td>${plan.id}</td>
-                <td>${plan.name}</td>
+  function renderPlans(plans) {
 
-                <td>
-                    <span class="badge bg-primary">
-                        ${plan.difficulty}
-                    </span>
-                </td>
+    document.getElementById('plansTable').innerHTML =
+        plans.map(plan => `
+        <tr>
+            <td>${plan.id}</td>
+            <td>${plan.name}</td>
 
-                <td>${plan.duration_weeks}</td>
+            <td>
+                <span class="badge bg-primary">
+                    ${plan.difficulty}
+                </span>
+            </td>
 
-                <td>
-                    <span class="badge ${
+            <td>${plan.duration_weeks}</td>
+
+            <td>
+                <span class="badge ${
+                    plan.is_active
+                    ? 'bg-success'
+                    : 'bg-danger'
+                }">
+                    ${
                         plan.is_active
-                        ? 'bg-success'
-                        : 'bg-danger'
-                    }">
-                        ${
-                            plan.is_active
-                            ? 'Active'
-                            : 'Inactive'
-                        }
-                    </span>
-                </td>
+                        ? 'Active'
+                        : 'Inactive'
+                    }
+                </span>
+            </td>
 
-                <td>
-                    <button class="btn btn-sm btn-info"
-                        onclick="viewPlan(${plan.id})">
-                        <i class="bi bi-eye"></i>
-                    </button>
+            <td>
+                <button class="btn btn-sm btn-outline-info" title="View"
+                    onclick="viewPlan(${plan.id})">
+                    <i class="bi bi-eye"></i>
+                </button>
 
-                    <button class="btn btn-sm btn-warning"
-                        onclick="openEditModal(
-                            ${plan.id},
-                            '${plan.name}',
-                            '${plan.difficulty}',
-                            ${plan.duration_weeks}
-                        )">
-                        <i class="bi bi-pencil"></i>
-                    </button>
+                <button class="btn btn-sm btn-outline-warning" title="Edit"
+                    onclick="openEditModal(
+                        ${plan.id},
+                        '${plan.name}',
+                        '${plan.difficulty}',
+                        ${plan.duration_weeks}
+                    )">
+                    <i class="bi bi-pencil"></i>
+                </button>
 
-                    <button class="btn btn-sm btn-danger"
-                        onclick="deletePlan(${plan.id})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    function filterPlans() {
-
-        const keyword =
-            document.getElementById('searchPlan')
-            .value
-            .toLowerCase();
-
-        const filtered =
-            allPlans.filter(plan =>
-                plan.name.toLowerCase().includes(keyword)
-            );
-
-        renderPlans(filtered);
-    }
-
-    loadWorkoutPlans();
+                <button class="btn btn-sm btn-outline-danger" title="Delete"
+                    onclick="deletePlan(${plan.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
 </script>
 </body>
 </html>
