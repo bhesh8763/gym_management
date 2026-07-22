@@ -9,211 +9,266 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <nav class="navbar navbar-dark bg-dark px-3">
-    <span class="navbar-brand">Gym Management</span>
-    <div class="d-flex align-items-center text-white">
-      <span id="userLabel" class="me-3"></span>
-      <button class="btn btn-outline-light btn-sm" onclick="logout()">Logout</button>
-    </div>
-  </nav>
 
-  <div class="d-flex">
-    <div class="sidebar">
-      <div class="list-group list-group-flush pt-2">
-        <a href="dashboard.html" class="list-group-item"><i class="bi bi-speedometer2"></i> Dashboard</a>
-        <a href="members.html" class="list-group-item list-group-item-action"><i class="bi bi-person-lines-fill"></i> Members</a>
-        <a href="memberships.html" class="list-group-item list-group-item-action"><i class="bi bi-card-checklist"></i> Memberships</a>
-        <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> Attendance</a>
-        <a href="payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> Payments</a>
-        <a href="staff.html" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> Staff</a>
-        <a href="lockers.html" class="list-group-item list-group-item-action"><i class="bi bi-lock"></i> Lockers</a>
-        <a href="equipment.html" class="list-group-item list-group-item-action"><i class="bi bi-tools"></i> Equipment</a>
-      </div>
-    </div>
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <span class="navbar-brand">Gym Management</span>
 
-    <div class="p-4 flex-grow-1">
-      <h3>Dashboard</h3>
-      <p class="text-muted" id="welcomeLine">Welcome back!</p>
-
-      <!-- Stat cards -->
-      <div class="row mb-4">
-        <div class="col-md-3">
-          <div class="card text-center"><div class="card-body">
-            <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
-            <div class="text-muted small">Total Members</div>
-            <h3 id="statMembers">-</h3>
-          </div></div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center border-success"><div class="card-body">
-            <div class="stat-icon"><i class="bi bi-calendar-check-fill"></i></div>
-            <div class="text-muted small">Today's Attendance</div>
-            <h3 id="statAttendanceToday" class="text-success">-</h3>
-          </div></div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center border-warning"><div class="card-body">
-            <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
-            <div class="text-muted small">Revenue (this month)</div>
-            <h3 id="statRevenue" class="text-warning">-</h3>
-          </div></div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center border-danger"><div class="card-body">
-            <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
-            <div class="text-muted small">Pending Leave Requests</div>
-            <h3 id="statPendingLeaves" class="text-danger">-</h3>
-          </div></div>
-        </div>
-      </div>
-
-      <div class="row mb-4">
-        <!-- Attendance chart -->
-        <div class="col-md-7">
-          <div class="card"><div class="card-body">
-            <h5>Attendance — Last 7 Days</h5>
-            <canvas id="attendanceChart" height="140"></canvas>
-          </div></div>
-        </div>
-
-        <!-- Recent activity -->
-        <div class="col-md-5">
-          <div class="card"><div class="card-body">
-            <h5>Recent Activity</h5>
-            <ul class="list-group list-group-flush" id="activityList">
-              <li class="list-group-item text-muted">Loading...</li>
-            </ul>
-          </div></div>
-        </div>
-      </div>
-
-      <!-- Quick actions -->
-      <div class="card"><div class="card-body">
-        <h5>Quick Actions</h5>
-        <a href="members.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-person-lines-fill"></i> Add Member</a>
-        <a href="attendance.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-calendar-check"></i> Mark Attendance</a>
-        <a href="payments.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-cash-coin"></i> Record Payment</a>
-        <a href="staff.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-people"></i> Manage Staff</a>
-        <a href="lockers.html" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-lock"></i> Assign Locker</a>
-        <a href="equipment.html" class="btn btn-outline-primary btn-sm"><i class="bi bi-tools"></i> Log Maintenance</a>
-      </div></div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="dropdown-header">Notifications</div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
     </div>
   </div>
 
-  <script src="js/api.js"></script>
-  <script>
-    if (!getAccessToken()) window.location.href = 'index.html';
-    const myName = localStorage.getItem('user_name');
-    const myRole = localStorage.getItem('user_role');
-    document.getElementById('userLabel').textContent = `${myName} (${myRole})`;
-    document.getElementById('welcomeLine').textContent = `Welcome back, ${myName}! Here's what's happening today.`;
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-role" id="profileRole">—</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="#"><i class="bi bi-person"></i> Profile</a>
+      <a href="#"><i class="bi bi-gear"></i> Settings</a>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
 
-    function logout() {
-      clearTokens();
-      window.location.href = 'index.html';
+<div class="d-flex">
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action active"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+
+      <div class="nav-section-label">Members</div>
+      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+
+      <div class="nav-section-label">Staff Management</div>
+      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+
+      <div class="nav-section-label">Workout & Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+
+      <div class="nav-section-label">Payments</div>
+      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <div class="nav-section-label">Equipment</div>
+      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+    </div>
+  </div>
+
+  <div class="p-4 flex-grow-1">
+    <h3 class="mb-4">Dashboard</h3>
+
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <div class="stat-icon"><i class="bi bi-people"></i></div>
+          <h3 id="statMembers">—</h3>
+          <small class="text-muted">Total Members</small>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <div class="stat-icon"><i class="bi bi-calendar-check"></i></div>
+          <h3 id="statAttendance">—</h3>
+          <small class="text-muted">Today's Attendance</small>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+          <h3 id="statRevenue">—</h3>
+          <small class="text-muted">Revenue This Month</small>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
+          <h3 id="statExpiring">—</h3>
+          <small class="text-muted">Expiring Memberships</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+      <div class="col-md-8">
+        <div class="card p-3">
+          <h6 class="mb-3">Attendance — Last 7 Days</h6>
+          <canvas id="attendanceChart" height="90"></canvas>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card p-3">
+          <h6 class="mb-3">Recent Activity</h6>
+          <ul class="list-group list-group-flush" id="activityList">
+            <li class="list-group-item text-muted">Loading…</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  if (!getAccessToken()) window.location.href = 'index.html';
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+  }
+
+  function toggleDropdown(id) {
+    document.querySelectorAll('.dropdown-panel').forEach(p => {
+      if (p.id !== id) p.classList.remove('show');
+    });
+    document.getElementById(id).classList.toggle('show');
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.position-relative')) {
+      document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
+    }
+  });
+
+  const userName = localStorage.getItem('user_name') || 'User';
+  const userRole = localStorage.getItem('user_role') || '';
+  document.getElementById('profileName').textContent = userName;
+  document.getElementById('profileRole').textContent = userRole;
+  document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
+
+  function logout() {
+    clearTokens();
+    window.location.href = 'index.html';
+  }
+
+  function todayStr() {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  async function fetchAllPaginated(path) {
+    let all = [];
+    while (path) {
+      const res = await apiRequest(path);
+      if (!res || !res.ok) return all;
+      const data = await res.json();
+      const results = data.results || data;
+      all = all.concat(results);
+      path = data.next ? data.next.replace(API_BASE, '') : null;
+    }
+    return all;
+  }
+
+  async function loadNotifications() {
+    const res = await apiRequest('/notifications/?is_read=false');
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    const items = data.results || data;
+    const badge = document.getElementById('notifCount');
+    if (items.length > 0) {
+      badge.style.display = 'inline-block';
+      badge.textContent = items.length;
+    } else {
+      badge.style.display = 'none';
+    }
+    document.getElementById('notifList').innerHTML = items.length
+      ? items.slice(0, 6).map(n => `<div class="notif-item"><strong>${n.title}</strong><br>${n.message}</div>`).join('')
+      : '<div class="notif-empty">No notifications</div>';
+  }
+
+  async function loadStats() {
+    const [membersRes, expiringRes, paymentsRes] = await Promise.all([
+      apiRequest('/members/'),
+      apiRequest('/memberships/expiring/'),
+      apiRequest('/payments/?status=PAID'),
+    ]);
+
+    if (membersRes && membersRes.ok) {
+      const data = await membersRes.json();
+      const list = data.results || data;
+      document.getElementById('statMembers').textContent = data.count ?? list.length;
     }
 
-    function todayStr() {
-      return new Date().toISOString().split('T')[0];
+    if (expiringRes && expiringRes.ok) {
+      const data = await expiringRes.json();
+      const list = data.results || data;
+      document.getElementById('statExpiring').textContent = data.count ?? list.length;
     }
 
-    async function fetchAllPaginated(path) {
-      let all = [];
-      while (path) {
-        const res = await apiRequest(path);
-        if (!res || !res.ok) return all;
-        const data = await res.json();
-        all = all.concat(data.results);
-        path = data.next ? data.next.replace(API_BASE, '') : null;
-      }
-      return all;
+    const todayAttendance = await fetchAllPaginated(`/attendance/?date=${todayStr()}`);
+    document.getElementById('statAttendance').textContent = todayAttendance.length;
+
+    let allPayments = [];
+    if (paymentsRes && paymentsRes.ok) {
+      const data = await paymentsRes.json();
+      allPayments = data.results || data;
+    }
+    const now = new Date();
+    const thisMonthTotal = allPayments
+      .filter(p => {
+        const d = new Date(p.paid_at || p.created_at);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
+    document.getElementById('statRevenue').textContent = 'NPR ' + thisMonthTotal.toLocaleString();
+
+    const recentPayments = allPayments
+      .slice()
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 6)
+      .map(p => `<li class="list-group-item"><i class="bi bi-cash-coin text-success me-2"></i>${p.member_name || 'Member'} paid NPR ${p.amount_paid} (${p.payment_for})</li>`);
+
+    document.getElementById('activityList').innerHTML = recentPayments.length
+      ? recentPayments.join('')
+      : '<li class="list-group-item text-muted">No recent activity yet.</li>';
+  }
+
+  async function loadAttendanceChart() {
+    const labels = [];
+    const counts = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      labels.push(dateStr.slice(5));
+      const records = await fetchAllPaginated(`/attendance/?date=${dateStr}`);
+      counts.push(records.length);
     }
 
-    async function loadStats() {
-      try {
-        const res = await apiRequest('/members/');
-        if (res && res.ok) {
-          const data = await res.json();
-          document.getElementById('statMembers').textContent = data.count ?? '-';
-        }
-      } catch (e) {
-        document.getElementById('statMembers').textContent = 'N/A';
-      }
+    new Chart(document.getElementById('attendanceChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Check-ins',
+          data: counts,
+          backgroundColor: '#e63946',
+        }],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+  }
 
-      const todayAttendance = await fetchAllPaginated(`/attendance/?date=${todayStr()}`);
-      document.getElementById('statAttendanceToday').textContent = todayAttendance.length;
-
-      const allPayments = await fetchAllPaginated('/payments/?status=PAID');
-      const now = new Date();
-      const thisMonthTotal = allPayments
-        .filter(p => {
-          const d = new Date(p.paid_at || p.created_at);
-          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-        })
-        .reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
-      document.getElementById('statRevenue').textContent = 'NPR ' + thisMonthTotal.toFixed(2);
-
-      const allLeaves = await fetchAllPaginated('/staff/leave-requests/');
-      const pending = allLeaves.filter(l => l.status === 'PENDING');
-      document.getElementById('statPendingLeaves').textContent = pending.length;
-
-      const recentPayments = allPayments.slice(0, 5).map(p => ({
-        type: 'payment',
-        text: `${p.member_name} paid NPR ${p.amount_paid} (${p.payment_for})`,
-        time: p.created_at,
-      }));
-      const recentLeaves = allLeaves.slice(0, 5).map(l => ({
-        type: 'leave',
-        text: `${l.requester_name} requested ${l.leave_type} leave (${l.status})`,
-        time: l.created_at,
-      }));
-      const combined = recentPayments.concat(recentLeaves)
-        .sort((a, b) => new Date(b.time) - new Date(a.time))
-        .slice(0, 6);
-
-      const listEl = document.getElementById('activityList');
-      listEl.innerHTML = '';
-      if (combined.length === 0) {
-        listEl.innerHTML = '<li class="list-group-item text-muted">No recent activity yet.</li>';
-      } else {
-        combined.forEach(item => {
-          const icon = item.type === 'payment' ? 'bi-cash-coin text-success' : 'bi-calendar-event text-warning';
-          listEl.innerHTML += `<li class="list-group-item"><i class="bi ${icon} me-2"></i>${item.text}</li>`;
-        });
-      }
-    }
-
-    async function loadAttendanceChart() {
-      const labels = [];
-      const counts = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        labels.push(dateStr.slice(5));
-        const records = await fetchAllPaginated(`/attendance/?date=${dateStr}`);
-        counts.push(records.length);
-      }
-
-      new Chart(document.getElementById('attendanceChart'), {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            label: 'Check-ins',
-            data: counts,
-            backgroundColor: '#e63946',
-          }],
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-        },
-      });
-    }
-
-    loadStats();
-    loadAttendanceChart();
-  </script>
+  loadStats();
+  loadAttendanceChart();
+  loadNotifications();
+</script>
 </body>
 </html>
