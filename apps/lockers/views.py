@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 from apps.accounts.permissions import IsOwnerOrStaff
 from .models import Locker, LockerAssignment
 
@@ -35,7 +36,29 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        locker = serializer.validated_data.get('locker')
+        member = serializer.validated_data.get('member')
+
+        if locker.status != Locker.LockerStatus.AVAILABLE:
+            raise ValidationError(
+                {'locker': f'Locker {locker.locker_number} is not available '
+                           f'(status: {locker.get_status_display()}).'}
+            )
+        if LockerAssignment.objects.filter(member=member, is_active=True).exists():
+            raise ValidationError(
+                {'member': 'This member already has an active locker assignment.'}
+            )
+
         assignment = serializer.save(assigned_by=self.request.user)
         # Auto-flip the locker's status to OCCUPIED when assigned
         assignment.locker.status = Locker.LockerStatus.OCCUPIED
         assignment.locker.save(update_fields=['status'])
+
+    def perform_update(self, serializer):
+        was_active = serializer.instance.is_active
+        assignment = serializer.save()
+        # If the assignment just got deactivated (e.g. member gave up the
+        # locker), free the locker back up so it can be assigned again.
+        if was_active and not assignment.is_active:
+            assignment.locker.status = Locker.LockerStatus.AVAILABLE
+            assignment.locker.save(update_fields=['status'])

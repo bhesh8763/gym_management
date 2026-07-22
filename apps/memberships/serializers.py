@@ -95,6 +95,25 @@ class MembershipCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('This plan is no longer active.')
         return value
 
+    def validate(self, data):
+        member = data.get('member')
+        # Only block brand-new ACTIVE assignments; an explicit PENDING/CANCELLED
+        # status, etc. is fine even if the member currently has an active plan.
+        requested_status = data.get('status', Membership.Status.ACTIVE)
+        if member and requested_status == Membership.Status.ACTIVE:
+            today = timezone.now().date()
+            has_active = Membership.objects.filter(
+                member=member,
+                status=Membership.Status.ACTIVE,
+                end_date__gte=today,
+            ).exists()
+            if has_active:
+                raise serializers.ValidationError(
+                    {'member': 'This member already has an active membership. '
+                               'Freeze, cancel, or renew the existing membership before assigning a new plan.'}
+                )
+        return data
+
     def create(self, validated_data):
         plan = validated_data['plan']
         start_date = validated_data.get('start_date') or timezone.now().date()

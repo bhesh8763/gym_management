@@ -140,6 +140,7 @@
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Create Diet Plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
+        <div class="mb-3"><label>Member</label><select id="planMember" class="form-select"><option value="">Loading members…</option></select></div>
         <div class="mb-3"><label>Plan Name</label><input type="text" id="planName" class="form-control"></div>
         <div class="mb-3"><label>Goal</label><select id="goal" class="form-select"><option value="WEIGHT_LOSS">Weight Loss</option><option value="MUSCLE_GAIN">Muscle Gain</option><option value="MAINTENANCE">Maintenance</option><option value="ENDURANCE">Endurance</option></select></div>
         <div class="mb-3"><label>Daily Calories</label><input type="number" id="dailyCalories" class="form-control"></div>
@@ -378,17 +379,34 @@
         renderPlans(plans);
     }
 
+    async function loadMembersIntoSelect(selectId) {
+        const select = document.getElementById(selectId);
+        const res = await apiRequest('/members/?is_active=true');
+        if (!res || !res.ok) {
+            select.innerHTML = '<option value="">Could not load members</option>';
+            return;
+        }
+        const data = await res.json();
+        const members = data.results || data;
+        select.innerHTML = members.length
+            ? '<option value="">Select a member…</option>' +
+              members.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
+            : '<option value="">No active members found</option>';
+    }
+
     async function createPlan() {
+        const memberId = document.getElementById('planMember').value;
         const name = document.getElementById('planName').value;
         const goal = document.getElementById('goal').value;
         const dailyCalories = document.getElementById('dailyCalories').value;
         const protein = document.getElementById('proteinGrams').value;
         const carbs = document.getElementById('carbsGrams').value;
         const fat = document.getElementById('fatGrams').value;
+        if (!memberId) { alert('Please select a member'); return; }
         if (!name) { alert('Please fill in all fields'); return; }
         const payload = {
             name,
-            member: localStorage.getItem('user_id'),
+            member: memberId,
             goal,
             daily_calories: dailyCalories ? parseInt(dailyCalories) : null,
             protein_grams: protein ? parseInt(protein) : null,
@@ -400,8 +418,17 @@
             bootstrap.Modal.getInstance(document.getElementById('createPlanModal')).hide();
             loadDietPlans();
             alert('Diet plan created successfully');
-        } else { alert('Failed to create diet plan'); }
+        } else if (response) {
+            const err = await response.json();
+            alert('Failed to create diet plan:\n' + formatApiError(err));
+        } else {
+            alert('Failed to create diet plan');
+        }
     }
+
+    document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
+        loadMembersIntoSelect('planMember');
+    });
 
     function renderPlans(plans) {
 
