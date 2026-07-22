@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  
   <title>Memberships — Gym Management</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
@@ -76,24 +77,28 @@
     <div class="row mb-4">
       <div class="col-md-3">
         <div class="card text-center border-success"><div class="card-body">
+          <i class="bi bi-person-check text-success fs-4"></i>
           <div class="text-muted small">Active</div>
           <h3 id="statActive" class="text-success">-</h3>
         </div></div>
       </div>
       <div class="col-md-3">
         <div class="card text-center border-warning"><div class="card-body">
+          <i class="bi bi-clock-history text-warning fs-4"></i>
           <div class="text-muted small">Expiring (7 days)</div>
           <h3 id="statExpiring" class="text-warning">-</h3>
         </div></div>
       </div>
       <div class="col-md-3">
         <div class="card text-center border-info"><div class="card-body">
+          <i class="bi bi-snow text-info fs-4"></i>
           <div class="text-muted small">Frozen</div>
           <h3 id="statFrozen" class="text-info">-</h3>
         </div></div>
       </div>
       <div class="col-md-3">
         <div class="card text-center border-secondary"><div class="card-body">
+          <i class="bi bi-calendar-x text-secondary fs-4"></i>
           <div class="text-muted small">Expired</div>
           <h3 id="statExpired" class="text-secondary">-</h3>
         </div></div>
@@ -102,7 +107,9 @@
 
     <div class="d-flex justify-content-between align-items-center">
       <h5>Membership Plans</h5>
-      <button class="btn btn-sm btn-outline-primary" onclick="togglePlanForm()">+ New Plan</button>
+      <button type="button" class="btn btn-primary" onclick="togglePlanForm()">
+  <i class="bi bi-plus-circle"></i> New Plan
+</button>
     </div>
 
     <form id="planForm" class="row g-2 mb-3 align-items-end d-none">
@@ -139,7 +146,7 @@
 
     <table class="table table-bordered table-sm mb-4">
       <thead>
-        <tr><th>Name</th><th>Cycle</th><th>Duration</th><th>Price (NPR)</th><th>Status</th><th></th></tr>
+        <tr><th>Name</th><th>Cycle</th><th>Duration</th><th>Price (NPR)</th><th>Status</th><th>Actions</th></tr>
       </thead>
       <tbody id="planTableBody"></tbody>
     </table>
@@ -148,17 +155,17 @@
 
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h5 class="mb-0">Assign Membership</h5>
-      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignMembershipModal">
-        <i class="bi bi-card-checklist"></i> Assign Membership
-      </button>
+     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignMembershipModal">
+  <i class="bi bi-plus-circle"></i> Assign Membership
+</button>
     </div>
 
     <div id="errorBox" class="alert alert-danger d-none"></div>
 
     <h5>Filter / Search</h5>
     <div class="row g-2 mb-3">
-      <div class="col-auto">
-        <input type="text" id="filterSearch" class="form-control" placeholder="Search member name/email" onkeyup="if(event.key==='Enter') loadMemberships()">
+      <div class="col">
+        <input type="text" id="filterSearch" class="form-control" placeholder="Search member name or email" onkeyup="if(event.key==='Enter') loadMemberships()">
       </div>
       <div class="col-auto">
         <select id="filterStatus" class="form-select" onchange="loadMemberships()">
@@ -179,7 +186,10 @@
       <thead>
         <tr>
           <th>ID</th><th>Member</th><th>Plan</th><th>Status</th>
-          <th>Start</th><th>End</th><th>Days Left</th><th>Paid (NPR)</th><th>Actions</th>
+          <th class="sortable" onclick="sortMemberships('start_date')" style="cursor:pointer">Start <i class="bi bi-arrow-down-up small text-muted"></i></th>
+          <th class="sortable" onclick="sortMemberships('end_date')" style="cursor:pointer">End <i class="bi bi-arrow-down-up small text-muted"></i></th>
+          <th class="sortable" onclick="sortMemberships('days_remaining')" style="cursor:pointer">Days Left <i class="bi bi-arrow-down-up small text-muted"></i></th>
+          <th>Paid (NPR)</th><th>Actions</th>
         </tr>
       </thead>
       <tbody id="membershipTableBody"></tbody>
@@ -226,6 +236,101 @@
   </div>
 </div>
 
+<!-- Plan: View -->
+<div class="modal fade" id="viewPlanModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Plan Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="planDetails"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Plan: Edit -->
+<div class="modal fade" id="editPlanModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Plan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editPlanId">
+        <div class="mb-3"><label class="form-label">Name</label><input type="text" id="editPlanName" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">Billing Cycle</label>
+          <select id="editPlanCycle" class="form-select">
+            <option value="MONTHLY">Monthly</option>
+            <option value="QUARTERLY">Quarterly (3 months)</option>
+            <option value="HALF_YEARLY">Half Yearly (6 months)</option>
+            <option value="ANNUAL">Annual</option>
+            <option value="CUSTOM">Custom</option>
+          </select>
+        </div>
+        <div class="mb-3"><label class="form-label">Duration (days)</label><input type="number" id="editPlanDuration" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">Price (NPR)</label><input type="number" step="0.01" id="editPlanPrice" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">Description</label><input type="text" id="editPlanDescription" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">Status</label>
+          <select id="editPlanStatus" class="form-select">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="updatePlan()">Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Membership: View -->
+<div class="modal fade" id="viewMembershipModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Membership Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="membershipDetails"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Membership: Edit -->
+<div class="modal fade" id="editMembershipModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Membership</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editMembershipId">
+        <div class="mb-3"><label class="form-label">Status</label>
+          <select id="editMembershipStatus" class="form-select">
+            <option value="ACTIVE">Active</option>
+            <option value="EXPIRED">Expired</option>
+            <option value="FROZEN">Frozen</option>
+            <option value="CANCELLED">Cancelled</option>
+            <option value="PENDING">Pending Payment</option>
+          </select>
+        </div>
+        <div class="mb-3"><label class="form-label">Start Date</label><input type="date" id="editMembershipStart" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">End Date</label><input type="date" id="editMembershipEnd" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">Price Paid (NPR)</label><input type="number" step="0.01" id="editMembershipPrice" class="form-control"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="updateMembership()">Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/api.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -259,10 +364,15 @@
     window.location.href = 'index.html';
   }
 
-  function togglePlanForm() {
-    document.getElementById('planForm').classList.toggle('d-none');
-  }
-
+ function togglePlanForm() {
+  const form = document.getElementById('planForm');
+  form.classList.toggle('d-none');
+  const btn = document.querySelector('[onclick="togglePlanForm()"]');
+  const isOpen = !form.classList.contains('d-none');
+  btn.innerHTML = isOpen
+    ? '<i class="bi bi-dash-circle"></i> Cancel'
+    : '<i class="bi bi-plus-circle"></i> New Plan';
+}
   function statusBadge(status) {
     const map = {
       ACTIVE: 'success', EXPIRED: 'secondary', FROZEN: 'info',
@@ -285,11 +395,9 @@
   }
 
   let plansCache = [];
+  let membershipsCache = [];
 
   // ── Member search-select (Assign Membership) ───────────────────────────────
-  // Replaces free-typed Member IDs (error-prone, easy to mismatch) with a
-  // live search against real member records. Selecting a result stores the
-  // member's actual user id in the hidden #assignMember field.
   let memberSearchTimer = null;
 
   function closeMemberResults() {
@@ -325,7 +433,6 @@
   }
 
   document.getElementById('assignMemberSearch').addEventListener('input', (e) => {
-    // Any manual edit invalidates a previous selection until they pick again.
     document.getElementById('assignMember').value = '';
     clearTimeout(memberSearchTimer);
     const term = e.target.value.trim();
@@ -342,24 +449,30 @@
     }
   });
 
+  // ── Plans ────────────────────────────────────────────────────────────────
   async function loadPlans() {
     const plans = await fetchAll('/memberships/plans/');
     if (!plans) return;
     plansCache = plans;
 
     const tbody = document.getElementById('planTableBody');
-    tbody.innerHTML = '';
-    plans.forEach(p => {
-      tbody.innerHTML += `
+    if (plans.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No membership plans yet — click "+ New Plan" to create one.</td></tr>`;
+    } else {
+      tbody.innerHTML = plans.map(p => `
         <tr>
           <td>${p.name}</td>
           <td>${p.billing_cycle_display}</td>
           <td>${p.duration_days} days</td>
           <td>${p.price}</td>
           <td>${p.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
-          <td>${p.is_active ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivatePlan(${p.id})">Deactivate</button>` : ''}</td>
-        </tr>`;
-    });
+          <td>
+            <button class="btn btn-sm btn-outline-info" onclick="viewPlan(${p.id})" title="View"><i class="bi bi-eye"></i></button>
+            <button class="btn btn-sm btn-outline-warning" onclick="openEditPlanModal(${p.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deletePlan(${p.id})" title="Delete"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`).join('');
+    }
 
     const select = document.getElementById('assignPlan');
     select.innerHTML = '';
@@ -369,6 +482,61 @@
       opt.textContent = `${p.name} — NPR ${p.price} (${p.duration_days}d)`;
       select.appendChild(opt);
     });
+  }
+
+  function findPlan(id) {
+    return plansCache.find(p => p.id === id);
+  }
+
+  function viewPlan(id) {
+    const p = findPlan(id);
+    if (!p) return;
+    document.getElementById('planDetails').innerHTML = `
+      <p><strong>Name:</strong> ${p.name}</p>
+      <p><strong>Billing Cycle:</strong> ${p.billing_cycle_display}</p>
+      <p><strong>Duration:</strong> ${p.duration_days} days</p>
+      <p><strong>Price:</strong> NPR ${p.price}</p>
+      <p><strong>Description:</strong> ${p.description || '—'}</p>
+      <p><strong>Status:</strong> ${p.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</p>
+    `;
+    new bootstrap.Modal(document.getElementById('viewPlanModal')).show();
+  }
+
+  function openEditPlanModal(id) {
+    const p = findPlan(id);
+    if (!p) return;
+    document.getElementById('editPlanId').value = p.id;
+    document.getElementById('editPlanName').value = p.name;
+    document.getElementById('editPlanCycle').value = p.billing_cycle;
+    document.getElementById('editPlanDuration').value = p.duration_days;
+    document.getElementById('editPlanPrice').value = p.price;
+    document.getElementById('editPlanDescription').value = p.description || '';
+    document.getElementById('editPlanStatus').value = p.is_active ? 'true' : 'false';
+    new bootstrap.Modal(document.getElementById('editPlanModal')).show();
+  }
+
+  async function updatePlan() {
+    const id = document.getElementById('editPlanId').value;
+    const payload = {
+      name: document.getElementById('editPlanName').value.trim(),
+      billing_cycle: document.getElementById('editPlanCycle').value,
+      duration_days: parseInt(document.getElementById('editPlanDuration').value),
+      price: document.getElementById('editPlanPrice').value,
+      description: document.getElementById('editPlanDescription').value,
+      is_active: document.getElementById('editPlanStatus').value === 'true',
+    };
+    const res = await apiRequest(`/memberships/plans/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+    if (!res) {
+      alert('Update request failed to send. Check your connection or session, then check the browser console for details.');
+      return;
+    }
+    if (res.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editPlanModal')).hide();
+      loadPlans();
+    } else {
+      const err = await res.json();
+      alert('Failed to update plan: ' + JSON.stringify(err));
+    }
   }
 
   document.getElementById('planForm').addEventListener('submit', async (e) => {
@@ -392,14 +560,15 @@
     }
   });
 
-  async function deactivatePlan(id) {
-    if (!confirm('Deactivate this plan? Existing memberships keep it, but it will no longer be assignable.')) return;
+  async function deletePlan(id) {
+    if (!confirm('Delete this plan? Existing memberships keep it, but it will no longer be assignable.')) return;
     const res = await apiRequest(`/memberships/plans/${id}/`, { method: 'DELETE' });
     if (!res) return;
     if (res.ok) loadPlans();
-    else alert('Failed to deactivate plan.');
+    else alert('Failed to delete plan.');
   }
 
+  // ── Memberships ──────────────────────────────────────────────────────────
   async function loadMemberships() {
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
@@ -410,28 +579,54 @@
     const all = await fetchAll('/memberships/?' + params.toString());
     if (all === null) { alert('Failed to load memberships.'); return; }
 
-    const tbody = document.getElementById('membershipTableBody');
-    tbody.innerHTML = '';
-    let active = 0, frozen = 0, expired = 0;
+    // Cancelling is a soft delete (kept for records) — hide it from the default
+    // view so a delete visibly removes the row, unless the user explicitly
+    // filters for Cancelled.
+    const visible = status === 'CANCELLED' ? all : all.filter(m => m.status !== 'CANCELLED');
+    membershipsCache = visible;
+    currentSort = { key: null, dir: 1 };
 
-    all.forEach(row => {
+    let active = 0, frozen = 0, expired = 0;
+    visible.forEach(row => {
       if (row.status === 'ACTIVE') active++;
       if (row.status === 'FROZEN') frozen++;
       if (row.status === 'EXPIRED') expired++;
+    });
+    document.getElementById('statActive').textContent = active;
+    document.getElementById('statFrozen').textContent = frozen;
+    document.getElementById('statExpired').textContent = expired;
 
-      let actions = '';
-      if (row.status === 'ACTIVE') {
-        actions += `<button class="btn btn-sm btn-outline-info" onclick="freezeMembership(${row.id})">Freeze</button> `;
-        actions += `<button class="btn btn-sm btn-outline-success" onclick="renewMembership(${row.id})">Renew</button> `;
-        actions += `<button class="btn btn-sm btn-outline-danger" onclick="cancelMembership(${row.id})">Cancel</button>`;
-      } else if (row.status === 'FROZEN') {
-        actions += `<button class="btn btn-sm btn-outline-primary" onclick="unfreezeMembership(${row.id})">Unfreeze</button> `;
-        actions += `<button class="btn btn-sm btn-outline-danger" onclick="cancelMembership(${row.id})">Cancel</button>`;
-      } else if (row.status === 'EXPIRED') {
-        actions += `<button class="btn btn-sm btn-outline-success" onclick="renewMembership(${row.id})">Renew</button>`;
-      }
+    renderMemberships(visible);
 
-      tbody.innerHTML += `
+    const expiring = await fetchAll('/memberships/expiring/?days=7');
+    document.getElementById('statExpiring').textContent = expiring ? expiring.length : '-';
+  }
+
+  let currentSort = { key: null, dir: 1 };
+
+  function sortMemberships(key) {
+    if (currentSort.key === key) {
+      currentSort.dir *= -1;
+    } else {
+      currentSort = { key, dir: 1 };
+    }
+    const sorted = [...membershipsCache].sort((a, b) => {
+      let av = a[key], bv = b[key];
+      if (key === 'start_date' || key === 'end_date') { av = new Date(av); bv = new Date(bv); }
+      if (av < bv) return -1 * currentSort.dir;
+      if (av > bv) return 1 * currentSort.dir;
+      return 0;
+    });
+    renderMemberships(sorted);
+  }
+
+  function renderMemberships(rows) {
+    const tbody = document.getElementById('membershipTableBody');
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No memberships found for this filter.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(row => `
         <tr>
           <td>${row.id}</td>
           <td>${row.member_name}<br><small class="text-muted">${row.member_email}</small></td>
@@ -441,16 +636,132 @@
           <td>${row.end_date}</td>
           <td>${row.days_remaining}</td>
           <td>${row.price_paid}</td>
-          <td>${actions}</td>
-        </tr>`;
-    });
+          <td>
+            <button class="btn btn-sm btn-outline-info" onclick="viewMembership(${row.id})" title="View"><i class="bi bi-eye"></i></button>
+            <button class="btn btn-sm btn-outline-warning" onclick="openEditMembershipModal(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteMembership(${row.id})" title="Delete"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`).join('');
+  }
 
-    document.getElementById('statActive').textContent = active;
-    document.getElementById('statFrozen').textContent = frozen;
-    document.getElementById('statExpired').textContent = expired;
+  function findMembership(id) {
+    return membershipsCache.find(m => m.id === id);
+  }
 
-    const expiring = await fetchAll('/memberships/expiring/?days=7');
-    document.getElementById('statExpiring').textContent = expiring ? expiring.length : '-';
+  function viewMembership(id) {
+    const m = findMembership(id);
+    if (!m) return;
+    document.getElementById('membershipDetails').innerHTML = `
+      <p><strong>Member:</strong> ${m.member_name} (${m.member_email})</p>
+      <p><strong>Plan:</strong> ${m.plan_name}</p>
+      <p><strong>Status:</strong> ${statusBadge(m.status)}</p>
+      <p><strong>Start:</strong> ${m.start_date}</p>
+      <p><strong>End:</strong> ${m.end_date}</p>
+      <p><strong>Days Remaining:</strong> ${m.days_remaining}</p>
+      <p><strong>Price Paid:</strong> NPR ${m.price_paid}</p>
+    `;
+    new bootstrap.Modal(document.getElementById('viewMembershipModal')).show();
+  }
+
+  let editingMembershipOriginalStatus = null;
+
+  function openEditMembershipModal(id) {
+    const m = findMembership(id);
+    if (!m) return;
+    editingMembershipOriginalStatus = m.status;
+    document.getElementById('editMembershipId').value = m.id;
+    document.getElementById('editMembershipStatus').value = m.status;
+    document.getElementById('editMembershipStart').value = m.start_date;
+    document.getElementById('editMembershipEnd').value = m.end_date;
+    document.getElementById('editMembershipPrice').value = m.price_paid;
+    new bootstrap.Modal(document.getElementById('editMembershipModal')).show();
+  }
+
+  // Membership status is normally driven by the freeze/unfreeze/renew/cancel
+  // endpoints, so those are used first when they apply (they carry extra data,
+  // e.g. freeze dates). For any other change the owner makes in the dropdown —
+  // including CANCELLED → ACTIVE — this falls back to a direct PATCH of
+  // "status" so the owner can always force it. If your Django serializer marks
+  // "status" as read_only, this PATCH will be ignored/rejected by the backend;
+  // make it writable there if you want direct overrides to actually persist.
+  async function updateMembership() {
+    const id = document.getElementById('editMembershipId').value;
+    const newStatus = document.getElementById('editMembershipStatus').value;
+    const oldStatus = editingMembershipOriginalStatus;
+    let statusOverride = null;
+
+    if (newStatus !== oldStatus) {
+      let statusRes;
+
+      if (newStatus === 'FROZEN') {
+        const freezeStart = prompt('Freeze start date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+        if (!freezeStart) return;
+        const freezeEnd = prompt('Freeze end date (YYYY-MM-DD):');
+        if (!freezeEnd) return;
+        const reason = prompt('Reason (optional):', '') || '';
+        statusRes = await apiRequest(`/memberships/${id}/freeze/`, {
+          method: 'POST',
+          body: JSON.stringify({ freeze_start: freezeStart, freeze_end: freezeEnd, freeze_reason: reason }),
+        });
+      } else if (newStatus === 'CANCELLED') {
+        if (!confirm('Cancel this membership? This cannot be undone.')) return;
+        statusRes = await apiRequest(`/memberships/${id}/`, { method: 'DELETE' });
+      } else if (newStatus === 'ACTIVE' && oldStatus === 'FROZEN') {
+        statusRes = await apiRequest(`/memberships/${id}/unfreeze/`, { method: 'POST', body: JSON.stringify({}) });
+      } else if (newStatus === 'ACTIVE' && oldStatus === 'EXPIRED') {
+        statusRes = await apiRequest(`/memberships/${id}/renew/`, { method: 'POST', body: JSON.stringify({}) });
+      } else {
+        // Direct override — e.g. CANCELLED → ACTIVE, PENDING → ACTIVE, etc.
+        statusOverride = newStatus;
+      }
+
+      if (statusRes !== undefined && !statusRes) {
+        alert('Status change request failed to send. Check your connection or session, then check the browser console for details.');
+        return;
+      }
+      if (statusRes) {
+        if (!statusRes.ok) {
+          const err = await statusRes.json().catch(() => ({}));
+          alert('Status change failed: ' + JSON.stringify(err));
+          return;
+        }
+        if (newStatus === 'CANCELLED') {
+          // DELETE already removed/cancelled it — no further PATCH needed.
+          bootstrap.Modal.getInstance(document.getElementById('editMembershipModal')).hide();
+          loadMemberships();
+          return;
+        }
+      }
+    }
+
+    // Dates / price paid (and, for direct overrides, status) — sent as one PATCH.
+    const payload = {
+      start_date: document.getElementById('editMembershipStart').value,
+      end_date: document.getElementById('editMembershipEnd').value,
+      price_paid: document.getElementById('editMembershipPrice').value,
+    };
+    if (statusOverride) payload.status = statusOverride;
+
+    const res = await apiRequest(`/memberships/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+    if (!res) {
+      alert('Update request failed to send. Check your connection or session, then check the browser console for details.');
+      return;
+    }
+    if (res.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editMembershipModal')).hide();
+      loadMemberships();
+    } else {
+      const err = await res.json();
+      alert('Failed to update membership: ' + JSON.stringify(err));
+    }
+  }
+
+  async function deleteMembership(id) {
+    if (!confirm('Delete/cancel this membership? This cannot be undone.')) return;
+    const res = await apiRequest(`/memberships/${id}/`, { method: 'DELETE' });
+    if (!res) return;
+    if (res.ok) loadMemberships();
+    else alert('Delete failed.');
   }
 
   async function submitAssignMembership() {
@@ -497,46 +808,6 @@
   document.getElementById('assignMembershipModal').addEventListener('hidden.bs.modal', () => {
     document.getElementById('errorBox').classList.add('d-none');
   });
-
-  async function freezeMembership(id) {
-    const freezeStart = prompt('Freeze start date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-    if (!freezeStart) return;
-    const freezeEnd = prompt('Freeze end date (YYYY-MM-DD):');
-    if (!freezeEnd) return;
-    const reason = prompt('Reason (optional):', '') || '';
-
-    const res = await apiRequest(`/memberships/${id}/freeze/`, {
-      method: 'POST',
-      body: JSON.stringify({ freeze_start: freezeStart, freeze_end: freezeEnd, freeze_reason: reason }),
-    });
-    if (!res) return;
-    if (res.ok) loadMemberships();
-    else { const err = await res.json(); alert('Freeze failed: ' + JSON.stringify(err)); }
-  }
-
-  async function unfreezeMembership(id) {
-    if (!confirm('Resume this membership? The frozen days will be added back to the end date.')) return;
-    const res = await apiRequest(`/memberships/${id}/unfreeze/`, { method: 'POST', body: JSON.stringify({}) });
-    if (!res) return;
-    if (res.ok) loadMemberships();
-    else alert('Unfreeze failed.');
-  }
-
-  async function renewMembership(id) {
-    if (!confirm('Renew this membership for another full plan cycle?')) return;
-    const res = await apiRequest(`/memberships/${id}/renew/`, { method: 'POST', body: JSON.stringify({}) });
-    if (!res) return;
-    if (res.ok) loadMemberships();
-    else { const err = await res.json(); alert('Renew failed: ' + JSON.stringify(err)); }
-  }
-
-  async function cancelMembership(id) {
-    if (!confirm('Cancel this membership? This cannot be undone.')) return;
-    const res = await apiRequest(`/memberships/${id}/`, { method: 'DELETE' });
-    if (!res) return;
-    if (res.ok) loadMemberships();
-    else alert('Cancel failed.');
-  }
 
   (async () => {
     await loadPlans();
