@@ -49,7 +49,7 @@
       <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
 
       <div class="nav-section-label">Members</div>
-      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
       <a href="memberships.html" class="list-group-item list-group-item-action active" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
       <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
       <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
@@ -148,9 +148,12 @@
 
     <h5>Assign Membership</h5>
     <form id="assignForm" class="row g-2 mb-3 align-items-end">
-      <div class="col-auto">
-        <label class="form-label">Member ID</label>
-        <input type="number" id="assignMember" class="form-control" required>
+      <div class="col-auto position-relative">
+        <label class="form-label">Member</label>
+        <input type="text" id="assignMemberSearch" class="form-control" style="min-width:260px"
+               placeholder="Search by name or email" autocomplete="off" required>
+        <input type="hidden" id="assignMember">
+        <div id="assignMemberResults" class="dropdown-panel" style="min-width:260px; left:0; right:auto; max-height:260px; overflow-y:auto;"></div>
       </div>
       <div class="col-auto">
         <label class="form-label">Plan</label>
@@ -261,6 +264,62 @@
   }
 
   let plansCache = [];
+
+  // ── Member search-select (Assign Membership) ───────────────────────────────
+  // Replaces free-typed Member IDs (error-prone, easy to mismatch) with a
+  // live search against real member records. Selecting a result stores the
+  // member's actual user id in the hidden #assignMember field.
+  let memberSearchTimer = null;
+
+  function closeMemberResults() {
+    document.getElementById('assignMemberResults').classList.remove('show');
+  }
+
+  async function searchMembers(term) {
+    const box = document.getElementById('assignMemberResults');
+    if (!term) { box.innerHTML = ''; closeMemberResults(); return; }
+
+    const res = await apiRequest(`/members/?search=${encodeURIComponent(term)}&is_active=true`);
+    if (!res || !res.ok) { closeMemberResults(); return; }
+    const data = await res.json();
+    const results = (data.results || []).slice(0, 8);
+
+    if (results.length === 0) {
+      box.innerHTML = `<div class="notif-item text-muted">No matching members</div>`;
+    } else {
+      box.innerHTML = results.map(m => `
+        <div class="notif-item" role="button" style="cursor:pointer"
+             onclick="selectMember(${m.user_id}, '${(m.full_name + ' — ' + m.email).replace(/'/g, "\\'")}')">
+          <strong>${m.full_name}</strong><br>
+          <span class="text-muted small">${m.email}${m.phone ? ' · ' + m.phone : ''}</span>
+        </div>`).join('');
+    }
+    box.classList.add('show');
+  }
+
+  function selectMember(userId, label) {
+    document.getElementById('assignMember').value = userId;
+    document.getElementById('assignMemberSearch').value = label;
+    closeMemberResults();
+  }
+
+  document.getElementById('assignMemberSearch').addEventListener('input', (e) => {
+    // Any manual edit invalidates a previous selection until they pick again.
+    document.getElementById('assignMember').value = '';
+    clearTimeout(memberSearchTimer);
+    const term = e.target.value.trim();
+    memberSearchTimer = setTimeout(() => searchMembers(term), 250);
+  });
+
+  document.getElementById('assignMemberSearch').addEventListener('focus', (e) => {
+    if (e.target.value.trim()) searchMembers(e.target.value.trim());
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#assignMemberSearch') && !e.target.closest('#assignMemberResults')) {
+      closeMemberResults();
+    }
+  });
 
   async function loadPlans() {
     const plans = await fetchAll('/memberships/plans/');
@@ -378,8 +437,15 @@
     const errorBox = document.getElementById('errorBox');
     errorBox.classList.add('d-none');
 
+    const memberId = document.getElementById('assignMember').value;
+    if (!memberId) {
+      errorBox.textContent = 'Please search and select a member from the list before assigning.';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
     const payload = {
-      member: parseInt(document.getElementById('assignMember').value),
+      member: parseInt(memberId),
       plan: parseInt(document.getElementById('assignPlan').value),
     };
     const start = document.getElementById('assignStart').value;
@@ -392,6 +458,8 @@
 
     if (res.ok) {
       document.getElementById('assignForm').reset();
+      document.getElementById('assignMember').value = '';
+      document.getElementById('assignMemberSearch').value = '';
       loadMemberships();
     } else {
       const err = await res.json();

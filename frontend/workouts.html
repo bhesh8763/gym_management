@@ -140,6 +140,7 @@
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Create Workout Plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
+        <div class="mb-3"><label>Member</label><select id="planMember" class="form-select"><option value="">Loading members…</option></select></div>
         <div class="mb-3"><label>Plan Name</label><input type="text" id="planName" class="form-control"></div>
         <div class="mb-3"><label>Difficulty</label><select id="difficulty" class="form-select"><option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option></select></div>
         <div class="mb-3"><label>Duration (Weeks)</label><input type="number" id="durationWeeks" class="form-control"></div>
@@ -329,19 +330,45 @@
         renderPlans(plans);
     }
 
+    async function loadMembersIntoSelect(selectId) {
+        const select = document.getElementById(selectId);
+        const res = await apiRequest('/members/?is_active=true');
+        if (!res || !res.ok) {
+            select.innerHTML = '<option value="">Could not load members</option>';
+            return;
+        }
+        const data = await res.json();
+        const members = data.results || data;
+        select.innerHTML = members.length
+            ? '<option value="">Select a member…</option>' +
+              members.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
+            : '<option value="">No active members found</option>';
+    }
+
     async function createPlan() {
+        const memberId = document.getElementById('planMember').value;
         const name = document.getElementById('planName').value;
         const difficulty = document.getElementById('difficulty').value;
         const duration = document.getElementById('durationWeeks').value;
+        if (!memberId) { alert('Please select a member'); return; }
         if (!name || !duration) { alert('Please fill in all fields'); return; }
-        const payload = { name, member: localStorage.getItem('user_id'), difficulty, duration_weeks: parseInt(duration) };
+        const payload = { name, member: memberId, difficulty, duration_weeks: parseInt(duration) };
         const response = await apiRequest('/workouts/plans/', { method: 'POST', body: JSON.stringify(payload) });
         if (response && response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('createPlanModal')).hide();
             loadWorkoutPlans();
             alert('Workout plan created successfully');
-        } else { alert('Failed to create workout plan'); }
+        } else if (response) {
+            const err = await response.json();
+            alert('Failed to create workout plan:\n' + formatApiError(err));
+        } else {
+            alert('Failed to create workout plan');
+        }
     }
+
+    document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
+        loadMembersIntoSelect('planMember');
+    });
 
     function renderPlans(plans) {
 

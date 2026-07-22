@@ -1,5 +1,8 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import StaffProfile, LeaveRequest
+
+User = get_user_model()
 
 
 class StaffProfileSerializer(serializers.ModelSerializer):
@@ -14,6 +17,13 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             'notes', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_user(self, value):
+        if value.role != User.Role.STAFF:
+            raise serializers.ValidationError(
+                'Staff profiles can only be created for users with the STAFF role.'
+            )
+        return value
 
 
 class LeaveRequestSerializer(serializers.ModelSerializer):

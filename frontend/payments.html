@@ -97,8 +97,8 @@
     <h5>Record New Payment</h5>
     <form id="addForm" class="row g-2 mb-4 align-items-end">
       <div class="col-auto">
-        <label class="form-label">Member ID</label>
-        <input type="number" id="member" class="form-control" required>
+        <label class="form-label">Member</label>
+        <select id="member" class="form-select" required style="min-width: 220px;"><option value="">Loading members…</option></select>
       </div>
       <div class="col-auto">
         <label class="form-label">For</label>
@@ -279,6 +279,22 @@
     }
   });
 
+  async function loadMembersIntoSelect(selectId) {
+    const select = document.getElementById(selectId);
+    const res = await apiRequest('/members/?is_active=true');
+    if (!res || !res.ok) {
+      select.innerHTML = '<option value="">Could not load members</option>';
+      return;
+    }
+    const data = await res.json();
+    const members = data.results || data;
+    select.innerHTML = members.length
+      ? '<option value="">Select a member…</option>' +
+        members.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
+      : '<option value="">No active members found</option>';
+  }
+
+  loadMembersIntoSelect('member');
   loadPayments();
 </script>
 </body>
