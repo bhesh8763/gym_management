@@ -19,6 +19,8 @@ body {
   background-color: var(--sidebar-bg) !important;
   min-height: 100vh;
   width: 220px;
+  position: fixed;
+  top: 0;
 }
 
 .sidebar .list-group-item {
@@ -303,4 +305,48 @@ h3, h5 {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   padding: 1rem 1.25rem 0.35rem;
+}
+
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  flex: 0 0 auto;
+}
+
+/* the sidebar+content row that sits directly under .topbar */
+body > .d-flex {
+  flex: 1 1 auto;
+  min-height: 0; /* required so children can scroll instead of growing the page */
+}
+
+.sidebar {
+  position: static;   /* undo the old fixed positioning */
+  top: auto;
+  flex: 0 0 220px;
+  width: 220px;
+  min-height: 0;
+  max-height: none;   /* undo old 100vh cap, now sized by the flex row */
+  align-self: stretch;
+  overflow-y: auto;
+}
+
+.sidebar.collapsed {
+  flex: 0 0 64px;
+  width: 64px;
+}
+
+/* the main page-content pane next to the sidebar */
+body > .d-flex > .flex-grow-1 {
+  min-height: 0;
+  overflow-y: auto;
 }

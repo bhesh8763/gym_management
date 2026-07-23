@@ -67,6 +67,9 @@
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
       <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+
+      <div class="nav-section-label">Insights</div>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
     </div>
   </div>
 
@@ -161,18 +164,83 @@
       </div>
     </div>
 
-    <table class="table table-bordered">
+    <div class="d-flex justify-content-end mb-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('payTable', 'payments.csv')">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+    <table class="table table-bordered" id="payTable">
       <thead>
         <tr>
           <th>Receipt #</th><th>Member</th><th>For</th><th>Amount</th>
-          <th>Discount</th><th>Paid</th><th>Method</th><th>Status</th><th>Collected By</th>
+          <th>Discount</th><th>Paid</th><th>Method</th><th>Status</th><th>Collected By</th><th data-no-export>Actions</th>
         </tr>
       </thead>
       <tbody id="payTableBody"></tbody>
     </table>
+
+    <!-- Edit Payment Modal -->
+    <div class="modal fade" id="paymentEditModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Payment</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <form id="paymentEditForm">
+            <div class="modal-body">
+              <input type="hidden" id="editPaymentId">
+              <div class="mb-2">
+                <label class="form-label">Amount (NPR)</label>
+                <input type="number" step="0.01" id="editAmount" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Discount</label>
+                <input type="number" step="0.01" min="0" id="editDiscount" class="form-control">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Method</label>
+                <select id="editMethod" class="form-select">
+                  <option value="CASH">Cash</option>
+                  <option value="ESEWA">eSewa</option>
+                  <option value="KHALTI">Khalti</option>
+                  <option value="BANK">Bank Transfer</option>
+                  <option value="CARD">Card</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Status</label>
+                <select id="editStatus" class="form-select">
+                  <option value="PAID">Paid</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="PARTIAL">Partially Paid</option>
+                  <option value="REFUNDED">Refunded</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Receipt #</label>
+                <input type="text" id="editReceiptNumber" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Notes</label>
+                <input type="text" id="editNotes" class="form-control">
+              </div>
+              <div id="paymentEditError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
@@ -213,6 +281,8 @@
     return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
   }
 
+  let paymentCache = [];
+
   async function loadPayments() {
     const statusFilter = document.getElementById('filterStatus').value;
     let path = '/payments/' + (statusFilter ? `?status=${statusFilter}` : '');
@@ -226,6 +296,7 @@
       path = data.next ? data.next.replace(API_BASE, '') : null;
     }
 
+    paymentCache = all;
     const tbody = document.getElementById('payTableBody');
     tbody.innerHTML = '';
     let collected = 0, pending = 0;
@@ -243,6 +314,9 @@
           <td>${row.payment_method}</td>
           <td>${statusBadge(row.status)}</td>
           <td>${row.collected_by_name || '-'}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" onclick="openPaymentEdit(${row.id})"><i class="bi bi-pencil"></i></button>
+          </td>
         </tr>`;
     });
 
@@ -250,6 +324,45 @@
     document.getElementById('statPending').textContent = 'NPR ' + pending.toFixed(2);
     document.getElementById('statCount').textContent = all.length;
   }
+
+  function openPaymentEdit(id) {
+    const row = paymentCache.find(p => p.id === id);
+    if (!row) return;
+    document.getElementById('editPaymentId').value = row.id;
+    document.getElementById('editAmount').value = row.amount;
+    document.getElementById('editDiscount').value = row.discount;
+    document.getElementById('editMethod').value = row.payment_method;
+    document.getElementById('editStatus').value = row.status;
+    document.getElementById('editReceiptNumber').value = row.receipt_number;
+    document.getElementById('editNotes').value = row.notes || '';
+    document.getElementById('paymentEditError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('paymentEditModal')).show();
+  }
+
+  document.getElementById('paymentEditForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editPaymentId').value;
+    const errorBox = document.getElementById('paymentEditError');
+    errorBox.classList.add('d-none');
+    const payload = {
+      amount: document.getElementById('editAmount').value,
+      discount: document.getElementById('editDiscount').value,
+      payment_method: document.getElementById('editMethod').value,
+      status: document.getElementById('editStatus').value,
+      receipt_number: document.getElementById('editReceiptNumber').value,
+      notes: document.getElementById('editNotes').value,
+    };
+    const res = await apiRequest(`/payments/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+    if (!res) return;
+    if (res.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('paymentEditModal')).hide();
+      loadPayments();
+    } else {
+      const err = await res.json();
+      errorBox.textContent = formatApiError(err);
+      errorBox.classList.remove('d-none');
+    }
+  });
 
   document.getElementById('addForm').addEventListener('submit', async (e) => {
     e.preventDefault();

@@ -122,6 +122,50 @@ function formatApiError(err) {
   return lines.join('\n') || 'Something went wrong. Please try again.';
 }
 
+// ── Shared CSV export helper ────────────────────────────────────────────────
+// Exports an HTML table to a downloadable CSV file. Skips any column whose
+// <th> carries data-no-export (e.g. an "Actions" column with buttons).
+function exportTableToCsv(tableId, filename) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+
+  const headerCells = Array.from(table.querySelectorAll('thead th'));
+  const skipIndexes = new Set();
+  headerCells.forEach((th, i) => {
+    if (th.hasAttribute('data-no-export')) skipIndexes.add(i);
+  });
+
+  const escapeCsv = (text) => {
+    const str = (text ?? '').toString().replace(/\s+/g, ' ').trim();
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+
+  const rows = [];
+  rows.push(
+    headerCells
+      .filter((_, i) => !skipIndexes.has(i))
+      .map(th => escapeCsv(th.textContent))
+      .join(',')
+  );
+
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const cells = Array.from(tr.children)
+      .filter((_, i) => !skipIndexes.has(i))
+      .map(td => escapeCsv(td.textContent));
+    rows.push(cells.join(','));
+  });
+
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || 'export.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 // ── Role-based sidebar ──────────────────────────────────────────────────────
 // Every page shares the same sidebar markup. Links that should only be visible
 // to certain roles carry a data-roles="OWNER,STAFF" attribute (see dashboard.html

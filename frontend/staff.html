@@ -67,6 +67,9 @@
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
       <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+
+      <div class="nav-section-label">Insights</div>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
     </div>
   </div>
 
@@ -76,8 +79,24 @@
     <h5>Add Staff Profile</h5>
     <form id="profileForm" class="row g-2 mb-4 align-items-end">
       <div class="col-auto">
-        <label class="form-label">User ID</label>
-        <input type="number" id="userId" class="form-control" min="1" required>
+        <label class="form-label">First Name</label>
+        <input type="text" id="firstName" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Last Name</label>
+        <input type="text" id="lastName" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Email</label>
+        <input type="email" id="email" class="form-control" required>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Phone</label>
+        <input type="text" id="phone" class="form-control">
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Password</label>
+        <input type="password" id="password" class="form-control" required>
       </div>
       <div class="col-auto">
         <label class="form-label">Department</label>
@@ -102,17 +121,66 @@
         <input type="number" step="0.01" min="0" id="salary" class="form-control" required>
       </div>
       <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Add Profile</button>
+        <button type="submit" class="btn btn-primary">Add Staff</button>
       </div>
     </form>
     <div id="profileError" class="alert alert-danger d-none"></div>
 
-    <table class="table table-bordered mb-5">
+    <div class="d-flex justify-content-end mb-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('profileTable', 'staff.csv')">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+    <table class="table table-bordered mb-5" id="profileTable">
       <thead>
-        <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th>Salary</th></tr>
+        <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th>Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
       </thead>
       <tbody id="profileTableBody"></tbody>
     </table>
+
+    <!-- Edit Staff Profile Modal -->
+    <div class="modal fade" id="staffEditModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Staff Profile</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <form id="staffEditForm">
+            <div class="modal-body">
+              <input type="hidden" id="editStaffId">
+              <div class="mb-2">
+                <label class="form-label">Department</label>
+                <select id="editDepartment" class="form-select">
+                  <option value="FRONT_DESK">Front Desk</option>
+                  <option value="ACCOUNTS">Accounts</option>
+                  <option value="MAINTENANCE">Maintenance</option>
+                  <option value="MANAGEMENT">Management</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Designation</label>
+                <input type="text" id="editDesignation" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Joined Date</label>
+                <input type="date" id="editJoinedDate" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Salary</label>
+                <input type="number" step="0.01" min="0" id="editSalary" class="form-control" required>
+              </div>
+              <div id="staffEditError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
 
     <hr>
 
@@ -157,6 +225,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
@@ -196,20 +265,77 @@
     return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
   }
 
+  let profileCache = [];
+
   async function loadProfiles() {
     const res = await apiRequest('/staff/profiles/');
     if (!res) return;
     const data = await res.json();
+    profileCache = data.results;
     const tbody = document.getElementById('profileTableBody');
     tbody.innerHTML = '';
     data.results.forEach(row => {
+      const statusBadge = row.is_active
+        ? '<span class="badge bg-success">Active</span>'
+        : '<span class="badge bg-secondary">Deactivated</span>';
+      const toggleBtn = row.is_active
+        ? `<button class="btn btn-sm btn-outline-danger" onclick="toggleStaffActive(${row.id}, false)"><i class="bi bi-person-x"></i></button>`
+        : `<button class="btn btn-sm btn-outline-success" onclick="toggleStaffActive(${row.id}, true)"><i class="bi bi-person-check"></i></button>`;
       tbody.innerHTML += `
         <tr>
           <td>${row.id}</td><td>${row.user_name}</td><td>${row.user_email}</td>
           <td>${row.department}</td><td>${row.designation}</td>
           <td>${row.joined_date}</td><td>${row.salary}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" onclick="openStaffEdit(${row.id})"><i class="bi bi-pencil"></i></button>
+            ${toggleBtn}
+          </td>
         </tr>`;
     });
+  }
+
+  function openStaffEdit(id) {
+    const row = profileCache.find(p => p.id === id);
+    if (!row) return;
+    document.getElementById('editStaffId').value = row.id;
+    document.getElementById('editDepartment').value = row.department;
+    document.getElementById('editDesignation').value = row.designation || '';
+    document.getElementById('editJoinedDate').value = row.joined_date || '';
+    document.getElementById('editSalary').value = row.salary || '';
+    document.getElementById('staffEditError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('staffEditModal')).show();
+  }
+
+  document.getElementById('staffEditForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editStaffId').value;
+    const errorBox = document.getElementById('staffEditError');
+    errorBox.classList.add('d-none');
+    const payload = {
+      department: document.getElementById('editDepartment').value,
+      designation: document.getElementById('editDesignation').value,
+      joined_date: document.getElementById('editJoinedDate').value,
+      salary: document.getElementById('editSalary').value,
+    };
+    const res = await apiRequest(`/staff/profiles/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+    if (!res) return;
+    if (res.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('staffEditModal')).hide();
+      loadProfiles();
+    } else {
+      const err = await res.json();
+      errorBox.textContent = formatApiError(err);
+      errorBox.classList.remove('d-none');
+    }
+  });
+
+  async function toggleStaffActive(id, activate) {
+    const verb = activate ? 'reactivate' : 'deactivate';
+    if (!confirm(`Are you sure you want to ${verb} this staff member's login?`)) return;
+    const res = await apiRequest(`/staff/profiles/${id}/${activate ? 'activate' : 'deactivate'}/`, { method: 'POST' });
+    if (res && res.ok) loadProfiles();
+    else if (res) alert(`Could not ${verb} this staff member.`);
   }
 
   document.getElementById('profileForm').addEventListener('submit', async (e) => {
@@ -217,7 +343,11 @@
     const errorBox = document.getElementById('profileError');
     errorBox.classList.add('d-none');
     const payload = {
-      user: parseInt(document.getElementById('userId').value),
+      first_name: document.getElementById('firstName').value,
+      last_name: document.getElementById('lastName').value,
+      email: document.getElementById('email').value,
+      phone: document.getElementById('phone').value,
+      password: document.getElementById('password').value,
       department: document.getElementById('department').value,
       designation: document.getElementById('designation').value,
       joined_date: document.getElementById('joinedDate').value,

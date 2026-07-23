@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reports & Analytics — Gym Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="OWNER,STAFF">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <span class="navbar-brand">Gym Management</span>
+
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="dropdown-header">Notifications</div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+    </div>
+  </div>
+
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-role" id="profileRole">—</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="#"><i class="bi bi-person"></i> Profile</a>
+      <a href="#"><i class="bi bi-gear"></i> Settings</a>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-flex">
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+
+      <div class="nav-section-label">Members</div>
+      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+
+      <div class="nav-section-label">Staff Management</div>
+      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+
+      <div class="nav-section-label">Workout & Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+
+      <div class="nav-section-label">Payments</div>
+      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <div class="nav-section-label">Equipment</div>
+      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+
+      <div class="nav-section-label">Insights</div>
+      <a href="reports.html" class="list-group-item list-group-item-action active" data-roles="OWNER,STAFF"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+    </div>
+  </div>
+
+  <div class="p-4 flex-grow-1">
+    <h3>Reports & Analytics</h3>
+
+    <!-- KPI cards -->
+    <div class="row mb-4" id="kpiRow">
+      <div class="col-md-3 mb-2">
+        <div class="card text-center border-success"><div class="card-body">
+          <div class="text-muted small">Revenue This Month</div>
+          <h4 id="kpiRevenue" class="text-success mb-0">-</h4>
+        </div></div>
+      </div>
+      <div class="col-md-3 mb-2">
+        <div class="card text-center border-primary"><div class="card-body">
+          <div class="text-muted small">Active Memberships</div>
+          <h4 id="kpiMemberships" class="text-primary mb-0">-</h4>
+        </div></div>
+      </div>
+      <div class="col-md-3 mb-2">
+        <div class="card text-center border-info"><div class="card-body">
+          <div class="text-muted small">Locker Occupancy</div>
+          <h4 id="kpiLockers" class="text-info mb-0">-</h4>
+        </div></div>
+      </div>
+      <div class="col-md-3 mb-2">
+        <div class="card text-center border-warning"><div class="card-body">
+          <div class="text-muted small">Check-ins Today</div>
+          <h4 id="kpiAttendance" class="text-warning mb-0">-</h4>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-8 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Revenue Trend (last 12 months)</h6>
+          <canvas id="revenueChart" height="90"></canvas>
+        </div></div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Memberships by Status</h6>
+          <canvas id="membershipChart" height="140"></canvas>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-6 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Attendance — last 30 days</h6>
+          <canvas id="attendanceChart" height="120"></canvas>
+        </div></div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Equipment Condition</h6>
+          <canvas id="equipmentChart" height="140"></canvas>
+        </div></div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Payment Method Split</h6>
+          <canvas id="methodChart" height="140"></canvas>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-6 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Revenue by Plan</h6>
+          <canvas id="planChart" height="120"></canvas>
+        </div></div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Staff by Department</h6>
+          <canvas id="staffChart" height="120"></canvas>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="card-title mb-0">Memberships Expiring in the Next 30 Days</h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('expiringTable', 'expiring_memberships.csv')">
+            <i class="bi bi-download"></i> Export CSV
+          </button>
+        </div>
+        <table class="table table-bordered table-sm mb-0" id="expiringTable">
+          <thead><tr><th>Member</th><th>Plan</th><th>End Date</th></tr></thead>
+          <tbody id="expiringTableBody"></tbody>
+        </table>
+        <div id="expiringEmpty" class="text-muted small mt-2 d-none">No memberships expiring soon.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+  if (!getAccessToken()) window.location.href = 'index.html';
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+  }
+
+  function toggleDropdown(id) {
+    document.querySelectorAll('.dropdown-panel').forEach(p => {
+      if (p.id !== id) p.classList.remove('show');
+    });
+    document.getElementById(id).classList.toggle('show');
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.position-relative')) {
+      document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
+    }
+  });
+
+  const userName = localStorage.getItem('user_name') || 'User';
+  const userRole = localStorage.getItem('user_role') || '';
+  document.getElementById('profileName').textContent = userName;
+  document.getElementById('profileRole').textContent = userRole;
+  document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
+
+  function logout() {
+    clearTokens();
+    window.location.href = 'index.html';
+  }
+
+  const PALETTE = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7'];
+
+  async function loadOverview() {
+    const res = await apiRequest('/reports/overview/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+    document.getElementById('kpiRevenue').textContent = 'NPR ' + Number(d.revenue_this_month).toLocaleString();
+    document.getElementById('kpiMemberships').textContent = d.active_memberships;
+    document.getElementById('kpiLockers').textContent = `${d.lockers_occupied}/${d.lockers_total}`;
+    document.getElementById('kpiAttendance').textContent = d.attendance_today;
+  }
+
+  async function loadRevenue() {
+    const res = await apiRequest('/reports/revenue/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+
+    new Chart(document.getElementById('revenueChart'), {
+      type: 'line',
+      data: {
+        labels: d.monthly_trend.map(r => r.month),
+        datasets: [{
+          label: 'Revenue (NPR)',
+          data: d.monthly_trend.map(r => r.total),
+          borderColor: '#4e79a7',
+          backgroundColor: 'rgba(78,121,167,0.15)',
+          tension: 0.3,
+          fill: true,
+        }],
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } },
+    });
+
+    new Chart(document.getElementById('methodChart'), {
+      type: 'doughnut',
+      data: {
+        labels: d.by_method.map(r => r.payment_method),
+        datasets: [{ data: d.by_method.map(r => r.total), backgroundColor: PALETTE }],
+      },
+      options: { responsive: true },
+    });
+  }
+
+  async function loadMemberships() {
+    const res = await apiRequest('/reports/memberships/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+
+    new Chart(document.getElementById('membershipChart'), {
+      type: 'pie',
+      data: {
+        labels: d.by_status.map(r => r.status),
+        datasets: [{ data: d.by_status.map(r => r.count), backgroundColor: PALETTE }],
+      },
+      options: { responsive: true },
+    });
+
+    new Chart(document.getElementById('planChart'), {
+      type: 'bar',
+      data: {
+        labels: d.by_plan.map(r => r.plan),
+        datasets: [{ label: 'Revenue (NPR)', data: d.by_plan.map(r => r.revenue), backgroundColor: '#59a14f' }],
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } },
+    });
+
+    const tbody = document.getElementById('expiringTableBody');
+    tbody.innerHTML = '';
+    if (!d.expiring_soon.length) {
+      document.getElementById('expiringEmpty').classList.remove('d-none');
+    } else {
+      d.expiring_soon.forEach(row => {
+        tbody.innerHTML += `<tr><td>${row.member_name}</td><td>${row.plan_name}</td><td>${row.end_date}</td></tr>`;
+      });
+    }
+  }
+
+  async function loadAttendance() {
+    const res = await apiRequest('/reports/attendance/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+
+    new Chart(document.getElementById('attendanceChart'), {
+      type: 'bar',
+      data: {
+        labels: d.daily.map(r => r.date),
+        datasets: [{ label: 'Check-ins', data: d.daily.map(r => r.count), backgroundColor: '#f28e2b' }],
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } },
+    });
+  }
+
+  async function loadEquipment() {
+    const res = await apiRequest('/reports/equipment/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+
+    new Chart(document.getElementById('equipmentChart'), {
+      type: 'doughnut',
+      data: {
+        labels: d.by_condition.map(r => r.condition),
+        datasets: [{ data: d.by_condition.map(r => r.count), backgroundColor: PALETTE }],
+      },
+      options: { responsive: true },
+    });
+  }
+
+  async function loadStaff() {
+    const res = await apiRequest('/reports/staff/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+
+    new Chart(document.getElementById('staffChart'), {
+      type: 'bar',
+      data: {
+        labels: d.by_department.map(r => r.department),
+        datasets: [{ label: 'Headcount', data: d.by_department.map(r => r.count), backgroundColor: '#af7aa1' }],
+      },
+      options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } },
+    });
+  }
+
+  loadOverview();
+  loadRevenue();
+  loadMemberships();
+  loadAttendance();
+  loadEquipment();
+  loadStaff();
+</script>
+</body>
+</html>

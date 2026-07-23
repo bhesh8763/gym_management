@@ -67,6 +67,9 @@
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
       <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+
+      <div class="nav-section-label">Insights</div>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
     </div>
   </div>
 
@@ -149,7 +152,12 @@
     <div id="errorBox" class="alert alert-danger d-none"></div>
 
     <h5>All Attendance Records</h5>
-    <table class="table table-bordered">
+    <div class="d-flex justify-content-end mb-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('attTable', 'attendance.csv')">
+        <i class="bi bi-download"></i> Export CSV
+      </button>
+    </div>
+    <table class="table table-bordered" id="attTable">
       <thead>
         <tr>
           <th>ID</th><th>User</th><th>Type</th><th>Date</th>
