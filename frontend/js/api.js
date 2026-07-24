@@ -209,3 +209,137 @@ function enforcePageRoleAccess() {
 }
 
 enforcePageRoleAccess();
+
+let sidebarCollapseObserver = null;
+
+// Re-applies the collapsed/expanded state from localStorage to whichever
+// #sidebar element currently exists, and (re)watches it for toggle clicks.
+// Must be called after every SPA swap too, because #page-content's innerHTML
+// swap replaces the sidebar element itself, so any previous observer is left
+// watching a detached node and any previous 'collapsed' class is gone.
+function syncSidebarCollapsedState() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  if (localStorage.getItem('sidebarCollapsed') === '1') {
+    sidebar.classList.add('collapsed');
+  }
+
+  if (sidebarCollapseObserver) sidebarCollapseObserver.disconnect();
+  sidebarCollapseObserver = new MutationObserver(() => {
+    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+  });
+  sidebarCollapseObserver.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
+}
+
+syncSidebarCollapsedState();
+
+// ── Lightweight SPA-style sidebar navigation ────────────────────────────────
+(function initSpaRouter() {
+  const sidebarEl = document.getElementById('sidebar');
+  if (!sidebarEl) return;
+
+  function getContentEl(root) {
+    return root.getElementById('page-content');
+  }
+
+  function ensureScriptLoaded(rawSrc) {
+    const absSrc = new URL(rawSrc, window.location.href).href;
+    if (absSrc.endsWith('/js/api.js') || absSrc.endsWith('js/api.js')) return Promise.resolve();
+
+    const already = Array.from(document.scripts).some(s => s.src === absSrc);
+    if (already) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = absSrc;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Failed to load ' + absSrc));
+      document.head.appendChild(s);
+    });
+  }
+
+  function runInlineScript(code) {
+    const fnNamePattern = /^\s*(?:async\s+)?function\s+([A-Za-z0-9_$]+)\s*\(/gm;
+    const names = new Set();
+    let m;
+    while ((m = fnNamePattern.exec(code))) names.add(m[1]);
+    const exposures = Array.from(names).map(n => `window.${n} = ${n};`).join('\n');
+
+    const s = document.createElement('script');
+    s.textContent = `(function(){\ntry {\n${code}\n${exposures}\n} catch (err) {\nconsole.error('SPA page script threw — code after the error point did not run:', err);\n}\n})();`;
+    document.body.appendChild(s);
+    document.body.removeChild(s);
+  }
+
+  async function navigateTo(url, push) {
+    const contentEl = getContentEl(document);
+    if (!contentEl) { window.location.href = url; return; }
+
+    let doc;
+    try {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+    } catch (err) {
+      console.error('SPA navigation failed, falling back to a full page load:', err);
+      window.location.href = url;
+      return;
+    }
+
+    const newContentEl = getContentEl(doc);
+    if (!newContentEl) { window.location.href = url; return; }
+
+    try {
+      const rawSrcs = Array.from(doc.querySelectorAll('script[src]')).map(s => s.getAttribute('src'));
+      for (const rawSrc of rawSrcs) await ensureScriptLoaded(rawSrc);
+    } catch (err) {
+      console.error('SPA navigation failed loading a required script, falling back:', err);
+      window.location.href = url;
+      return;
+    }
+
+    contentEl.innerHTML = newContentEl.innerHTML;
+    if (doc.title) document.title = doc.title;
+
+    const newRoles = doc.body.getAttribute('data-allowed-roles');
+    if (newRoles) document.body.setAttribute('data-allowed-roles', newRoles);
+    else document.body.removeAttribute('data-allowed-roles');
+
+    document.querySelectorAll('.sidebar a.list-group-item').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === url);
+    });
+
+    applySidebarRoleVisibility();
+    enforcePageRoleAccess();
+    syncSidebarCollapsedState();
+
+    doc.querySelectorAll('script:not([src])').forEach(scriptEl => {
+      runInlineScript(scriptEl.textContent);
+    });
+
+    if (push) history.pushState({ spaUrl: url }, '', url);
+    window.scrollTo(0, 0);
+  }
+
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('.sidebar a[href]');
+    if (!link) return;
+    const href = link.getAttribute('href');
+    if (!href || /^https?:\/\//.test(href) || href.startsWith('#')) return;
+
+    e.preventDefault();
+    const current = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (href === current) return;
+
+    navigateTo(href, true);
+  });
+
+  window.addEventListener('popstate', () => {
+    const current = window.location.pathname.split('/').pop() || 'dashboard.html';
+    navigateTo(current, false);
+  });
+
+  const currentFile = window.location.pathname.split('/').pop() || 'dashboard.html';
+  history.replaceState({ spaUrl: currentFile }, '', window.location.href);
+})();

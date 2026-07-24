@@ -323,10 +323,19 @@ body {
   flex: 0 0 auto;
 }
 
-/* the sidebar+content row that sits directly under .topbar */
-body > .d-flex {
+/* #page-content wraps the sidebar+content row (and modals) and is now the
+   direct child of body that sits under .topbar, so it needs the sizing that
+   used to live on body > .d-flex directly. */
+#page-content {
+  display: flex;
   flex: 1 1 auto;
   min-height: 0; /* required so children can scroll instead of growing the page */
+}
+
+/* the sidebar+content row that sits directly under .topbar */
+#page-content > .d-flex {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .sidebar {
@@ -346,7 +355,7 @@ body > .d-flex {
 }
 
 /* the main page-content pane next to the sidebar */
-body > .d-flex > .flex-grow-1 {
+#page-content > .d-flex > .flex-grow-1 {
   min-height: 0;
   overflow-y: auto;
 }
