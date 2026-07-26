@@ -1,7 +1,9 @@
 """
 Trainer profile model with specializations and assigned members.
 """
+from decimal import Decimal
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -25,7 +27,8 @@ class TrainerProfile(models.Model):
     bio = models.TextField(blank=True)
     joined_date = models.DateField(null=True, blank=True)
     salary = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0'))],
     )
     is_available = models.BooleanField(
         default=True, help_text='Whether trainer is currently taking new members'

@@ -311,6 +311,8 @@
 <script>
   if (!getAccessToken()) window.location.href = "index.html";
 
+  restrictPastDates('purchaseDate', 'scheduledDate');
+
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('collapsed');
   }

@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.accounts.permissions import IsOwnerOrStaff, IsAnyStaffRole
 from .models import StaffProfile, LeaveRequest
-from .serializers import StaffProfileSerializer, LeaveRequestSerializer
+from .serializers import StaffProfileSerializer, StaffCreateSerializer, LeaveRequestSerializer
 
 
 class StaffProfileViewSet(viewsets.ModelViewSet):
@@ -11,6 +11,20 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
     serializer_class = StaffProfileSerializer
     permission_classes = [IsOwnerOrStaff]
     queryset = StaffProfile.objects.select_related('user').all()
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return StaffCreateSerializer
+        return StaffProfileSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = StaffCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save()
+        return Response(
+            StaffProfileSerializer(profile).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):

@@ -226,6 +226,8 @@
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
+  restrictPastDates('assignStart', 'assignEnd');
+
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('collapsed');
   }

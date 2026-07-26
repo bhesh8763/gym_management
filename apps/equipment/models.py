@@ -1,7 +1,9 @@
 """
 Equipment inventory and maintenance schedule management.
 """
+from decimal import Decimal
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -23,7 +25,8 @@ class Equipment(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     purchase_date = models.DateField(null=True, blank=True)
     purchase_price = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0'))],
     )
     condition = models.CharField(
         max_length=15,
@@ -83,7 +86,8 @@ class MaintenanceRecord(models.Model):
         help_text='Technician or person who performed maintenance'
     )
     cost = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0'))],
     )
     description = models.TextField(blank=True)
     next_maintenance_date = models.DateField(null=True, blank=True)

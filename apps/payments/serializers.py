@@ -16,3 +16,14 @@ class PaymentSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'amount_paid', 'collected_by', 'created_at', 'updated_at']
+
+    def validate(self, data):
+        # amount_paid = amount - discount is computed in Payment.save(); a
+        # discount larger than the amount would silently make that negative.
+        amount = data.get('amount', getattr(self.instance, 'amount', None))
+        discount = data.get('discount', getattr(self.instance, 'discount', 0))
+        if amount is not None and discount is not None and discount > amount:
+            raise serializers.ValidationError(
+                {'discount': 'Discount cannot be greater than the payment amount.'}
+            )
+        return data

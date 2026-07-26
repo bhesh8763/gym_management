@@ -113,7 +113,12 @@
               </div>
               <div class="mb-2">
                 <label class="form-label">Password</label>
-                <input type="password" id="password" class="form-control" required>
+                <div class="input-group">
+                  <input type="password" id="password" class="form-control" required>
+                  <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" tabindex="-1">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
               </div>
               <div class="mb-2">
                 <label class="form-label">Department</label>
@@ -253,6 +258,8 @@
 <script src="js/api.js"></script>
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
+
+  restrictPastDates('joinedDate', 'startDate', 'endDate');
 
   function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('collapsed');
@@ -455,6 +462,7 @@
 
   loadProfiles();
   loadLeaves();
+  document.getElementById('startDate').min = new Date().toISOString().split('T')[0];
   document.getElementById('startDate').addEventListener('change', function() {
     document.getElementById('endDate').min = this.value;
   });

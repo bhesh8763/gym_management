@@ -343,3 +343,32 @@ syncSidebarCollapsedState();
   const currentFile = window.location.pathname.split('/').pop() || 'dashboard.html';
   history.replaceState({ spaUrl: currentFile }, '', window.location.href);
 })();
+
+// Blocks selection of any date before today on the given <input type="date">
+// fields (by id). Used on "create new record" forms — assign membership,
+// staff joined date, leave requests, locker assignment, equipment purchase,
+// and maintenance logging — so past dates can't be picked.
+function restrictPastDates(...ids) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('min', todayStr);
+  });
+}
+
+// Password show/hide toggle — works on every page (login, Add Member, Add
+// Staff, etc.) since it's a single delegated listener on document, not tied
+// to the sidebar router above.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.toggle-password');
+  if (!btn) return;
+  const input = document.getElementById(btn.getAttribute('data-target'));
+  if (!input) return;
+  const icon = btn.querySelector('i');
+  const showing = input.type === 'password';
+  input.type = showing ? 'text' : 'password';
+  if (icon) {
+    icon.classList.toggle('bi-eye', !showing);
+    icon.classList.toggle('bi-eye-slash', showing);
+  }
+});
