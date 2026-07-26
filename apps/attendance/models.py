@@ -7,7 +7,7 @@ from django.db import models
 
 class Attendance(models.Model):
     """
-    Records a single check-in/check-out event for any user.
+    Records a single attendance event for any user.
     Staff mark attendance manually through the dashboard.
     """
 
@@ -15,6 +15,10 @@ class Attendance(models.Model):
         MEMBER = 'MEMBER', 'Member'
         STAFF = 'STAFF', 'Staff'
         TRAINER = 'TRAINER', 'Trainer'
+
+    class Status(models.TextChoices):
+        PRESENT = 'PRESENT', 'Present'
+        ABSENT = 'ABSENT', 'Absent'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -25,7 +29,10 @@ class Attendance(models.Model):
         max_length=10, choices=AttendanceType.choices, db_index=True
     )
     date = models.DateField(db_index=True)
-    check_in = models.TimeField()
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.PRESENT, db_index=True,
+    )
+    check_in = models.TimeField(null=True, blank=True)
     check_out = models.TimeField(null=True, blank=True)
     marked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
