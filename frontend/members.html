@@ -92,9 +92,9 @@
         </div></div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-danger"><div class="card-body">
-          <div class="text-muted small">Inactive</div>
-          <h3 id="statInactive" class="text-danger">-</h3>
+        <div class="card text-center border-warning"><div class="card-body">
+          <div class="text-muted small">Expiring This Week</div>
+          <h3 id="statExpiring" class="text-warning">-</h3>
         </div></div>
       </div>
       <div class="col-md-3">
@@ -106,7 +106,7 @@
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <h5 class="mb-0">Add New Member</h5>
+      <h5 class="mb-0">Members List</h5>
       <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMemberModal">
         <i class="bi bi-person-plus"></i> Add Member
       </button>
@@ -117,8 +117,8 @@
     <div id="editPanel" class="card mb-4 d-none">
       <div class="card-body">
         <h5 id="editTitle">Edit Member</h5>
-        <form id="editForm" class="row g-2 align-items-end">
-          <div class="col-auto">
+        <form id="editForm" class="row g-2">
+          <div class="col-md-3">
             <label class="form-label">Gender</label>
             <select id="editGender" class="form-select">
               <option value="">-</option>
@@ -128,19 +128,19 @@
               <option value="N">Prefer not to say</option>
             </select>
           </div>
-          <div class="col-auto">
+          <div class="col-md-3">
             <label class="form-label">Date of Birth</label>
             <input type="date" id="editDob" class="form-control">
           </div>
-          <div class="col-auto">
+          <div class="col-md-3">
             <label class="form-label">Height (cm)</label>
-            <input type="number" step="0.01" id="editHeightCm" class="form-control">
+            <input type="number" step="0.01" min="0" id="editHeightCm" class="form-control">
           </div>
-          <div class="col-auto">
+          <div class="col-md-3">
             <label class="form-label">Weight (kg)</label>
-            <input type="number" step="0.01" id="editWeightKg" class="form-control">
+            <input type="number" step="0.01" min="0" id="editWeightKg" class="form-control">
           </div>
-          <div class="col-auto">
+          <div class="col-md-6">
             <label class="form-label">Fitness Goal</label>
             <select id="editFitnessGoal" class="form-select">
               <option value="">-</option>
@@ -152,7 +152,7 @@
               <option value="REHAB">Rehabilitation</option>
             </select>
           </div>
-          <div class="col-auto">
+          <div class="col-md-6">
             <label class="form-label">Fitness Level</label>
             <select id="editFitnessLevel" class="form-select">
               <option value="BEGINNER">Beginner</option>
@@ -160,11 +160,28 @@
               <option value="ADVANCED">Advanced</option>
             </select>
           </div>
-          <div class="col-12">
+          <div class="col-12"><hr class="my-1"><small class="text-muted">Emergency Contact & Medical Info</small></div>
+          <div class="col-md-4">
+            <label class="form-label">Address</label>
+            <input type="text" id="editAddress" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Emergency Contact Name</label>
+            <input type="text" id="editEmergencyName" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Emergency Contact Phone</label>
+            <input type="text" id="editEmergencyPhone" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Medical Conditions</label>
+            <textarea id="editMedical" class="form-control" rows="2" placeholder="e.g. asthma, knee injury, none"></textarea>
+          </div>
+          <div class="col-md-6">
             <label class="form-label">Notes</label>
             <textarea id="editNotes" class="form-control" rows="2"></textarea>
           </div>
-          <div class="col-auto">
+          <div class="col-12">
             <button type="submit" class="btn btn-primary">Save Changes</button>
             <button type="button" class="btn btn-secondary" onclick="closeEdit()">Cancel</button>
           </div>
@@ -208,25 +225,42 @@
       </div>
     </div>
 
-    <div class="d-flex justify-content-end mb-2">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small text-muted">Rows per page</label>
+        <select id="pageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderPage(1)">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
       <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('memberTable', 'members.csv')">
         <i class="bi bi-download"></i> Export CSV
       </button>
     </div>
+
     <table class="table table-bordered" id="memberTable">
       <thead>
         <tr>
-          <th>ID</th><th>Name</th><th>Email</th><th>Phone</th>
-          <th>Gender</th><th>Fitness Goal</th><th>Level</th><th>BMI</th>
-          <th>Status</th><th data-no-export>Actions</th>
+          <th>ID</th><th>Name</th><th>Phone</th>
+          <th>Membership Plan</th><th>Expires</th>
+          <th>Fitness Goal</th><th>Status</th><th data-no-export>Actions</th>
         </tr>
       </thead>
       <tbody id="memberTableBody"></tbody>
     </table>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <small class="text-muted" id="pageInfo">Showing 0 of 0</small>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary" id="prevPageBtn" onclick="renderPage(currentPage - 1)">Previous</button>
+        <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" onclick="renderPage(currentPage + 1)">Next</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- Modals -->
+<!-- Add Member Modal -->
 <div class="modal fade" id="addMemberModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -235,26 +269,26 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <form id="addForm" class="row g-3">
+        <form id="addForm" class="row g-3" autocomplete="off">
           <div class="col-md-4">
             <label class="form-label">First Name</label>
-            <input type="text" id="firstName" class="form-control" required>
+            <input type="text" id="firstName" class="form-control" required maxlength="50" pattern="[A-Za-z\s]+" title="Letters only" autocomplete="off">
           </div>
           <div class="col-md-4">
             <label class="form-label">Last Name</label>
-            <input type="text" id="lastName" class="form-control" required>
+            <input type="text" id="lastName" class="form-control" required maxlength="50" pattern="[A-Za-z\s]+" title="Letters only" autocomplete="off">
           </div>
           <div class="col-md-4">
             <label class="form-label">Email</label>
-            <input type="email" id="email" class="form-control" required>
+            <input type="email" id="email" class="form-control" required autocomplete="off">
           </div>
           <div class="col-md-4">
             <label class="form-label">Phone</label>
-            <input type="text" id="phone" class="form-control">
+            <input type="text" id="phone" class="form-control" pattern="[0-9]{7,15}" title="Digits only, 7-15 characters" autocomplete="off">
           </div>
           <div class="col-md-4">
             <label class="form-label">Password</label>
-            <input type="password" id="password" class="form-control" required>
+            <input type="password" id="password" class="form-control" required minlength="8" autocomplete="new-password">
           </div>
           <div class="col-md-4">
             <label class="form-label">Gender</label>
@@ -268,15 +302,15 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Date of Birth</label>
-            <input type="date" id="dob" class="form-control">
+            <input type="date" id="dob" class="form-control" max="">
           </div>
           <div class="col-md-4">
             <label class="form-label">Height (cm)</label>
-            <input type="number" step="0.01" id="heightCm" class="form-control">
+            <input type="number" step="0.01" min="0" id="heightCm" class="form-control">
           </div>
           <div class="col-md-4">
             <label class="form-label">Weight (kg)</label>
-            <input type="number" step="0.01" id="weightKg" class="form-control">
+            <input type="number" step="0.01" min="0" id="weightKg" class="form-control">
           </div>
           <div class="col-md-6">
             <label class="form-label">Fitness Goal</label>
@@ -298,6 +332,23 @@
               <option value="ADVANCED">Advanced</option>
             </select>
           </div>
+          <div class="col-12"><hr class="my-1"><small class="text-muted">Emergency Contact & Medical Info</small></div>
+          <div class="col-md-4">
+            <label class="form-label">Address</label>
+            <input type="text" id="address" class="form-control" autocomplete="off">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Emergency Contact Name</label>
+            <input type="text" id="emergencyName" class="form-control" autocomplete="off">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Emergency Contact Phone</label>
+            <input type="text" id="emergencyPhone" class="form-control" autocomplete="off">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Medical Conditions</label>
+            <textarea id="medical" class="form-control" rows="2" placeholder="e.g. asthma, knee injury, none"></textarea>
+          </div>
         </form>
       </div>
       <div class="modal-footer">
@@ -307,6 +358,25 @@
     </div>
   </div>
 </div>
+
+<!-- View Member Modal (read-only) -->
+<div class="modal fade" id="viewMemberModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="viewTitle">Member Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="viewBody">
+        <div class="text-muted">Loading…</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <script src="js/api.js"></script>
@@ -342,13 +412,35 @@
     window.location.href = 'index.html';
   }
 
+  document.getElementById('dob').max = new Date().toISOString().split('T')[0];
+
   function statusBadge(isActive) {
     return isActive
       ? '<span class="badge bg-success">Active</span>'
       : '<span class="badge bg-danger">Inactive</span>';
   }
 
-  let editingProfileId = null;
+  function membershipBadge(status) {
+    const map = { ACTIVE: 'success', EXPIRED: 'secondary', FROZEN: 'info', CANCELLED: 'dark', PENDING: 'warning' };
+    return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+  }
+
+  async function fetchAllPaginated(path) {
+    let all = [];
+    while (path) {
+      const res = await apiRequest(path);
+      if (!res || !res.ok) return all;
+      const data = await res.json();
+      const results = data.results || data;
+      all = all.concat(results);
+      path = data.next ? data.next.replace(API_BASE, '') : null;
+    }
+    return all;
+  }
+
+  let allMembers = [];
+  let membershipByUser = {};
+  let currentPage = 1;
 
   async function loadMembers() {
     const params = new URLSearchParams();
@@ -361,47 +453,153 @@
     const active = document.getElementById('filterActive').value;
     if (active) params.set('is_active', active);
 
-    let path = '/members/?' + params.toString();
-    let all = [];
-    while (path) {
-      const res = await apiRequest(path);
-      if (!res) return;
-      if (!res.ok) { alert('Failed to load members.'); return; }
-      const data = await res.json();
-      all = all.concat(data.results);
-      path = data.next ? data.next.replace(API_BASE, '') : null;
+    const [members, memberships] = await Promise.all([
+      fetchAllPaginated('/members/?' + params.toString()),
+      fetchAllPaginated('/memberships/'),
+    ]);
+
+    membershipByUser = {};
+memberships
+  .filter(m => m.status !== 'CANCELLED') // cancelled = soft-deleted, same convention as memberships.html
+  .forEach(m => {
+    const existing = membershipByUser[m.member];
+    if (!existing) {
+      membershipByUser[m.member] = m;
+    } else if (m.status === 'ACTIVE' && existing.status !== 'ACTIVE') {
+      membershipByUser[m.member] = m;
+    } else if (m.status === existing.status && new Date(m.end_date) > new Date(existing.end_date)) {
+      membershipByUser[m.member] = m;
     }
+  });
+
+    allMembers = members;
+
+    let activeCount = 0, bmiSum = 0, bmiCount = 0, expiringCount = 0;
+    const weekFromNow = new Date();
+    weekFromNow.setDate(weekFromNow.getDate() + 7);
+
+    allMembers.forEach(row => {
+  if (row.is_active) activeCount++;
+  if (row.bmi) { bmiSum += row.bmi; bmiCount++; }
+  const ms = membershipByUser[row.user_id];
+  if (ms && ms.status === 'ACTIVE' && new Date(ms.end_date) <= weekFromNow) expiringCount++;
+});
+
+    document.getElementById('statTotal').textContent = allMembers.length;
+    document.getElementById('statActive').textContent = activeCount;
+    document.getElementById('statExpiring').textContent = expiringCount;
+    document.getElementById('statBmi').textContent = bmiCount ? (bmiSum / bmiCount).toFixed(1) : '-';
+
+    renderPage(1);
+  }
+
+  function renderPage(page) {
+    const pageSize = parseInt(document.getElementById('pageSize').value, 10);
+    const totalPages = Math.max(1, Math.ceil(allMembers.length / pageSize));
+    currentPage = Math.min(Math.max(1, page), totalPages);
+
+    const start = (currentPage - 1) * pageSize;
+    const pageRows = allMembers.slice(start, start + pageSize);
 
     const tbody = document.getElementById('memberTableBody');
     tbody.innerHTML = '';
-    let activeCount = 0, bmiSum = 0, bmiCount = 0;
 
-    all.forEach(row => {
-      if (row.is_active) activeCount++;
-      if (row.bmi) { bmiSum += row.bmi; bmiCount++; }
-      tbody.innerHTML += `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.full_name}</td>
-          <td>${row.email}</td>
-          <td>${row.phone || '-'}</td>
-          <td>${row.gender || '-'}</td>
-          <td>${row.fitness_goal_display || '-'}</td>
-          <td>${row.fitness_level_display || '-'}</td>
-          <td>${row.bmi ?? '-'}</td>
-          <td>${statusBadge(row.is_active)}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-primary" onclick="openEdit(${row.id})">Edit</button>
-            ${row.is_active ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivateMember(${row.id})">Deactivate</button>` : ''}
-          </td>
-        </tr>`;
-    });
+    if (allMembers.length === 0) {
+      tbody.innerHTML = `
+        <tr><td colspan="8" class="text-center text-muted py-4">
+          <i class="bi bi-people display-6 d-block mb-2"></i>
+          No members found. Click "Add Member" to create your first member.
+        </td></tr>`;
+    } else {
+      pageRows.forEach(row => {
+  const ms = membershipByUser[row.user_id];
+  const planCell = ms ? `${ms.plan_name} ${membershipBadge(ms.status)}` : '<span class="text-muted">No plan</span>';
+  const expiresCell = ms ? ms.end_date : '-';
+  tbody.innerHTML += `
+    <tr>
+      <td>${row.id}</td>
+      <td>${row.full_name}</td>
+      <td>${row.phone || '-'}</td>
+      <td>${planCell}</td>
+            <td>${expiresCell}</td>
+            <td>${row.fitness_goal_display || '-'}</td>
+            <td>${statusBadge(row.is_active)}</td>
+            <td>
+  <button class="btn btn-sm btn-outline-secondary" onclick="viewMember(${row.id})">View</button>
+  <button class="btn btn-sm btn-outline-primary" onclick="openEdit(${row.id})">Edit</button>
+  <a class="btn btn-sm btn-outline-dark" title="View Attendance" href="attendance.html?search=${encodeURIComponent(row.full_name)}"><i class="bi bi-calendar-check"></i></a>
+  <a class="btn btn-sm btn-outline-dark" title="View Payments" href="payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}"><i class="bi bi-cash-coin"></i></a>
+  ${row.is_active ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivateMember(${row.id})">Deactivate</button>` : ''}
+</td>
+          </tr>`;
+      });
+    }
 
-    document.getElementById('statTotal').textContent = all.length;
-    document.getElementById('statActive').textContent = activeCount;
-    document.getElementById('statInactive').textContent = all.length - activeCount;
-    document.getElementById('statBmi').textContent = bmiCount ? (bmiSum / bmiCount).toFixed(1) : '-';
+    document.getElementById('pageInfo').textContent = allMembers.length
+      ? `Showing ${start + 1}-${Math.min(start + pageSize, allMembers.length)} of ${allMembers.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('prevPageBtn').disabled = currentPage === 1;
+    document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
   }
+
+  async function viewMember(profileId) {
+    const modalEl = document.getElementById('viewMemberModal');
+    const modal = new bootstrap.Modal(modalEl);
+    document.getElementById('viewBody').innerHTML = '<div class="text-muted">Loading…</div>';
+    modal.show();
+
+    const res = await apiRequest(`/members/${profileId}/`);
+    if (!res || !res.ok) {
+      document.getElementById('viewBody').innerHTML = '<div class="text-danger">Could not load member profile.</div>';
+      return;
+    }
+    const p = await res.json();
+    const ms = membershipByUser[p.user.id];
+
+    document.getElementById('viewTitle').textContent = `Member Profile — ${p.user.full_name}`;
+    document.getElementById('viewBody').innerHTML = `
+      <div class="row g-3">
+        <div class="col-md-6">
+          <h6 class="text-muted">Personal Info</h6>
+          <p class="mb-1"><strong>Email:</strong> ${p.user.email}</p>
+          <p class="mb-1"><strong>Phone:</strong> ${p.user.phone || '-'}</p>
+          <p class="mb-1"><strong>Gender:</strong> ${p.gender_display || '-'}</p>
+          <p class="mb-1"><strong>Date of Birth:</strong> ${p.date_of_birth || '-'}</p>
+          <p class="mb-1"><strong>Address:</strong> ${p.address || '-'}</p>
+          <p class="mb-1"><strong>Status:</strong> ${statusBadge(p.user.is_active)}</p>
+        </div>
+        <div class="col-md-6">
+          <h6 class="text-muted">Emergency Contact</h6>
+          <p class="mb-1"><strong>Name:</strong> ${p.emergency_contact_name || '-'}</p>
+          <p class="mb-1"><strong>Phone:</strong> ${p.emergency_contact_phone || '-'}</p>
+          <h6 class="text-muted mt-3">Medical Conditions</h6>
+          <p class="mb-1">${p.medical_conditions || 'None recorded'}</p>
+        </div>
+        <div class="col-md-6">
+          <h6 class="text-muted">Fitness</h6>
+          <p class="mb-1"><strong>Goal:</strong> ${p.fitness_goal_display || '-'}</p>
+          <p class="mb-1"><strong>Level:</strong> ${p.fitness_level_display || '-'}</p>
+          <p class="mb-1"><strong>Height:</strong> ${p.height_cm ? p.height_cm + ' cm' : '-'}</p>
+          <p class="mb-1"><strong>Weight:</strong> ${p.weight_kg ? p.weight_kg + ' kg' : '-'}</p>
+          <p class="mb-1"><strong>BMI:</strong> ${p.bmi ?? '-'}</p>
+        </div>
+        <div class="col-md-6">
+          <h6 class="text-muted">Membership</h6>
+          ${ms
+            ? `<p class="mb-1"><strong>Plan:</strong> ${ms.plan_name}</p>
+               <p class="mb-1"><strong>Status:</strong> ${membershipBadge(ms.status)}</p>
+               <p class="mb-1"><strong>Expires:</strong> ${ms.end_date}</p>`
+            : '<p class="text-muted">No membership plan assigned.</p>'}
+        </div>
+        <div class="col-12">
+          <h6 class="text-muted">Notes</h6>
+          <p class="mb-0">${p.notes || '-'}</p>
+        </div>
+      </div>
+    `;
+  }
+
+  let editingProfileId = null;
 
   async function openEdit(profileId) {
     const res = await apiRequest(`/members/${profileId}/`);
@@ -416,6 +614,10 @@
     document.getElementById('editWeightKg').value = profile.weight_kg || '';
     document.getElementById('editFitnessGoal').value = profile.fitness_goal || '';
     document.getElementById('editFitnessLevel').value = profile.fitness_level || 'BEGINNER';
+    document.getElementById('editAddress').value = profile.address || '';
+    document.getElementById('editEmergencyName').value = profile.emergency_contact_name || '';
+    document.getElementById('editEmergencyPhone').value = profile.emergency_contact_phone || '';
+    document.getElementById('editMedical').value = profile.medical_conditions || '';
     document.getElementById('editNotes').value = profile.notes || '';
     document.getElementById('editPanel').classList.remove('d-none');
     document.getElementById('editPanel').scrollIntoView({ behavior: 'smooth' });
@@ -436,6 +638,10 @@
       weight_kg: document.getElementById('editWeightKg').value || null,
       fitness_goal: document.getElementById('editFitnessGoal').value,
       fitness_level: document.getElementById('editFitnessLevel').value,
+      address: document.getElementById('editAddress').value,
+      emergency_contact_name: document.getElementById('editEmergencyName').value,
+      emergency_contact_phone: document.getElementById('editEmergencyPhone').value,
+      medical_conditions: document.getElementById('editMedical').value,
       notes: document.getElementById('editNotes').value,
     };
     const res = await apiRequest(`/members/${editingProfileId}/`, {
@@ -447,19 +653,19 @@
       loadMembers();
     } else {
       const err = await res.json();
-      alert('Update failed: ' + JSON.stringify(err));
+      alert('Update failed: ' + formatApiError(err));
     }
   });
 
   async function deactivateMember(profileId) {
-    if (!confirm('Deactivate this member?')) return;
+    if (!confirm('Deactivate this member? Their account will be marked inactive but not deleted.')) return;
     const res = await apiRequest(`/members/${profileId}/`, { method: 'DELETE' });
     if (!res) return;
     if (res.ok) {
       loadMembers();
     } else {
       const err = await res.json();
-      alert('Deactivate failed: ' + JSON.stringify(err));
+      alert('Deactivate failed: ' + formatApiError(err));
     }
   }
 
@@ -485,6 +691,10 @@
       weight_kg: document.getElementById('weightKg').value || undefined,
       fitness_goal: document.getElementById('fitnessGoal').value,
       fitness_level: document.getElementById('fitnessLevel').value,
+      address: document.getElementById('address').value.trim(),
+      emergency_contact_name: document.getElementById('emergencyName').value.trim(),
+      emergency_contact_phone: document.getElementById('emergencyPhone').value.trim(),
+      medical_conditions: document.getElementById('medical').value.trim(),
     };
 
     const res = await apiRequest('/members/', { method: 'POST', body: JSON.stringify(payload) });
@@ -496,7 +706,7 @@
       loadMembers();
     } else {
       const err = await res.json();
-      errorBox.textContent = JSON.stringify(err);
+      errorBox.textContent = formatApiError(err);
       errorBox.classList.remove('d-none');
     }
   }
