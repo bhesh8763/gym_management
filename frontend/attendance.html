@@ -248,21 +248,7 @@
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
-  function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    if (window.innerWidth <= 768) {
-      sidebar.classList.toggle('mobile-open');
-    } else {
-      sidebar.classList.toggle('collapsed');
-    }
-  }
 
-  function toggleDropdown(id) {
-    document.querySelectorAll('.dropdown-panel').forEach(p => {
-      if (p.id !== id) p.classList.remove('show');
-    });
-    document.getElementById(id).classList.toggle('show');
-  }
 
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
@@ -270,10 +256,6 @@
   document.getElementById('profileRole').textContent = userRole;
   document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
 
-  function logout() {
-    clearTokens();
-    window.location.href = 'index.html';
-  }
 
   function todayStr() {
     return new Date().toISOString().split('T')[0];
@@ -283,21 +265,6 @@
   let membersCache = [];
 
   // ── Members ──────────────────────────────────────────────────────────────
-  async function loadMembersIntoSelect() {
-    const select = document.getElementById('memberSelect');
-    const res = await apiRequest('/members/?is_active=true');
-    if (!res || !res.ok) {
-      select.innerHTML = '<option value="">Could not load members</option>';
-      return;
-    }
-    const data = await res.json();
-    membersCache = data.results || data;
-    select.innerHTML = membersCache.length
-      ? '<option value="">Select a member…</option>' +
-        membersCache.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
-      : '<option value="">No active members found</option>';
-    document.getElementById('totalMembers').textContent = membersCache.length;
-  }
 
   // ── Attendance ───────────────────────────────────────────────────────────
   function statusBadge(status) {
@@ -532,7 +499,7 @@
 
 
   (async () => {
-    await loadMembersIntoSelect();
+    await loadMembersIntoSelect('memberSelect');
     await loadAttendance();
     await loadInactiveMembers();
   })();

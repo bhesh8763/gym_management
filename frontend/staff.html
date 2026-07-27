@@ -261,16 +261,7 @@
 
   restrictPastDates('joinedDate', 'startDate', 'endDate');
 
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-  }
 
-  function toggleDropdown(id) {
-    document.querySelectorAll('.dropdown-panel').forEach(p => {
-      if (p.id !== id) p.classList.remove('show');
-    });
-    document.getElementById(id).classList.toggle('show');
-  }
 
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
@@ -280,10 +271,6 @@
 
   const myRole = localStorage.getItem('user_role');
 
-  function logout() {
-    clearTokens();
-    window.location.href = 'index.html';
-  }
 
   function statusBadge(status) {
     const map = { APPROVED: 'success', PENDING: 'warning', REJECTED: 'danger' };

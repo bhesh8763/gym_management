@@ -67,8 +67,17 @@ class MemberListCreateView(generics.ListCreateAPIView):
         return MemberListSerializer
 
     def get_queryset(self):
+        from django.db.models import Prefetch
+        from apps.memberships.models import Membership
+
         qs = MemberProfile.objects.select_related('user').filter(
             user__role=User.Role.MEMBER
+        ).prefetch_related(
+            Prefetch(
+                'user__memberships',
+                queryset=Membership.objects.exclude(status='CANCELLED').select_related('plan'),
+                to_attr='_current_memberships',
+            )
         )
 
         # ── Search ──────────────────────────────────────────────────────────

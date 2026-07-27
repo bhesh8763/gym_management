@@ -389,16 +389,7 @@
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-  }
 
-  function toggleDropdown(id) {
-    document.querySelectorAll('.dropdown-panel').forEach(p => {
-      if (p.id !== id) p.classList.remove('show');
-    });
-    document.getElementById(id).classList.toggle('show');
-  }
 
   // NOTE: the "close dropdown on outside click" listener used to live here
   // as a per-page document.addEventListener. It's now a single global
@@ -411,10 +402,6 @@
   document.getElementById('profileRole').textContent = userRole;
   document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
 
-  function logout() {
-    clearTokens();
-    window.location.href = 'index.html';
-  }
 
   document.getElementById('dob').max = new Date().toISOString().split('T')[0];
 
@@ -443,7 +430,6 @@
   }
 
   let allMembers = [];
-  let membershipByUser = {};
   let currentPage = 1;
 
   async function loadMembers() {
@@ -457,26 +443,7 @@
     const active = document.getElementById('filterActive').value;
     if (active) params.set('is_active', active);
 
-    const [members, memberships] = await Promise.all([
-      fetchAllPaginated('/members/?' + params.toString()),
-      fetchAllPaginated('/memberships/'),
-    ]);
-
-    membershipByUser = {};
-memberships
-  .filter(m => m.status !== 'CANCELLED') // cancelled = soft-deleted, same convention as memberships.html
-  .forEach(m => {
-    const existing = membershipByUser[m.member];
-    if (!existing) {
-      membershipByUser[m.member] = m;
-    } else if (m.status === 'ACTIVE' && existing.status !== 'ACTIVE') {
-      membershipByUser[m.member] = m;
-    } else if (m.status === existing.status && new Date(m.end_date) > new Date(existing.end_date)) {
-      membershipByUser[m.member] = m;
-    }
-  });
-
-    allMembers = members;
+    allMembers = await fetchAllPaginated('/members/?' + params.toString());
 
     let activeCount = 0, bmiSum = 0, bmiCount = 0, expiringCount= 0;
     const weekFromNow = new Date();
@@ -485,7 +452,7 @@ memberships
     allMembers.forEach(row => {
   if (row.is_active) activeCount++;
   if (row.bmi) { bmiSum += row.bmi; bmiCount++; }
-  const ms = membershipByUser[row.user_id];
+  const ms = row.current_membership;
   if (ms && ms.status === 'ACTIVE' && new Date(ms.end_date) <= weekFromNow) expiringCount++;
 });
 
@@ -516,7 +483,7 @@ memberships
         </td></tr>`;
     } else {
       pageRows.forEach(row => {
-  const ms = membershipByUser[row.user_id];
+  const ms = row.current_membership;
   const planCell = ms ? `${ms.plan_name} ${membershipBadge(ms.status)}` : '<span class="text-muted">No plan</span>';
   const expiresCell = ms ? ms.end_date : '-';
   tbody.innerHTML += `
@@ -558,7 +525,8 @@ memberships
       return;
     }
     const p = await res.json();
-    const ms = membershipByUser[p.user.id];
+    const cachedRow = allMembers.find(m => m.id === profileId);
+    const ms = cachedRow ? cachedRow.current_membership : null;
 
     document.getElementById('viewTitle').textContent = `Member Profile — ${p.user.full_name}`;
     document.getElementById('viewBody').innerHTML = `

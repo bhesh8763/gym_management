@@ -202,16 +202,7 @@
 
     if (!getAccessToken()) window.location.href = 'index.html';
 
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('collapsed');
-    }
 
-    function toggleDropdown(id) {
-        document.querySelectorAll('.dropdown-panel').forEach(p => {
-            if (p.id !== id) p.classList.remove('show');
-        });
-        document.getElementById(id).classList.toggle('show');
-    }
 
 const userName = localStorage.getItem('user_name') || 'User';
     const userRole = localStorage.getItem('user_role') || '';
@@ -219,7 +210,6 @@ const userName = localStorage.getItem('user_name') || 'User';
     document.getElementById('profileRole').textContent = userRole;
     document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
 
-    function logout() { clearTokens(); window.location.href = 'index.html'; }
 
     async function deletePlan(id) {
         if (!confirm("Delete this workout plan?")) return;
@@ -330,20 +320,6 @@ const userName = localStorage.getItem('user_name') || 'User';
         renderPlans(plans);
     }
 
-    async function loadMembersIntoSelect(selectId) {
-        const select = document.getElementById(selectId);
-        const res = await apiRequest('/members/?is_active=true');
-        if (!res || !res.ok) {
-            select.innerHTML = '<option value="">Could not load members</option>';
-            return;
-        }
-        const data = await res.json();
-        const members = data.results || data;
-        select.innerHTML = members.length
-            ? '<option value="">Select a member…</option>' +
-              members.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
-            : '<option value="">No active members found</option>';
-    }
 
     async function createPlan() {
         const memberId = document.getElementById('planMember').value;

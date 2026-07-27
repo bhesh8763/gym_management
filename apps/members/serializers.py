@@ -168,6 +168,7 @@ class MemberListSerializer(serializers.ModelSerializer):
     bmi = serializers.SerializerMethodField()
     fitness_goal_display = serializers.CharField(source='get_fitness_goal_display', read_only=True)
     fitness_level_display = serializers.CharField(source='get_fitness_level_display', read_only=True)
+    current_membership = serializers.SerializerMethodField()
 
     class Meta:
         model = MemberProfile
@@ -176,8 +177,36 @@ class MemberListSerializer(serializers.ModelSerializer):
             'profile_picture', 'gender',
             'fitness_goal', 'fitness_goal_display',
             'fitness_level', 'fitness_level_display',
-            'bmi', 'created_at',
+            'bmi', 'current_membership', 'created_at',
         ]
 
     def get_bmi(self, obj):
         return obj.bmi
+
+    def get_current_membership(self, obj):
+        """
+        Picks the membership that should represent this member's "current" plan
+        for list/preview purposes: prefer ACTIVE, otherwise the one with the
+        latest end_date. Excludes CANCELLED (soft-deleted) memberships.
+
+        Uses the `_current_memberships` prefetch attached in the view's
+        get_queryset() — falls back to a live query if that prefetch wasn't
+        applied (e.g. if this serializer is reused somewhere else later).
+        """
+        memberships = getattr(obj.user, '_current_memberships', None)
+        if memberships is None:
+            memberships = list(obj.user.memberships.exclude(status='CANCELLED').select_related('plan'))
+
+        if not memberships:
+            return None
+
+        def sort_key(m):
+            is_active = m.status == 'ACTIVE'
+            return (is_active, m.end_date)
+
+        best = max(memberships, key=sort_key)
+        return {
+            'plan_name': best.plan.name,
+            'status': best.status,
+            'end_date': best.end_date,
+        }

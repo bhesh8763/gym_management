@@ -427,3 +427,71 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
   }
 });
+// FIX #5: toggleSidebar, toggleDropdown, logout, and loadMembersIntoSelect were
+// each copy-pasted into every page's own inline <script> (loadMembersIntoSelect
+// alone was duplicated byte-for-byte across 5 pages). Under the SPA router above,
+// every inline script gets re-run on each navigation via runInlineScript, so
+// these were being redefined over and over for no benefit. Declared once here
+// instead — api.js is loaded exactly once per session (ensureScriptLoaded
+// explicitly skips it on SPA nav), so these stay defined for the whole session
+// without needing to live in, or be removed from, each page's own script block.
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  if (window.innerWidth <= 768) {
+    sidebar.classList.toggle('mobile-open');
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+}
+
+function toggleDropdown(id) {
+  document.querySelectorAll('.dropdown-panel').forEach(p => {
+    if (p.id !== id) p.classList.remove('show');
+  });
+  const panel = document.getElementById(id);
+  if (panel) panel.classList.toggle('show');
+}
+
+function logout() {
+  clearTokens();
+  window.location.href = 'index.html';
+}
+
+// Populates the topbar profile chip (name, role, avatar initial) from
+// localStorage. Called once on initial load; the SPA router doesn't touch
+// the topbar on navigation (only #page-content swaps), so this doesn't need
+// to re-run per page.
+function initProfileHeader() {
+  const userName = localStorage.getItem('user_name') || 'User';
+  const userRole = localStorage.getItem('user_role') || '';
+  const nameEl = document.getElementById('profileName');
+  const roleEl = document.getElementById('profileRole');
+  const avatarEl = document.getElementById('profileAvatar');
+  if (nameEl) nameEl.textContent = userName;
+  if (roleEl) roleEl.textContent = userRole;
+  if (avatarEl) avatarEl.textContent = userName.charAt(0).toUpperCase();
+}
+initProfileHeader();
+
+// Populates a <select id="..."> with active members, using each member's
+// user_id (not their MemberProfile id — see the members/workouts/diet/
+// payments/lockers fix history) as the option value and full_name as the
+// label. Was previously copy-pasted identically into attendance.html,
+// diet.html, lockers.html, payments.html, and workouts.html.
+async function loadMembersIntoSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const res = await apiRequest('/members/?is_active=true');
+  if (!res || !res.ok) {
+    select.innerHTML = '<option value="">Could not load members</option>';
+    return;
+  }
+  const data = await res.json();
+  const members = data.results || data;
+  select.innerHTML = members.length
+    ? '<option value="">Select a member…</option>' +
+      members.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
+    : '<option value="">No active members found</option>';
+}

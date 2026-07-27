@@ -313,16 +313,7 @@
 
   restrictPastDates('purchaseDate', 'scheduledDate');
 
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-  }
 
-  function toggleDropdown(id) {
-    document.querySelectorAll('.dropdown-panel').forEach(p => {
-      if (p.id !== id) p.classList.remove('show');
-    });
-    document.getElementById(id).classList.toggle('show');
-  }
 
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
@@ -330,10 +321,6 @@
   document.getElementById('profileRole').textContent = userRole;
   document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
 
-  function logout() {
-    clearTokens();
-    window.location.href = "index.html";
-  }
 
   let equipmentCache = [];
 
