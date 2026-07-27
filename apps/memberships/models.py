@@ -1,7 +1,9 @@
 """
 Membership plans and member memberships.
 """
+from decimal import Decimal
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -27,7 +29,7 @@ class MembershipPlan(models.Model):
     duration_days = models.PositiveIntegerField(
         help_text='Exact duration in days (e.g., 30, 90, 365)'
     )
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
     features = models.JSONField(
         default=list, blank=True,
         help_text='List of feature strings included in this plan'
@@ -77,6 +79,7 @@ class Membership(models.Model):
     end_date = models.DateField()
     price_paid = models.DecimalField(
         max_digits=10, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
         help_text='Actual amount paid (may differ from plan price due to offers)'
     )
 

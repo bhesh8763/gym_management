@@ -227,8 +227,8 @@
 
     <div class="d-flex justify-content-between align-items-center mb-2">
       <div class="d-flex align-items-center gap-2">
-        <label class="form-label mb-0 small text-muted">Rows per page</label>
-        <select id="pageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderPage(1)">
+        <label class="form-label mb-0 small text-muted">Rows perpage</label>
+        <select id="pageSize" class="form-select form-select-sm"style="width:auto;" onchange="renderPage(1)">
           <option value="10">10</option>
           <option value="25">25</option>
           <option value="50">50</option>
@@ -288,7 +288,12 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Password</label>
-            <input type="password" id="password" class="form-control" required minlength="8" autocomplete="new-password">
+            <div class="input-group">
+              <input type="password" id="password" class="form-control" required minlength="8" autocomplete="new-password">
+              <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" tabindex="-1">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
           </div>
           <div class="col-md-4">
             <label class="form-label">Gender</label>
@@ -335,7 +340,7 @@
           <div class="col-12"><hr class="my-1"><small class="text-muted">Emergency Contact & Medical Info</small></div>
           <div class="col-md-4">
             <label class="form-label">Address</label>
-            <input type="text" id="address" class="form-control" autocomplete="off">
+            <input type="text" id="address" class="form-control"autocomplete="off">
           </div>
           <div class="col-md-4">
             <label class="form-label">Emergency Contact Name</label>
@@ -347,7 +352,7 @@
           </div>
           <div class="col-12">
             <label class="form-label">Medical Conditions</label>
-            <textarea id="medical" class="form-control" rows="2" placeholder="e.g. asthma, knee injury, none"></textarea>
+            <textarea id="medical" class="form-control" rows="2"placeholder="e.g. asthma, knee injury, none"></textarea>
           </div>
         </form>
       </div>
@@ -395,11 +400,10 @@
     document.getElementById(id).classList.toggle('show');
   }
 
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.position-relative')) {
-      document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
-    }
-  });
+  // NOTE: the "close dropdown on outside click" listener used to live here
+  // as a per-page document.addEventListener. It's now a single global
+  // listener in api.js instead, so it doesn't get re-added (and stack up)
+  // every time this page is re-entered via the SPA router.
 
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
@@ -474,7 +478,7 @@ memberships
 
     allMembers = members;
 
-    let activeCount = 0, bmiSum = 0, bmiCount = 0, expiringCount = 0;
+    let activeCount = 0, bmiSum = 0, bmiCount = 0, expiringCount= 0;
     const weekFromNow = new Date();
     weekFromNow.setDate(weekFromNow.getDate() + 7);
 
@@ -495,7 +499,7 @@ memberships
 
   function renderPage(page) {
     const pageSize = parseInt(document.getElementById('pageSize').value, 10);
-    const totalPages = Math.max(1, Math.ceil(allMembers.length / pageSize));
+    const totalPages = Math.max(1, Math.ceil(allMembers.length /pageSize));
     currentPage = Math.min(Math.max(1, page), totalPages);
 
     const start = (currentPage - 1) * pageSize;
@@ -527,8 +531,8 @@ memberships
             <td>
   <button class="btn btn-sm btn-outline-secondary" onclick="viewMember(${row.id})">View</button>
   <button class="btn btn-sm btn-outline-primary" onclick="openEdit(${row.id})">Edit</button>
-  <a class="btn btn-sm btn-outline-dark" title="View Attendance" href="attendance.html?search=${encodeURIComponent(row.full_name)}"><i class="bi bi-calendar-check"></i></a>
-  <a class="btn btn-sm btn-outline-dark" title="View Payments" href="payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}"><i class="bi bi-cash-coin"></i></a>
+  <a class="btn btn-sm btn-outline-dark spa-link" title="View Attendance"href="attendance.html?search=${encodeURIComponent(row.full_name)}"><i class="bi bi-calendar-check"></i></a>
+  <a class="btn btn-sm btn-outline-dark spa-link" title="View Payments" href="payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}"><i class="bi bi-cash-coin"></i></a>
   ${row.is_active ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivateMember(${row.id})">Deactivate</button>` : ''}
 </td>
           </tr>`;
@@ -562,7 +566,7 @@ memberships
         <div class="col-md-6">
           <h6 class="text-muted">Personal Info</h6>
           <p class="mb-1"><strong>Email:</strong> ${p.user.email}</p>
-          <p class="mb-1"><strong>Phone:</strong> ${p.user.phone || '-'}</p>
+          <p class="mb-1"><strong>Phone:</strong> ${p.user.phone|| '-'}</p>
           <p class="mb-1"><strong>Gender:</strong> ${p.gender_display || '-'}</p>
           <p class="mb-1"><strong>Date of Birth:</strong> ${p.date_of_birth || '-'}</p>
           <p class="mb-1"><strong>Address:</strong> ${p.address || '-'}</p>
@@ -579,8 +583,8 @@ memberships
           <h6 class="text-muted">Fitness</h6>
           <p class="mb-1"><strong>Goal:</strong> ${p.fitness_goal_display || '-'}</p>
           <p class="mb-1"><strong>Level:</strong> ${p.fitness_level_display || '-'}</p>
-          <p class="mb-1"><strong>Height:</strong> ${p.height_cm ? p.height_cm + ' cm' : '-'}</p>
-          <p class="mb-1"><strong>Weight:</strong> ${p.weight_kg ? p.weight_kg + ' kg' : '-'}</p>
+          <p class="mb-1"><strong>Height:</strong> ${p.height_cm? p.height_cm + ' cm' : '-'}</p>
+          <p class="mb-1"><strong>Weight:</strong> ${p.weight_kg? p.weight_kg + ' kg' : '-'}</p>
           <p class="mb-1"><strong>BMI:</strong> ${p.bmi ?? '-'}</p>
         </div>
         <div class="col-md-6">
@@ -608,7 +612,7 @@ memberships
 
     editingProfileId = profileId;
     document.getElementById('editTitle').textContent = `Edit Member: ${profile.user.full_name}`;
-    document.getElementById('editGender').value = profile.gender || '';
+    document.getElementById('editGender').value = profile.gender|| '';
     document.getElementById('editDob').value = profile.date_of_birth || '';
     document.getElementById('editHeightCm').value = profile.height_cm || '';
     document.getElementById('editWeightKg').value = profile.weight_kg || '';
@@ -628,12 +632,12 @@ memberships
     document.getElementById('editPanel').classList.add('d-none');
   }
 
-  document.getElementById('editForm').addEventListener('submit', async (e) => {
+  document.getElementById('editForm').addEventListener('submit',async (e) => {
     e.preventDefault();
     if (!editingProfileId) return;
     const payload = {
       gender: document.getElementById('editGender').value,
-      date_of_birth: document.getElementById('editDob').value || null,
+      date_of_birth: document.getElementById('editDob').value ||null,
       height_cm: document.getElementById('editHeightCm').value || null,
       weight_kg: document.getElementById('editWeightKg').value || null,
       fitness_goal: document.getElementById('editFitnessGoal').value,

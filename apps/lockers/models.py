@@ -1,7 +1,9 @@
 """
 Locker management: locker inventory and assignments to members.
 """
+from decimal import Decimal
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -27,6 +29,7 @@ class Locker(models.Model):
     )
     monthly_fee = models.DecimalField(
         max_digits=8, decimal_places=2, default=0,
+        validators=[MinValueValidator(Decimal('0'))],
         help_text='Fee per month for locker rental'
     )
     notes = models.TextField(blank=True)

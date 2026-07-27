@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Attendance — Gym Management</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
@@ -78,106 +79,182 @@
   <div class="p-4 flex-grow-1">
     <h3>Attendance</h3>
 
-    <!-- My Attendance Today -->
-    <div class="card mb-4">
-      <div class="card-body d-flex justify-content-between align-items-center">
-        <div>
-          <div class="text-muted small">Today — <span id="todayDate"></span></div>
-          <div class="d-flex gap-4 mt-1">
-            <div><span class="text-muted small">Check In</span><br><strong id="myCheckIn">--</strong></div>
-            <div><span class="text-muted small">Check Out</span><br><strong id="myCheckOut">--</strong></div>
-            <div><span class="text-muted small">Status</span><br><span id="myStatus" class="badge bg-secondary">-</span></div>
-          </div>
-        </div>
-        <button id="myActionBtn" class="btn btn-primary"></button>
-      </div>
-    </div>
-
     <!-- Summary Stats -->
     <div class="row mb-4">
       <div class="col-md-3">
         <div class="card text-center"><div class="card-body">
-          <div class="text-muted small">Working Days (this month)</div>
-          <h3 id="statTotal">-</h3>
+          <div class="text-muted small">Total Members</div>
+          <h3 id="totalMembers">-</h3>
         </div></div>
       </div>
       <div class="col-md-3">
         <div class="card text-center border-success"><div class="card-body">
-          <div class="text-muted small">Present</div>
-          <h3 id="statPresent" class="text-success">-</h3>
+          <div class="text-muted small">Present Today</div>
+          <h3 id="presentToday" class="text-success">-</h3>
         </div></div>
       </div>
       <div class="col-md-3">
         <div class="card text-center border-danger"><div class="card-body">
-          <div class="text-muted small">Absent</div>
-          <h3 id="statAbsent" class="text-danger">-</h3>
+          <div class="text-muted small">Absent Today</div>
+          <h3 id="absentToday" class="text-danger">-</h3>
         </div></div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-primary"><div class="card-body">
-          <div class="text-muted small">Attendance Rate</div>
-          <h3 id="statRate" class="text-primary">-</h3>
+        <div class="card text-center border-warning"><div class="card-body">
+          <div class="text-muted small">Inactive Members</div>
+          <h3 id="inactiveMembers" class="text-warning">-</h3>
         </div></div>
       </div>
     </div>
-    <p class="text-muted small">* Excludes Saturdays. Special holidays not yet accounted for — see team notes.</p>
 
     <hr>
 
-    <h5>Staff: Mark Attendance for Someone Else</h5>
-    <form id="addForm" class="row g-2 mb-4 align-items-end">
-      <div class="col-auto">
-        <label class="form-label">User ID</label>
-        <input type="number" id="userId" class="form-control" required>
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Type</label>
-        <select id="attType" class="form-select">
-          <option value="MEMBER">Member</option>
-          <option value="STAFF">Staff</option>
-          <option value="TRAINER">Trainer</option>
-        </select>
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Date</label>
-        <input type="date" id="attDate" class="form-control" required>
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Check-in</label>
-        <input type="time" id="checkIn" class="form-control" required>
-      </div>
-      <div class="col-auto">
-        <button type="submit" class="btn btn-outline-primary">Add Record</button>
-      </div>
-    </form>
-
-    <div id="errorBox" class="alert alert-danger d-none"></div>
-
-    <h5>All Attendance Records</h5>
-    <div class="d-flex justify-content-end mb-2">
-      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('attTable', 'attendance.csv')">
-        <i class="bi bi-download"></i> Export CSV
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">All Attendance Records</h5>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#markAttendanceModal">
+        <i class="bi bi-plus-circle"></i> Mark Attendance
       </button>
     </div>
+
+    <div class="row g-2 mb-2 align-items-center">
+      <div class="col-12 col-md">
+        <input type="text" id="searchAttendance" class="form-control" placeholder="Search member..." onkeyup="filterAttendance()">
+      </div>
+      <div class="col-12 col-md-auto text-md-end">
+        <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('attTable', 'attendance.csv')">
+          <i class="bi bi-download"></i> Export CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
     <table class="table table-bordered" id="attTable">
       <thead>
         <tr>
-          <th>ID</th><th>User</th><th>Type</th><th>Date</th>
-          <th>Check-in</th><th>Check-out</th><th>Duration</th>
+          <th>ID</th><th>Member</th><th>Date</th><th>Status</th><th>Membership</th><th>Actions</th>
         </tr>
       </thead>
       <tbody id="attTableBody"></tbody>
     </table>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card-header">Inactive Members</div>
+      <div class="card-body">
+        <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Name</th><th>Last Visit</th><th>Days Inactive</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="inactiveTable"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 </div>
 
+<!-- Attendance: Mark -->
+<div class="modal fade" id="markAttendanceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Mark Member Attendance</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="errorBox" class="alert alert-danger d-none"></div>
+        <form id="addForm" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Member</label>
+            <select id="memberSelect" class="form-select" required></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Date</label>
+            <input type="date" id="attDate" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Status</label>
+            <select id="attendanceStatus" class="form-select">
+              <option value="PRESENT">Present</option>
+              <option value="ABSENT">Absent</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notes (optional)</label>
+            <input type="text" id="attNotes" class="form-control" placeholder="e.g. late arrival">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitAttendanceForm()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Attendance: View -->
+<div class="modal fade" id="viewAttendanceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Attendance Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="attendanceDetails"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Attendance: Edit -->
+<div class="modal fade" id="editAttendanceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Attendance</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editAttendanceId">
+        <div class="mb-3">
+          <label class="form-label">Date</label>
+          <input type="date" id="editAttendanceDate" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Status</label>
+          <select id="editAttendanceStatus" class="form-select">
+            <option value="PRESENT">Present</option>
+            <option value="ABSENT">Absent</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Notes</label>
+          <input type="text" id="editAttendanceNotes" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="updateAttendance()">Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
   function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
+    const sidebar = document.getElementById('sidebar');
+    if (window.innerWidth <= 768) {
+      sidebar.classList.toggle('mobile-open');
+    } else {
+      sidebar.classList.toggle('collapsed');
+    }
   }
 
   function toggleDropdown(id) {
@@ -186,12 +263,6 @@
     });
     document.getElementById(id).classList.toggle('show');
   }
-
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.position-relative')) {
-      document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
-    }
-  });
 
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
@@ -208,204 +279,263 @@
     return new Date().toISOString().split('T')[0];
   }
 
-  function formatDuration(minutes) {
-    if (minutes === null || minutes === undefined) return '-';
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h === 0) return `${m}m`;
-    return `${h}h ${m}m`;
-  }
+  let allAttendance = [];
+  let membersCache = [];
 
-  function nowTimeStr() {
-    return new Date().toTimeString().split(' ')[0];
-  }
-
-  // Decode user id from the JWT (embedded as user_id claim)
-  function getMyUserId() {
-    const token = getAccessToken();
-    if (!token) return null;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.user_id;
-    } catch (e) {
-      return null;
+  // ── Members ──────────────────────────────────────────────────────────────
+  async function loadMembersIntoSelect() {
+    const select = document.getElementById('memberSelect');
+    const res = await apiRequest('/members/?is_active=true');
+    if (!res || !res.ok) {
+      select.innerHTML = '<option value="">Could not load members</option>';
+      return;
     }
-  }
-
-  // Excludes Saturdays (day 6) — Nepal's standard weekly gym-off day.
-  // Does NOT yet account for special/festival holidays — deferred, see team notes.
-  function countWorkingDaysElapsed(year, month, todayNum) {
-    let count = 0;
-    for (let day = 1; day <= todayNum; day++) {
-      const d = new Date(year, month, day);
-      if (d.getDay() !== 6) count++;
-    }
-    return count;
-  }
-
-  let myTodayRecord = null;
-
-  async function loadMyToday() {
-    document.getElementById('todayDate').textContent = todayStr();
-    const myId = getMyUserId();
-    if (!myId) return;
-    const res = await apiRequest(`/attendance/?user=${myId}&date=${todayStr()}`);
-    if (!res) return;
     const data = await res.json();
-    myTodayRecord = data.results[0] || null;
-
-    const btn = document.getElementById('myActionBtn');
-    const statusBadge = document.getElementById('myStatus');
-
-    if (!myTodayRecord) {
-      document.getElementById('myCheckIn').textContent = '--';
-      document.getElementById('myCheckOut').textContent = '--';
-      statusBadge.textContent = 'NOT CHECKED IN';
-      statusBadge.className = 'badge bg-secondary';
-      btn.textContent = 'Check In';
-      btn.className = 'btn btn-primary';
-      btn.disabled = false;
-      btn.onclick = doCheckIn;
-    } else {
-      document.getElementById('myCheckIn').textContent = myTodayRecord.check_in;
-      document.getElementById('myCheckOut').textContent = myTodayRecord.check_out || '--';
-      if (myTodayRecord.check_out) {
-        statusBadge.textContent = 'COMPLETED';
-        statusBadge.className = 'badge bg-success';
-        btn.textContent = 'Done for Today';
-        btn.className = 'btn btn-secondary';
-        btn.disabled = true;
-      } else {
-        statusBadge.textContent = 'PRESENT';
-        statusBadge.className = 'badge bg-warning text-dark';
-        btn.textContent = 'Check Out';
-        btn.className = 'btn btn-success';
-        btn.disabled = false;
-        btn.onclick = doCheckOut;
-      }
-    }
+    membersCache = data.results || data;
+    select.innerHTML = membersCache.length
+      ? '<option value="">Select a member…</option>' +
+        membersCache.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
+      : '<option value="">No active members found</option>';
+    document.getElementById('totalMembers').textContent = membersCache.length;
   }
 
-  async function doCheckIn() {
-    const myId = getMyUserId();
-    const role = localStorage.getItem('user_role');
-    const res = await apiRequest('/attendance/', {
-      method: 'POST',
-      body: JSON.stringify({
-        user: myId,
-        attendance_type: role === 'MEMBER' ? 'MEMBER' : (role === 'TRAINER' ? 'TRAINER' : 'STAFF'),
-        date: todayStr(),
-        check_in: nowTimeStr(),
-      }),
-    });
-    if (res && res.ok) {
-      await loadMyToday();
-      await loadAttendance();
-      await loadMyStats();
-    } else {
-      alert('Check-in failed. Open the browser console for details.');
-    }
+  // ── Attendance ───────────────────────────────────────────────────────────
+  function statusBadge(status) {
+    return status === 'PRESENT'
+      ? '<span class="badge bg-success">Present</span>'
+      : '<span class="badge bg-danger">Absent</span>';
   }
 
-  async function doCheckOut() {
-    const res = await apiRequest(`/attendance/${myTodayRecord.id}/`, {
-      method: 'PATCH',
-      body: JSON.stringify({ check_out: nowTimeStr() }),
-    });
-    if (res && res.ok) {
-      await loadMyToday();
-      await loadAttendance();
-      await loadMyStats();
-    } else {
-      alert('Check-out failed. Open the browser console for details.');
+  async function fetchAll(path) {
+    let all = [];
+    while (path) {
+      const res = await apiRequest(path);
+      if (!res || !res.ok) return null;
+      const data = await res.json();
+      all = all.concat(data.results);
+      path = data.next ? data.next.replace(API_BASE, '') : null;
     }
+    return all;
   }
 
   async function loadAttendance() {
-    const res = await apiRequest('/attendance/');
-    if (!res) return;
-    const data = await res.json();
-    const tbody = document.getElementById('attTableBody');
-    tbody.innerHTML = '';
-    data.results.forEach(row => {
-      tbody.innerHTML += `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.user_name}</td>
-          <td>${row.attendance_type}</td>
-          <td>${row.date}</td>
-          <td>${row.check_in}</td>
-          <td>${row.check_out || '-'}</td>
-          <td>${formatDuration(row.duration_minutes)}</td>
-        </tr>`;
-    });
-  }
-
-  async function loadMyStats() {
-    const myId = getMyUserId();
-    if (!myId) return;
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const todayNum = now.getDate();
-
-    let records = [];
-    let path = `/attendance/?user=${myId}`;
-    while (path) {
-      const res = await apiRequest(path);
-      if (!res) return;
-      const data = await res.json();
-      records = records.concat(data.results);
-      path = data.next ? data.next.replace(API_BASE, '') : null;
+    const data = await fetchAll('/attendance/');
+    if (data === null) {
+      alert('Failed to load attendance records.');
+      return;
     }
-
-    const presentDates = new Set(
-      records
-        .filter(r => {
-          const d = new Date(r.date);
-          return d.getFullYear() === year && d.getMonth() === month;
-        })
-        .map(r => r.date)
-    );
-
-    const present = presentDates.size;
-    const totalElapsed = countWorkingDaysElapsed(year, month, todayNum);
-    const absent = Math.max(totalElapsed - present, 0);
-    const rate = totalElapsed > 0 ? Math.round((present / totalElapsed) * 100) : 0;
-
-    document.getElementById('statTotal').textContent = totalElapsed;
-    document.getElementById('statPresent').textContent = present;
-    document.getElementById('statAbsent').textContent = absent;
-    document.getElementById('statRate').textContent = rate + '%';
+    allAttendance = data;
+    renderAttendance(allAttendance);
+    updateTodayStats();
   }
 
-  document.getElementById('addForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errorBox = document.getElementById('errorBox');
-    errorBox.classList.add('d-none');
+  function renderAttendance(records) {
+    const tbody = document.getElementById('attTableBody');
+    if (records.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No attendance records found.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = records.map(record => `
+      <tr>
+        <td>${record.id}</td>
+        <td>${record.user_name}</td>
+        <td>${record.date}</td>
+        <td>${statusBadge(record.status)}</td>
+        <td>${record.membership || '-'}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-info" title="View" onclick="viewAttendance(${record.id})">
+            <i class="bi bi-eye"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-warning" title="Edit" onclick="openEditAttendanceModal(${record.id})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteAttendance(${record.id})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>`).join('');
+  }
+
+  function viewAttendance(id) {
+    const record = allAttendance.find(r => r.id === id);
+    if (!record) return;
+    document.getElementById('attendanceDetails').innerHTML = `
+      <p><strong>Member:</strong> ${record.user_name}</p>
+      <p><strong>Date:</strong> ${record.date}</p>
+      <p><strong>Status:</strong> ${statusBadge(record.status)}</p>
+      <p><strong>Membership:</strong> ${record.membership || '—'}</p>
+      <p><strong>Notes:</strong> ${record.notes || '—'}</p>
+    `;
+    new bootstrap.Modal(document.getElementById('viewAttendanceModal')).show();
+  }
+
+  function openEditAttendanceModal(id) {
+    const record = allAttendance.find(r => r.id === id);
+    if (!record) return;
+    document.getElementById('editAttendanceId').value = record.id;
+    document.getElementById('editAttendanceDate').value = record.date;
+    document.getElementById('editAttendanceStatus').value = record.status;
+    document.getElementById('editAttendanceNotes').value = record.notes || '';
+    new bootstrap.Modal(document.getElementById('editAttendanceModal')).show();
+  }
+
+  async function updateAttendance() {
+    const id = document.getElementById('editAttendanceId').value;
     const payload = {
-      user: parseInt(document.getElementById('userId').value),
-      attendance_type: document.getElementById('attType').value,
-      date: document.getElementById('attDate').value,
-      check_in: document.getElementById('checkIn').value,
+      date: document.getElementById('editAttendanceDate').value,
+      status: document.getElementById('editAttendanceStatus').value,
+      notes: document.getElementById('editAttendanceNotes').value.trim(),
     };
-    const res = await apiRequest('/attendance/', { method: 'POST', body: JSON.stringify(payload) });
+    const res = await apiRequest(`/attendance/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+    if (!res) {
+      alert('Update request failed to send. Check your connection or session.');
+      return;
+    }
+    if (res.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editAttendanceModal')).hide();
+      await loadAttendance();
+      await loadInactiveMembers();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert('Failed to update attendance: ' + JSON.stringify(err));
+    }
+  }
+
+  async function deleteAttendance(id) {
+    if (!confirm('Delete this attendance record?')) return;
+    const res = await apiRequest(`/attendance/${id}/`, { method: 'DELETE' });
     if (!res) return;
     if (res.ok) {
-      document.getElementById('addForm').reset();
       await loadAttendance();
-      await loadMyToday();
-      await loadMyStats();
+      await loadInactiveMembers();
     } else {
-      const err = await res.json();
-      errorBox.textContent = formatApiError(err);
+      alert('Delete failed.');
+    }
+  }
+
+  function filterAttendance() {
+    const keyword = document.getElementById('searchAttendance').value.toLowerCase();
+    const filtered = allAttendance.filter(r => r.user_name.toLowerCase().includes(keyword));
+    renderAttendance(filtered);
+  }
+
+  function updateTodayStats() {
+    const today = todayStr();
+    const todayRecords = allAttendance.filter(r => r.date === today);
+    const present = todayRecords.filter(r => r.status === 'PRESENT').length;
+    document.getElementById('presentToday').textContent = present;
+    document.getElementById('absentToday').textContent = Math.max(membersCache.length - present, 0);
+  }
+
+  // ── Inactive Members (no PRESENT record in last 14 days) ────────────────
+  async function loadInactiveMembers() {
+    const lastVisit = {};
+    allAttendance.forEach(r => {
+      if (r.status !== 'PRESENT') return;
+      if (!lastVisit[r.user_name] || r.date > lastVisit[r.user_name]) {
+        lastVisit[r.user_name] = r.date;
+      }
+    });
+
+    const now = new Date();
+    const inactive = membersCache
+      .map(m => {
+        const last = lastVisit[m.full_name];
+        const daysInactive = last
+          ? Math.floor((now - new Date(last)) / (1000 * 60 * 60 * 24))
+          : null;
+        return {
+          id: m.user_id,
+          name: m.full_name,
+          email: m.email || '',
+          phone: m.phone || '',
+          last: last || 'Never',
+          daysInactive,
+        };
+      })
+      .filter(m => m.daysInactive === null || m.daysInactive >= 14)
+      .sort((a, b) => (b.daysInactive ?? 9999) - (a.daysInactive ?? 9999));
+
+    document.getElementById('inactiveMembers').textContent = inactive.length;
+
+    const tbody = document.getElementById('inactiveTable');
+    tbody.innerHTML = inactive.length
+      ? inactive.map(m => `
+          <tr>
+            <td>${m.name}</td>
+            <td>${m.last}</td>
+            <td>${m.daysInactive === null ? '-' : m.daysInactive}</td>
+            <td>
+              ${m.phone ? `<a href="tel:${m.phone}" class="btn btn-sm btn-outline-success" title="Call"><i class="bi bi-telephone"></i></a>` : ''}
+              ${m.email ? `<a href="mailto:${m.email}" class="btn btn-sm btn-outline-primary" title="Email"><i class="bi bi-envelope"></i></a>` : ''}
+              <button class="btn btn-sm btn-outline-secondary" title="Mark Attendance" onclick="quickMarkAttendance(${m.id})">
+                <i class="bi bi-calendar-check"></i>
+              </button>
+            </td>
+          </tr>`).join('')
+      : `<tr><td colspan="4" class="text-center text-muted py-3">No inactive members 🎉</td></tr>`;
+  }
+
+  function quickMarkAttendance(memberId) {
+    document.getElementById('memberSelect').value = memberId;
+    document.getElementById('attDate').value = todayStr();
+    document.getElementById('attendanceStatus').value = 'PRESENT';
+    new bootstrap.Modal(document.getElementById('markAttendanceModal')).show();
+  }
+
+  // ── Add Attendance Form ──────────────────────────────────────────────────
+  async function submitAttendanceForm() {
+    const errorBox = document.getElementById('errorBox');
+    errorBox.classList.add('d-none');
+
+    const memberId = document.getElementById('memberSelect').value;
+    if (!memberId) {
+      errorBox.textContent = 'Please select a member.';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+    if (!document.getElementById('attDate').value) {
+      errorBox.textContent = 'Please select a date.';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
+    const payload = {
+      user: parseInt(memberId),
+      attendance_type: 'MEMBER',
+      date: document.getElementById('attDate').value,
+      status: document.getElementById('attendanceStatus').value,
+      notes: document.getElementById('attNotes').value.trim(),
+    };
+
+    const res = await apiRequest('/attendance/', { method: 'POST', body: JSON.stringify(payload) });
+    if (!res) {
+      errorBox.textContent = 'Request failed to send. Check your connection or session.';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+    if (res.ok) {
+      document.getElementById('addForm').reset();
+      bootstrap.Modal.getInstance(document.getElementById('markAttendanceModal')).hide();
+      await loadAttendance();
+      await loadInactiveMembers();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      errorBox.textContent = (typeof formatApiError === 'function') ? formatApiError(err) : JSON.stringify(err);
       errorBox.classList.remove('d-none');
     }
+  }
+
+  document.getElementById('markAttendanceModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('errorBox').classList.add('d-none');
   });
 
-  loadMyToday();
-  loadAttendance();
-  loadMyStats();
+
+  (async () => {
+    await loadMembersIntoSelect();
+    await loadAttendance();
+    await loadInactiveMembers();
+  })();
 </script>
 </body>
 </html>

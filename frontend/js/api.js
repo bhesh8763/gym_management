@@ -78,6 +78,13 @@ async function refreshAccessToken() {
   return refreshPromise;
 }
 
+// FIX #1: fetch() itself can throw (server down, DNS failure, CORS, offline,
+// etc). Previously that exception propagated straight out of apiRequest and,
+// since most callers don't wrap the await in try/catch, became an unhandled
+// promise rejection — the UI would just hang on "Loading…" forever with only
+// a console error. Now a network failure returns null like every other
+// "couldn't complete this request" case, so existing `if (!res) return;`
+// checks in callers handle it automatically.
 async function apiRequest(path, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
@@ -86,14 +93,25 @@ async function apiRequest(path, options = {}) {
   const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  let res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch (e) {
+    console.error(`Network error on ${path}:`, e);
+    return null;
+  }
 
   if (res.status === 401) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       // Retry the original request once with the new access token.
       const retryHeaders = { ...headers, Authorization: `Bearer ${newToken}` };
-      res = await fetch(`${API_BASE}${path}`, { ...options, headers: retryHeaders });
+      try {
+        res = await fetch(`${API_BASE}${path}`, { ...options, headers: retryHeaders });
+      } catch (e) {
+        console.error(`Network error retrying ${path}:`, e);
+        return null;
+      }
     }
     if (res.status === 401) {
       // Refresh failed, or the retry itself still came back unauthorized —
@@ -272,7 +290,16 @@ syncSidebarCollapsedState();
     document.body.removeChild(s);
   }
 
+  // FIX #3: guards against overlapping navigations. If the user double-clicks
+  // a sidebar link, or clicks a second link before the first fetch/parse
+  // finishes, only the LAST navigation to start is allowed to actually apply
+  // its result — earlier, now-stale navigations quietly no-op instead of
+  // possibly winning a race and overwriting newer content.
+  let navToken = 0;
+
   async function navigateTo(url, push) {
+    const myToken = ++navToken;
+
     const contentEl = getContentEl(document);
     if (!contentEl) { window.location.href = url; return; }
 
@@ -283,9 +310,12 @@ syncSidebarCollapsedState();
       doc = new DOMParser().parseFromString(await res.text(), 'text/html');
     } catch (err) {
       console.error('SPA navigation failed, falling back to a full page load:', err);
+      if (myToken !== navToken) return; // a newer nav already took over
       window.location.href = url;
       return;
     }
+
+    if (myToken !== navToken) return; // superseded while we were fetching
 
     const newContentEl = getContentEl(doc);
     if (!newContentEl) { window.location.href = url; return; }
@@ -295,9 +325,12 @@ syncSidebarCollapsedState();
       for (const rawSrc of rawSrcs) await ensureScriptLoaded(rawSrc);
     } catch (err) {
       console.error('SPA navigation failed loading a required script, falling back:', err);
+      if (myToken !== navToken) return;
       window.location.href = url;
       return;
     }
+
+    if (myToken !== navToken) return; // superseded while scripts were loading
 
     contentEl.innerHTML = newContentEl.innerHTML;
     if (doc.title) document.title = doc.title;
@@ -322,8 +355,15 @@ syncSidebarCollapsedState();
     window.scrollTo(0, 0);
   }
 
+  // FIX #4: previously only `.sidebar a[href]` clicks were intercepted, so
+  // in-page action links (e.g. members.html's "View Attendance" / "View
+  // Payments" buttons, which live in the table, not the sidebar) always fell
+  // through to a full page reload while every sidebar link did a SPA nav —
+  // an inconsistent experience. Any link that should participate in the SPA
+  // router now just needs class="spa-link" in addition to (or instead of)
+  // living inside .sidebar.
   document.addEventListener('click', (e) => {
-    const link = e.target.closest('.sidebar a[href]');
+    const link = e.target.closest('.sidebar a[href], .spa-link[href]');
     if (!link) return;
     const href = link.getAttribute('href');
     if (!href || /^https?:\/\//.test(href) || href.startsWith('#')) return;
@@ -343,3 +383,47 @@ syncSidebarCollapsedState();
   const currentFile = window.location.pathname.split('/').pop() || 'dashboard.html';
   history.replaceState({ spaUrl: currentFile }, '', window.location.href);
 })();
+
+// Blocks selection of any date before today on the given <input type="date">
+// fields (by id). Used on "create new record" forms — assign membership,
+// staff joined date, leave requests, locker assignment, equipment purchase,
+// and maintenance logging — so past dates can't be picked.
+function restrictPastDates(...ids) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('min', todayStr);
+  });
+}
+
+// Password show/hide toggle — works on every page (login, Add Member, Add
+// Staff, etc.) since it's a single delegated listener on document, not tied
+// to the sidebar router above.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.toggle-password');
+  if (!btn) return;
+  const input = document.getElementById(btn.getAttribute('data-target'));
+  if (!input) return;
+  const icon = btn.querySelector('i');
+  const showing = input.type === 'password';
+  input.type = showing ? 'text' : 'password';
+  if (icon) {
+    icon.classList.toggle('bi-eye', !showing);
+    icon.classList.toggle('bi-eye-slash', showing);
+  }
+});
+
+// FIX #2: this used to live as a per-page inline <script> in every page
+// (members.html included), closing any open .dropdown-panel on an outside
+// click. Because SPA navigation re-runs each page's inline script via
+// runInlineScript on every visit, a document-level listener defined there
+// got re-added every single time — visiting the same page 10 times left 10
+// stacked, never-removed listeners on `document`. It's declared ONCE here
+// instead, in api.js, which is only ever loaded (and executed) a single
+// time per session, so it never duplicates. Pages no longer need their own
+// copy of this — remove it from any page's inline script if present.
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.position-relative')) {
+    document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
+  }
+});

@@ -33,8 +33,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class RegisterSerializer(serializers.ModelSerializer):
     """
-    Handles new user registration.
+    Handles new user (public, self-service) registration.
     Password is write-only and validated against Django password validators.
+
+    Always creates a MEMBER — this endpoint is open (AllowAny), so it must
+    never accept a caller-supplied role. Owner/Staff accounts are created
+    through the dedicated Staff/Trainer "add" endpoints, which require an
+    authenticated Owner/Staff request instead.
     """
     password = serializers.CharField(
         write_only=True, required=True, validators=[validate_password]
@@ -45,7 +50,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'email', 'first_name', 'last_name', 'phone',
-            'role', 'password', 'password2',
+            'password', 'password2',
         ]
         extra_kwargs = {
             'first_name': {'required': True},
@@ -60,7 +65,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password2')
         password = validated_data.pop('password')
-        user = User(**validated_data)
+        user = User(role=User.Role.MEMBER, **validated_data)
         user.set_password(password)
         user.save()
         return user

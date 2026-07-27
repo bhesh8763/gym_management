@@ -193,12 +193,6 @@
     document.getElementById(id).classList.toggle('show');
   }
 
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.position-relative')) {
-      document.querySelectorAll('.dropdown-panel').forEach(p => p.classList.remove('show'));
-    }
-  });
-
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
   document.getElementById('profileName').textContent = userName;

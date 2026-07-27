@@ -34,7 +34,8 @@ class RegisterView(generics.CreateAPIView):
     """
     POST /api/auth/register/
     Open endpoint — no authentication required.
-    Default role is MEMBER unless specified (owner-only can assign STAFF/TRAINER).
+    Always creates a MEMBER account. Staff/Trainer accounts are created by an
+    Owner through the dedicated staff/trainer "add" endpoints instead.
     """
     queryset = User.objects.all()
     serializer_class = RegisterSerializer

@@ -1,7 +1,10 @@
 """
 Payment and transaction models.
 """
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -46,8 +49,8 @@ class Payment(models.Model):
     payment_for = models.CharField(
         max_length=12, choices=PaymentFor.choices, default=PaymentFor.MEMBERSHIP
     )
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
     amount_paid = models.DecimalField(
         max_digits=10, decimal_places=2,
         help_text='Actual amount received (amount - discount)'
