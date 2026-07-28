@@ -265,6 +265,21 @@
   let membersCache = [];
 
   // ── Members ──────────────────────────────────────────────────────────────
+  // The shared loadMembersIntoSelect() in api.js only populates the <select>
+  // dropdown. This page also needs the raw member list cached locally (for
+  // the Inactive Members list) and the total-member stat card updated, so
+  // that part is kept here instead of relying on the shared function.
+  async function loadMembersCacheAndStats() {
+    const res = await apiRequest('/members/?is_active=true');
+    if (!res || !res.ok) {
+      membersCache = [];
+      document.getElementById('totalMembers').textContent = '-';
+      return;
+    }
+    const data = await res.json();
+    membersCache = data.results || data;
+    document.getElementById('totalMembers').textContent = membersCache.length;
+  }
 
   // ── Attendance ───────────────────────────────────────────────────────────
   function statusBadge(status) {
@@ -500,6 +515,7 @@
 
   (async () => {
     await loadMembersIntoSelect('memberSelect');
+    await loadMembersCacheAndStats();
     await loadAttendance();
     await loadInactiveMembers();
   })();
