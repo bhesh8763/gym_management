@@ -161,6 +161,7 @@ class MemberListSerializer(serializers.ModelSerializer):
     """
     full_name = serializers.CharField(source='user.get_full_name', read_only=True)
     user_id = serializers.IntegerField(source='user.id', read_only=True)
+    display_id = serializers.CharField(source='user.display_id', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     phone = serializers.CharField(source='user.phone', read_only=True)
     is_active = serializers.BooleanField(source='user.is_active', read_only=True)
@@ -173,7 +174,7 @@ class MemberListSerializer(serializers.ModelSerializer):
     class Meta:
         model = MemberProfile
         fields = [
-            'id', 'user_id', 'full_name', 'email', 'phone', 'is_active',
+            'id', 'user_id', 'display_id', 'full_name', 'email', 'phone', 'is_active',
             'profile_picture', 'gender',
             'fitness_goal', 'fitness_goal_display',
             'fitness_level', 'fitness_level_display',

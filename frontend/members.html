@@ -241,13 +241,13 @@
 
     <table class="table table-bordered" id="memberTable">
       <thead>
-        <tr>
-          <th>ID</th><th>Name</th><th>Phone</th>
-          <th>Membership Plan</th><th>Expires</th>
-          <th>Fitness Goal</th><th>Status</th><th data-no-export>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="memberTableBody"></tbody>
+  <tr>
+    <th>Member ID</th><th>Name</th><th>Phone</th>
+    <th>Membership Plan</th><th>Expires</th>
+    <th>Fitness Goal</th><th>Status</th><th data-no-export>Actions</th>
+  </tr>
+</thead>
+<tbody id="memberTableBody"></tbody>
     </table>
 
     <div class="d-flex justify-content-between align-items-center">
@@ -287,14 +287,19 @@
             <input type="text" id="phone" class="form-control" pattern="[0-9]{7,15}" title="Digits only, 7-15 characters" autocomplete="off">
           </div>
           <div class="col-md-4">
-            <label class="form-label">Password</label>
-            <div class="input-group">
-              <input type="password" id="password" class="form-control" required minlength="8" autocomplete="new-password">
-              <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" tabindex="-1">
-                <i class="bi bi-eye"></i>
-              </button>
-            </div>
-          </div>
+  <label class="form-label">Password</label>
+  <div class="input-group">
+    <input type="text" id="password" class="form-control" required minlength="8" autocomplete="new-password">
+    <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()" title="Generate password">
+      <i class="bi bi-shuffle"></i>
+    </button>
+    <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" tabindex="-1">
+      <i class="bi bi-eye"></i>
+    </button>
+  </div>
+  <small class="text-muted">Auto-generated — copy it before saving, or edit manually.</small>
+</div>
+
           <div class="col-md-4">
             <label class="form-label">Gender</label>
             <select id="gender" class="form-select">
@@ -433,6 +438,10 @@
   let currentPage = 1;
 
   async function loadMembers() {
+     const tbody = document.getElementById('memberTableBody');
+  tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">
+    <div class="spinner-border spinner-border-sm me-2"></div> Loading members…
+  </td></tr>`;
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
     if (search) params.set('search', search);
@@ -465,6 +474,8 @@
   }
 
   function renderPage(page) {
+  try {  
+
     const pageSize = parseInt(document.getElementById('pageSize').value, 10);
     const totalPages = Math.max(1, Math.ceil(allMembers.length /pageSize));
     currentPage = Math.min(Math.max(1, page), totalPages);
@@ -486,21 +497,25 @@
   const ms = row.current_membership;
   const planCell = ms ? `${ms.plan_name} ${membershipBadge(ms.status)}` : '<span class="text-muted">No plan</span>';
   const expiresCell = ms ? ms.end_date : '-';
-  tbody.innerHTML += `
+tbody.innerHTML += `
     <tr>
-      <td>${row.id}</td>
+      <td>${row.display_id || row.id}</td>
       <td>${row.full_name}</td>
       <td>${row.phone || '-'}</td>
       <td>${planCell}</td>
             <td>${expiresCell}</td>
             <td>${row.fitness_goal_display || '-'}</td>
             <td>${statusBadge(row.is_active)}</td>
-            <td>
-  <button class="btn btn-sm btn-outline-secondary" onclick="viewMember(${row.id})">View</button>
-  <button class="btn btn-sm btn-outline-primary" onclick="openEdit(${row.id})">Edit</button>
-  <a class="btn btn-sm btn-outline-dark spa-link" title="View Attendance"href="attendance.html?search=${encodeURIComponent(row.full_name)}"><i class="bi bi-calendar-check"></i></a>
-  <a class="btn btn-sm btn-outline-dark spa-link" title="View Payments" href="payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}"><i class="bi bi-cash-coin"></i></a>
-  ${row.is_active ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivateMember(${row.id})">Deactivate</button>` : ''}
+  <td>
+  <div class="d-flex flex-wrap gap-1">
+    <button class="btn btn-sm btn-outline-info" onclick="viewMember(${row.id})" title="View"><i class="bi bi-eye"></i></button>
+    <button class="btn btn-sm btn-outline-warning" onclick="openEdit(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+    <a class="btn btn-sm btn-outline-dark spa-link" title="View Attendance" href="attendance.html?search=${encodeURIComponent(row.full_name)}"><i class="bi bi-calendar-check"></i></a>
+    <a class="btn btn-sm btn-outline-dark spa-link" title="View Payments" href="payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}"><i class="bi bi-cash-coin"></i></a>
+    ${row.is_active
+      ? `<button class="btn btn-sm btn-outline-danger" onclick="toggleMemberStatus(${row.id}, false)" title="Deactivate"><i class="bi bi-person-x"></i></button>`
+      : `<button class="btn btn-sm btn-outline-success" onclick="toggleMemberStatus(${row.id}, true)" title="Activate"><i class="bi bi-person-check"></i></button>`}
+  </div>
 </td>
           </tr>`;
       });
@@ -511,7 +526,19 @@
       : 'Showing 0 of 0';
     document.getElementById('prevPageBtn').disabled = currentPage === 1;
     document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+
+  } catch (err) {
+
+    console.error('renderPage failed:', err);
+
+    document.getElementById('memberTableBody').innerHTML =
+
+      `<tr><td colspan="8" class="text-center text-danger py-4">Something went wrong rendering this table. Check the console for details.</td></tr>`;
+
   }
+
+}
+
 
   async function viewMember(profileId) {
     const modalEl = document.getElementById('viewMemberModal');
@@ -629,17 +656,30 @@
     }
   });
 
-  async function deactivateMember(profileId) {
-    if (!confirm('Deactivate this member? Their account will be marked inactive but not deleted.')) return;
-    const res = await apiRequest(`/members/${profileId}/`, { method: 'DELETE' });
-    if (!res) return;
-    if (res.ok) {
-      loadMembers();
-    } else {
-      const err = await res.json();
-      alert('Deactivate failed: ' + formatApiError(err));
-    }
+  async function toggleMemberStatus(profileId, makeActive) {
+  const action = makeActive ? 'Activate' : 'Deactivate';
+  const msg = makeActive
+    ? 'Activate this member? Their account will be marked active again.'
+    : 'Deactivate this member? Their account will be marked inactive but not deleted.';
+  if (!confirm(msg)) return;
+
+  let res;
+  if (makeActive) {
+  res = await apiRequest(`/members/${profileId}/reactivate/`, {
+    method: 'POST', body: JSON.stringify({}),
+  });
+} else {
+  res = await apiRequest(`/members/${profileId}/`, { method: 'DELETE' });
+}
+
+  if (!res) return;
+  if (res.ok) {
+    loadMembers();
+  } else {
+    const err = await res.json();
+    alert(`${action} failed: ` + formatApiError(err));
   }
+}
 
   async function submitAddMember() {
     const errorBox = document.getElementById('errorBox');
@@ -688,6 +728,20 @@
   });
 
   loadMembers();
+
+
+  function generatePassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  let pwd = '';
+  const arr = new Uint32Array(10);
+  crypto.getRandomValues(arr);
+  for (let i = 0; i < 10; i++) {
+    pwd += chars[arr[i] % chars.length];
+  }
+  const field = document.getElementById('password');
+  field.value = pwd;
+  field.type = 'text';
+}
 </script>
 </body>
 </html>

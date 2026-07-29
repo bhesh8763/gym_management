@@ -160,7 +160,7 @@
     </div>
     <table class="table table-bordered mb-5" id="profileTable">
       <thead>
-        <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th>Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
+        <tr><th>Staff ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th>Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
       </thead>
       <tbody id="profileTableBody"></tbody>
     </table>
@@ -294,16 +294,16 @@
         ? `<button class="btn btn-sm btn-outline-danger" onclick="toggleStaffActive(${row.id}, false)"><i class="bi bi-person-x"></i></button>`
         : `<button class="btn btn-sm btn-outline-success" onclick="toggleStaffActive(${row.id}, true)"><i class="bi bi-person-check"></i></button>`;
       tbody.innerHTML += `
-        <tr>
-          <td>${row.id}</td><td>${row.user_name}</td><td>${row.user_email}</td>
-          <td>${row.department}</td><td>${row.designation}</td>
-          <td>${row.joined_date}</td><td>${row.salary}</td>
-          <td>${statusBadge}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-primary" onclick="openStaffEdit(${row.id})"><i class="bi bi-pencil"></i></button>
-            ${toggleBtn}
-          </td>
-        </tr>`;
+  <tr>
+    <td>${row.user_display_id || row.id}</td><td>${row.user_name}</td><td>${row.user_email}</td>
+    <td>${row.department}</td><td>${row.designation}</td>
+    <td>${row.joined_date}</td><td>${row.salary}</td>
+    <td>${statusBadge}</td>
+    <td>
+      <button class="btn btn-sm btn-outline-primary" onclick="openStaffEdit(${row.id})"><i class="bi bi-pencil"></i></button>
+      ${toggleBtn}
+    </td>
+  </tr>`;
     });
   }
 

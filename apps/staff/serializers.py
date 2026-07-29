@@ -12,11 +12,12 @@ User = get_user_model()
 class StaffProfileSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.get_full_name', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
+    user_display_id = serializers.CharField(source='user.display_id', read_only=True)
 
     class Meta:
         model = StaffProfile
         fields = [
-            'id', 'user', 'user_name', 'user_email', 'department',
+            'id', 'user', 'user_name', 'user_email', 'user_display_id', 'department',
             'designation', 'joined_date', 'salary', 'id_document',
             'notes', 'created_at', 'updated_at',
         ]

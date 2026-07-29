@@ -3,8 +3,9 @@ Custom User model with role-based access control.
 Roles: Owner, Staff, Trainer, Member
 """
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
+
 
 
 class UserManager(BaseUserManager):
@@ -33,6 +34,21 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
+class RoleSequence(models.Model):
+    """
+    Tracks the last-used sequence number per role, used to generate
+    human-readable display IDs like MEM-0001, STF-0001, TRN-0001, OWN-0001.
+    """
+    role = models.CharField(max_length=10, unique=True)
+    last_value = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'role_sequences'
+
+    def __str__(self):
+        return f'{self.role}: {self.last_value}'
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     """
     Central user model shared by all roles.
@@ -44,6 +60,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         STAFF = 'STAFF', 'Staff'
         TRAINER = 'TRAINER', 'Trainer'
         MEMBER = 'MEMBER', 'Member'
+
+    ROLE_PREFIXES = {
+        Role.OWNER: 'OWN',
+        Role.STAFF: 'STF',
+        Role.TRAINER: 'TRN',
+        Role.MEMBER: 'MEM',
+    }
 
     # Core identity
     email = models.EmailField(unique=True, db_index=True)
@@ -60,6 +83,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices=Role.choices,
         default=Role.MEMBER,
         db_index=True,
+    )
+
+    # Human-readable role-based ID, e.g. MEM-0001
+    display_id = models.CharField(
+        max_length=20, unique=True, editable=False, null=True, blank=True
     )
 
     # Django required fields
@@ -89,6 +117,21 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.first_name
+
+    def save(self, *args, **kwargs):
+        if not self.display_id:
+            self.display_id = self._generate_display_id()
+        super().save(*args, **kwargs)
+
+    def _generate_display_id(self):
+        prefix = self.ROLE_PREFIXES.get(self.role, 'USR')
+        with transaction.atomic():
+            seq, _ = RoleSequence.objects.select_for_update().get_or_create(
+                role=self.role
+            )
+            seq.last_value += 1
+            seq.save(update_fields=['last_value'])
+            return f'{prefix}-{seq.last_value:04d}'
 
     # ─── Role helpers ─────────────────────────────────────────────────────────
     @property
