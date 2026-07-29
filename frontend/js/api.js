@@ -19,6 +19,7 @@ function clearTokens() {
   localStorage.removeItem('user_id');
   localStorage.removeItem('user_role');
   localStorage.removeItem('user_name');
+  localStorage.removeItem('user_picture');
 }
 
 // Tracks a refresh that's currently in progress, so multiple simultaneous
@@ -466,12 +467,27 @@ function logout() {
 function initProfileHeader() {
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
+  const userPicture = localStorage.getItem('user_picture') || '';
   const nameEl = document.getElementById('profileName');
   const roleEl = document.getElementById('profileRole');
   const avatarEl = document.getElementById('profileAvatar');
   if (nameEl) nameEl.textContent = userName;
   if (roleEl) roleEl.textContent = userRole;
-  if (avatarEl) avatarEl.textContent = userName.charAt(0).toUpperCase();
+  if (avatarEl) {
+    if (userPicture) {
+      avatarEl.style.backgroundImage = `url(${userPicture})`;
+      avatarEl.style.backgroundSize  = 'cover';
+      avatarEl.style.backgroundPosition = 'center';
+      avatarEl.style.backgroundRepeat = 'no-repeat';
+      avatarEl.textContent           = '';
+    } else {
+      avatarEl.style.backgroundImage = '';
+      avatarEl.style.backgroundSize  = '';
+      avatarEl.style.backgroundPosition = '';
+      avatarEl.style.backgroundRepeat = '';
+      avatarEl.textContent           = userName.charAt(0).toUpperCase();
+    }
+  }
 }
 initProfileHeader();
 
@@ -494,4 +510,254 @@ async function loadMembersIntoSelect(selectId) {
     ? '<option value="">Select a member…</option>' +
       members.map(m => `<option value="${m.user_id}">${m.full_name}</option>`).join('')
     : '<option value="">No active members found</option>';
+}
+
+
+// ── Edit Profile Modal ──────────────────────────────────────────────────────
+// Injects the modal HTML once into the page body (if not already present),
+// then fetches the current user's profile from /api/auth/me/ and populates it.
+// Declared here so it's available on every page without per-page duplication.
+
+function ensureEditProfileModal() {
+  if (document.getElementById('editProfileModal')) return;
+  const html = `
+  <div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-person-gear me-2"></i>Edit Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="editProfileForm">
+          <div class="modal-body">
+
+            <!-- Profile picture -->
+            <div class="d-flex align-items-center gap-3 mb-4">
+              <div class="position-relative" style="width:80px;height:80px;flex-shrink:0">
+                <div id="epPicFallback"
+                     class="rounded-circle border bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-3"
+                     style="width:80px;height:80px">?</div>
+                <img id="epPicPreview" src="" alt="Profile"
+                     class="rounded-circle border position-absolute top-0 start-0"
+                     style="width:80px;height:80px;object-fit:cover;display:none">
+              </div>
+              <div class="flex-grow-1">
+                <label class="form-label mb-1 fw-semibold">Profile Picture</label>
+                <input type="file" id="epPicInput" class="form-control form-control-sm"
+                       accept="image/png,image/jpeg,image/webp,image/gif">
+                <div class="form-text">PNG, JPG, WEBP or GIF. Max 5 MB.</div>
+                <button type="button" id="epPicRemove" class="btn btn-sm btn-outline-danger mt-1 d-none">
+                  <i class="bi bi-trash"></i> Remove picture
+                </button>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">First Name</label>
+                <input type="text" id="epFirstName" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Last Name</label>
+                <input type="text" id="epLastName" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Email</label>
+                <input type="email" id="epEmail" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Phone</label>
+                <input type="text" id="epPhone" class="form-control">
+              </div>
+            </div>
+            <hr>
+            <p class="text-muted small mb-2">Leave blank to keep your current password.</p>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">New Password</label>
+                <div class="input-group">
+                  <input type="password" id="epPassword" class="form-control" placeholder="New password">
+                  <button type="button" class="btn btn-outline-secondary toggle-password" data-target="epPassword" tabindex="-1">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Confirm Password</label>
+                <div class="input-group">
+                  <input type="password" id="epPasswordConfirm" class="form-control" placeholder="Confirm password">
+                  <button type="button" class="btn btn-outline-secondary toggle-password" data-target="epPasswordConfirm" tabindex="-1">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div id="editProfileError" class="alert alert-danger d-none mt-3"></div>
+            <div id="editProfileSuccess" class="alert alert-success d-none mt-3"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  // Live preview when a file is picked
+  document.getElementById('epPicInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('epPicPreview').src = e.target.result;
+      document.getElementById('epPicPreview').style.display = '';
+      document.getElementById('epPicFallback').style.display = 'none';
+      document.getElementById('epPicRemove').classList.remove('d-none');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Remove / clear the picture selection
+  document.getElementById('epPicRemove').addEventListener('click', () => {
+    document.getElementById('epPicInput').value = '';
+    document.getElementById('epPicRemove').classList.add('d-none');
+    // Restore fallback or previously saved picture — reloaded on next open
+    document.getElementById('epPicPreview').style.display = 'none';
+    document.getElementById('epPicFallback').style.display = '';
+    document.getElementById('epPicRemove').dataset.clear = '1';
+  });
+
+  document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox   = document.getElementById('editProfileError');
+    const successBox = document.getElementById('editProfileSuccess');
+    errorBox.classList.add('d-none');
+    successBox.classList.add('d-none');
+
+    const password        = document.getElementById('epPassword').value;
+    const passwordConfirm = document.getElementById('epPasswordConfirm').value;
+    if (password && password !== passwordConfirm) {
+      errorBox.textContent = 'Passwords do not match.';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
+    // Use FormData so the picture file is sent as multipart
+    const formData = new FormData();
+    formData.append('first_name', document.getElementById('epFirstName').value.trim());
+    formData.append('last_name',  document.getElementById('epLastName').value.trim());
+    formData.append('email',      document.getElementById('epEmail').value.trim());
+    formData.append('phone',      document.getElementById('epPhone').value.trim());
+    if (password) formData.append('password', password);
+
+    const picInput = document.getElementById('epPicInput');
+    const clearPic = document.getElementById('epPicRemove').dataset.clear === '1';
+    if (picInput.files[0]) {
+      formData.append('profile_picture', picInput.files[0]);
+    } else if (clearPic) {
+      formData.append('profile_picture', '');
+    }
+
+    // Use fetch directly — apiRequest forces Content-Type: application/json
+    // but multipart needs the browser to set the boundary automatically.
+    const token = getAccessToken();
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/auth/me/`, {
+        method: 'PATCH',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData,
+      });
+    } catch (err) {
+      errorBox.textContent = 'Network error. Please try again.';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      errorBox.textContent = formatApiError(err);
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
+    const data = await res.json();
+
+    // Update topbar chip name + avatar
+    const fullName = `${data.first_name} ${data.last_name}`.trim();
+    localStorage.setItem('user_name', fullName);
+    localStorage.setItem('user_picture', data.profile_picture || '');
+    const nameEl   = document.getElementById('profileName');
+    const avatarEl = document.getElementById('profileAvatar');
+    if (nameEl) nameEl.textContent = fullName;
+
+    // Update topbar avatar: picture if available, else initial letter
+    if (data.profile_picture) {
+      if (avatarEl) {
+        avatarEl.style.backgroundImage = `url(${data.profile_picture})`;
+        avatarEl.style.backgroundSize  = 'cover';
+        avatarEl.style.backgroundPosition = 'center';
+        avatarEl.style.backgroundRepeat = 'no-repeat';
+        avatarEl.textContent           = '';
+      }
+    } else {
+      if (avatarEl) {
+        avatarEl.style.backgroundImage = '';
+        avatarEl.style.backgroundSize  = '';
+        avatarEl.style.backgroundPosition = '';
+        avatarEl.style.backgroundRepeat = '';
+        avatarEl.textContent           = fullName.charAt(0).toUpperCase();
+      }
+    }
+
+    // Reset password fields and clear flag
+    document.getElementById('epPassword').value        = '';
+    document.getElementById('epPasswordConfirm').value = '';
+    document.getElementById('epPicRemove').dataset.clear = '0';
+
+    successBox.textContent = 'Profile updated successfully.';
+    successBox.classList.remove('d-none');
+  });
+}
+
+async function openEditProfileModal() {
+  ensureEditProfileModal();
+
+  // Fetch current profile
+  const res = await apiRequest('/auth/me/');
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  document.getElementById('epFirstName').value = data.first_name || '';
+  document.getElementById('epLastName').value  = data.last_name  || '';
+  document.getElementById('epEmail').value     = data.email      || '';
+  document.getElementById('epPhone').value     = data.phone      || '';
+  document.getElementById('epPassword').value        = '';
+  document.getElementById('epPasswordConfirm').value = '';
+  document.getElementById('epPicInput').value = '';
+  document.getElementById('epPicRemove').dataset.clear = '0';
+  document.getElementById('editProfileError').classList.add('d-none');
+  document.getElementById('editProfileSuccess').classList.add('d-none');
+
+  // Set profile picture preview
+  const preview  = document.getElementById('epPicPreview');
+  const fallback = document.getElementById('epPicFallback');
+  const removeBtn = document.getElementById('epPicRemove');
+  if (data.profile_picture) {
+    preview.src = data.profile_picture;
+    preview.style.display = '';
+    fallback.style.display = 'none';
+    removeBtn.classList.remove('d-none');
+  } else {
+    preview.style.display = 'none';
+    fallback.style.display = '';
+    fallback.textContent = (data.first_name || '?').charAt(0).toUpperCase();
+    removeBtn.classList.add('d-none');
+  }
+
+  new bootstrap.Modal(document.getElementById('editProfileModal')).show();
 }

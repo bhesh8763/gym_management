@@ -26,6 +26,22 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @action(detail=True, methods=['post'])
+    def activate(self, request, pk=None):
+        """POST /api/staff/profiles/{id}/activate/ — re-enable a staff user's login."""
+        profile = self.get_object()
+        profile.user.is_active = True
+        profile.user.save(update_fields=['is_active'])
+        return Response(StaffProfileSerializer(profile).data)
+
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, pk=None):
+        """POST /api/staff/profiles/{id}/deactivate/ — disable a staff user's login."""
+        profile = self.get_object()
+        profile.user.is_active = False
+        profile.user.save(update_fields=['is_active'])
+        return Response(StaffProfileSerializer(profile).data)
+
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
     """
@@ -55,5 +71,17 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         leave.status = new_status
         leave.review_note = request.data.get('review_note', '')
         leave.reviewed_by = request.user
+        leave.save()
+        return Response(LeaveRequestSerializer(leave).data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """POST /api/staff/leave-requests/{id}/cancel/  — requester cancels their own pending request."""
+        leave = self.get_object()
+        if leave.requester != request.user:
+            return Response({'error': 'You can only cancel your own leave requests.'}, status=status.HTTP_403_FORBIDDEN)
+        if leave.status != 'PENDING':
+            return Response({'error': 'Only pending requests can be cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
+        leave.status = 'CANCELLED'
         leave.save()
         return Response(LeaveRequestSerializer(leave).data)

@@ -76,6 +76,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
     Read-only serializer used for user profile responses and JWT payload.
     """
     full_name = serializers.SerializerMethodField()
+    profile_picture = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -89,16 +90,28 @@ class UserDetailSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         return obj.get_full_name()
 
+    def get_profile_picture(self, obj):
+        if not obj.profile_picture:
+            return None
+        request = self.context.get('request')
+        url = obj.profile_picture.url
+        if request:
+            return request.build_absolute_uri(url)
+        # Fallback: build absolute URI from settings
+        from django.conf import settings
+        base = getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000')
+        return f"{base.rstrip('/')}{url}"
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     """
-    Allows users to update their own profile (name, phone, picture).
-    Role and email changes are not allowed here.
+    Allows users to update their own profile (name, email, phone, picture).
+    Role changes are not allowed here.
     """
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'phone', 'profile_picture']
+        fields = ['first_name', 'last_name', 'email', 'phone', 'profile_picture']
 
 
 class ChangePasswordSerializer(serializers.Serializer):

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attendance — Gym Management</title>
+  <title>Attendance — FitCore</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -12,7 +12,7 @@
 
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <span class="navbar-brand">Gym Management</span>
+  <span class="navbar-brand">FitCore</span>
 
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -35,8 +35,7 @@
       <i class="bi bi-chevron-down text-white-50"></i>
     </button>
     <div class="dropdown-panel profile-menu" id="profilePanel">
-      <a href="#"><i class="bi bi-person"></i> Profile</a>
-      <a href="#"><i class="bi bi-gear"></i> Settings</a>
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
       <hr>
       <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
     </div>
@@ -152,8 +151,162 @@
       </div>
     </div>
 
+    <!-- ══════════════ MY LEAVE (staff / trainer only) ══════════════ -->
+    <div id="myLeaveSection">
+      <hr class="my-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h5 class="mb-0"><i class="bi bi-calendar2-x me-2 text-danger"></i>My Leave</h5>
+          <small class="text-muted">Your leave requests</small>
+        </div>
+        <button type="button" class="btn btn-danger"
+                data-bs-toggle="modal" data-bs-target="#leaveModal">
+          <i class="bi bi-plus-lg"></i> Apply for Leave
+        </button>
+      </div>
+
+      <!-- My leave stats -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-3">
+              <div class="fs-3 fw-bold text-warning" id="myStat_pending">—</div>
+              <div class="small text-muted">Pending</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-3">
+              <div class="fs-3 fw-bold text-success" id="myStat_approved">—</div>
+              <div class="small text-muted">Approved</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-3">
+              <div class="fs-3 fw-bold text-danger" id="myStat_rejected">—</div>
+              <div class="small text-muted">Rejected</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card text-center border-0 shadow-sm">
+            <div class="card-body py-3">
+              <div class="fs-3 fw-bold text-secondary" id="myStat_cancelled">—</div>
+              <div class="small text-muted">Cancelled</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- My leave table -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th><th>Type</th><th>From</th><th>To</th><th>Days</th>
+              <th>Reason</th><th>Status</th><th>Review Note</th>
+            </tr>
+          </thead>
+          <tbody id="myLeaveTableBody">
+            <tr><td colspan="9" class="text-center text-muted py-4">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+
   </div>
 </div>
+</div>
+
+<!-- Leave: Submit -->
+<div class="modal fade" id="leaveModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-calendar2-x me-2"></i>Submit Leave Request</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="leaveForm">
+        <div class="modal-body">
+
+          <!-- Leave type cards -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Leave Type</label>
+            <div class="row g-2">
+              <div class="col-6 col-md-4">
+                <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_sick" value="SICK" checked>
+                <label class="btn btn-outline-danger w-100 py-3" for="lt_sick">
+                  <i class="bi bi-thermometer-high d-block fs-4 mb-1"></i>Sick Leave
+                </label>
+              </div>
+              <div class="col-6 col-md-4">
+                <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_casual" value="CASUAL">
+                <label class="btn btn-outline-primary w-100 py-3" for="lt_casual">
+                  <i class="bi bi-emoji-smile d-block fs-4 mb-1"></i>Casual Leave
+                </label>
+              </div>
+              <div class="col-6 col-md-4">
+                <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_annual" value="ANNUAL">
+                <label class="btn btn-outline-success w-100 py-3" for="lt_annual">
+                  <i class="bi bi-calendar-heart d-block fs-4 mb-1"></i>Annual Leave
+                </label>
+              </div>
+              <div class="col-6 col-md-4">
+                <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_unpaid" value="UNPAID">
+                <label class="btn btn-outline-warning w-100 py-3" for="lt_unpaid">
+                  <i class="bi bi-cash-stack d-block fs-4 mb-1"></i>Unpaid Leave
+                </label>
+              </div>
+              <div class="col-6 col-md-4">
+                <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_other" value="OTHER">
+                <label class="btn btn-outline-secondary w-100 py-3" for="lt_other">
+                  <i class="bi bi-three-dots d-block fs-4 mb-1"></i>Other
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Date range + duration preview -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-5">
+              <label class="form-label fw-semibold">Start Date</label>
+              <input type="date" id="leaveStartDate" class="form-control" required>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-semibold">End Date</label>
+              <input type="date" id="leaveEndDate" class="form-control" required>
+            </div>
+            <div class="col-md-2 d-flex flex-column justify-content-end">
+              <div class="card border-0 bg-light text-center py-2">
+                <div class="fw-bold fs-5" id="leaveDurationPreview">—</div>
+                <div class="small text-muted">days</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reason -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Reason</label>
+            <textarea id="leaveReason" class="form-control" rows="3"
+                      placeholder="Briefly describe your reason…" required></textarea>
+          </div>
+
+          <div id="leaveFormError" class="alert alert-danger d-none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-send me-1"></i> Submit Request
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <!-- Attendance: Mark -->
@@ -243,18 +396,10 @@
   </div>
 </div>
 
-<script src="js/api.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
-
-
-
-  const userName = localStorage.getItem('user_name') || 'User';
-  const userRole = localStorage.getItem('user_role') || '';
-  document.getElementById('profileName').textContent = userName;
-  document.getElementById('profileRole').textContent = userRole;
-  document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
 
 
   function todayStr() {
@@ -508,9 +653,12 @@
     }
   }
 
-  document.getElementById('markAttendanceModal').addEventListener('hidden.bs.modal', () => {
-    document.getElementById('errorBox').classList.add('d-none');
-  });
+  const markModalEl = document.getElementById('markAttendanceModal');
+  if (markModalEl) {
+    markModalEl.addEventListener('hidden.bs.modal', () => {
+      document.getElementById('errorBox').classList.add('d-none');
+    });
+  }
 
 
   (async () => {
@@ -518,7 +666,168 @@
     await loadMembersCacheAndStats();
     await loadAttendance();
     await loadInactiveMembers();
+
+    // My Leave section — visible to STAFF and TRAINER only, hidden for OWNER
+    const myRole = localStorage.getItem('user_role') || '';
+    const myLeaveSection = document.getElementById('myLeaveSection');
+    if (myRole === 'OWNER') {
+      myLeaveSection.style.display = 'none';
+    } else {
+      myLeaveSection.style.display = '';
+      await loadMyLeaves();
+    }
   })();
+
+  // ── My Leave (staff / trainer) ────────────────────────────────────────────
+  async function loadMyLeaves() {
+    const res = await apiRequest('/staff/leave-requests/');
+    if (!res) return;
+    const data = await res.json();
+    const leaves = data.results || [];
+
+    const counts = { PENDING: 0, APPROVED: 0, REJECTED: 0, CANCELLED: 0 };
+    leaves.forEach(r => { if (r.status in counts) counts[r.status]++; });
+    document.getElementById('myStat_pending').textContent   = counts.PENDING;
+    document.getElementById('myStat_approved').textContent  = counts.APPROVED;
+    document.getElementById('myStat_rejected').textContent  = counts.REJECTED;
+    document.getElementById('myStat_cancelled').textContent = counts.CANCELLED;
+
+    const tbody = document.getElementById('myLeaveTableBody');
+    if (!leaves.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">You have no leave requests yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = leaves.map(row => {
+      const reviewNote = row.review_note
+        ? `<span class="text-muted small">${row.review_note}</span>`
+        : '<span class="text-muted">—</span>';
+
+      return `
+        <tr>
+          <td class="text-muted small">#${row.id}</td>
+          <td>${leaveTypeBadge(row.leave_type)}</td>
+          <td>${row.start_date}</td>
+          <td>${row.end_date}</td>
+          <td><span class="badge bg-light text-dark border">${row.duration_days}d</span></td>
+          <td class="small" style="max-width:160px;white-space:normal">${row.reason}</td>
+          <td>${leaveStatusBadge(row.status)}</td>
+          <td style="max-width:160px;white-space:normal">${reviewNote}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function leaveTypeBadge(type) {
+    const map = {
+      SICK:   ['danger',    'thermometer-high', 'Sick'],
+      CASUAL: ['primary',   'emoji-smile',      'Casual'],
+      ANNUAL: ['success',   'calendar-heart',   'Annual'],
+      UNPAID: ['warning',   'cash-stack',       'Unpaid'],
+      OTHER:  ['secondary', 'three-dots',       'Other'],
+    };
+    const [color, icon, label] = map[type] || ['secondary', 'question', type];
+    return `<span class="badge bg-${color}"><i class="bi bi-${icon} me-1"></i>${label}</span>`;
+  }
+
+  function leaveStatusBadge(s) {
+    const map = {
+      APPROVED:  'success',
+      PENDING:   'warning text-dark',
+      REJECTED:  'danger',
+      CANCELLED: 'secondary',
+    };
+    return `<span class="badge bg-${map[s] || 'secondary'}">${s}</span>`;
+  }
+
+  // Cancel (staff/trainer cancels own pending request — kept for staff.html compatibility)
+  async function cancelLeave(id) {
+    if (!confirm('Cancel this leave request?')) return;
+    const res = await apiRequest(`/staff/leave-requests/${id}/cancel/`, { method: 'POST' });
+    if (res && res.ok) loadMyLeaves();
+    else alert('Could not cancel the request.');
+  }
+
+  // Duration preview in submit modal
+  function updateLeaveDuration() {
+    const start = document.getElementById('leaveStartDate').value;
+    const end   = document.getElementById('leaveEndDate').value;
+    const el    = document.getElementById('leaveDurationPreview');
+    if (start && end && end >= start) {
+      el.textContent = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+      el.classList.remove('text-danger');
+    } else if (start && end) {
+      el.textContent = '!';
+      el.classList.add('text-danger');
+    } else {
+      el.textContent = '—';
+      el.classList.remove('text-danger');
+    }
+  }
+
+  const leaveStartDateEl = document.getElementById('leaveStartDate');
+  const leaveEndDateEl   = document.getElementById('leaveEndDate');
+  const leaveModalEl     = document.getElementById('leaveModal');
+  const leaveFormEl      = document.getElementById('leaveForm');
+
+  if (leaveStartDateEl) {
+    leaveStartDateEl.addEventListener('change', function () {
+      if (leaveEndDateEl) leaveEndDateEl.min = this.value;
+      updateLeaveDuration();
+    });
+  }
+  if (leaveEndDateEl) {
+    leaveEndDateEl.addEventListener('change', updateLeaveDuration);
+  }
+
+  if (leaveModalEl) {
+    leaveModalEl.addEventListener('show.bs.modal', () => {
+      const today = new Date().toISOString().split('T')[0];
+      if (leaveStartDateEl) leaveStartDateEl.min = today;
+      if (leaveEndDateEl)   leaveEndDateEl.min   = today;
+      const preview = document.getElementById('leaveDurationPreview');
+      const errBox  = document.getElementById('leaveFormError');
+      if (preview) preview.textContent = '—';
+      if (errBox)  errBox.classList.add('d-none');
+    });
+  }
+
+  if (leaveFormEl) {
+    leaveFormEl.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('leaveFormError');
+      if (errorBox) errorBox.classList.add('d-none');
+
+      const start = leaveStartDateEl ? leaveStartDateEl.value : '';
+      const end   = leaveEndDateEl   ? leaveEndDateEl.value   : '';
+      if (end < start) {
+        if (errorBox) { errorBox.textContent = 'End date cannot be before start date.'; errorBox.classList.remove('d-none'); }
+        return;
+      }
+
+      const checkedType = document.querySelector('input[name="leaveTypeRadio"]:checked');
+      const payload = {
+        leave_type: checkedType ? checkedType.value : 'SICK',
+        start_date: start,
+        end_date:   end,
+        reason:     (document.getElementById('leaveReason') || {}).value?.trim() || '',
+      };
+
+      const res = await apiRequest('/staff/leave-requests/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) return;
+      if (res.ok) {
+        leaveFormEl.reset();
+        const preview = document.getElementById('leaveDurationPreview');
+        if (preview) preview.textContent = '—';
+        const modalInst = bootstrap.Modal.getInstance(leaveModalEl);
+        if (modalInst) modalInst.hide();
+        loadMyLeaves();
+      } else {
+        const err = await res.json();
+        if (errorBox) { errorBox.textContent = formatApiError(err); errorBox.classList.remove('d-none'); }
+      }
+    });
+  }
+
 </script>
 </body>
 </html>
