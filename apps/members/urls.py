@@ -1,20 +1,6 @@
-"""
-URL configuration for the Members app.
-
-API routes:
-    /api/members/         GET (list) | POST (create)
-    /api/members/me/      GET (own profile) | PATCH (update own profile)
-    /api/members/<id>/    GET | PATCH | PUT | DELETE
-
-UI routes (Django template views):
-    /members/             Member list page
-    /members/add/         Create member form
-    /members/<id>/        Member detail page
-    /members/<id>/edit/   Edit member form
-"""
 from django.urls import path
 
-from apps.members.views import MemberDetailView, MemberListCreateView, MyProfileView
+from apps.members.views import MemberDetailView, MemberListCreateView, MemberReactivateView, MyProfileView
 from apps.members import template_views
 
 app_name = 'members'
@@ -23,6 +9,7 @@ urlpatterns = [
     # ── API ──────────────────────────────────────────────────────────────────
     path('', MemberListCreateView.as_view(), name='member-list-create'),
     path('me/', MyProfileView.as_view(), name='my-profile'),
+    path('<int:pk>/reactivate/', MemberReactivateView.as_view(), name='member-reactivate'),
     path('<int:pk>/', MemberDetailView.as_view(), name='member-detail'),
 
     # ── UI (template views) ───────────────────────────────────────────────────

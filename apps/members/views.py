@@ -8,6 +8,7 @@ API Endpoints:
     PUT    /api/members/<id>/             - Full update profile (Owner/Staff)
     PATCH  /api/members/<id>/             - Partial update profile (Owner/Staff or self)
     DELETE /api/members/<id>/             - Deactivate member (Owner/Staff)
+    POST   /api/members/<id>/reactivate/  - Reactivate member (Owner/Staff)
     GET    /api/members/me/               - Own profile (Member)
     PATCH  /api/members/me/              - Update own profile (Member)
 
@@ -197,6 +198,24 @@ class MemberDetailView(APIView):
             {'detail': f'Member {user.get_full_name()} has been deactivated.'},
             status=status.HTTP_200_OK,
         )
+
+
+# ─── Member Reactivate ─────────────────────────────────────────────────────────
+
+class MemberReactivateView(APIView):
+    """
+    POST /api/members/<id>/reactivate/  — Reactivate a deactivated member (Owner/Staff only).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+            raise PermissionDenied('Only Owner/Staff can reactivate members.')
+        profile = get_profile_or_404(pk)
+        user = profile.user
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+        return Response(MemberProfileSerializer(profile).data)
 
 
 # ─── Member's Own Profile ─────────────────────────────────────────────────────

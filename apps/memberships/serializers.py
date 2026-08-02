@@ -132,6 +132,27 @@ class MembershipCreateSerializer(serializers.ModelSerializer):
         )
 
 
+# ─── Memberships: update (patch) ──────────────────────────────────────────────
+
+class MembershipUpdateSerializer(serializers.ModelSerializer):
+    """
+    Used by Owner/Staff for direct PATCH edits (dates, price, notes, and a
+    manual status override). Freeze/unfreeze/renew go through their own
+    endpoints — this is the fallback for everything else, including forcing
+    a status like CANCELLED → ACTIVE from the edit modal.
+    """
+
+    class Meta:
+        model = Membership
+        fields = ['notes', 'price_paid', 'end_date', 'status']
+        extra_kwargs = {
+            'notes': {'required': False},
+            'price_paid': {'required': False},
+            'end_date': {'required': False},
+            'status': {'required': False},
+        }
+
+
 # ─── Actions ──────────────────────────────────────────────────────────────────
 
 class FreezeSerializer(serializers.Serializer):
