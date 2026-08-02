@@ -7,6 +7,7 @@ from .views import (
     MealDetailView,
     MealLogListCreateView,
     MealLogDetailView,
+    MealLogDailySummaryView,
 )
 
 urlpatterns = [
@@ -18,4 +19,7 @@ urlpatterns = [
 
     path('meal-logs/', MealLogListCreateView.as_view(), name='meal-log-list'),
     path('meal-logs/<int:pk>/', MealLogDetailView.as_view(), name='meal-log-detail'),
+
+    # Daily summary with calorie totals + goal comparison
+    path('meal-logs/daily-summary/', MealLogDailySummaryView.as_view(), name='meal-log-daily-summary'),
 ]

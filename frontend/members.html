@@ -505,6 +505,7 @@ tbody.innerHTML += `
   <div class="d-flex flex-wrap gap-1">
     <button class="btn btn-sm btn-outline-info" onclick="viewMember(${row.id})" title="View"><i class="bi bi-eye"></i></button>
     <button class="btn btn-sm btn-outline-warning" onclick="openEdit(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+    <button class="btn btn-sm btn-outline-success" onclick="showQrModal(${row.user_id}, '${row.full_name}', '${row.display_id || row.id}')" title="QR Code"><i class="bi bi-qr-code"></i></button>
     <a class="btn btn-sm btn-outline-dark spa-link" title="View Attendance" href="attendance.html?search=${encodeURIComponent(row.full_name)}"><i class="bi bi-calendar-check"></i></a>
     <a class="btn btn-sm btn-outline-dark spa-link" title="View Payments" href="payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}"><i class="bi bi-cash-coin"></i></a>
     ${row.is_active
@@ -737,6 +738,145 @@ tbody.innerHTML += `
   field.value = pwd;
   field.type = 'text';
 }
+</script>
+
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-qr-code me-2"></i>Member QR Code</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center" id="qrModalBody">
+        <div class="spinner-border text-primary my-4"></div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button class="btn btn-outline-secondary btn-sm" onclick="regenerateQr()" id="regenBtn">
+          <i class="bi bi-arrow-clockwise"></i> Regenerate QR
+        </button>
+        <div>
+          <button class="btn btn-outline-primary btn-sm" onclick="downloadQr()" id="downloadBtn">
+            <i class="bi bi-download"></i> Download
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // QR Code logic
+  let currentQrMemberId = null;
+  let currentQrMemberName = null;
+  let currentQrDisplayId = null;
+
+  async function showQrModal(userId, fullName, displayId) {
+    currentQrMemberId = userId;
+    currentQrMemberName = fullName;
+    currentQrDisplayId = displayId;
+
+    const modalEl = document.getElementById('qrModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    document.getElementById('qrModalBody').innerHTML = `
+      <div class="spinner-border text-primary my-4"></div>
+      <p class="text-muted mt-2">Generating QR code…</p>`;
+
+    modal.show();
+    await loadQrCode(userId, fullName, displayId);
+  }
+
+  async function loadQrCode(userId, fullName, displayId) {
+    const res = await apiRequest(`/attendance/qr/${userId}/profile/`);
+    if (!res || !res.ok) {
+      document.getElementById('qrModalBody').innerHTML = `
+        <div class="alert alert-danger">Failed to load QR code. Please try again.</div>`;
+      return;
+    }
+
+    const data = await res.json();
+    renderQrModal(data, fullName, displayId);
+  }
+
+  function renderQrModal(data, fullName, displayId) {
+    // Find member info from the cached list
+    const member = allMembers.find(m => m.user_id == data.member_id);
+    const ms = member ? member.current_membership : null;
+
+    const membershipHtml = ms
+      ? `<span class="badge bg-success">${ms.plan_name}</span>
+         <small class="text-muted ms-1">expires ${ms.end_date}</small>`
+      : `<span class="badge bg-secondary">No Plan</span>`;
+
+    const phone = member ? (member.phone || '—') : '—';
+    const goal = member ? (member.fitness_goal_display || '—') : '—';
+
+    document.getElementById('qrModalBody').innerHTML = `
+      <!-- Member Info Card -->
+      <div class="card mb-3 text-start">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                 style="width:48px;height:48px;font-size:1.3rem;font-weight:700;flex-shrink:0;">
+              ${fullName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div class="fw-bold fs-6">${fullName}</div>
+              <div class="text-muted small">${displayId}</div>
+              <div class="text-muted small"><i class="bi bi-telephone me-1"></i>${phone}</div>
+            </div>
+          </div>
+          <hr class="my-2">
+          <div class="d-flex justify-content-between align-items-center small">
+            <span><i class="bi bi-trophy me-1 text-warning"></i>${goal}</span>
+            <span>${membershipHtml}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Image -->
+      <div class="border rounded p-3 d-inline-block bg-white mb-2">
+        <img id="qrImage" src="${data.qr_image_base64}" alt="QR Code"
+             style="width:220px;height:220px;display:block;">
+      </div>
+      <p class="text-muted small mb-1">
+        <i class="bi bi-info-circle me-1"></i>
+        Scan to view this member's profile
+      </p>`;
+  }
+
+  async function regenerateQr() {
+    if (!currentQrMemberId) return;
+    if (!confirm('Regenerate QR code? The old QR code will stop working immediately.')) return;
+
+    document.getElementById('qrModalBody').innerHTML = `
+      <div class="spinner-border text-warning my-4"></div>
+      <p class="text-muted mt-2">Regenerating…</p>`;
+
+    const res = await apiRequest(`/attendance/qr/${currentQrMemberId}/regenerate/`, {
+      method: 'POST', body: JSON.stringify({}),
+    });
+
+    if (!res || !res.ok) {
+      document.getElementById('qrModalBody').innerHTML = `
+        <div class="alert alert-danger">Failed to regenerate. Please try again.</div>`;
+      return;
+    }
+
+    // Reload fresh QR
+    await loadQrCode(currentQrMemberId, currentQrMemberName, currentQrDisplayId);
+  }
+
+  function downloadQr() {
+    const img = document.getElementById('qrImage');
+    if (!img) return;
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = `QR_${currentQrDisplayId || currentQrMemberId}.png`;
+    link.click();
+  }
 </script>
 </body>
 </html>

@@ -1,8 +1,10 @@
 """
 Attendance tracking for both members and staff/trainers.
 """
+import secrets
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Attendance(models.Model):
@@ -60,9 +62,48 @@ class Attendance(models.Model):
         """Calculate time spent if check_out is recorded."""
         if self.check_in and self.check_out:
             from datetime import datetime, timedelta
-            fmt = '%H:%M:%S'
-            t1 = datetime.strptime(str(self.check_in), fmt)
-            t2 = datetime.strptime(str(self.check_out), fmt)
+            # Combine with a dummy date so we can subtract directly
+            dummy = datetime(2000, 1, 1)
+            t1 = datetime.combine(dummy, self.check_in)
+            t2 = datetime.combine(dummy, self.check_out)
             delta = t2 - t1
             return int(delta.total_seconds() / 60)
         return None
+
+
+class QRAttendanceToken(models.Model):
+    """
+    A persistent QR code token assigned to each member.
+    Scanning the token creates or updates the Attendance record for that day.
+    """
+    member = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='qr_attendance_token',
+        limit_choices_to={'role': 'MEMBER'},
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'qr_attendance_tokens'
+        verbose_name = 'QR Attendance Token'
+
+    def __str__(self):
+        return f'QR token for {self.member.get_full_name()}'
+
+    @classmethod
+    def get_or_create_for_member(cls, member):
+        """Return existing token or create a new one."""
+        obj, _ = cls.objects.get_or_create(
+            member=member,
+            defaults={'token': secrets.token_urlsafe(48)},
+        )
+        return obj
+
+    def regenerate(self):
+        """Issue a fresh token (e.g., if the old one was lost/compromised)."""
+        self.token = secrets.token_urlsafe(48)
+        self.save(update_fields=['token', 'updated_at'])
+        return self

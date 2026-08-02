@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Member Profile — FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    body {
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card-wrap {
+      width: 100%;
+      max-width: 420px;
+      padding: 1rem;
+    }
+    .profile-card {
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      border: none;
+    }
+    .profile-header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #e63946 100%);
+      padding: 2rem 1.5rem 3rem;
+      text-align: center;
+      position: relative;
+    }
+    .profile-avatar {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 4px solid rgba(255,255,255,0.8);
+      object-fit: cover;
+      background: #fff;
+    }
+    .avatar-placeholder {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 4px solid rgba(255,255,255,0.8);
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 auto;
+    }
+    .profile-name {
+      color: #fff;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-top: 0.75rem;
+      margin-bottom: 0.2rem;
+    }
+    .profile-id {
+      color: rgba(255,255,255,0.75);
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+    .profile-body {
+      background: #fff;
+      padding: 1.5rem;
+    }
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #f0f2f5;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .info-label { font-size: 0.75rem; color: #888; line-height: 1; }
+    .info-value { font-size: 0.95rem; font-weight: 600; color: #222; line-height: 1.3; }
+    .badge-plan {
+      display: inline-block;
+      padding: 0.3em 0.8em;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .gym-footer {
+      text-align: center;
+      padding: 1rem;
+      color: #aaa;
+      font-size: 0.8rem;
+    }
+    .spinner-wrap {
+      text-align: center;
+      padding: 3rem;
+    }
+    .error-wrap {
+      text-align: center;
+      padding: 3rem;
+      color: #e63946;
+    }
+  </style>
+</head>
+<body>
+  <div class="card-wrap">
+    <div id="content">
+      <div class="spinner-wrap">
+        <div class="spinner-border text-danger mb-3"></div>
+        <div class="text-muted">Loading member profile…</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:8000/api';
+
+    function getParam(name) {
+      return new URLSearchParams(window.location.search).get(name);
+    }
+
+    function statusColor(status) {
+      const map = { ACTIVE: '#198754', EXPIRED: '#6c757d', FROZEN: '#0dcaf0', CANCELLED: '#343a40', PENDING: '#ffc107' };
+      return map[status] || '#6c757d';
+    }
+
+    async function loadProfile() {
+      const memberId = getParam('id');
+      if (!memberId) {
+        showError('No member ID provided.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/attendance/member-profile/${memberId}/`);
+        if (!res.ok) {
+          showError('Member not found or inactive.');
+          return;
+        }
+        const data = await res.json();
+        renderProfile(data);
+      } catch (e) {
+        showError('Could not connect to the server.');
+      }
+    }
+
+    function renderProfile(m) {
+      const ms = m.membership;
+      const avatarHtml = m.profile_picture
+        ? `<img src="${m.profile_picture}" class="profile-avatar" alt="Profile">`
+        : `<div class="avatar-placeholder">${m.full_name.charAt(0).toUpperCase()}</div>`;
+
+      const membershipBlock = ms
+        ? `<div class="info-row">
+            <div class="info-icon" style="background:#e8f5e9;">
+              <i class="bi bi-card-checklist" style="color:#198754;"></i>
+            </div>
+            <div>
+              <div class="info-label">Membership Plan</div>
+              <div class="info-value">
+                <span class="badge-plan" style="background:${statusColor(ms.status)}22;color:${statusColor(ms.status)};">
+                  ${ms.plan_name}
+                </span>
+                <span class="text-muted small ms-1">${ms.status}</span>
+              </div>
+            </div>
+           </div>
+           <div class="info-row">
+            <div class="info-icon" style="background:#fff3e0;">
+              <i class="bi bi-calendar-event" style="color:#fd7e14;"></i>
+            </div>
+            <div>
+              <div class="info-label">Expires On</div>
+              <div class="info-value">${ms.end_date}</div>
+            </div>
+           </div>`
+        : `<div class="info-row">
+            <div class="info-icon" style="background:#f8d7da;">
+              <i class="bi bi-x-circle" style="color:#dc3545;"></i>
+            </div>
+            <div>
+              <div class="info-label">Membership</div>
+              <div class="info-value text-danger">No active plan</div>
+            </div>
+           </div>`;
+
+      const goalBlock = m.fitness_goal
+        ? `<div class="info-row">
+            <div class="info-icon" style="background:#fff8e1;">
+              <i class="bi bi-trophy" style="color:#ffc107;"></i>
+            </div>
+            <div>
+              <div class="info-label">Fitness Goal</div>
+              <div class="info-value">${m.fitness_goal}</div>
+            </div>
+           </div>` : '';
+
+      const levelBlock = m.fitness_level
+        ? `<div class="info-row">
+            <div class="info-icon" style="background:#e3f2fd;">
+              <i class="bi bi-bar-chart-fill" style="color:#0d6efd;"></i>
+            </div>
+            <div>
+              <div class="info-label">Fitness Level</div>
+              <div class="info-value">${m.fitness_level}</div>
+            </div>
+           </div>` : '';
+
+      document.getElementById('content').innerHTML = `
+        <div class="profile-card">
+          <div class="profile-header">
+            ${avatarHtml}
+            <div class="profile-name">${m.full_name}</div>
+            <div class="profile-id"><i class="bi bi-person-badge me-1"></i>${m.display_id}</div>
+          </div>
+          <div class="profile-body">
+            <div class="info-row">
+              <div class="info-icon" style="background:#fce4ec;">
+                <i class="bi bi-calendar-plus" style="color:#e63946;"></i>
+              </div>
+              <div>
+                <div class="info-label">Member Since</div>
+                <div class="info-value">${m.joined}</div>
+              </div>
+            </div>
+            ${membershipBlock}
+            ${goalBlock}
+            ${levelBlock}
+          </div>
+        </div>
+        <div class="gym-footer">
+          <i class="bi bi-shield-check me-1"></i>FitCore Gym Management
+        </div>`;
+    }
+
+    function showError(msg) {
+      document.getElementById('content').innerHTML = `
+        <div class="profile-card" style="border-radius:20px;overflow:hidden;border:none;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+          <div class="error-wrap">
+            <i class="bi bi-exclamation-triangle display-4 d-block mb-3" style="color:#e63946;"></i>
+            <h5>${msg}</h5>
+            <p class="text-muted small">Please contact gym staff for assistance.</p>
+          </div>
+        </div>`;
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

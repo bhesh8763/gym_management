@@ -113,6 +113,20 @@
       <div class="col-md-8">
         <div class="card p-3">
           <h6 class="mb-3">Attendance — Last 7 Days</h6>
+
+    <!-- Member Check-in QR Card (only visible to MEMBER role) -->
+    <div class="row g-3 mt-1 d-none" id="memberCheckinSection">
+      <div class="col-12">
+        <div class="card p-4 text-center" style="border:2px dashed #e63946;border-radius:16px;">
+          <h5 class="mb-1"><i class="bi bi-qr-code me-2 text-danger"></i>Your Check-in QR Code</h5>
+          <p class="text-muted small mb-3">Show this to the staff or scan at the entrance to check in/out</p>
+          <div id="checkinQrWrap">
+            <div class="spinner-border text-danger mb-3"></div>
+            <p class="text-muted small">Loading your QR code…</p>
+          </div>
+        </div>
+      </div>
+    </div>
           <canvas id="attendanceChart" height="90"></canvas>
         </div>
       </div>
@@ -252,6 +266,52 @@
   loadStats();
   loadAttendanceChart();
   loadNotifications();
+
+  // Show check-in QR only for MEMBER role
+  async function loadMemberCheckinQR() {
+    const role = localStorage.getItem('user_role');
+    if (role !== 'MEMBER') return;
+
+    document.getElementById('memberCheckinSection').classList.remove('d-none');
+
+    const res = await apiRequest('/attendance/qr/my/');
+    if (!res || !res.ok) {
+      document.getElementById('checkinQrWrap').innerHTML = `
+        <div class="text-danger small">Could not load QR code. Please refresh.</div>`;
+      return;
+    }
+
+    const data = await res.json();
+    document.getElementById('checkinQrWrap').innerHTML = `
+      <div class="border rounded p-2 d-inline-block bg-white mb-3">
+        <img src="${data.qr_image_base64}" alt="Check-in QR"
+             style="width:200px;height:200px;display:block;" id="memberQrImg">
+      </div>
+      <div class="d-flex justify-content-center gap-2 flex-wrap">
+        <button class="btn btn-sm btn-outline-danger" onclick="downloadCheckinQr()">
+          <i class="bi bi-download me-1"></i>Download
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadMemberCheckinQR()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+      </div>
+      <p class="text-muted small mt-2 mb-0">
+        <i class="bi bi-shield-check me-1"></i>
+        This QR is unique to you — do not share it with others
+      </p>`;
+  }
+
+  function downloadCheckinQr() {
+    const img = document.getElementById('memberQrImg');
+    if (!img) return;
+    const displayId = localStorage.getItem('display_id') || localStorage.getItem('user_id') || 'member';
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = `checkin_qr_${displayId}.png`;
+    link.click();
+  }
+
+  loadMemberCheckinQR();
 </script>
 </body>
 </html>

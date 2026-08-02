@@ -1,16 +1,25 @@
 """
-Reports & Analytics — read-only aggregation views.
+Reports & Analytics — read-only aggregation views + export endpoints.
 
 These endpoints don't own any models of their own; they query across the
 existing apps (payments, memberships, attendance, equipment, lockers,
 members, staff) and return summarized data for dashboards/charts.
 
 All endpoints are Owner/Staff only.
+
+Export endpoints:
+    GET /api/reports/export/attendance/   ?format=csv|excel  ?start=YYYY-MM-DD &end=YYYY-MM-DD
+    GET /api/reports/export/memberships/  ?format=csv|excel
+    GET /api/reports/export/revenue/      ?format=csv|excel  ?start=YYYY-MM-DD &end=YYYY-MM-DD
+    GET /api/reports/export/members/      ?format=csv|excel
 """
-from datetime import timedelta
+import csv
+import io
+from datetime import timedelta, date
 
 from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncMonth
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -24,6 +33,93 @@ from apps.lockers.models import Locker, LockerAssignment
 from apps.members.models import MemberProfile
 from apps.staff.models import StaffProfile, LeaveRequest
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _parse_date(value, fallback):
+    if not value:
+        return fallback
+    try:
+        from datetime import date as date_cls
+        return date_cls.fromisoformat(value)
+    except ValueError:
+        return fallback
+
+
+def _make_csv_response(filename, headers, rows):
+    """Build an HTTP response with CSV content."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow(headers)
+    for row in rows:
+        writer.writerow(row)
+    return response
+
+
+def _make_excel_response(filename, headers, rows):
+    """Build an HTTP response with Excel (.xlsx) content using openpyxl."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+    except ImportError:
+        return None  # Caller handles fallback
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = filename.replace('.xlsx', '')
+
+    # Header row styling
+    header_fill = PatternFill(start_color='1F4E79', end_color='1F4E79', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+
+    # Data rows
+    for row_idx, row in enumerate(rows, start=2):
+        for col_idx, value in enumerate(row, start=1):
+            ws.cell(row=row_idx, column=col_idx, value=value)
+
+    # Auto-fit column widths (approximate)
+    for col in ws.columns:
+        max_length = max((len(str(cell.value or '')) for cell in col), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_length + 4, 50)
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _export_response(request, filename_base, headers, rows):
+    """
+    Return CSV or Excel depending on ?format= query param.
+    Defaults to CSV if openpyxl is not installed.
+    """
+    fmt = request.query_params.get('format', 'csv').lower()
+    if fmt == 'excel':
+        response = _make_excel_response(f'{filename_base}.xlsx', headers, rows)
+        if response:
+            return response
+        # openpyxl not installed, fall back to CSV
+    return _make_csv_response(f'{filename_base}.csv', headers, rows)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Standard report views (JSON)
+# ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
 @permission_classes([IsOwnerOrStaff])
@@ -287,3 +383,174 @@ def overview_report(request):
         ).count(),
         'attendance_today': Attendance.objects.filter(date=today).count(),
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Export endpoints (CSV / Excel)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsOwnerOrStaff])
+def export_attendance(request):
+    """
+    GET /api/reports/export/attendance/?format=csv|excel&start=YYYY-MM-DD&end=YYYY-MM-DD
+    Exports all attendance records in the given date range.
+    Defaults to last 30 days if no range provided.
+    """
+    today = timezone.now().date()
+    start = _parse_date(request.query_params.get('start'), today - timedelta(days=29))
+    end = _parse_date(request.query_params.get('end'), today)
+
+    records = (
+        Attendance.objects
+        .filter(date__gte=start, date__lte=end)
+        .select_related('user', 'marked_by')
+        .order_by('date', 'check_in')
+    )
+
+    headers = [
+        'ID', 'Member Name', 'Display ID', 'Type', 'Date',
+        'Status', 'Check In', 'Check Out', 'Duration (min)',
+        'Marked By', 'Notes',
+    ]
+    rows = []
+    for r in records:
+        rows.append([
+            r.id,
+            r.user.get_full_name(),
+            r.user.display_id or '',
+            r.attendance_type,
+            str(r.date),
+            r.status,
+            str(r.check_in) if r.check_in else '',
+            str(r.check_out) if r.check_out else '',
+            r.duration_minutes if r.duration_minutes is not None else '',
+            r.marked_by.get_full_name() if r.marked_by else '',
+            r.notes,
+        ])
+
+    return _export_response(request, f'attendance_{start}_{end}', headers, rows)
+
+
+@api_view(['GET'])
+@permission_classes([IsOwnerOrStaff])
+def export_memberships(request):
+    """
+    GET /api/reports/export/memberships/?format=csv|excel
+    Exports all membership records.
+    Optional ?status=ACTIVE|EXPIRED|FROZEN|CANCELLED to filter.
+    """
+    qs = Membership.objects.select_related('member', 'plan').order_by('-start_date')
+    status_filter = request.query_params.get('status')
+    if status_filter:
+        qs = qs.filter(status=status_filter.upper())
+
+    headers = [
+        'ID', 'Member Name', 'Display ID', 'Email', 'Plan', 'Status',
+        'Start Date', 'End Date', 'Price Paid (NPR)', 'Frozen',
+        'Freeze Start', 'Freeze End',
+    ]
+    rows = []
+    for m in qs:
+        rows.append([
+            m.id,
+            m.member.get_full_name(),
+            m.member.display_id or '',
+            m.member.email,
+            m.plan.name,
+            m.status,
+            str(m.start_date),
+            str(m.end_date),
+            float(m.price_paid),
+            'Yes' if m.is_frozen else 'No',
+            str(m.freeze_start) if hasattr(m, 'freeze_start') and m.freeze_start else '',
+            str(m.freeze_end) if hasattr(m, 'freeze_end') and m.freeze_end else '',
+        ])
+
+    return _export_response(request, 'memberships', headers, rows)
+
+
+@api_view(['GET'])
+@permission_classes([IsOwnerOrStaff])
+def export_revenue(request):
+    """
+    GET /api/reports/export/revenue/?format=csv|excel&start=YYYY-MM-DD&end=YYYY-MM-DD
+    Exports all payment records in the given date range.
+    Defaults to current month if no range provided.
+    """
+    today = timezone.now().date()
+    start = _parse_date(request.query_params.get('start'), today.replace(day=1))
+    end = _parse_date(request.query_params.get('end'), today)
+
+    payments = (
+        Payment.objects
+        .filter(created_at__date__gte=start, created_at__date__lte=end)
+        .select_related('member', 'collected_by', 'membership')
+        .order_by('-created_at')
+    )
+
+    headers = [
+        'Receipt No.', 'Member Name', 'Display ID', 'Payment For',
+        'Amount (NPR)', 'Discount (NPR)', 'Amount Paid (NPR)',
+        'Method', 'Status', 'Transaction ID',
+        'Paid At', 'Collected By', 'Notes',
+    ]
+    rows = []
+    for p in payments:
+        rows.append([
+            p.receipt_number,
+            p.member.get_full_name(),
+            p.member.display_id or '',
+            p.payment_for,
+            float(p.amount),
+            float(p.discount),
+            float(p.amount_paid),
+            p.payment_method,
+            p.status,
+            p.transaction_id or '',
+            str(p.paid_at) if p.paid_at else '',
+            p.collected_by.get_full_name() if p.collected_by else '',
+            p.notes,
+        ])
+
+    return _export_response(request, f'revenue_{start}_{end}', headers, rows)
+
+
+@api_view(['GET'])
+@permission_classes([IsOwnerOrStaff])
+def export_members(request):
+    """
+    GET /api/reports/export/members/?format=csv|excel
+    Exports all member profiles with their active membership info.
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    members = (
+        User.objects
+        .filter(role=User.Role.MEMBER)
+        .prefetch_related('memberships', 'memberships__plan')
+        .order_by('first_name', 'last_name')
+    )
+
+    headers = [
+        'Display ID', 'Full Name', 'Email', 'Phone',
+        'Active Plan', 'Membership Status', 'Membership Expires',
+        'Date Joined', 'Is Active',
+    ]
+    rows = []
+    for member in members:
+        active_membership = member.memberships.filter(status='ACTIVE').order_by('-start_date').first()
+        rows.append([
+            member.display_id or '',
+            member.get_full_name(),
+            member.email,
+            member.phone or '',
+            active_membership.plan.name if active_membership else 'None',
+            active_membership.status if active_membership else 'None',
+            str(active_membership.end_date) if active_membership else '',
+            str(member.date_joined.date()),
+            'Yes' if member.is_active else 'No',
+        ])
+
+    return _export_response(request, 'members', headers, rows)

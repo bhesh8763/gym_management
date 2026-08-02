@@ -2,6 +2,7 @@
 Custom User model with role-based access control.
 Roles: Owner, Staff, Trainer, Member
 """
+import secrets
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models, transaction
 from django.utils import timezone
@@ -149,3 +150,42 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_member(self):
         return self.role == self.Role.MEMBER
+
+
+class PasswordResetToken(models.Model):
+    """
+    One-time token for email-based password reset.
+    Each new request invalidates any previous tokens for the same user.
+    """
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='password_reset_tokens',
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'password_reset_tokens'
+        verbose_name = 'Password Reset Token'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Reset token for {self.user.email}'
+
+    @classmethod
+    def create_for_user(cls, user):
+        """Invalidate old tokens, create a new one valid for 1 hour."""
+        cls.objects.filter(user=user, is_used=False).update(is_used=True)
+        token = secrets.token_urlsafe(48)
+        return cls.objects.create(
+            user=user,
+            token=token,
+            expires_at=timezone.now() + timezone.timedelta(hours=1),
+        )
+
+    @property
+    def is_valid(self):
+        return not self.is_used and self.expires_at > timezone.now()

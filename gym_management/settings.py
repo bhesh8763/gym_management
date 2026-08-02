@@ -161,7 +161,26 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:8080',
     'http://127.0.0.1:8080',
+    # Frontend served by Live Server or serve_https.py
     'http://localhost:5500',
     'http://127.0.0.1:5500',
+    'http://192.168.100.234:5500',
+    'https://localhost:5500',
+    'https://127.0.0.1:5500',
+    'https://192.168.100.234:5500',
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# ─── EMAIL ─────────────────────────────────────────────────────────────────────
+# In development: print emails to the console.
+# In production: switch to smtp and set EMAIL_HOST, EMAIL_PORT, etc. via .env
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Gym Management <noreply@gym.local>')
+
+# Frontend base URL — used in password reset emails
+FRONTEND_URL = config('FRONTEND_URL', default='http://192.168.100.234:5500')
