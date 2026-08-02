@@ -169,7 +169,7 @@
     <h5>Filter / Search</h5>
     <div class="row g-2 mb-3">
       <div class="col">
-        <input type="text" id="filterSearch" class="form-control" placeholder="Search member name or email" onkeyup="if(event.key==='Enter') loadMemberships()">
+       <input type="text" id="filterSearch" class="form-control" placeholder="Search member name or email" oninput="onMembershipSearchInput()" onkeyup="if(event.key==='Enter') loadMemberships()">
       </div>
       <div class="col-auto">
         <select id="filterStatus" class="form-select" onchange="loadMemberships()">
@@ -186,18 +186,37 @@
       </div>
     </div>
 
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>ID</th><th>Member</th><th>Plan</th><th>Status</th>
-          <th class="sortable" onclick="sortMemberships('start_date')" style="cursor:pointer">Start <i class="bi bi-arrow-down-up small text-muted"></i></th>
-          <th class="sortable" onclick="sortMemberships('end_date')" style="cursor:pointer">End <i class="bi bi-arrow-down-up small text-muted"></i></th>
-          <th class="sortable" onclick="sortMemberships('days_remaining')" style="cursor:pointer">Days Left <i class="bi bi-arrow-down-up small text-muted"></i></th>
-          <th>Paid (NPR)</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="membershipTableBody"></tbody>
-    </table>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="d-flex align-items-center gap-2">
+    <label class="form-label mb-0 small text-muted">Rows perpage</label>
+    <select id="membershipPageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderMembershipsPage(1)">
+      <option value="10">10</option>
+      <option value="25">25</option>
+      <option value="50">50</option>
+    </select>
+  </div>
+</div>
+
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>ID</th><th>Member</th><th>Plan</th><th>Status</th>
+      <th class="sortable" onclick="sortMemberships('start_date')" style="cursor:pointer">Start <i class="bi bi-arrow-down-up small text-muted"></i></th>
+      <th class="sortable" onclick="sortMemberships('end_date')" style="cursor:pointer">End <i class="bi bi-arrow-down-up small text-muted"></i></th>
+      <th class="sortable" onclick="sortMemberships('days_remaining')" style="cursor:pointer">Days Left <i class="bi bi-arrow-down-up small text-muted"></i></th>
+      <th>Paid (NPR)</th><th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="membershipTableBody"></tbody>
+</table>
+
+<div class="d-flex justify-content-between align-items-center">
+  <small class="text-muted" id="membershipPageInfo">Showing 0 of 0</small>
+  <div>
+    <button class="btn btn-sm btn-outline-secondary" id="prevMembershipPageBtn" onclick="renderMembershipsPage(currentMembershipPage - 1)">Previous</button>
+    <button class="btn btn-sm btn-outline-secondary" id="nextMembershipPageBtn" onclick="renderMembershipsPage(currentMembershipPage + 1)">Next</button>
+  </div>
+</div>
   </div>
 </div>
 
@@ -329,7 +348,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="updateMembership()">Update</button>
+      <button type="button" class="btn btn-primary" id="updateMembershipBtn" onclick="updateMembership()">Update</button>
       </div>
     </div>
   </div>
@@ -515,7 +534,7 @@
       return;
     }
     if (res.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('editPlanModal')).hide();
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('editPlanModal')).hide();
       loadPlans();
     } else {
       const err = await res.json();
@@ -551,9 +570,17 @@
     if (res.ok) loadPlans();
     else alert('Failed to delete plan.');
   }
+// ── Memberships ──────────────────────────────────────────────────────────
+let membershipSearchDebounceTimer = null;
 
-  // ── Memberships ──────────────────────────────────────────────────────────
-  async function loadMemberships() {
+function onMembershipSearchInput() {
+  clearTimeout(membershipSearchDebounceTimer);
+  membershipSearchDebounceTimer = setTimeout(() => {
+    loadMemberships();
+  }, 300);
+}
+
+async function loadMemberships() {
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
     if (search) params.set('search', search);
@@ -580,13 +607,13 @@
     document.getElementById('statFrozen').textContent = frozen;
     document.getElementById('statExpired').textContent = expired;
 
-    renderMemberships(visible);
+  renderMembershipsPage(1);
 
     const expiring = await fetchAll('/memberships/expiring/?days=7');
     document.getElementById('statExpiring').textContent = expiring ? expiring.length : '-';
   }
-
-  let currentSort = { key: null, dir: 1 };
+let currentSort = { key: null, dir: 1 };
+  let currentMembershipPage = 1;
 
   function sortMemberships(key) {
     if (currentSort.key === key) {
@@ -594,39 +621,126 @@
     } else {
       currentSort = { key, dir: 1 };
     }
-    const sorted = [...membershipsCache].sort((a, b) => {
+    membershipsCache = [...membershipsCache].sort((a, b) => {
       let av = a[key], bv = b[key];
       if (key === 'start_date' || key === 'end_date') { av = new Date(av); bv = new Date(bv); }
       if (av < bv) return -1 * currentSort.dir;
       if (av > bv) return 1 * currentSort.dir;
       return 0;
     });
-    renderMemberships(sorted);
+    renderMembershipsPage(1);
   }
 
-  function renderMemberships(rows) {
-    const tbody = document.getElementById('membershipTableBody');
-    if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No memberships found for this filter.</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = rows.map(row => `
-        <tr>
-          <td>${row.id}</td>
-          <td>${row.member_name}<br><small class="text-muted">${row.member_email}</small></td>
-          <td>${row.plan_name}</td>
-          <td>${statusBadge(row.status)}</td>
-          <td>${row.start_date}</td>
-          <td>${row.end_date}</td>
-          <td>${row.days_remaining}</td>
-          <td>${row.price_paid}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-info" onclick="viewMembership(${row.id})" title="View"><i class="bi bi-eye"></i></button>
-            <button class="btn btn-sm btn-outline-warning" onclick="openEditMembershipModal(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteMembership(${row.id})" title="Delete"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>`).join('');
+  function renderMembershipsPage(page) {
+    const pageSize = parseInt(document.getElementById('membershipPageSize').value, 10);
+    const totalPages = Math.max(1, Math.ceil(membershipsCache.length / pageSize));
+    currentMembershipPage = Math.min(Math.max(1, page), totalPages);
+
+    const start = (currentMembershipPage - 1) * pageSize;
+    const pageRows = membershipsCache.slice(start, start + pageSize);
+
+    renderMemberships(pageRows);
+
+    document.getElementById('membershipPageInfo').textContent = membershipsCache.length
+      ? `Showing ${start + 1}-${Math.min(start + pageSize, membershipsCache.length)} of ${membershipsCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('prevMembershipPageBtn').disabled = currentMembershipPage === 1;
+    document.getElementById('nextMembershipPageBtn').disabled = currentMembershipPage === totalPages;
   }
+
+
+async function quickFreeze(id, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const freezeStart = prompt('Freeze start date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+    if (!freezeStart) return;
+    const freezeEnd = prompt('Freeze end date (YYYY-MM-DD):');
+    if (!freezeEnd) return;
+    const reason = prompt('Reason (optional):', '') || '';
+    const res = await apiRequest(`/memberships/${id}/freeze/`, {
+      method: 'POST',
+      body: JSON.stringify({ freeze_start: freezeStart, freeze_end: freezeEnd, freeze_reason: reason }),
+    });
+    if (!res) return;
+    if (res.ok) { loadMemberships(); }
+    else { const err = await res.json().catch(() => ({})); alert('Freeze failed: ' + JSON.stringify(err)); }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function quickUnfreeze(id, btn) {
+  if (!confirm('Unfreeze this membership and resume it now?')) return;
+  if (btn) btn.disabled = true;
+  try {
+    const res = await apiRequest(`/memberships/${id}/unfreeze/`, { method: 'POST', body: JSON.stringify({}) });
+    if (!res) return;
+    if (res.ok) { loadMemberships(); }
+    else { const err = await res.json().catch(() => ({})); alert('Unfreeze failed: ' + JSON.stringify(err)); }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function quickRenew(id, btn) {
+  if (!confirm('Renew this membership for another cycle?')) return;
+  if (btn) btn.disabled = true;
+  try {
+    const res = await apiRequest(`/memberships/${id}/renew/`, { method: 'POST', body: JSON.stringify({}) });
+    if (!res) return;
+    if (res.ok) { loadMemberships(); }
+    else { const err = await res.json().catch(() => ({})); alert('Renew failed: ' + JSON.stringify(err)); }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function membershipQuickActions(row) {
+  if (row.status === 'ACTIVE') {
+    return `<button class="btn btn-sm btn-outline-info" onclick="quickFreeze(${row.id}, this)" title="Freeze"><i class="bi bi-snow"></i></button>`;
+  }
+  if (row.status === 'FROZEN') {
+    return `<button class="btn btn-sm btn-outline-success" onclick="quickUnfreeze(${row.id}, this)" title="Unfreeze"><i class="bi bi-sun"></i></button>`;
+  }
+  if (row.status === 'EXPIRED') {
+    return `<button class="btn btn-sm btn-outline-primary" onclick="quickRenew(${row.id}, this)" title="Renew"><i class="bi bi-arrow-repeat"></i></button>`;
+  }
+  return '';
+}
+
+
+  function membershipRowClass(row) {
+  if (row.status === 'PENDING') return 'table-warning';
+  if (row.status === 'ACTIVE' && row.days_remaining <= 3) return 'table-danger';
+  if (row.status === 'ACTIVE' && row.days_remaining <= 7) return 'table-warning';
+  if (row.status === 'FROZEN') return 'table-info';
+  return '';
+}
+
+function renderMemberships(rows) {
+  const tbody = document.getElementById('membershipTableBody');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No memberships found for this filter.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(row => `
+      <tr class="${membershipRowClass(row)}">
+        <td>${row.id}</td>
+        <td>${row.member_name}<br><small class="text-muted">${row.member_email}</small></td>
+        <td>${row.plan_name}</td>
+        <td>${statusBadge(row.status)}</td>
+        <td>${row.start_date}</td>
+        <td>${row.end_date}</td>
+        <td>${row.days_remaining}</td>
+        <td>${row.price_paid}</td>
+        <td>
+          ${membershipQuickActions(row)}
+          <button class="btn btn-sm btn-outline-info" onclick="viewMembership(${row.id})" title="View"><i class="bi bi-eye"></i></button>
+          <button class="btn btn-sm btn-outline-warning" onclick="openEditMembershipModal(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteMembership(${row.id})" title="Delete"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>`.replace('class=""', '')).join('');
+}
 
   function findMembership(id) {
     return membershipsCache.find(m => m.id === id);
@@ -668,7 +782,19 @@
   // "status" so the owner can always force it. If your Django serializer marks
   // "status" as read_only, this PATCH will be ignored/rejected by the backend;
   // make it writable there if you want direct overrides to actually persist.
-  async function updateMembership() {
+ function closeMembershipModalAndRefresh() {
+  try {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editMembershipModal')).hide();
+  } catch (e) {
+    console.error('Could not close Edit Membership modal:', e);
+  }
+  loadMemberships();
+}
+
+async function updateMembership() {
+  const btn = document.getElementById('updateMembershipBtn');
+  if (btn) btn.disabled = true;
+  try {
     const id = document.getElementById('editMembershipId').value;
     const newStatus = document.getElementById('editMembershipStatus').value;
     const oldStatus = editingMembershipOriginalStatus;
@@ -711,8 +837,7 @@
         }
         if (newStatus === 'CANCELLED') {
           // DELETE already removed/cancelled it — no further PATCH needed.
-          bootstrap.Modal.getInstance(document.getElementById('editMembershipModal')).hide();
-          loadMemberships();
+          closeMembershipModalAndRefresh();
           return;
         }
       }
@@ -732,13 +857,19 @@
       return;
     }
     if (res.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('editMembershipModal')).hide();
-      loadMemberships();
+      closeMembershipModalAndRefresh();
     } else {
       const err = await res.json();
       alert('Failed to update membership: ' + JSON.stringify(err));
     }
+  } catch (err) {
+    console.error('updateMembership failed:', err);
+    alert('Something went wrong updating membership: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
   }
+}
+  
 
   async function deleteMembership(id) {
     if (!confirm('Delete/cancel this membership? This cannot be undone.')) return;
@@ -780,7 +911,7 @@
       document.getElementById('assignForm').reset();
       document.getElementById('assignMember').value = '';
       document.getElementById('assignMemberSearch').value = '';
-      bootstrap.Modal.getInstance(document.getElementById('assignMembershipModal')).hide();
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('assignMembershipModal')).hide();
       loadMemberships();
     } else {
       const err = await res.json();

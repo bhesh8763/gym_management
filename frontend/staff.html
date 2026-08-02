@@ -91,7 +91,6 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Add Staff Profile</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <form id="profileForm">
             <div class="modal-body">
@@ -109,7 +108,7 @@
               </div>
               <div class="mb-2">
                 <label class="form-label">Phone</label>
-                <input type="text" id="phone" class="form-control">
+                <input type="tel" id="phone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
               </div>
               <div class="mb-2">
                 <label class="form-label">Password</label>
@@ -171,7 +170,6 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Edit Staff Profile</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <form id="staffEditForm">
             <div class="modal-body">
@@ -290,7 +288,6 @@
       <div class="modal-content">
         <div class="modal-header bg-danger text-white">
           <h5 class="modal-title"><i class="bi bi-calendar2-x me-2"></i>Submit Leave Request</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <form id="leaveForm">
           <div class="modal-body">

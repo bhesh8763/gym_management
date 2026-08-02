@@ -38,6 +38,7 @@ from apps.memberships.serializers import (
     MembershipDetailSerializer,
     MembershipListSerializer,
     MembershipPlanSerializer,
+    MembershipUpdateSerializer,
     RenewSerializer,
 )
 
@@ -196,11 +197,9 @@ class MembershipDetailView(APIView):
         if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner/Staff can update memberships.')
         membership = get_membership_or_404(pk)
-        allowed_fields = {'notes', 'price_paid', 'end_date', 'status'}
-        for attr, value in request.data.items():
-            if attr in allowed_fields:
-                setattr(membership, attr, value)
-        membership.save()
+        serializer = MembershipUpdateSerializer(membership, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        membership = serializer.save()
         return Response(MembershipDetailSerializer(membership).data)
 
     def delete(self, request, pk):

@@ -170,7 +170,7 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Emergency Contact Phone</label>
-            <input type="text" id="editEmergencyPhone" class="form-control">
+<input type="tel" id="editEmergencyPhone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
           <div class="col-md-6">
             <label class="form-label">Medical Conditions</label>
@@ -191,8 +191,8 @@
     <h5>Filter / Search</h5>
     <div class="row g-2 mb-3">
       <div class="col-auto">
-        <input type="text" id="filterSearch" class="form-control" placeholder="Search name, email, phone" onkeyup="if(event.key==='Enter') loadMembers()">
-      </div>
+  <input type="text" id="filterSearch" class="form-control" placeholder="Search name, email, phone" autocomplete="off" oninput="onSearchInput()" onkeyup="if(event.key==='Enter') loadMembers()">
+</div>
       <div class="col-auto">
         <select id="filterGoal" class="form-select" onchange="loadMembers()">
           <option value="">All Goals</option>
@@ -265,7 +265,6 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Add New Member</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <form id="addForm" class="row g-3" autocomplete="off">
@@ -283,7 +282,7 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Phone</label>
-            <input type="text" id="phone" class="form-control" pattern="[0-9]{7,15}" title="Digits only, 7-15 characters" autocomplete="off">
+            <input type="tel" id="phone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" autocomplete="off" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
           <div class="col-md-4">
   <label class="form-label">Password</label>
@@ -352,7 +351,7 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Emergency Contact Phone</label>
-            <input type="text" id="emergencyPhone" class="form-control" autocomplete="off">
+<input type="tel" id="emergencyPhone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
           <div class="col-12">
             <label class="form-label">Medical Conditions</label>
@@ -429,8 +428,16 @@
     return all;
   }
 
-  let allMembers = [];
-  let currentPage = 1;
+let allMembers = [];
+let currentPage = 1;
+let searchDebounceTimer = null;
+
+function onSearchInput() {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    loadMembers();
+  }, 300);
+}
 
   async function loadMembers() {
      const tbody = document.getElementById('memberTableBody');
