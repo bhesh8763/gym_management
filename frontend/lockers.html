@@ -9,6 +9,48 @@
 </head>
 <body data-allowed-roles="OWNER,STAFF">
 
+<!-- Toast container for save/update/delete feedback -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Mobile: collapse dense tables into stacked cards below ~700px */
+  @media (max-width: 700px) {
+    #lockerTable thead, #assignTable thead { display: none; }
+    #lockerTable, #lockerTable tbody, #lockerTable tr, #lockerTable td,
+    #assignTable, #assignTable tbody, #assignTable tr, #assignTable td {
+      display: block;
+      width: 100%;
+    }
+    #lockerTable tr, #assignTable tr {
+      margin-bottom: 0.75rem;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+      padding: 0.5rem 0.75rem;
+    }
+    #lockerTable td, #assignTable td {
+      border: none;
+      padding: 0.25rem 0;
+      text-align: left !important;
+    }
+    #lockerTable td:not(:last-child)::before,
+    #assignTable td:not(:last-child)::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #6c757d;
+    }
+  }
+</style>
+
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
   <span class="navbar-brand">FitCore</span>
@@ -77,6 +119,38 @@
   <div class="p-4 flex-grow-1">
     <h3>Lockers</h3>
 
+    <!-- ── Locker stat cards ────────────────────────────────────────────── -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center border-primary"><div class="card-body">
+          <i class="bi bi-grid-3x3-gap text-primary fs-4"></i>
+          <div class="text-muted small">Total Lockers</div>
+          <h3 id="statTotalLockers" class="text-primary">-</h3>
+        </div></div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-warning"><div class="card-body">
+          <i class="bi bi-lock-fill text-warning fs-4"></i>
+          <div class="text-muted small">Occupied</div>
+          <h3 id="statOccupied" class="text-warning">-</h3>
+        </div></div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-success"><div class="card-body">
+          <i class="bi bi-unlock text-success fs-4"></i>
+          <div class="text-muted small">Available</div>
+          <h3 id="statAvailable" class="text-success">-</h3>
+        </div></div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-secondary"><div class="card-body">
+          <i class="bi bi-cash-stack text-secondary fs-4"></i>
+          <div class="text-muted small">Monthly Revenue</div>
+          <h3 id="statRevenue" class="text-secondary">-</h3>
+        </div></div>
+      </div>
+    </div>
+
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h5 class="mb-0">Lockers</h5>
       <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#lockerAddModal">
@@ -90,6 +164,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Add Locker</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <form id="lockerForm">
             <div class="modal-body">
@@ -109,24 +184,62 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary">Add Locker</button>
+              <button type="submit" class="btn btn-primary" id="lockerAddSubmitBtn">Add Locker</button>
             </div>
           </form>
         </div>
       </div>
     </div>
 
-    <div class="d-flex justify-content-end mb-2">
-      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('lockerTable', 'lockers.csv')">
-        <i class="bi bi-download"></i> Export CSV
-      </button>
+    <!-- ── Locker: search / filter ─────────────────────────────────────── -->
+    <div class="row g-2 mb-2">
+      <div class="col">
+        <input type="text" id="lockerSearch" class="form-control" placeholder="Search locker number or location" oninput="onLockerSearchInput()">
+      </div>
+      <div class="col-auto">
+        <select id="lockerStatusFilter" class="form-select" onchange="renderLockerPage(1)">
+          <option value="">All Statuses</option>
+          <option value="AVAILABLE">Available</option>
+          <option value="OCCUPIED">Occupied</option>
+          <option value="MAINTENANCE">Under Maintenance</option>
+          <option value="RESERVED">Reserved</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary" onclick="exportTableToCsv('lockerTable', 'lockers.csv')">
+          <i class="bi bi-download"></i> Export CSV
+        </button>
+      </div>
     </div>
-    <table class="table table-bordered mb-5" id="lockerTable">
-      <thead>
-        <tr><th>ID</th><th>Number</th><th>Location</th><th>Status</th><th>Fee</th><th data-no-export>Actions</th></tr>
-      </thead>
-      <tbody id="lockerTableBody"></tbody>
-    </table>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small text-muted">Rows per page</label>
+        <select id="lockerPageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderLockerPage(1)">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered mb-2" id="lockerTable">
+        <thead>
+          <tr><th>ID</th><th>Number</th><th>Location</th><th>Status</th><th>Fee</th><th data-no-export>Actions</th></tr>
+        </thead>
+        <tbody id="lockerTableBody">
+          <tr><td colspan="6" class="text-center text-muted py-4">Loading lockers…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mb-5">
+      <small class="text-muted" id="lockerPageInfo">Showing 0 of 0</small>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary" id="prevLockerPageBtn" onclick="renderLockerPage(currentLockerPage - 1)">Previous</button>
+        <button class="btn btn-sm btn-outline-secondary" id="nextLockerPageBtn" onclick="renderLockerPage(currentLockerPage + 1)">Next</button>
+      </div>
+    </div>
 
     <!-- Edit Locker Modal -->
     <div class="modal fade" id="lockerEditModal" tabindex="-1">
@@ -134,6 +247,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Edit Locker</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <form id="lockerEditForm">
             <div class="modal-body">
@@ -163,7 +277,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <button type="submit" class="btn btn-primary" id="lockerEditSubmitBtn">Save Changes</button>
             </div>
           </form>
         </div>
@@ -175,18 +289,19 @@
     <h3>Locker Assignments</h3>
 
     <h5>Assign Locker to Member</h5>
-    <form id="assignForm" class="row g-2 mb-4 align-items-end">
+    <form id="assignForm" class="row g-3 mb-4 align-items-end">
       <div class="col-auto">
         <label class="form-label">Locker</label>
         <select id="assignLockerId" class="form-select" required style="min-width: 160px;">
           <option value="">Loading lockers…</option>
         </select>
       </div>
-      <div class="col-auto">
+      <div class="col-auto position-relative">
         <label class="form-label">Member</label>
-        <select id="assignMemberId" class="form-select" required style="min-width: 200px;">
-          <option value="">Loading members…</option>
-        </select>
+        <input type="text" id="assignMemberSearch" class="form-control" style="min-width: 220px;"
+               placeholder="Search by name or email" autocomplete="off" required>
+        <input type="hidden" id="assignMemberId">
+        <div id="assignMemberResults" class="dropdown-panel" style="min-width:260px; left:0; right:auto; max-height:260px; overflow-y:auto;"></div>
       </div>
       <div class="col-auto">
         <label class="form-label">Start Date</label>
@@ -197,61 +312,175 @@
         <input type="date" id="assignEnd" class="form-control" required>
       </div>
       <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Assign</button>
+        <button type="submit" class="btn btn-primary" id="assignSubmitBtn">Assign</button>
       </div>
     </form>
     <div id="assignError" class="alert alert-danger d-none"></div>
 
-    <div class="d-flex justify-content-end mb-2">
-      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('assignTable', 'locker_assignments.csv')">
-        <i class="bi bi-download"></i> Export CSV
-      </button>
+    <!-- ── Assignments: filter ─────────────────────────────────────────── -->
+    <div class="row g-2 mb-2">
+      <div class="col-auto">
+        <select id="assignActiveFilter" class="form-select" onchange="renderAssignmentPage(1)">
+          <option value="">All</option>
+          <option value="true" selected>Active only</option>
+          <option value="false">Inactive only</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary" onclick="exportTableToCsv('assignTable', 'locker_assignments.csv')">
+          <i class="bi bi-download"></i> Export CSV
+        </button>
+      </div>
     </div>
-    <table class="table table-bordered" id="assignTable">
-      <thead>
-        <tr><th>ID</th><th>Locker #</th><th>Member</th><th>Start</th><th>End</th><th>Active</th><th data-no-export>Actions</th></tr>
-      </thead>
-      <tbody id="assignTableBody"></tbody>
-    </table>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small text-muted">Rows per page</label>
+        <select id="assignPageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderAssignmentPage(1)">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered mb-2" id="assignTable">
+        <thead>
+          <tr><th>ID</th><th>Locker #</th><th>Member</th><th>Start</th><th>End</th><th>Active</th><th data-no-export>Actions</th></tr>
+        </thead>
+        <tbody id="assignTableBody">
+          <tr><td colspan="7" class="text-center text-muted py-4">Loading assignments…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-between align-items-center">
+      <small class="text-muted" id="assignPageInfo">Showing 0 of 0</small>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary" id="prevAssignPageBtn" onclick="renderAssignmentPage(currentAssignPage - 1)">Previous</button>
+        <button class="btn btn-sm btn-outline-secondary" id="nextAssignPageBtn" onclick="renderAssignmentPage(currentAssignPage + 1)">Next</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
   restrictPastDates('assignStart', 'assignEnd');
 
-
-
   // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
 
+  // ─── Toast feedback ─────────────────────────────────────────────────────
+  function showToast(message, variant) {
+    const toastEl = document.getElementById("appToast");
+    const bodyEl = document.getElementById("appToastBody");
+    if (!toastEl || !bodyEl) {
+      console.warn("Toast element missing from page — skipping toast:", message);
+      return;
+    }
+    toastEl.classList.remove("bg-success", "bg-danger");
+    toastEl.classList.add(variant === "error" ? "bg-danger" : "bg-success");
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 }).show();
+  }
 
+  // ─── Badges ───────────────────────────────────────────────────────────────
+  function lockerStatusBadge(status) {
+    const map = {
+      AVAILABLE: 'success', OCCUPIED: 'warning',
+      MAINTENANCE: 'dark', RESERVED: 'info',
+    };
+    const label = status ? status.replace('_', ' ') : '-';
+    return `<span class="badge bg-${map[status] || 'secondary'}">${label}</span>`;
+  }
+
+  function lockerRowClass(row) {
+    if (row.status === 'MAINTENANCE') return 'table-danger';
+    if (row.status === 'RESERVED') return 'table-info';
+    return '';
+  }
+
+  // ─── Lockers: load + stats ──────────────────────────────────────────────
   let lockerCache = [];
+  let lockerFilteredCache = [];
+  let currentLockerPage = 1;
+  let lockerSearchDebounce = null;
+
+  function onLockerSearchInput() {
+    clearTimeout(lockerSearchDebounce);
+    lockerSearchDebounce = setTimeout(() => renderLockerPage(1), 300);
+  }
 
   async function loadLockers() {
     const res = await apiRequest('/lockers/lockers/');
     if (!res) return;
+    if (!res.ok) {
+      document.getElementById('lockerTableBody').innerHTML =
+        `<tr><td colspan="6" class="text-center text-danger py-4">Failed to load lockers.</td></tr>`;
+      return;
+    }
     const data = await res.json();
-    lockerCache = data.results;
-    const tbody = document.getElementById('lockerTableBody');
-    tbody.innerHTML = '';
-    data.results.forEach(row => {
-      const badge = row.status === 'AVAILABLE' ? 'success' : (row.status === 'OCCUPIED' ? 'warning' : 'secondary');
-      tbody.innerHTML += `
-        <tr>
-          <td>${row.id}</td><td>${row.locker_number}</td><td>${row.location}</td>
-          <td><span class="badge bg-${badge}">${row.status}</span></td><td>${row.monthly_fee}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-primary" onclick="openLockerEdit(${row.id})"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteLocker(${row.id})"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>`;
-    });
+    lockerCache = data.results || [];
+
+    const total = lockerCache.length;
+    const occupied = lockerCache.filter(l => l.status === 'OCCUPIED').length;
+    const available = lockerCache.filter(l => l.status === 'AVAILABLE').length;
+    const revenue = lockerCache
+      .filter(l => l.status === 'OCCUPIED')
+      .reduce((sum, l) => sum + (parseFloat(l.monthly_fee) || 0), 0);
+
+    document.getElementById('statTotalLockers').textContent = total;
+    document.getElementById('statOccupied').textContent = occupied;
+    document.getElementById('statAvailable').textContent = available;
+    document.getElementById('statRevenue').textContent = "NPR " + revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    renderLockerPage(1);
     populateLockerDropdown();
+  }
+
+  function renderLockerPage(page) {
+    const search = document.getElementById('lockerSearch').value.trim().toLowerCase();
+    const statusFilter = document.getElementById('lockerStatusFilter').value;
+
+    lockerFilteredCache = lockerCache.filter(l => {
+      const matchesSearch = !search ||
+        (l.locker_number || '').toLowerCase().includes(search) ||
+        (l.location || '').toLowerCase().includes(search);
+      const matchesStatus = !statusFilter || l.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+
+    const pageSize = parseInt(document.getElementById('lockerPageSize').value, 10);
+    const totalPages = Math.max(1, Math.ceil(lockerFilteredCache.length / pageSize));
+    currentLockerPage = Math.min(Math.max(1, page), totalPages);
+    const start = (currentLockerPage - 1) * pageSize;
+    const pageRows = lockerFilteredCache.slice(start, start + pageSize);
+
+    const tbody = document.getElementById('lockerTableBody');
+    if (pageRows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No lockers found for this filter.</td></tr>`;
+    } else {
+      tbody.innerHTML = pageRows.map(row => `
+        <tr class="${lockerRowClass(row)}">
+          <td data-label="ID">${row.id}</td><td data-label="Number">${row.locker_number}</td><td data-label="Location">${row.location}</td>
+          <td data-label="Status">${lockerStatusBadge(row.status)}</td><td data-label="Fee">${row.monthly_fee}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" onclick="openLockerEdit(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteLocker(${row.id})" title="Delete"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`).join('');
+    }
+
+    document.getElementById('lockerPageInfo').textContent = lockerFilteredCache.length
+      ? `Showing ${start + 1}-${Math.min(start + pageSize, lockerFilteredCache.length)} of ${lockerFilteredCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('prevLockerPageBtn').disabled = currentLockerPage === 1;
+    document.getElementById('nextLockerPageBtn').disabled = currentLockerPage === totalPages;
   }
 
   function populateLockerDropdown() {
@@ -275,33 +504,58 @@
     new bootstrap.Modal(document.getElementById('lockerEditModal')).show();
   }
 
+  function closeLockerEditModalAndRefresh() {
+    try {
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('lockerEditModal')).hide();
+    } catch (e) {
+      console.error('Could not close Edit Locker modal:', e);
+    }
+    loadLockers();
+  }
+
   document.getElementById('lockerEditForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('editLockerId').value;
-    const errorBox = document.getElementById('lockerEditError');
-    errorBox.classList.add('d-none');
-    const payload = {
-      locker_number: document.getElementById('editLockerNumber').value,
-      location: document.getElementById('editLockerLocation').value,
-      status: document.getElementById('editLockerStatus').value,
-      monthly_fee: document.getElementById('editLockerFee').value,
-    };
-    const res = await apiRequest(`/lockers/lockers/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
-    if (!res) return;
-    if (res.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('lockerEditModal')).hide();
-      loadLockers();
-    } else {
-      const err = await res.json();
-      errorBox.textContent = formatApiError(err);
-      errorBox.classList.remove('d-none');
+    const btn = document.getElementById('lockerEditSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const id = document.getElementById('editLockerId').value;
+      const errorBox = document.getElementById('lockerEditError');
+      errorBox.classList.add('d-none');
+      const payload = {
+        locker_number: document.getElementById('editLockerNumber').value,
+        location: document.getElementById('editLockerLocation').value,
+        status: document.getElementById('editLockerStatus').value,
+        monthly_fee: document.getElementById('editLockerFee').value,
+      };
+      const res = await apiRequest(`/lockers/lockers/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Update request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        closeLockerEditModalAndRefresh();
+        showToast('Locker updated.');
+      } else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Locker update failed:', err);
+      alert('Something went wrong updating the locker: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 
   async function deleteLocker(id) {
     if (!confirm('Delete this locker? This cannot be undone.')) return;
     const res = await apiRequest(`/lockers/lockers/${id}/`, { method: 'DELETE' });
-    if (res && (res.ok || res.status === 204)) { loadLockers(); loadAssignments(); }
+    if (res && (res.ok || res.status === 204)) {
+      loadLockers();
+      loadAssignments();
+      showToast('Locker deleted.');
+    }
     else if (res) alert('Could not delete this locker. It may have assignment history.');
   }
 
@@ -311,45 +565,147 @@
 
   document.getElementById('lockerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const errorBox = document.getElementById('lockerError');
-    errorBox.classList.add('d-none');
-    const payload = {
-      locker_number: document.getElementById('lockerNumber').value,
-      location: document.getElementById('location').value,
-      monthly_fee: document.getElementById('monthlyFee').value,
-    };
-    const res = await apiRequest('/lockers/lockers/', { method: 'POST', body: JSON.stringify(payload) });
-    if (!res) return;
-    if (res.ok) {
-      document.getElementById('lockerForm').reset();
-      bootstrap.Modal.getInstance(document.getElementById('lockerAddModal'))?.hide();
-      loadLockers();
-    }
-    else {
-      const err = await res.json();
-      errorBox.textContent = formatApiError(err);
-      errorBox.classList.remove('d-none');
+    const btn = document.getElementById('lockerAddSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const errorBox = document.getElementById('lockerError');
+      errorBox.classList.add('d-none');
+      const payload = {
+        locker_number: document.getElementById('lockerNumber').value,
+        location: document.getElementById('location').value,
+        monthly_fee: document.getElementById('monthlyFee').value,
+      };
+      const res = await apiRequest('/lockers/lockers/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Add request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        document.getElementById('lockerForm').reset();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('lockerAddModal')).hide();
+        loadLockers();
+        showToast('Locker added.');
+      }
+      else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Add locker failed:', err);
+      alert('Something went wrong adding the locker: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
+
+  // ─── Member search-select (Assign Locker) ──────────────────────────────
+  let memberSearchTimer = null;
+
+  function closeMemberResults() {
+    document.getElementById('assignMemberResults').classList.remove('show');
+  }
+
+  async function searchMembers(term) {
+    const box = document.getElementById('assignMemberResults');
+    if (!term) { box.innerHTML = ''; closeMemberResults(); return; }
+
+    const res = await apiRequest(`/members/?search=${encodeURIComponent(term)}&is_active=true`);
+    if (!res || !res.ok) { closeMemberResults(); return; }
+    const data = await res.json();
+    const results = (data.results || []).slice(0, 8);
+
+    if (results.length === 0) {
+      box.innerHTML = `<div class="notif-item text-muted">No matching members</div>`;
+    } else {
+      box.innerHTML = results.map(m => `
+        <div class="notif-item" role="button" style="cursor:pointer"
+             onclick="selectAssignMember(${m.user_id}, '${(m.full_name + ' — ' + m.email).replace(/'/g, "\\'")}')">
+          <strong>${m.full_name}</strong><br>
+          <span class="text-muted small">${m.email}${m.phone ? ' · ' + m.phone : ''}</span>
+        </div>`).join('');
+    }
+    box.classList.add('show');
+  }
+
+  function selectAssignMember(userId, label) {
+    document.getElementById('assignMemberId').value = userId;
+    document.getElementById('assignMemberSearch').value = label;
+    closeMemberResults();
+  }
+
+  document.getElementById('assignMemberSearch').addEventListener('input', (e) => {
+    document.getElementById('assignMemberId').value = '';
+    clearTimeout(memberSearchTimer);
+    const term = e.target.value.trim();
+    memberSearchTimer = setTimeout(() => searchMembers(term), 250);
+  });
+
+  document.getElementById('assignMemberSearch').addEventListener('focus', (e) => {
+    if (e.target.value.trim()) searchMembers(e.target.value.trim());
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#assignMemberSearch') && !e.target.closest('#assignMemberResults')) {
+      closeMemberResults();
+    }
+  });
+
+  // ─── Assignments: load + render ─────────────────────────────────────────
+  let assignmentCache = [];
+  let assignFilteredCache = [];
+  let currentAssignPage = 1;
 
   async function loadAssignments() {
     const res = await apiRequest('/lockers/assignments/');
     if (!res) return;
+    if (!res.ok) {
+      document.getElementById('assignTableBody').innerHTML =
+        `<tr><td colspan="7" class="text-center text-danger py-4">Failed to load assignments.</td></tr>`;
+      return;
+    }
     const data = await res.json();
+    assignmentCache = data.results || [];
+    renderAssignmentPage(1);
+  }
+
+  function renderAssignmentPage(page) {
+    const activeFilter = document.getElementById('assignActiveFilter').value;
+    assignFilteredCache = assignmentCache.filter(a => {
+      if (activeFilter === 'true') return a.is_active === true;
+      if (activeFilter === 'false') return a.is_active === false;
+      return true;
+    });
+
+    const pageSize = parseInt(document.getElementById('assignPageSize').value, 10);
+    const totalPages = Math.max(1, Math.ceil(assignFilteredCache.length / pageSize));
+    currentAssignPage = Math.min(Math.max(1, page), totalPages);
+    const start = (currentAssignPage - 1) * pageSize;
+    const pageRows = assignFilteredCache.slice(start, start + pageSize);
+
     const tbody = document.getElementById('assignTableBody');
-    tbody.innerHTML = '';
-    data.results.forEach(row => {
-      const actionCell = row.is_active
-        ? `<button class="btn btn-sm btn-outline-warning" onclick="releaseAssignment(${row.id})"><i class="bi bi-unlock"></i> Release</button>`
-        : `<button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment(${row.id})"><i class="bi bi-trash"></i></button>`;
-      tbody.innerHTML += `
+    if (pageRows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No assignments found for this filter.</td></tr>`;
+    } else {
+      tbody.innerHTML = pageRows.map(row => {
+        const actionCell = row.is_active
+          ? `<button class="btn btn-sm btn-outline-warning" onclick="releaseAssignment(${row.id})" title="Release"><i class="bi bi-unlock"></i> Release</button>`
+          : `<button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment(${row.id})" title="Delete"><i class="bi bi-trash"></i></button>`;
+        return `
         <tr>
-          <td>${row.id}</td><td>${row.locker_number}</td><td>${row.member_name}</td>
-          <td>${row.start_date}</td><td>${row.end_date}</td>
-          <td>${row.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
+          <td data-label="ID">${row.id}</td><td data-label="Locker #">${row.locker_number}</td><td data-label="Member">${row.member_name}</td>
+          <td data-label="Start">${row.start_date}</td><td data-label="End">${row.end_date}</td>
+          <td data-label="Active">${row.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
           <td>${actionCell}</td>
         </tr>`;
-    });
+      }).join('');
+    }
+
+    document.getElementById('assignPageInfo').textContent = assignFilteredCache.length
+      ? `Showing ${start + 1}-${Math.min(start + pageSize, assignFilteredCache.length)} of ${assignFilteredCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('prevAssignPageBtn').disabled = currentAssignPage === 1;
+    document.getElementById('nextAssignPageBtn').disabled = currentAssignPage === totalPages;
   }
 
   async function releaseAssignment(id) {
@@ -358,49 +714,83 @@
       method: 'PATCH',
       body: JSON.stringify({ is_active: false }),
     });
-    if (res && res.ok) { loadAssignments(); loadLockers(); }
+    if (res && res.ok) {
+      loadAssignments();
+      loadLockers();
+      showToast('Locker released.');
+    }
     else if (res) alert('Could not release this assignment.');
   }
 
   async function deleteAssignment(id) {
     if (!confirm('Delete this assignment record?')) return;
     const res = await apiRequest(`/lockers/assignments/${id}/`, { method: 'DELETE' });
-    if (res && (res.ok || res.status === 204)) loadAssignments();
+    if (res && (res.ok || res.status === 204)) {
+      loadAssignments();
+      showToast('Assignment deleted.');
+    }
     else if (res) alert('Could not delete this record.');
   }
 
-
   document.getElementById('assignForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const errorBox = document.getElementById('assignError');
-    errorBox.classList.add('d-none');
-    const startVal = document.getElementById('assignStart').value;
-    const endVal = document.getElementById('assignEnd').value;
-    if (endVal < startVal) {
-      errorBox.textContent = 'End date cannot be before start date.';
-      errorBox.classList.remove('d-none');
-      return;
-    }
-    const payload = {
-      locker: parseInt(document.getElementById('assignLockerId').value),
-      member: parseInt(document.getElementById('assignMemberId').value),
-      start_date: document.getElementById('assignStart').value,
-      end_date: document.getElementById('assignEnd').value,
-      is_active: true,
-    };
-    const res = await apiRequest('/lockers/assignments/', { method: 'POST', body: JSON.stringify(payload) });
-    if (!res) return;
-    if (res.ok) { document.getElementById('assignForm').reset(); loadAssignments(); loadLockers(); }
-    else {
-      const err = await res.json();
-      errorBox.textContent = formatApiError(err);
-      errorBox.classList.remove('d-none');
+    const btn = document.getElementById('assignSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const errorBox = document.getElementById('assignError');
+      errorBox.classList.add('d-none');
+
+      const lockerId = parseInt(document.getElementById('assignLockerId').value);
+      const memberId = document.getElementById('assignMemberId').value;
+      const startVal = document.getElementById('assignStart').value;
+      const endVal = document.getElementById('assignEnd').value;
+
+      if (!memberId) {
+        errorBox.textContent = 'Please search and select a member from the list before assigning.';
+        errorBox.classList.remove('d-none');
+        return;
+      }
+      if (endVal < startVal) {
+        errorBox.textContent = 'End date cannot be before start date.';
+        errorBox.classList.remove('d-none');
+        return;
+      }
+
+      const payload = {
+        locker: lockerId,
+        member: parseInt(memberId),
+        start_date: startVal,
+        end_date: endVal,
+        is_active: true,
+      };
+      const res = await apiRequest('/lockers/assignments/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Assign request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        document.getElementById('assignForm').reset();
+        document.getElementById('assignMemberId').value = '';
+        document.getElementById('assignMemberSearch').value = '';
+        loadAssignments();
+        loadLockers();
+        showToast('Locker assigned.');
+      }
+      else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Assign locker failed:', err);
+      alert('Something went wrong assigning the locker: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 
   loadLockers();
   loadAssignments();
-  loadMembersIntoSelect('assignMemberId');
   document.getElementById('assignStart').addEventListener('change', function() {
     document.getElementById('assignEnd').min = this.value;
   });
