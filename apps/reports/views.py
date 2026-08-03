@@ -24,7 +24,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsOwnerOrStaff
+from apps.accounts.permissions import IsOwner
 from apps.payments.models import Payment
 from apps.memberships.models import Membership, MembershipPlan
 from apps.attendance.models import Attendance
@@ -122,7 +122,7 @@ def _export_response(request, filename_base, headers, rows):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def revenue_report(request):
     """
     GET /api/reports/revenue/
@@ -183,7 +183,7 @@ def revenue_report(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def membership_report(request):
     """
     GET /api/reports/memberships/
@@ -235,7 +235,7 @@ def membership_report(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def attendance_report(request):
     """
     GET /api/reports/attendance/
@@ -267,7 +267,7 @@ def attendance_report(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def equipment_report(request):
     """
     GET /api/reports/equipment/
@@ -304,7 +304,7 @@ def equipment_report(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def locker_report(request):
     """
     GET /api/reports/lockers/
@@ -335,7 +335,7 @@ def locker_report(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def staff_report(request):
     """
     GET /api/reports/staff/
@@ -357,7 +357,7 @@ def staff_report(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def overview_report(request):
     """
     GET /api/reports/overview/
@@ -390,7 +390,7 @@ def overview_report(request):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def export_attendance(request):
     """
     GET /api/reports/export/attendance/?format=csv|excel&start=YYYY-MM-DD&end=YYYY-MM-DD
@@ -433,7 +433,7 @@ def export_attendance(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def export_memberships(request):
     """
     GET /api/reports/export/memberships/?format=csv|excel
@@ -471,7 +471,7 @@ def export_memberships(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def export_revenue(request):
     """
     GET /api/reports/export/revenue/?format=csv|excel&start=YYYY-MM-DD&end=YYYY-MM-DD
@@ -517,7 +517,7 @@ def export_revenue(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsOwnerOrStaff])
+@permission_classes([IsOwner])
 def export_members(request):
     """
     GET /api/reports/export/members/?format=csv|excel

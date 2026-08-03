@@ -26,8 +26,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        # Append user info to the login response body
-        data['user'] = UserDetailSerializer(self.user).data
+        # Append user info to the login response body.
+        # Pass request through context so profile_picture gets a proper
+        # absolute URL (e.g. http://127.0.0.1:8000/media/...) rather than
+        # falling back to the SITE_URL setting.
+        request = self.context.get('request')
+        data['user'] = UserDetailSerializer(self.user, context={'request': request}).data
         return data
 
 
@@ -97,10 +101,11 @@ class UserDetailSerializer(serializers.ModelSerializer):
         url = obj.profile_picture.url
         if request:
             return request.build_absolute_uri(url)
-        # Fallback: build absolute URI from settings
+        # No request in context (e.g. called from login serializer) — build
+        # the absolute URL from MEDIA_URL and the configured host directly.
         from django.conf import settings
-        base = getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000')
-        return f"{base.rstrip('/')}{url}"
+        base = getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000').rstrip('/')
+        return f"{base}{url}"
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

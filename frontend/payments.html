@@ -70,7 +70,7 @@
       <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
 
       <div class="nav-section-label">Insights</div>
-      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
     </div>
   </div>
 
@@ -303,10 +303,7 @@
     paymentCache = all;
     const tbody = document.getElementById('payTableBody');
     tbody.innerHTML = '';
-    let collected = 0, pending = 0;
     all.forEach(row => {
-      if (row.status === 'PAID') collected += parseFloat(row.amount_paid);
-      if (row.status === 'PENDING') pending += parseFloat(row.amount_paid);
       tbody.innerHTML += `
         <tr>
           <td>${row.receipt_number}</td>
@@ -323,10 +320,6 @@
           </td>
         </tr>`;
     });
-
-    document.getElementById('statCollected').textContent = 'NPR ' + collected.toFixed(2);
-    document.getElementById('statPending').textContent = 'NPR ' + pending.toFixed(2);
-    document.getElementById('statCount').textContent = all.length;
   }
 
   function openPaymentEdit(id) {
@@ -404,7 +397,17 @@
 
   loadMembersIntoSelect('member');
 loadPayments();
+loadPaymentSummary();
 showFilterBanner();
+
+async function loadPaymentSummary() {
+  const res = await apiRequest('/payments/summary/');
+  if (!res || !res.ok) return;
+  const data = await res.json();
+  document.getElementById('statCollected').textContent = 'NPR ' + data.total_collected.toFixed(2);
+  document.getElementById('statPending').textContent   = 'NPR ' + data.total_pending.toFixed(2);
+  document.getElementById('statCount').textContent     = data.total_count;
+}
 
 function showFilterBanner() {
   const params = new URLSearchParams(window.location.search);
