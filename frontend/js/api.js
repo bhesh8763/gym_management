@@ -278,19 +278,23 @@ syncSidebarCollapsedState();
     });
   }
 
-  function runInlineScript(code) {
-    const fnNamePattern = /^\s*(?:async\s+)?function\s+([A-Za-z0-9_$]+)\s*\(/gm;
-    const names = new Set();
-    let m;
-    while ((m = fnNamePattern.exec(code))) names.add(m[1]);
-    const exposures = Array.from(names).map(n => `window.${n} = ${n};`).join('\n');
+ function runInlineScript(code) {
+     const fnNamePattern = /^\s*(?:async\s+)?function\s+([A-Za-z0-9_$]+)\s*\(/gm;
+     const names = new Set();
+     let m;
+     while ((m = fnNamePattern.exec(code))) names.add(m[1]);
+     const exposures = Array.from(names).map(n => `window.${n} = ${n};`).join('\n');
 
-    const s = document.createElement('script');
-    s.textContent = `(function(){\ntry {\n${code}\n${exposures}\n} catch (err) {\nconsole.error('SPA page script threw — code after the error point did not run:', err);\n}\n})();`;
-    document.body.appendChild(s);
-    document.body.removeChild(s);
-  }
+     const wrapped = `(function(){\ntry {\n${code}\n${exposures}\n} catch (err) {\nconsole.error('SPA page script threw — code after the error point did not run:', err);\n}\n})();`;
 
+     console.log('=== ABOUT TO INJECT, length:', wrapped.length, '===');
+     console.log(wrapped);
+
+     const s = document.createElement('script');
+     s.textContent = wrapped;
+     document.body.appendChild(s);
+     document.body.removeChild(s);
+   }
   // FIX #3: guards against overlapping navigations. If the user double-clicks
   // a sidebar link, or clicks a second link before the first fetch/parse
   // finishes, only the LAST navigation to start is allowed to actually apply
@@ -760,4 +764,99 @@ async function openEditProfileModal() {
   }
 
   new bootstrap.Modal(document.getElementById('editProfileModal')).show();
+}
+
+// ── Global member search (topbar) ─────────────────────────────────────────
+// #globalSearch lives in the topbar, outside #page-content, so it survives
+// every SPA navigation untouched. Must be initialized exactly ONCE per
+// session here — NOT inside a per-page inline script — or repeated visits
+// to a page that used to own this code stack duplicate 'input' listeners.
+function initGlobalSearch() {
+  const input = document.getElementById('globalSearch');
+  const results = document.getElementById('globalSearchResults');
+  if (!input || !results) return;
+  let debounceTimer = null;
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const q = input.value.trim();
+    if (q.length < 2) { results.classList.remove('show'); return; }
+    debounceTimer = setTimeout(async () => {
+      const res = await apiRequest(`/members/?search=${encodeURIComponent(q)}`);
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      const list = (data.results || data).slice(0, 6);
+      results.innerHTML = list.length
+        ? list.map(m => `
+            <a href="javascript:void(0)" onclick="showMemberQuickView('${m.id}')">
+              <i class="bi bi-person-circle text-danger"></i>
+              <span>${escapeHtml(m.full_name || (m.user && m.user.full_name) || '')} <span class="text-muted">— ${escapeHtml(m.display_id || m.id)}</span></span>
+            </a>`).join('')
+        : '<div class="p-2 text-muted small">No members found.</div>';
+      results.classList.add('show');
+    }, 300);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !results.contains(e.target)) results.classList.remove('show');
+  });
+}
+initGlobalSearch();
+
+// escapeHtml is currently only defined inside dashboard.html's inline script —
+// move that same helper here too, since showMemberQuickView (below) needs it
+// and lives outside any page-specific script now.
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+// ── Member quick-view modal (triggered from global search) ────────────────
+function ensureMemberQuickViewModal() {
+  if (document.getElementById('memberQuickViewModal')) return;
+  const html = `
+  <div class="modal fade" id="memberQuickViewModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Member Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="memberQuickViewBody">
+          <div class="text-center py-4"><div class="spinner-border text-danger"></div></div>
+        </div>
+        <div class="modal-footer">
+          <a href="#" id="memberQuickViewFullLink" class="btn btn-outline-danger btn-sm spa-link">Open full profile</a>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function showMemberQuickView(memberId) {
+  ensureMemberQuickViewModal();
+  document.getElementById('globalSearchResults').classList.remove('show');
+
+  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('memberQuickViewModal'));
+  document.getElementById('memberQuickViewBody').innerHTML =
+    `<div class="text-center py-4"><div class="spinner-border text-danger"></div></div>`;
+  document.getElementById('memberQuickViewFullLink').href = `members.html?view=${memberId}`;
+  modal.show();
+
+  const res = await apiRequest(`/members/${memberId}/`);
+  if (!res || !res.ok) {
+    document.getElementById('memberQuickViewBody').innerHTML =
+      `<div class="text-danger small">Could not load member details.</div>`;
+    return;
+  }
+  const m = await res.json();
+  document.getElementById('memberQuickViewBody').innerHTML = `
+    <p class="mb-1"><strong>${escapeHtml(m.full_name || '')}</strong></p>
+    <p class="text-muted small mb-2">${escapeHtml(m.display_id || m.id)}</p>
+    <p class="mb-1"><i class="bi bi-telephone me-1"></i>${escapeHtml(m.phone || '—')}</p>
+    <p class="mb-1"><i class="bi bi-envelope me-1"></i>${escapeHtml(m.email || '—')}</p>
+    <p class="mb-0"><i class="bi bi-card-checklist me-1"></i>${escapeHtml(m.membership_status || '—')}</p>
+  `;
 }

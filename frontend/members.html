@@ -6,6 +6,61 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    /* Custom utility overlays for polish */
+    .stat-card {
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card .card-body {
+      padding: 0.85rem 1rem !important;
+    }
+    .stat-card .stat-icon {
+      display: none;
+    }
+    .stat-card h3 {
+      font-size: 1.5rem;
+    }
+    .stat-card:hover {
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    .manage-modal-content {
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .manage-section-head h6 {
+      letter-spacing: 0.5px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .manage-btn-lg {
+      padding: 10px 16px;
+      font-weight: 500;
+      border-radius: 8px;
+    }
+    #manageMemberModal .modal-body {
+      padding: 1.25rem !important;
+    }
+    #manageMemberModal .manage-section {
+      margin-bottom: 1rem !important;
+    }
+    #manageMemberModal .manage-section-head {
+      margin-bottom: 0.5rem !important;
+    }
+    #manageMemberModal .manage-section-body {
+      padding: 0.75rem !important;
+    }
+    #manageMemberModal .manage-section-body .row.g-3 {
+      margin-bottom: 0.5rem !important;
+    }
+    #manageMemberModal .manage-btn-lg {
+      padding: 7px 14px;
+    }
+    #manageMemberModal .d-flex.gap-3 {
+      gap: 0.6rem !important;
+    }
+  </style>
 </head>
 <body data-allowed-roles="OWNER,STAFF,TRAINER">
 
@@ -75,48 +130,61 @@
   </div>
 
   <div class="p-4 flex-grow-1">
-    <h3>Members</h3>
+    <h3 class="mb-3 fw-bold">Members</h3>
 
-    <div class="row mb-4">
-      <div class="col-md-3">
-        <div class="card text-center"><div class="card-body">
-          <div class="text-muted small">Total Members</div>
-          <h3 id="statTotal">-</h3>
-        </div></div>
+    <!-- Top Stats Cards with Improved Spacing, Padding, and Shadow Consistency -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card border-0 h-100 shadow-sm">
+          <div class="card-body p-4">
+            <div class="stat-icon text-primary mb-2"><i class="bi bi-people fs-3"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Total Members</div>
+            <h3 id="statTotal" class="mb-0 mt-1 fw-bold">—</h3>
+          </div>
+        </div>
       </div>
-      <div class="col-md-3">
-        <div class="card text-center border-success"><div class="card-body">
-          <div class="text-muted small">Active</div>
-          <h3 id="statActive" class="text-success">-</h3>
-        </div></div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card border-0 border-start border-4 border-success h-100 shadow-sm">
+          <div class="card-body p-4">
+            <div class="stat-icon text-success mb-2"><i class="bi bi-person-check fs-3"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Active</div>
+            <h3 id="statActive" class="text-success mb-0 mt-1 fw-bold">—</h3>
+          </div>
+        </div>
       </div>
-      <div class="col-md-3">
-        <div class="card text-center border-warning"><div class="card-body">
-          <div class="text-muted small">Expiring This Week</div>
-          <h3 id="statExpiring" class="text-warning">-</h3>
-        </div></div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card border-0 border-start border-4 border-warning h-100 shadow-sm">
+          <div class="card-body p-4">
+            <div class="stat-icon text-warning mb-2"><i class="bi bi-clock-history fs-3"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Expiring This Week</div>
+            <h3 id="statExpiring" class="text-warning mb-0 mt-1 fw-bold">—</h3>
+          </div>
+        </div>
       </div>
-      <div class="col-md-3">
-        <div class="card text-center border-primary"><div class="card-body">
-          <div class="text-muted small">Avg. BMI</div>
-          <h3 id="statBmi" class="text-primary">-</h3>
-        </div></div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card border-0 border-start border-4 border-primary h-100 shadow-sm">
+          <div class="card-body p-4">
+            <div class="stat-icon text-primary mb-2"><i class="bi bi-heart-pulse fs-3"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Avg. BMI</div>
+            <h3 id="statBmi" class="text-primary mb-0 mt-1 fw-bold">--</h3>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h5 class="mb-0">Members List</h5>
-      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMemberModal">
-        <i class="bi bi-person-plus"></i> Add Member
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0 fw-bold">Members List</h5>
+      <button type="button" class="btn btn-primary px-3 py-2" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+        <i class="bi bi-person-plus me-1"></i> Add Member
       </button>
     </div>
 
     <div id="errorBox" class="alert alert-danger d-none"></div>
 
-    <div id="editPanel" class="card mb-4 d-none">
-      <div class="card-body">
-        <h5 id="editTitle">Edit Member</h5>
-        <form id="editForm" class="row g-2">
+    <div id="editPanel" class="card mb-4 d-none shadow-sm">
+      <div class="card-body p-4">
+        <h5 id="editTitle" class="fw-bold mb-3">Edit Member</h5>
+        <form id="editForm" class="row g-3">
           <div class="col-md-3">
             <label class="form-label">Gender</label>
             <select id="editGender" class="form-select">
@@ -159,7 +227,7 @@
               <option value="ADVANCED">Advanced</option>
             </select>
           </div>
-          <div class="col-12"><hr class="my-1"><small class="text-muted">Emergency Contact & Medical Info</small></div>
+          <div class="col-12"><hr class="my-2"><small class="text-muted fw-semibold">Emergency Contact & Medical Info</small></div>
           <div class="col-md-4">
             <label class="form-label">Address</label>
             <input type="text" id="editAddress" class="form-control">
@@ -170,7 +238,7 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Emergency Contact Phone</label>
-<input type="tel" id="editEmergencyPhone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
+            <input type="tel" id="editEmergencyPhone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
           <div class="col-md-6">
             <label class="form-label">Medical Conditions</label>
@@ -180,19 +248,19 @@
             <label class="form-label">Notes</label>
             <textarea id="editNotes" class="form-control" rows="2"></textarea>
           </div>
-          <div class="col-12">
-            <button type="submit" class="btn btn-primary">Save Changes</button>
-            <button type="button" class="btn btn-secondary" onclick="closeEdit()">Cancel</button>
+          <div class="col-12 pt-2">
+            <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+            <button type="button" class="btn btn-secondary px-4 ms-2" onclick="closeEdit()">Cancel</button>
           </div>
         </form>
       </div>
     </div>
 
-    <h5>Filter / Search</h5>
+    <h6 class="text-muted fw-semibold mb-2">Filter / Search</h6>
     <div class="row g-2 mb-3">
       <div class="col-auto">
-  <input type="text" id="filterSearch" class="form-control" placeholder="Search name, email, phone" autocomplete="off" oninput="onSearchInput()" onkeyup="if(event.key==='Enter') loadMembers()">
-</div>
+        <input type="text" id="filterSearch" class="form-control" placeholder="Search name, email, phone" autocomplete="off" oninput="onSearchInput()" onkeyup="if(event.key==='Enter') loadMembers()">
+      </div>
       <div class="col-auto">
         <select id="filterGoal" class="form-select" onchange="loadMembers()">
           <option value="">All Goals</option>
@@ -220,39 +288,41 @@
         </select>
       </div>
       <div class="col-auto">
-        <button class="btn btn-outline-secondary" onclick="loadMembers()">Search</button>
+        <button class="btn btn-outline-secondary px-3" onclick="loadMembers()">Search</button>
       </div>
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-2">
       <div class="d-flex align-items-center gap-2">
-        <label class="form-label mb-0 small text-muted">Rows perpage</label>
-        <select id="pageSize" class="form-select form-select-sm"style="width:auto;" onchange="renderPage(1)">
+        <label class="form-label mb-0 small text-muted">Rows per page</label>
+        <select id="pageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderPage(1)">
           <option value="10">10</option>
           <option value="25">25</option>
           <option value="50">50</option>
         </select>
       </div>
-      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('memberTable', 'members.csv')">
-        <i class="bi bi-download"></i> Export CSV
+      <button class="btn btn-sm btn-outline-secondary px-3" onclick="exportTableToCsv('memberTable', 'members.csv')">
+        <i class="bi bi-download me-1"></i> Export CSV
       </button>
     </div>
 
-    <table class="table table-bordered" id="memberTable">
-      <thead>
-  <tr>
-    <th>Member ID</th><th>Name</th><th>Phone</th>
-    <th>Membership Plan</th><th>Expires</th>
-    <th>Fitness Goal</th><th>Status</th><th data-no-export>Actions</th>
-  </tr>
-</thead>
-<tbody id="memberTableBody"></tbody>
-    </table>
+    <div class="table-responsive member-table-wrap">
+      <table class="table member-table align-middle" id="memberTable">
+        <thead>
+          <tr>
+            <th>Member</th><th>Phone</th>
+            <th>Membership Plan</th><th>Expires</th>
+            <th>Fitness Goal</th><th>Status</th><th data-no-export>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="memberTableBody"></tbody>
+      </table>
+    </div>
 
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center mt-3">
       <small class="text-muted" id="pageInfo">Showing 0 of 0</small>
       <div>
-        <button class="btn btn-sm btn-outline-secondary" id="prevPageBtn" onclick="renderPage(currentPage - 1)">Previous</button>
+        <button class="btn btn-sm btn-outline-secondary me-1" id="prevPageBtn" onclick="renderPage(currentPage - 1)">Previous</button>
         <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" onclick="renderPage(currentPage + 1)">Next</button>
       </div>
     </div>
@@ -261,12 +331,13 @@
 
 <!-- Add Member Modal -->
 <div class="modal fade" id="addMemberModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add New Member</h5>
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header p-3">
+        <h5 class="modal-title fw-bold">Add New Member</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body p-4">
         <form id="addForm" class="row g-3" autocomplete="off">
           <div class="col-md-4">
             <label class="form-label">First Name</label>
@@ -285,19 +356,15 @@
             <input type="tel" id="phone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" autocomplete="off" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
           <div class="col-md-4">
-  <label class="form-label">Password</label>
-  <div class="input-group">
-    <input type="text" id="password" class="form-control" required minlength="8" autocomplete="new-password">
-    <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()" title="Generate password">
-      <i class="bi bi-shuffle"></i>
-    </button>
-    <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" tabindex="-1">
-      <i class="bi bi-eye"></i>
-    </button>
-  </div>
-  <small class="text-muted">Auto-generated — copy it before saving, or edit manually.</small>
-</div>
-
+            <label class="form-label">Password</label>
+            <div class="input-group">
+              <input type="text" id="password" class="form-control" required minlength="8" autocomplete="new-password">
+              <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()" title="Generate password">
+                <i class="bi bi-shuffle"></i>
+              </button>
+            </div>
+            <small class="text-muted">Auto-generated — copy it before saving.</small>
+          </div>
           <div class="col-md-4">
             <label class="form-label">Gender</label>
             <select id="gender" class="form-select">
@@ -340,10 +407,10 @@
               <option value="ADVANCED">Advanced</option>
             </select>
           </div>
-          <div class="col-12"><hr class="my-1"><small class="text-muted">Emergency Contact & Medical Info</small></div>
+          <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Emergency Contact & Medical Info</small></div>
           <div class="col-md-4">
             <label class="form-label">Address</label>
-            <input type="text" id="address" class="form-control"autocomplete="off">
+            <input type="text" id="address" class="form-control" autocomplete="off">
           </div>
           <div class="col-md-4">
             <label class="form-label">Emergency Contact Name</label>
@@ -351,35 +418,103 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Emergency Contact Phone</label>
-<input type="tel" id="emergencyPhone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
+            <input type="tel" id="emergencyPhone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
           <div class="col-12">
             <label class="form-label">Medical Conditions</label>
-            <textarea id="medical" class="form-control" rows="2"placeholder="e.g. asthma, knee injury, none"></textarea>
+            <textarea id="medical" class="form-control" rows="2" placeholder="e.g. asthma, knee injury, none"></textarea>
           </div>
         </form>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="addBtn" onclick="submitAddMember()">Add Member</button>
+      <div class="modal-footer p-3">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" id="addBtn" onclick="submitAddMember()">Add Member</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- View Member Modal (read-only) -->
+<!-- View Member Modal -->
 <div class="modal fade" id="viewMemberModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="viewTitle">Member Profile</h5>
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header p-3">
+        <h5 class="modal-title fw-bold" id="viewTitle">Member Profile</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body" id="viewBody">
+      <div class="modal-body p-4" id="viewBody">
         <div class="text-muted">Loading…</div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      <div class="modal-footer p-3">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Member Modal — Polished Layout, Typography & Spacing -->
+<div class="modal fade" id="manageMemberModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content manage-modal-content border-0 shadow-lg">
+      <div class="modal-header manage-modal-header p-3 bg-dark text-white">
+        <div class="d-flex align-items-center gap-3">
+          <span class="member-avatar-lg rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center fw-bold fs-4" id="manageAvatar" style="width:52px;height:52px;">?</span>
+          <div>
+            <h5 class="mb-0 text-white fw-bold" id="manageName">—</h5>
+            <div class="manage-sub text-white-50 small mt-1" id="manageSub">—</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 bg-light-subtle">
+
+        <div class="manage-section mb-4">
+          <div class="manage-section-head mb-3">
+            <h6 class="fw-bold text-uppercase text-secondary small mb-0"><i class="bi bi-person-badge me-2 text-primary"></i>Profile Overview</h6>
+          </div>
+          <div class="manage-section-body bg-white p-3 rounded-3 border">
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-6"><span class="text-muted">Phone:</span> <span id="managePhone" class="fw-semibold ms-1">—</span></div>
+              <div class="col-12 col-md-6"><span class="text-muted">Fitness Goal:</span> <span id="manageGoal" class="fw-semibold ms-1">—</span></div>
+            </div>
+            <div class="d-flex gap-3 flex-wrap">
+              <button class="btn btn-outline-secondary manage-btn-lg flex-grow-1" id="manageEditBtn"><i class="bi bi-pencil me-2"></i>Edit Details</button>
+              <button class="btn btn-outline-secondary manage-btn-lg flex-grow-1" id="manageViewBtn"><i class="bi bi-eye me-2"></i>View Full Profile</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="manage-section mb-4">
+          <div class="manage-section-head mb-3">
+            <h6 class="fw-bold text-uppercase text-secondary small mb-0"><i class="bi bi-card-checklist me-2 text-primary"></i>Active Membership</h6>
+          </div>
+          <div class="manage-section-body bg-white p-3 rounded-3 border" id="manageMembershipBody">—</div>
+        </div>
+
+        <div class="manage-section mb-4">
+          <div class="manage-section-head mb-3">
+            <h6 class="fw-bold text-uppercase text-secondary small mb-0"><i class="bi bi-lightning-charge me-2 text-primary"></i>Quick Actions</h6>
+          </div>
+          <div class="manage-section-body d-flex flex-wrap gap-3">
+            <button class="btn btn-outline-secondary manage-btn-lg flex-grow-1" id="manageQrBtn"><i class="bi bi-qr-code me-2"></i>Show QR Code</button>
+            <a class="btn btn-outline-secondary manage-btn-lg flex-grow-1 spa-link" id="manageAttendanceLink" href="#"><i class="bi bi-calendar-check me-2"></i>Attendance Log</a>
+            <a class="btn btn-outline-secondary manage-btn-lg flex-grow-1 spa-link" id="managePaymentsLink" href="#"><i class="bi bi-cash-coin me-2"></i>Payment Records</a>
+          </div>
+        </div>
+
+        <div class="manage-section mb-2">
+          <div class="manage-section-head mb-3">
+            <h6 class="fw-bold text-uppercase text-secondary small mb-0"><i class="bi bi-shield-check me-2 text-primary"></i>Account Status</h6>
+          </div>
+          <div class="manage-section-body bg-white p-3 rounded-3 border d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <span id="manageStatusPill"></span>
+            <button class="btn btn-md fw-medium px-3" id="manageStatusBtn"></button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer p-3 bg-white">
+        <button type="button" class="btn btn-secondary px-4 py-2 fw-medium" data-bs-dismiss="modal">Done</button>
       </div>
     </div>
   </div>
@@ -392,27 +527,17 @@
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
-
-
-  // NOTE: the "close dropdown on outside click" listener used to live here
-  // as a per-page document.addEventListener. It's now a single global
-  // listener in api.js instead, so it doesn't get re-added (and stack up)
-  // every time this page is re-entered via the SPA router.
-
-  // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
-
-
   document.getElementById('dob').max = new Date().toISOString().split('T')[0];
 
   function statusBadge(isActive) {
     return isActive
-      ? '<span class="badge bg-success">Active</span>'
-      : '<span class="badge bg-danger">Inactive</span>';
+      ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Active</span>'
+      : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Inactive</span>';
   }
 
   function membershipBadge(status) {
-    const map = { ACTIVE: 'success', EXPIRED: 'secondary', FROZEN: 'info', CANCELLED: 'dark', PENDING: 'warning' };
-    return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+    const map = { ACTIVE: 'bg-success', EXPIRED: 'bg-secondary', FROZEN: 'bg-info', CANCELLED: 'bg-dark', PENDING: 'bg-warning' };
+    return `<span class="badge ${map[status] || 'bg-secondary'}">${status}</span>`;
   }
 
   async function fetchAllPaginated(path) {
@@ -428,22 +553,22 @@
     return all;
   }
 
-let allMembers = [];
-let currentPage = 1;
-let searchDebounceTimer = null;
+  let allMembers = [];
+  let currentPage = 1;
+  let searchDebounceTimer = null;
 
-function onSearchInput() {
-  clearTimeout(searchDebounceTimer);
-  searchDebounceTimer = setTimeout(() => {
-    loadMembers();
-  }, 300);
-}
+  function onSearchInput() {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      loadMembers();
+    }, 300);
+  }
 
   async function loadMembers() {
-     const tbody = document.getElementById('memberTableBody');
-  tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">
-    <div class="spinner-border spinner-border-sm me-2"></div> Loading members…
-  </td></tr>`;
+    const tbody = document.getElementById('memberTableBody');
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+      <div class="spinner-border spinner-border-sm me-2"></div> Loading members…
+    </td></tr>`;
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
     if (search) params.set('search', search);
@@ -456,92 +581,87 @@ function onSearchInput() {
 
     allMembers = await fetchAllPaginated('/members/?' + params.toString());
 
-    let activeCount = 0, bmiSum = 0, bmiCount = 0, expiringCount= 0;
+    let activeCount = 0, bmiSum = 0, bmiCount = 0, expiringCount = 0;
     const weekFromNow = new Date();
     weekFromNow.setDate(weekFromNow.getDate() + 7);
 
     allMembers.forEach(row => {
-  if (row.is_active) activeCount++;
-  if (row.bmi) { bmiSum += row.bmi; bmiCount++; }
-  const ms = row.current_membership;
-  if (ms && ms.status === 'ACTIVE' && new Date(ms.end_date) <= weekFromNow) expiringCount++;
-});
+      if (row.is_active) activeCount++;
+      if (row.bmi) { bmiSum += row.bmi; bmiCount++; }
+      const ms = row.current_membership;
+      if (ms && ms.status === 'ACTIVE' && new Date(ms.end_date) <= weekFromNow) expiringCount++;
+    });
 
     document.getElementById('statTotal').textContent = allMembers.length;
     document.getElementById('statActive').textContent = activeCount;
     document.getElementById('statExpiring').textContent = expiringCount;
-    document.getElementById('statBmi').textContent = bmiCount ? (bmiSum / bmiCount).toFixed(1) : '-';
+    
+    // Kept intact as requested
+    document.getElementById('statBmi').textContent = bmiCount ? (bmiSum / bmiCount).toFixed(1) : '--';
 
     renderPage(1);
   }
 
   function renderPage(page) {
-  try {  
+    try {
+      const pageSize = parseInt(document.getElementById('pageSize').value, 10);
+      const totalPages = Math.max(1, Math.ceil(allMembers.length / pageSize));
+      currentPage = Math.min(Math.max(1, page), totalPages);
 
-    const pageSize = parseInt(document.getElementById('pageSize').value, 10);
-    const totalPages = Math.max(1, Math.ceil(allMembers.length /pageSize));
-    currentPage = Math.min(Math.max(1, page), totalPages);
+      const start = (currentPage - 1) * pageSize;
+      const pageRows = allMembers.slice(start, start + pageSize);
 
-    const start = (currentPage - 1) * pageSize;
-    const pageRows = allMembers.slice(start, start + pageSize);
+      const tbody = document.getElementById('memberTableBody');
+      tbody.innerHTML = '';
 
-    const tbody = document.getElementById('memberTableBody');
-    tbody.innerHTML = '';
+      if (allMembers.length === 0) {
+        tbody.innerHTML = `
+          <tr><td colspan="7" class="text-center text-muted py-4">
+            <i class="bi bi-people display-6 d-block mb-2"></i>
+            No members found. Click "Add Member" to create your first member.
+          </td></tr>`;
+      } else {
+        pageRows.forEach(row => {
+          const ms = row.current_membership;
+          const planCell = ms ? `${ms.plan_name} ${membershipBadge(ms.status)}` : '<span class="text-muted">No plan</span>';
+          const expiresCell = ms ? ms.end_date : '-';
+          tbody.innerHTML += `
+            <tr>
+              <td>
+                <div class="member-cell d-flex align-items-center gap-2">
+                  <div>
+                    <div class="member-name fw-semibold">${row.full_name}</div>
+                    <div class="member-id small text-muted">${row.display_id || row.id}</div>
+                  </div>
+                </div>
+              </td>
+              <td>${row.phone || '-'}</td>
+              <td>${planCell}</td>
+              <td>${expiresCell}</td>
+              <td>${row.fitness_goal_display || '-'}</td>
+              <td>${statusBadge(row.is_active)}</td>
+              <td>
+                <!-- Extra icon removed for a cleaner action button -->
+                <button class="btn btn-sm btn-dark px-3 fw-medium" onclick="openManageModal(${row.id})">
+                  Manage
+                </button>
+              </td>
+            </tr>`;
+        });
+      }
 
-    if (allMembers.length === 0) {
-      tbody.innerHTML = `
-        <tr><td colspan="8" class="text-center text-muted py-4">
-          <i class="bi bi-people display-6 d-block mb-2"></i>
-          No members found. Click "Add Member" to create your first member.
-        </td></tr>`;
-    } else {
-      pageRows.forEach(row => {
-  const ms = row.current_membership;
-  const planCell = ms ? `${ms.plan_name} ${membershipBadge(ms.status)}` : '<span class="text-muted">No plan</span>';
-  const expiresCell = ms ? ms.end_date : '-';
-tbody.innerHTML += `
-    <tr>
-      <td>${row.display_id || row.id}</td>
-      <td>${row.full_name}</td>
-      <td>${row.phone || '-'}</td>
-      <td>${planCell}</td>
-            <td>${expiresCell}</td>
-            <td>${row.fitness_goal_display || '-'}</td>
-            <td>${statusBadge(row.is_active)}</td>
-  <td>
-  <div class="d-flex flex-wrap gap-1">
-    <button class="btn btn-sm btn-outline-info" onclick="viewMember(${row.id})" title="View"><i class="bi bi-eye"></i></button>
-    <button class="btn btn-sm btn-outline-warning" onclick="openEdit(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
-    <button class="btn btn-sm btn-outline-success" onclick="showQrModal(${row.user_id}, '${row.full_name}', '${row.display_id || row.id}')" title="QR Code"><i class="bi bi-qr-code"></i></button>
-    <a class="btn btn-sm btn-outline-dark spa-link" title="View Attendance" href="attendance.html?search=${encodeURIComponent(row.full_name)}"><i class="bi bi-calendar-check"></i></a>
-    <a class="btn btn-sm btn-outline-dark spa-link" title="View Payments" href="payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}"><i class="bi bi-cash-coin"></i></a>
-    ${row.is_active
-      ? `<button class="btn btn-sm btn-outline-danger" onclick="toggleMemberStatus(${row.id}, false)" title="Deactivate"><i class="bi bi-person-x"></i></button>`
-      : `<button class="btn btn-sm btn-outline-success" onclick="toggleMemberStatus(${row.id}, true)" title="Activate"><i class="bi bi-person-check"></i></button>`}
-  </div>
-</td>
-          </tr>`;
-      });
+      document.getElementById('pageInfo').textContent = allMembers.length
+        ? `Showing ${start + 1}-${Math.min(start + pageSize, allMembers.length)} of ${allMembers.length}`
+        : 'Showing 0 of 0';
+      document.getElementById('prevPageBtn').disabled = currentPage === 1;
+      document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+
+    } catch (err) {
+      console.error('renderPage failed:', err);
+      document.getElementById('memberTableBody').innerHTML =
+        `<tr><td colspan="7" class="text-center text-danger py-4">Something went wrong rendering this table. Check the console for details.</td></tr>`;
     }
-
-    document.getElementById('pageInfo').textContent = allMembers.length
-      ? `Showing ${start + 1}-${Math.min(start + pageSize, allMembers.length)} of ${allMembers.length}`
-      : 'Showing 0 of 0';
-    document.getElementById('prevPageBtn').disabled = currentPage === 1;
-    document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
-
-  } catch (err) {
-
-    console.error('renderPage failed:', err);
-
-    document.getElementById('memberTableBody').innerHTML =
-
-      `<tr><td colspan="8" class="text-center text-danger py-4">Something went wrong rendering this table. Check the console for details.</td></tr>`;
-
   }
-
-}
-
 
   async function viewMember(profileId) {
     const modalEl = document.getElementById('viewMemberModal');
@@ -564,7 +684,7 @@ tbody.innerHTML += `
         <div class="col-md-6">
           <h6 class="text-muted">Personal Info</h6>
           <p class="mb-1"><strong>Email:</strong> ${p.user.email}</p>
-          <p class="mb-1"><strong>Phone:</strong> ${p.user.phone|| '-'}</p>
+          <p class="mb-1"><strong>Phone:</strong> ${p.user.phone || '-'}</p>
           <p class="mb-1"><strong>Gender:</strong> ${p.gender_display || '-'}</p>
           <p class="mb-1"><strong>Date of Birth:</strong> ${p.date_of_birth || '-'}</p>
           <p class="mb-1"><strong>Address:</strong> ${p.address || '-'}</p>
@@ -581,8 +701,8 @@ tbody.innerHTML += `
           <h6 class="text-muted">Fitness</h6>
           <p class="mb-1"><strong>Goal:</strong> ${p.fitness_goal_display || '-'}</p>
           <p class="mb-1"><strong>Level:</strong> ${p.fitness_level_display || '-'}</p>
-          <p class="mb-1"><strong>Height:</strong> ${p.height_cm? p.height_cm + ' cm' : '-'}</p>
-          <p class="mb-1"><strong>Weight:</strong> ${p.weight_kg? p.weight_kg + ' kg' : '-'}</p>
+          <p class="mb-1"><strong>Height:</strong> ${p.height_cm ? p.height_cm + ' cm' : '-'}</p>
+          <p class="mb-1"><strong>Weight:</strong> ${p.weight_kg ? p.weight_kg + ' kg' : '-'}</p>
           <p class="mb-1"><strong>BMI:</strong> ${p.bmi ?? '-'}</p>
         </div>
         <div class="col-md-6">
@@ -610,7 +730,7 @@ tbody.innerHTML += `
 
     editingProfileId = profileId;
     document.getElementById('editTitle').textContent = `Edit Member: ${profile.user.full_name}`;
-    document.getElementById('editGender').value = profile.gender|| '';
+    document.getElementById('editGender').value = profile.gender || '';
     document.getElementById('editDob').value = profile.date_of_birth || '';
     document.getElementById('editHeightCm').value = profile.height_cm || '';
     document.getElementById('editWeightKg').value = profile.weight_kg || '';
@@ -630,12 +750,12 @@ tbody.innerHTML += `
     document.getElementById('editPanel').classList.add('d-none');
   }
 
-  document.getElementById('editForm').addEventListener('submit',async (e) => {
+  document.getElementById('editForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!editingProfileId) return;
     const payload = {
       gender: document.getElementById('editGender').value,
-      date_of_birth: document.getElementById('editDob').value ||null,
+      date_of_birth: document.getElementById('editDob').value || null,
       height_cm: document.getElementById('editHeightCm').value || null,
       weight_kg: document.getElementById('editWeightKg').value || null,
       fitness_goal: document.getElementById('editFitnessGoal').value,
@@ -660,29 +780,29 @@ tbody.innerHTML += `
   });
 
   async function toggleMemberStatus(profileId, makeActive) {
-  const action = makeActive ? 'Activate' : 'Deactivate';
-  const msg = makeActive
-    ? 'Activate this member? Their account will be marked active again.'
-    : 'Deactivate this member? Their account will be marked inactive but not deleted.';
-  if (!confirm(msg)) return;
+    const action = makeActive ? 'Activate' : 'Deactivate';
+    const msg = makeActive
+      ? 'Activate this member? Their account will be marked active again.'
+      : 'Deactivate this member? Their account will be marked inactive but not deleted.';
+    if (!confirm(msg)) return;
 
-  let res;
-  if (makeActive) {
-  res = await apiRequest(`/members/${profileId}/reactivate/`, {
-    method: 'POST', body: JSON.stringify({}),
-  });
-} else {
-  res = await apiRequest(`/members/${profileId}/`, { method: 'DELETE' });
-}
+    let res;
+    if (makeActive) {
+      res = await apiRequest(`/members/${profileId}/reactivate/`, {
+        method: 'POST', body: JSON.stringify({}),
+      });
+    } else {
+      res = await apiRequest(`/members/${profileId}/`, { method: 'DELETE' });
+    }
 
-  if (!res) return;
-  if (res.ok) {
-    loadMembers();
-  } else {
-    const err = await res.json();
-    alert(`${action} failed: ` + formatApiError(err));
+    if (!res) return;
+    if (res.ok) {
+      loadMembers();
+    } else {
+      const err = await res.json();
+      alert(`${action} failed: ` + formatApiError(err));
+    }
   }
-}
 
   async function submitAddMember() {
     const errorBox = document.getElementById('errorBox');
@@ -730,41 +850,99 @@ tbody.innerHTML += `
     document.getElementById('errorBox').classList.add('d-none');
   });
 
+  // ─── Manage Member Modal ─────────────────────────────────────────
+  function openManageModal(profileId) {
+    const row = allMembers.find(m => m.id === profileId);
+    if (!row) return;
+
+    document.getElementById('manageAvatar').textContent = row.full_name.charAt(0).toUpperCase();
+    document.getElementById('manageName').textContent = row.full_name;
+    document.getElementById('manageSub').textContent = `${row.display_id || row.id}`;
+    document.getElementById('managePhone').textContent = row.phone || '-';
+    document.getElementById('manageGoal').textContent = row.fitness_goal_display || '-';
+
+    const ms = row.current_membership;
+    document.getElementById('manageMembershipBody').innerHTML = ms
+      ? `<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+           <div>
+             <div class="fw-semibold fs-6 text-dark">${ms.plan_name}</div>
+             <div class="text-muted small">Expires ${ms.end_date}</div>
+           </div>
+           ${membershipBadge(ms.status)}
+         </div>`
+      : `<div class="text-muted small">No membership plan assigned.</div>`;
+
+    const manageModalEl = document.getElementById('manageMemberModal');
+
+    document.getElementById('manageEditBtn').onclick = () => {
+      bootstrap.Modal.getInstance(manageModalEl).hide();
+      openEdit(profileId);
+    };
+    document.getElementById('manageViewBtn').onclick = () => {
+      bootstrap.Modal.getInstance(manageModalEl).hide();
+      viewMember(profileId);
+    };
+    document.getElementById('manageQrBtn').onclick = () => {
+      showQrModal(row.user_id, row.full_name, row.display_id || row.id);
+    };
+    document.getElementById('manageAttendanceLink').href = `attendance.html?search=${encodeURIComponent(row.full_name)}`;
+    document.getElementById('managePaymentsLink').href = `payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}`;
+
+    document.getElementById('manageStatusPill').innerHTML = statusBadge(row.is_active);
+    const statusBtn = document.getElementById('manageStatusBtn');
+    if (row.is_active) {
+      statusBtn.textContent = 'Deactivate Member';
+      statusBtn.className = 'btn btn-outline-danger btn-sm px-3 fw-medium';
+      statusBtn.onclick = () => {
+        bootstrap.Modal.getInstance(manageModalEl).hide();
+        toggleMemberStatus(profileId, false);
+      };
+    } else {
+      statusBtn.textContent = 'Activate Member';
+      statusBtn.className = 'btn btn-outline-success btn-sm px-3 fw-medium';
+      statusBtn.onclick = () => {
+        bootstrap.Modal.getInstance(manageModalEl).hide();
+        toggleMemberStatus(profileId, true);
+      };
+    }
+
+    new bootstrap.Modal(manageModalEl).show();
+  }
+
   loadMembers();
 
-
   function generatePassword() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  let pwd = '';
-  const arr = new Uint32Array(10);
-  crypto.getRandomValues(arr);
-  for (let i = 0; i < 10; i++) {
-    pwd += chars[arr[i] % chars.length];
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let pwd = '';
+    const arr = new Uint32Array(10);
+    crypto.getRandomValues(arr);
+    for (let i = 0; i < 10; i++) {
+      pwd += chars[arr[i] % chars.length];
+    }
+    const field = document.getElementById('password');
+    field.value = pwd;
+    field.type = 'text';
   }
-  const field = document.getElementById('password');
-  field.value = pwd;
-  field.type = 'text';
-}
 </script>
 
 <!-- QR Code Modal -->
 <div class="modal fade" id="qrModal" tabindex="-1">
-  <div class="modal-dialog modal-md">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-qr-code me-2"></i>Member QR Code</h5>
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header p-3">
+        <h5 class="modal-title fw-bold"><i class="bi bi-qr-code me-2"></i>Member QR Code</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body text-center" id="qrModalBody">
+      <div class="modal-body text-center p-4" id="qrModalBody">
         <div class="spinner-border text-primary my-4"></div>
       </div>
-      <div class="modal-footer justify-content-between">
+      <div class="modal-footer justify-content-between p-3">
         <button class="btn btn-outline-secondary btn-sm" onclick="regenerateQr()" id="regenBtn">
-          <i class="bi bi-arrow-clockwise"></i> Regenerate QR
+          <i class="bi bi-arrow-clockwise me-1"></i> Regenerate QR
         </button>
         <div>
-          <button class="btn btn-outline-primary btn-sm" onclick="downloadQr()" id="downloadBtn">
-            <i class="bi bi-download"></i> Download
+          <button class="btn btn-outline-primary btn-sm me-1" onclick="downloadQr()" id="downloadBtn">
+            <i class="bi bi-download me-1"></i> Download
           </button>
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
         </div>
@@ -774,7 +952,6 @@ tbody.innerHTML += `
 </div>
 
 <script>
-  // QR Code logic
   let currentQrMemberId = null;
   let currentQrMemberName = null;
   let currentQrDisplayId = null;
@@ -808,7 +985,6 @@ tbody.innerHTML += `
   }
 
   function renderQrModal(data, fullName, displayId) {
-    // Find member info from the cached list
     const member = allMembers.find(m => m.user_id == data.member_id);
     const ms = member ? member.current_membership : null;
 
@@ -821,12 +997,11 @@ tbody.innerHTML += `
     const goal = member ? (member.fitness_goal_display || '—') : '—';
 
     document.getElementById('qrModalBody').innerHTML = `
-      <!-- Member Info Card -->
-      <div class="card mb-3 text-start">
-        <div class="card-body py-2 px-3">
+      <div class="card mb-3 text-start border shadow-sm">
+        <div class="card-body p-3">
           <div class="d-flex align-items-center gap-3">
-            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
-                 style="width:48px;height:48px;font-size:1.3rem;font-weight:700;flex-shrink:0;">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5"
+                 style="width:48px;height:48px;flex-shrink:0;">
               ${fullName.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -843,12 +1018,11 @@ tbody.innerHTML += `
         </div>
       </div>
 
-      <!-- QR Image -->
-      <div class="border rounded p-3 d-inline-block bg-white mb-2">
+      <div class="border rounded-3 p-3 d-inline-block bg-white mb-2 shadow-sm">
         <img id="qrImage" src="${data.qr_image_base64}" alt="QR Code"
              style="width:220px;height:220px;display:block;">
       </div>
-      <p class="text-muted small mb-1">
+      <p class="text-muted small mb-0">
         <i class="bi bi-info-circle me-1"></i>
         Scan to view this member's profile
       </p>`;
@@ -872,7 +1046,6 @@ tbody.innerHTML += `
       return;
     }
 
-    // Reload fresh QR
     await loadQrCode(currentQrMemberId, currentQrMemberName, currentQrDisplayId);
   }
 
