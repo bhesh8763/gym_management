@@ -274,13 +274,6 @@
     let weightTrendChartInstance = null;
 
     if (!getAccessToken()) window.location.href = 'index.html';
-
-    // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
-
-    // ── Member selector ─────────────────────────────────────────────────
-    // NOTE: assumes /members/ returns objects shaped like the ones
-    // members.html renders. Adjust field names below (full_name,
-    // member_code) if your actual API differs.
     async function loadMemberDropdown() {
         const select = document.getElementById('memberSelect');
         const response = await apiRequest('/members/');
