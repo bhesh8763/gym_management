@@ -81,28 +81,28 @@
     <!-- Summary Stats -->
     <div class="row mb-4">
       <div class="col-md-3">
-        <div class="card text-center"><div class="card-body">
+        <div class="card stat-card stat-accent stat-info">
           <div class="text-muted small">Total Members</div>
           <h3 id="totalMembers">-</h3>
-        </div></div>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-success"><div class="card-body">
+        <div class="card stat-card stat-accent stat-success">
           <div class="text-muted small">Present Today</div>
           <h3 id="presentToday" class="text-success">-</h3>
-        </div></div>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-danger"><div class="card-body">
+        <div class="card stat-card stat-accent stat-danger">
           <div class="text-muted small">Absent Today</div>
-          <h3 id="absentToday" class="text-danger">-</h3>
-        </div></div>
+          <h3 id="absentToday" style="color:var(--brand-red)">-</h3>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-warning"><div class="card-body">
+        <div class="card stat-card stat-accent stat-warning">
           <div class="text-muted small">Inactive Members</div>
           <h3 id="inactiveMembers" class="text-warning">-</h3>
-        </div></div>
+        </div>
       </div>
     </div>
 
@@ -115,40 +115,40 @@
       </button>
     </div>
 
-    <div class="row g-2 mb-2 align-items-center">
-      <div class="col-12 col-md">
-        <input type="text" id="searchAttendance" class="form-control" placeholder="Search member..." onkeyup="filterAttendance()">
+    <div class="row g-2 mb-3 align-items-center">
+      <div class="col">
+        <input type="text" id="searchAttendance" class="form-control" placeholder="Search member name..." onkeyup="filterAttendance()">
       </div>
-      <div class="col-12 col-md-auto text-md-end">
-        <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('attTable', 'attendance.csv')">
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary" onclick="exportTableToCsv('attTable', 'attendance.csv')">
           <i class="bi bi-download"></i> Export CSV
         </button>
       </div>
     </div>
 
-    <div class="table-responsive">
-    <table class="table table-bordered" id="attTable">
-      <thead>
-        <tr>
-          <th>ID</th><th>Member</th><th>Date</th><th>Status</th><th>Membership</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="attTableBody"></tbody>
-    </table>
+    <div class="table-responsive mb-4">
+      <table class="table table-bordered mb-0" id="attTable">
+        <thead>
+          <tr>
+            <th>ID</th><th>Member</th><th>Date</th><th>Status</th><th>Membership</th><th data-no-export>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="attTableBody"></tbody>
+      </table>
     </div>
 
-    <div class="card mt-4">
-      <div class="card-header">Inactive Members</div>
-      <div class="card-body">
-        <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr><th>Name</th><th>Last Visit</th><th>Days Inactive</th><th>Actions</th></tr>
-          </thead>
-          <tbody id="inactiveTable"></tbody>
-        </table>
-        </div>
-      </div>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Inactive Members</h5>
+      <small class="text-muted">No visit in 14+ days</small>
+    </div>
+
+    <div class="table-responsive mb-4">
+      <table class="table table-bordered mb-0">
+        <thead>
+          <tr><th>Member</th><th>Last Visit</th><th>Days Inactive</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="inactiveTable"></tbody>
+      </table>
     </div>
 
     <!-- ══════════════ MY LEAVE (staff / trainer only) ══════════════ -->
@@ -166,45 +166,37 @@
       </div>
 
       <!-- My leave stats -->
-      <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-          <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-warning" id="myStat_pending">—</div>
-              <div class="small text-muted">Pending</div>
-            </div>
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card stat-card stat-accent stat-warning">
+            <div class="text-muted small">Pending</div>
+            <h3 id="myStat_pending" class="text-warning">—</h3>
           </div>
         </div>
-        <div class="col-6 col-md-3">
-          <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-success" id="myStat_approved">—</div>
-              <div class="small text-muted">Approved</div>
-            </div>
+        <div class="col-md-3">
+          <div class="card stat-card stat-accent stat-success">
+            <div class="text-muted small">Approved</div>
+            <h3 id="myStat_approved" class="text-success">—</h3>
           </div>
         </div>
-        <div class="col-6 col-md-3">
-          <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-danger" id="myStat_rejected">—</div>
-              <div class="small text-muted">Rejected</div>
-            </div>
+        <div class="col-md-3">
+          <div class="card stat-card stat-accent stat-danger">
+            <div class="text-muted small">Rejected</div>
+            <h3 id="myStat_rejected" class="text-secondary">—</h3>
           </div>
         </div>
-        <div class="col-6 col-md-3">
-          <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-secondary" id="myStat_cancelled">—</div>
-              <div class="small text-muted">Cancelled</div>
-            </div>
+        <div class="col-md-3">
+          <div class="card stat-card stat-accent stat-info">
+            <div class="text-muted small">Cancelled</div>
+            <h3 id="myStat_cancelled" class="text-info">—</h3>
           </div>
         </div>
       </div>
 
       <!-- My leave table -->
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
+      <div class="table-responsive mb-4">
+        <table class="table table-bordered mb-0">
+          <thead>
             <tr>
               <th>#</th><th>Type</th><th>From</th><th>To</th><th>Days</th>
               <th>Reason</th><th>Status</th><th>Review Note</th>
@@ -216,8 +208,6 @@
         </table>
       </div>
     </div>
-
-
 
   </div>
 </div>
@@ -459,6 +449,10 @@
     return new Date().toISOString().split('T')[0];
   }
 
+  function initials(name) {
+    return (name || '?').trim().charAt(0).toUpperCase();
+  }
+
   let allAttendance = [];
   let membersCache = [];
 
@@ -482,8 +476,8 @@
   // ── Attendance ───────────────────────────────────────────────────────────
   function statusBadge(status) {
     return status === 'PRESENT'
-      ? '<span class="badge bg-success">Present</span>'
-      : '<span class="badge bg-danger">Absent</span>';
+      ? '<span class="pill pill-success">Present</span>'
+      : '<span class="pill pill-danger">Absent</span>';
   }
 
   async function fetchAll(path) {
@@ -509,27 +503,37 @@
     updateTodayStats();
   }
 
+  function memberIdLookup() {
+    const map = {};
+    membersCache.forEach(m => { map[m.user_id] = m.display_id || ('#' + m.user_id); });
+    return map;
+  }
+
   function renderAttendance(records) {
     const tbody = document.getElementById('attTableBody');
     if (records.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No attendance records found.</td></tr>`;
       return;
     }
+    const idByUser = memberIdLookup();
     tbody.innerHTML = records.map(record => `
       <tr>
         <td>${record.id}</td>
-        <td>${record.user_name}</td>
+        <td>
+          <div class="member-name">${record.user_name}</div>
+          <div class="member-id">${idByUser[record.user] || ''}</div>
+        </td>
         <td>${record.date}</td>
         <td>${statusBadge(record.status)}</td>
         <td>${record.membership || '-'}</td>
         <td>
-          <button class="btn btn-sm btn-outline-info" title="View" onclick="viewAttendance(${record.id})">
+          <button class="table-icon-btn" title="View" onclick="viewAttendance(${record.id})">
             <i class="bi bi-eye"></i>
           </button>
-          <button class="btn btn-sm btn-outline-warning" title="Edit" onclick="openEditAttendanceModal(${record.id})">
+          <button class="table-icon-btn" title="Edit" onclick="openEditAttendanceModal(${record.id})">
             <i class="bi bi-pencil"></i>
           </button>
-          <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteAttendance(${record.id})">
+          <button class="table-icon-btn" title="Delete" onclick="deleteAttendance(${record.id})">
             <i class="bi bi-trash"></i>
           </button>
         </td>
@@ -603,8 +607,9 @@
     const today = todayStr();
     const todayRecords = allAttendance.filter(r => r.date === today);
     const present = todayRecords.filter(r => r.status === 'PRESENT').length;
+    const absent = todayRecords.filter(r => r.status === 'ABSENT').length;
     document.getElementById('presentToday').textContent = present;
-    document.getElementById('absentToday').textContent = Math.max(membersCache.length - present, 0);
+    document.getElementById('absentToday').textContent = absent;
   }
 
   // ── Inactive Members (no PRESENT record in last 14 days) ────────────────
@@ -627,6 +632,7 @@
         return {
           id: m.user_id,
           name: m.full_name,
+          displayId: m.display_id || ('#' + m.user_id),
           email: m.email || '',
           phone: m.phone || '',
           last: last || 'Never',
@@ -642,18 +648,21 @@
     tbody.innerHTML = inactive.length
       ? inactive.map(m => `
           <tr>
-            <td>${m.name}</td>
-            <td>${m.last}</td>
-            <td>${m.daysInactive === null ? '-' : m.daysInactive}</td>
             <td>
-              ${m.phone ? `<a href="tel:${m.phone}" class="btn btn-sm btn-outline-success" title="Call"><i class="bi bi-telephone"></i></a>` : ''}
-              ${m.email ? `<a href="mailto:${m.email}" class="btn btn-sm btn-outline-primary" title="Email"><i class="bi bi-envelope"></i></a>` : ''}
-              <button class="btn btn-sm btn-outline-secondary" title="Mark Attendance" onclick="quickMarkAttendance(${m.id})">
+              <div class="member-name">${m.name}</div>
+              <div class="member-id">${m.displayId}</div>
+            </td>
+            <td>${m.last}</td>
+            <td>${m.daysInactive === null ? '-' : m.daysInactive + ' days'}</td>
+            <td>
+              ${m.phone ? `<a href="tel:${m.phone}" class="table-icon-btn" title="Call"><i class="bi bi-telephone"></i></a>` : ''}
+              ${m.email ? `<a href="mailto:${m.email}" class="table-icon-btn" title="Email"><i class="bi bi-envelope"></i></a>` : ''}
+              <button class="table-icon-btn" title="Mark Attendance" onclick="quickMarkAttendance(${m.id})">
                 <i class="bi bi-calendar-check"></i>
               </button>
             </td>
           </tr>`).join('')
-      : `<tr><td colspan="4" class="text-center text-muted py-3">No inactive members 🎉</td></tr>`;
+      : `<tr><td colspan="4" class="text-center text-muted py-4">No inactive members 🎉</td></tr>`;
   }
 
   function quickMarkAttendance(memberId) {
@@ -763,7 +772,7 @@
           <td>${leaveTypeBadge(row.leave_type)}</td>
           <td>${row.start_date}</td>
           <td>${row.end_date}</td>
-          <td><span class="badge bg-light text-dark border">${row.duration_days}d</span></td>
+          <td><span class="pill pill-muted">${row.duration_days}d</span></td>
           <td class="small" style="max-width:160px;white-space:normal">${row.reason}</td>
           <td>${leaveStatusBadge(row.status)}</td>
           <td style="max-width:160px;white-space:normal">${reviewNote}</td>
@@ -785,12 +794,12 @@
 
   function leaveStatusBadge(s) {
     const map = {
-      APPROVED:  'success',
-      PENDING:   'warning text-dark',
-      REJECTED:  'danger',
-      CANCELLED: 'secondary',
+      APPROVED:  'pill-success',
+      PENDING:   'pill-warning',
+      REJECTED:  'pill-danger',
+      CANCELLED: 'pill-muted',
     };
-    return `<span class="badge bg-${map[s] || 'secondary'}">${s}</span>`;
+    return `<span class="pill ${map[s] || 'pill-muted'}">${s}</span>`;
   }
 
   // Cancel (staff/trainer cancels own pending request — kept for staff.html compatibility)
