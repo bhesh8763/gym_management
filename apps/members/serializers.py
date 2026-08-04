@@ -22,7 +22,7 @@ class MemberUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'email', 'first_name', 'last_name', 'full_name',
+            'id', 'email', 'first_name', 'middle_name', 'last_name', 'full_name',
             'phone', 'profile_picture', 'is_active', 'date_joined',
         ]
         read_only_fields = fields
@@ -93,6 +93,7 @@ class MemberCreateSerializer(serializers.Serializer):
     # User fields
     email = serializers.EmailField()
     first_name = serializers.CharField(max_length=100)
+    middle_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=100)
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     profile_picture = serializers.ImageField(required=False, allow_null=True)
@@ -135,7 +136,7 @@ class MemberCreateSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         # Split user vs profile fields
-        user_fields = ['email', 'first_name', 'last_name', 'phone', 'profile_picture', 'password']
+        user_fields = ['email', 'first_name', 'middle_name', 'last_name', 'phone', 'profile_picture', 'password']
         user_data = {k: validated_data.pop(k) for k in user_fields if k in validated_data}
         password = user_data.pop('password')
 

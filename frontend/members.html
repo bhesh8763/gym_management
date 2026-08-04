@@ -179,8 +179,6 @@
       </button>
     </div>
 
-    <div id="errorBox" class="alert alert-danger d-none"></div>
-
     <div id="editPanel" class="card mb-4 d-none shadow-sm">
       <div class="card-body p-4">
         <h5 id="editTitle" class="fw-bold mb-3">Edit Member</h5>
@@ -338,10 +336,20 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-4">
+        <!-- Error box lives inside the modal so it appears above the backdrop -->
+        <div id="errorBox" class="alert alert-danger d-none mb-3"></div>
         <form id="addForm" class="row g-3" autocomplete="off">
+          <!-- Fake hidden fields trick browsers into not autofilling real fields -->
+          <input type="text" name="fake_username" style="display:none;" aria-hidden="true" tabindex="-1">
+          <input type="password" name="fake_password" style="display:none;" aria-hidden="true" tabindex="-1">
+
           <div class="col-md-4">
             <label class="form-label">First Name</label>
             <input type="text" id="firstName" class="form-control" required maxlength="50" pattern="[A-Za-z\s]+" title="Letters only" autocomplete="off">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Middle Name <span class="text-muted small">(optional)</span></label>
+            <input type="text" id="middleName" class="form-control" maxlength="50" pattern="[A-Za-z\s]*" title="Letters only" autocomplete="off">
           </div>
           <div class="col-md-4">
             <label class="form-label">Last Name</label>
@@ -358,7 +366,10 @@
           <div class="col-md-4">
             <label class="form-label">Password</label>
             <div class="input-group">
-              <input type="text" id="password" class="form-control" required minlength="8" autocomplete="new-password">
+              <!-- type="text" + autocomplete="new-password" + readonly trick prevents autofill -->
+              <input type="text" id="password" class="form-control" required minlength="8"
+                     autocomplete="new-password" readonly
+                     onfocus="this.removeAttribute('readonly')" onblur="if(!this.value) this.setAttribute('readonly','')">
               <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()" title="Generate password">
                 <i class="bi bi-shuffle"></i>
               </button>
@@ -380,8 +391,23 @@
             <input type="date" id="dob" class="form-control" max="">
           </div>
           <div class="col-md-4">
-            <label class="form-label">Height (cm)</label>
-            <input type="number" step="0.01" min="0" id="heightCm" class="form-control">
+            <!-- Height field with ft/cm toggle -->
+            <label class="form-label d-flex justify-content-between align-items-center">
+              <span>Height</span>
+              <span class="btn-group btn-group-sm" role="group">
+                <button type="button" id="heightUnitCm" class="btn btn-primary btn-sm px-2 py-0" onclick="setHeightUnit('cm')">cm</button>
+                <button type="button" id="heightUnitFt" class="btn btn-outline-secondary btn-sm px-2 py-0" onclick="setHeightUnit('ft')">ft</button>
+              </span>
+            </label>
+            <!-- cm input -->
+            <input type="number" step="0.1" min="0" max="300" id="heightCm" class="form-control" placeholder="e.g. 175">
+            <!-- ft/in inputs (hidden by default) -->
+            <div id="heightFtGroup" class="d-none input-group">
+              <input type="number" step="1" min="0" max="9" id="heightFt" class="form-control" placeholder="ft" oninput="syncHeightFromFtIn()">
+              <span class="input-group-text">ft</span>
+              <input type="number" step="0.1" min="0" max="11.9" id="heightIn" class="form-control" placeholder="in" oninput="syncHeightFromFtIn()">
+              <span class="input-group-text">in</span>
+            </div>
           </div>
           <div class="col-md-4">
             <label class="form-label">Weight (kg)</label>
@@ -816,6 +842,7 @@
 
     const payload = {
       first_name: document.getElementById('firstName').value.trim(),
+      middle_name: document.getElementById('middleName').value.trim(),
       last_name: document.getElementById('lastName').value.trim(),
       email: document.getElementById('email').value.trim(),
       phone: document.getElementById('phone').value.trim(),
@@ -837,6 +864,7 @@
 
     if (res.ok) {
       document.getElementById('addForm').reset();
+      resetHeightUnit();
       bootstrap.Modal.getInstance(document.getElementById('addMemberModal')).hide();
       loadMembers();
     } else {
@@ -848,6 +876,8 @@
 
   document.getElementById('addMemberModal').addEventListener('hidden.bs.modal', () => {
     document.getElementById('errorBox').classList.add('d-none');
+    document.getElementById('addForm').reset();
+    resetHeightUnit();
   });
 
   // ─── Manage Member Modal ─────────────────────────────────────────
@@ -911,6 +941,64 @@
 
   loadMembers();
 
+  // ─── Height unit toggle ──────────────────────────────────────────
+  let currentHeightUnit = 'cm';
+
+  function setHeightUnit(unit) {
+    currentHeightUnit = unit;
+    const cmInput = document.getElementById('heightCm');
+    const ftGroup = document.getElementById('heightFtGroup');
+    const btnCm = document.getElementById('heightUnitCm');
+    const btnFt = document.getElementById('heightUnitFt');
+
+    if (unit === 'ft') {
+      // Convert existing cm value to ft/in for display
+      const cmVal = parseFloat(cmInput.value);
+      cmInput.classList.add('d-none');
+      ftGroup.classList.remove('d-none');
+      btnFt.className = 'btn btn-primary btn-sm px-2 py-0';
+      btnCm.className = 'btn btn-outline-secondary btn-sm px-2 py-0';
+      if (cmVal > 0) {
+        const totalInches = cmVal / 2.54;
+        document.getElementById('heightFt').value = Math.floor(totalInches / 12);
+        document.getElementById('heightIn').value = (totalInches % 12).toFixed(1);
+      }
+    } else {
+      // Convert ft/in back to cm
+      const ft = parseFloat(document.getElementById('heightFt').value) || 0;
+      const inch = parseFloat(document.getElementById('heightIn').value) || 0;
+      cmInput.classList.remove('d-none');
+      ftGroup.classList.add('d-none');
+      btnCm.className = 'btn btn-primary btn-sm px-2 py-0';
+      btnFt.className = 'btn btn-outline-secondary btn-sm px-2 py-0';
+      if (ft > 0 || inch > 0) {
+        cmInput.value = ((ft * 12 + inch) * 2.54).toFixed(1);
+      }
+    }
+  }
+
+  function syncHeightFromFtIn() {
+    // Keep the hidden cm field in sync so the payload always uses cm
+    const ft = parseFloat(document.getElementById('heightFt').value) || 0;
+    const inch = parseFloat(document.getElementById('heightIn').value) || 0;
+    if (ft > 0 || inch > 0) {
+      document.getElementById('heightCm').value = ((ft * 12 + inch) * 2.54).toFixed(1);
+    } else {
+      document.getElementById('heightCm').value = '';
+    }
+  }
+
+  function resetHeightUnit() {
+    currentHeightUnit = 'cm';
+    document.getElementById('heightCm').classList.remove('d-none');
+    document.getElementById('heightFtGroup').classList.add('d-none');
+    document.getElementById('heightUnitCm').className = 'btn btn-primary btn-sm px-2 py-0';
+    document.getElementById('heightUnitFt').className = 'btn btn-outline-secondary btn-sm px-2 py-0';
+    document.getElementById('heightFt').value = '';
+    document.getElementById('heightIn').value = '';
+    document.getElementById('heightCm').value = '';
+  }
+
   function generatePassword() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
     let pwd = '';
@@ -920,6 +1008,7 @@
       pwd += chars[arr[i] % chars.length];
     }
     const field = document.getElementById('password');
+    field.removeAttribute('readonly');
     field.value = pwd;
     field.type = 'text';
   }

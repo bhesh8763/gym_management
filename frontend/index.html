@@ -55,12 +55,12 @@
 
       <div id="errorBox" class="login-alert login-alert-danger d-none"></div>
 
-      <form id="loginForm" class="login-form">
+      <form id="loginForm" class="login-form" autocomplete="on">
         <div class="login-form-group">
           <label class="login-label">Email Address</label>
           <div class="login-input-wrapper">
             <i class="bi bi-envelope-fill"></i>
-            <input type="email" class="login-input" id="email" placeholder="your@email.com" required autofocus>
+            <input type="email" class="login-input" id="email" name="email" placeholder="your@email.com" required autofocus autocomplete="email">
           </div>
         </div>
 
@@ -68,7 +68,7 @@
           <label class="login-label">Password</label>
           <div class="login-input-wrapper">
             <i class="bi bi-lock-fill"></i>
-            <input type="password" class="login-input" id="password" placeholder="Enter your password" required>
+            <input type="password" class="login-input" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
             <button type="button" class="login-toggle-password toggle-password" data-target="password" tabindex="-1">
               <i class="bi bi-eye"></i>
             </button>
@@ -101,6 +101,15 @@
 
 <script src="js/api.js"></script>
 <script>
+  // Clear fields on load — prevents browser from silently pre-filling
+  // a saved/generated password before the user interacts with the form.
+  // The autocomplete attributes are kept so the browser still *offers*
+  // its credential picker when the user clicks into the field.
+  window.addEventListener('load', () => {
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+  });
+
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value;

@@ -43,6 +43,7 @@ class StaffCreateSerializer(serializers.Serializer):
     # User fields
     email = serializers.EmailField()
     first_name = serializers.CharField(max_length=100)
+    middle_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=100)
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     password = serializers.CharField(
@@ -67,7 +68,7 @@ class StaffCreateSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        user_fields = ['email', 'first_name', 'last_name', 'phone', 'password']
+        user_fields = ['email', 'first_name', 'middle_name', 'last_name', 'phone', 'password']
         user_data = {k: validated_data.pop(k) for k in user_fields if k in validated_data}
         password = user_data.pop('password')
 

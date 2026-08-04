@@ -72,6 +72,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Core identity
     email = models.EmailField(unique=True, db_index=True)
     first_name = models.CharField(max_length=100)
+    middle_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20, blank=True)
     profile_picture = models.ImageField(
@@ -114,7 +115,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         return f'{self.get_full_name()} ({self.role})'
 
     def get_full_name(self):
-        return f'{self.first_name} {self.last_name}'.strip()
+        parts = [self.first_name, self.middle_name, self.last_name]
+        return ' '.join(p for p in parts if p).strip()
 
     def get_short_name(self):
         return self.first_name

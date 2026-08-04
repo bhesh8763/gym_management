@@ -92,32 +92,43 @@
           <div class="modal-header">
             <h5 class="modal-title">Add Staff Profile</h5>
           </div>
-          <form id="profileForm">
+          <form id="profileForm" autocomplete="off">
             <div class="modal-body">
+              <!-- Fake fields to prevent browser autofill -->
+              <input type="text" name="fake_username" style="display:none;" aria-hidden="true" tabindex="-1">
+              <input type="password" name="fake_password" style="display:none;" aria-hidden="true" tabindex="-1">
+
               <div class="mb-2">
                 <label class="form-label">First Name</label>
-                <input type="text" id="firstName" class="form-control" required>
+                <input type="text" id="firstName" class="form-control" required autocomplete="off">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Middle Name <span class="text-muted small">(optional)</span></label>
+                <input type="text" id="middleName" class="form-control" autocomplete="off">
               </div>
               <div class="mb-2">
                 <label class="form-label">Last Name</label>
-                <input type="text" id="lastName" class="form-control" required>
+                <input type="text" id="lastName" class="form-control" required autocomplete="off">
               </div>
               <div class="mb-2">
                 <label class="form-label">Email</label>
-                <input type="email" id="email" class="form-control" required>
+                <input type="email" id="email" class="form-control" required autocomplete="off">
               </div>
               <div class="mb-2">
                 <label class="form-label">Phone</label>
-                <input type="tel" id="phone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
+                <input type="tel" id="phone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)" autocomplete="off">
               </div>
               <div class="mb-2">
                 <label class="form-label">Password</label>
                 <div class="input-group">
-                  <input type="password" id="password" class="form-control" required>
-                  <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" tabindex="-1">
-                    <i class="bi bi-eye"></i>
+                  <input type="text" id="password" class="form-control" required
+                         autocomplete="new-password" readonly
+                         onfocus="this.removeAttribute('readonly')" onblur="if(!this.value) this.setAttribute('readonly','')">
+                  <button type="button" class="btn btn-outline-secondary" onclick="staffGeneratePassword()" title="Generate password">
+                    <i class="bi bi-shuffle"></i>
                   </button>
                 </div>
+                <small class="text-muted">Generate or type a password — copy it before saving.</small>
               </div>
               <div class="mb-2">
                 <label class="form-label">Department</label>
@@ -504,6 +515,7 @@
 
   document.getElementById('profileAddModal').addEventListener('hidden.bs.modal', () => {
     document.getElementById('profileError').classList.add('d-none');
+    document.getElementById('profileForm').reset();
   });
 
   document.getElementById('profileForm').addEventListener('submit', async (e) => {
@@ -512,6 +524,7 @@
     errorBox.classList.add('d-none');
     const payload = {
       first_name: document.getElementById('firstName').value,
+      middle_name: document.getElementById('middleName').value,
       last_name: document.getElementById('lastName').value,
       email: document.getElementById('email').value,
       phone: document.getElementById('phone').value,
@@ -534,6 +547,18 @@
       errorBox.classList.remove('d-none');
     }
   });
+
+  function staffGeneratePassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let pwd = '';
+    const arr = new Uint32Array(10);
+    crypto.getRandomValues(arr);
+    for (let i = 0; i < 10; i++) pwd += chars[arr[i] % chars.length];
+    const field = document.getElementById('password');
+    field.removeAttribute('readonly');
+    field.value = pwd;
+    field.type = 'text';
+  }
 
   async function loadLeaves() {
     const res = await apiRequest('/staff/leave-requests/');
