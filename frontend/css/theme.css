@@ -1296,3 +1296,40 @@ h3, h5 {
 .stat-card h3 {
   font-size: 1.5rem;
 }
+
+/* ==========================================================================
+   Stat card accent border — used on Memberships (and anywhere else) to
+   match the colored left-border look of the Members page stat cards.
+   ========================================================================== */
+
+.stat-card.stat-accent {
+  border-left: 4px solid transparent;
+}
+.stat-card.stat-accent.stat-success { border-left-color: #198754; }
+.stat-card.stat-accent.stat-warning { border-left-color: #ffc107; }
+.stat-card.stat-accent.stat-info    { border-left-color: #0dcaf0; }
+.stat-card.stat-accent.stat-danger  { border-left-color: var(--brand-red); }
+
+/* Manage-style icon action buttons inside data tables (Memberships plans
+   table, memberships table) — smaller footprint than .manage-action-btn so
+   several can sit together in one row, but same border/hover language. */
+.table-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e5e5ea;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  margin-right: 4px;
+}
+.table-icon-btn:hover {
+  border-color: var(--brand-red);
+  color: var(--brand-red);
+  transform: translateY(-1px);
+}
+.table-icon-btn:last-child { margin-right: 0; }

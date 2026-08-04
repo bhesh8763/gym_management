@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-
 </head>
 
 <body>
@@ -78,76 +77,119 @@
     </div>
 
     <div class="p-4 flex-grow-1">
-        <h3>Progress Tracking</h3>
-
-        <div class="row mt-3 g-3">
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Total Entries</h6><h2 id="totalEntries">0</h2></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Latest Weight</h6><h2 id="latestWeight">—</h2></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Latest BMI</h6><h2 id="latestBmi">—</h2></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Latest Body Fat %</h6><h2 id="latestBodyFat">—</h2></div></div>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h3 class="mb-0">Progress Tracking</h3>
+            <div class="d-flex align-items-center gap-2">
+                <label for="memberSelect" class="text-muted small mb-0">Member</label>
+                <select class="form-select" id="memberSelect" style="min-width:240px;" onchange="onMemberChange()">
+                    <option value="">Loading members…</option>
+                </select>
             </div>
         </div>
 
-        <div class="card mt-4 mb-3">
-            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-3">
-                    <h4 class="mb-0">Body Metrics History</h4>
-                    <span class="badge bg-secondary" id="entryCountBadge">0</span>
+        <div id="memberDetailSection">
+            <div class="row mb-4 g-3">
+                <div class="col-md-3">
+                    <div class="card stat-card stat-accent stat-info">
+                        <div class="card-body">
+                            <div class="text-uppercase text-muted small fw-semibold">Total Entries</div>
+                            <h3 id="totalEntries">0</h3>
+                        </div>
+                    </div>
                 </div>
-                <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#createEntryModal">
+                <div class="col-md-3">
+                    <div class="card stat-card stat-accent stat-success">
+                        <div class="card-body">
+                            <div class="text-uppercase text-muted small fw-semibold">Current Weight</div>
+                            <h3 id="latestWeight" class="text-success">—</h3>
+                            <div class="stat-delta flat" id="weightDelta"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card stat-accent stat-warning">
+                        <div class="card-body">
+                            <div class="text-uppercase text-muted small fw-semibold">Current BMI</div>
+                            <h3 id="latestBmi" class="text-warning">—</h3>
+                            <div class="stat-delta flat" id="bmiDelta"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card stat-accent stat-danger">
+                        <div class="card-body">
+                            <div class="text-uppercase text-muted small fw-semibold mb-2">Weight Trend</div>
+                            <div style="position:relative; height:46px; width:100%;">
+                                <canvas id="weightTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="mb-0">Body Metrics History</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEntryModal">
                     <i class="bi bi-plus-circle"></i> Log Entry
                 </button>
             </div>
-        </div>
 
-        <div class="card mb-4">
-            <div class="card-header">Progress Entries</div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>Date</th><th>Weight (kg)</th><th>BMI</th><th>Body Fat %</th><th>Muscle Mass (kg)</th><th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="entriesTable"></tbody>
-                    </table>
-                </div>
+            <div class="fw-semibold text-uppercase text-muted small mb-2" style="letter-spacing:.04em;">Filter / Search</div>
+            <div class="d-flex gap-2 flex-wrap align-items-center mb-3">
+                <select class="form-select" id="entryDateFilter" style="max-width:180px;">
+                    <option value="">All Dates</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="365">Last 12 months</option>
+                </select>
+                <button class="btn btn-outline-secondary" onclick="loadEntries()">Search</button>
             </div>
-        </div>
 
-        <div class="card mt-4 mb-3">
-            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h4 class="mb-0">Personal Records</h4>
-                <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#createPrModal">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex align-items-center gap-2 small text-muted">
+                    Rows per page
+                    <select class="form-select form-select-sm" id="entryRowsPerPage" style="width:auto;">
+                        <option>10</option>
+                        <option>25</option>
+                        <option>50</option>
+                    </select>
+                </div>
+                <button class="manage-action-btn"><i class="bi bi-download"></i> Export CSV</button>
+            </div>
+
+            <div class="table-responsive mb-4">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th><th>Weight (kg)</th><th>BMI</th><th>Body Fat %</th><th>Muscle Mass (kg)</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="entriesTable">
+                        <tr><td colspan="6" class="text-center text-muted py-4">Select a member to view progress.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="mb-0">Personal Records</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPrModal">
                     <i class="bi bi-plus-circle"></i> Add Record
                 </button>
             </div>
-        </div>
 
-        <div class="card">
-            <div class="card-header">Personal Records</div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>Date</th><th>Exercise</th><th>Value</th><th>Unit</th><th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="prTable"></tbody>
-                    </table>
-                </div>
+            <div class="table-responsive mb-4">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th><th>Exercise</th><th>Value</th><th>Unit</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prTable"></tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Modals: Progress Entry -->
@@ -222,38 +264,137 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="js/api.js"></script>
 <script>
     let allEntries = [];
     let allPrs = [];
+    let allMembers = [];
+    let selectedMember = null; // { id, name, meta }
+    let weightTrendChartInstance = null;
 
     if (!getAccessToken()) window.location.href = 'index.html';
+    async function loadMemberDropdown() {
+        const select = document.getElementById('memberSelect');
+        const response = await apiRequest('/members/');
+        if (!response || !response.ok) {
+            select.innerHTML = `<option value="">Couldn't load members</option>`;
+            return;
+        }
+        const data = await response.json();
+        allMembers = data.results || data;
 
+        if (allMembers.length === 0) {
+            select.innerHTML = `<option value="">No members found</option>`;
+            return;
+        }
 
+        select.innerHTML = allMembers.map(m => {
+            const name = m.full_name || m.name || 'Unnamed member';
+            const code = m.member_code || m.code || '';
+            return `<option value="${m.id}">${name}${code ? ' — ' + code : ''}</option>`;
+        }).join('');
 
-    // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
+        onMemberChange();
+    }
 
+    function onMemberChange() {
+        const select = document.getElementById('memberSelect');
+        const id = select.value;
+        if (!id) { selectedMember = null; return; }
+        const opt = select.options[select.selectedIndex];
+        selectedMember = { id, name: opt.textContent };
+        loadEntries();
+        loadExercisesForPrForm();
+        loadPrs();
+    }
 
     // ── Progress Entries ─────────────────────────────────────────────────
     async function loadEntries() {
-        const response = await apiRequest('/progress/entries/');
+        if (!selectedMember) return;
+        const response = await apiRequest(`/progress/entries/?member=${selectedMember.id}`);
         if (!response || !response.ok) return;
         const data = await response.json();
         allEntries = data.results;
         document.getElementById('totalEntries').textContent = data.count;
-        document.getElementById('entryCountBadge').textContent = data.count;
 
         if (allEntries.length > 0) {
             const latest = allEntries[0]; // ordering = ['-date']
+            const previous = allEntries[1]; // may be undefined if only one entry exists
+
             document.getElementById('latestWeight').textContent = latest.weight_kg ? `${latest.weight_kg} kg` : '—';
             document.getElementById('latestBmi').textContent = latest.bmi ?? '—';
-            document.getElementById('latestBodyFat').textContent = latest.body_fat_percentage ? `${latest.body_fat_percentage}%` : '—';
+
+            renderDelta('weightDelta', latest.weight_kg, previous ? previous.weight_kg : null, 'kg');
+            renderDelta('bmiDelta', latest.bmi, previous ? previous.bmi : null, '');
+        } else {
+            document.getElementById('weightDelta').textContent = '';
+            document.getElementById('bmiDelta').textContent = '';
         }
 
+        renderWeightTrendChart(allEntries);
         renderEntries(allEntries);
     }
 
+    // Shows the change vs the previous logged entry — direction only, no
+    // "good/bad" color judgment, since whether weight going up or down is
+    // desirable depends entirely on the individual member's own goal.
+    function renderDelta(elId, current, prevVal, unit) {
+        const el = document.getElementById(elId);
+        if (current == null || prevVal == null) { el.textContent = ''; return; }
+        const diff = Math.round((current - prevVal) * 100) / 100;
+        if (diff === 0) {
+            el.textContent = 'No change since last entry';
+        } else {
+            const arrow = diff > 0 ? '\u2191' : '\u2193';
+            el.textContent = `${arrow} ${Math.abs(diff)}${unit ? ' ' + unit : ''} since last entry`;
+        }
+    }
+
+    function renderWeightTrendChart(entries) {
+        const canvas = document.getElementById('weightTrendChart');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        // Oldest → newest, last 10 entries, weight values only
+        const chronological = [...entries].reverse().filter(e => e.weight_kg != null).slice(-10);
+
+        if (weightTrendChartInstance) weightTrendChartInstance.destroy();
+
+        if (chronological.length < 2) {
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            return;
+        }
+
+        weightTrendChartInstance = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: chronological.map(e => e.date),
+                datasets: [{
+                    data: chronological.map(e => e.weight_kg),
+                    borderColor: '#e63946',
+                    backgroundColor: 'rgba(230,57,70,0.08)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.3,
+                    fill: true,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                scales: { x: { display: false }, y: { display: false } },
+                elements: { line: { borderJoinStyle: 'round' } },
+            },
+        });
+    }
+
     function renderEntries(entries) {
+        if (entries.length === 0) {
+            document.getElementById('entriesTable').innerHTML =
+                `<tr><td colspan="6" class="text-center text-muted py-4">No progress entries logged yet.</td></tr>`;
+            return;
+        }
         document.getElementById('entriesTable').innerHTML =
             entries.map(entry => `
             <tr>
@@ -263,7 +404,7 @@
                 <td>${entry.body_fat_percentage ?? '—'}</td>
                 <td>${entry.muscle_mass_kg ?? '—'}</td>
                 <td>
-                    <button class="btn btn-sm btn-warning"
+                    <button class="btn manage-btn btn-sm" title="Edit"
                         onclick="openEditEntryModal(
                             ${entry.id},
                             '${entry.date}',
@@ -272,10 +413,10 @@
                             ${entry.body_fat_percentage ?? 'null'},
                             ${entry.muscle_mass_kg ?? 'null'}
                         )">
-                        <i class="bi bi-pencil"></i>
+                        Edit
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteEntry(${entry.id})">
-                        <i class="bi bi-trash"></i>
+                    <button class="btn btn-outline-danger btn-sm" title="Delete" onclick="deleteEntry(${entry.id})">
+                        Delete
                     </button>
                 </td>
             </tr>
@@ -283,7 +424,9 @@
     }
 
     async function createEntry() {
+        if (!selectedMember) return;
         const payload = {
+            member: selectedMember.id,
             date: document.getElementById('entryDate').value,
             weight_kg: document.getElementById('entryWeight').value || null,
             height_cm: document.getElementById('entryHeight').value || null,
@@ -354,7 +497,8 @@
     }
 
     async function loadPrs() {
-        const response = await apiRequest('/progress/personal-records/');
+        if (!selectedMember) return;
+        const response = await apiRequest(`/progress/personal-records/?member=${selectedMember.id}`);
         if (!response || !response.ok) return;
         const data = await response.json();
         allPrs = data.results;
@@ -362,6 +506,11 @@
     }
 
     function renderPrs(prs) {
+        if (prs.length === 0) {
+            document.getElementById('prTable').innerHTML =
+                `<tr><td colspan="5" class="text-center text-muted py-4">No personal records yet.</td></tr>`;
+            return;
+        }
         document.getElementById('prTable').innerHTML =
             prs.map(pr => `
             <tr>
@@ -370,8 +519,8 @@
                 <td>${pr.value}</td>
                 <td>${pr.unit}</td>
                 <td>
-                    <button class="btn btn-sm btn-danger" onclick="deletePr(${pr.id})">
-                        <i class="bi bi-trash"></i>
+                    <button class="btn btn-outline-danger btn-sm" title="Delete" onclick="deletePr(${pr.id})">
+                        Delete
                     </button>
                 </td>
             </tr>
@@ -379,7 +528,9 @@
     }
 
     async function createPr() {
+        if (!selectedMember) return;
         const payload = {
+            member: selectedMember.id,
             exercise: document.getElementById('prExercise').value,
             date: document.getElementById('prDate').value,
             value: document.getElementById('prValue').value,
@@ -405,9 +556,7 @@
         else { alert('Delete failed'); }
     }
 
-    loadEntries();
-    loadExercisesForPrForm();
-    loadPrs();
+    loadMemberDropdown();
 </script>
 </body>
 </html>
