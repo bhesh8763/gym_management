@@ -9,6 +9,48 @@
 </head>
 <body data-allowed-roles="OWNER">
 
+<!-- Toast container for save/update/delete feedback -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Mobile: collapse dense tables into stacked cards below ~700px */
+  @media (max-width: 700px) {
+    #profileTable thead, #leaveTable thead { display: none; }
+    #profileTable, #profileTable tbody, #profileTable tr, #profileTable td,
+    #leaveTable, #leaveTable tbody, #leaveTable tr, #leaveTable td {
+      display: block;
+      width: 100%;
+    }
+    #profileTable tr, #leaveTable tr {
+      margin-bottom: 0.75rem;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+      padding: 0.5rem 0.75rem;
+    }
+    #profileTable td, #leaveTable td {
+      border: none;
+      padding: 0.25rem 0;
+      text-align: left !important;
+    }
+    #profileTable td:not(:last-child)::before,
+    #leaveTable td:not(:last-child)::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #6c757d;
+    }
+  }
+</style>
+
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
   <span class="navbar-brand">FitCore</span>
@@ -70,7 +112,7 @@
       <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
 
       <div class="nav-section-label">Insights</div>
-      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
     </div>
   </div>
 
@@ -78,142 +120,225 @@
     <div data-roles="OWNER" id="staffProfilesSection">
       <h3>Staff Profiles</h3>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="mb-0">Staff Profiles</h5>
-      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#profileAddModal">
-        <i class="bi bi-plus-lg"></i> Add Staff
-      </button>
-    </div>
-
-    <!-- Add Staff Profile Modal -->
-    <div class="modal fade" id="profileAddModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Add Staff Profile</h5>
-          </div>
-          <form id="profileForm" autocomplete="off">
-            <div class="modal-body">
-              <!-- Fake fields to prevent browser autofill -->
-              <input type="text" name="fake_username" style="display:none;" aria-hidden="true" tabindex="-1">
-              <input type="password" name="fake_password" style="display:none;" aria-hidden="true" tabindex="-1">
-
-              <div class="mb-2">
-                <label class="form-label">First Name</label>
-                <input type="text" id="firstName" class="form-control" required autocomplete="off">
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Middle Name <span class="text-muted small">(optional)</span></label>
-                <input type="text" id="middleName" class="form-control" autocomplete="off">
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Last Name</label>
-                <input type="text" id="lastName" class="form-control" required autocomplete="off">
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Email</label>
-                <input type="email" id="email" class="form-control" required autocomplete="off">
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Phone</label>
-                <input type="tel" id="phone" class="form-control" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)" autocomplete="off">
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Password</label>
-                <div class="input-group">
-                  <input type="text" id="password" class="form-control" required
-                         autocomplete="new-password" readonly
-                         onfocus="this.removeAttribute('readonly')" onblur="if(!this.value) this.setAttribute('readonly','')">
-                  <button type="button" class="btn btn-outline-secondary" onclick="staffGeneratePassword()" title="Generate password">
-                    <i class="bi bi-shuffle"></i>
-                  </button>
-                </div>
-                <small class="text-muted">Generate or type a password — copy it before saving.</small>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Department</label>
-                <select id="department" class="form-select" required>
-                  <option value="FRONT_DESK">Front Desk</option>
-                  <option value="ACCOUNTS">Accounts</option>
-                  <option value="MAINTENANCE">Maintenance</option>
-                  <option value="MANAGEMENT">Management</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Designation</label>
-                <input type="text" id="designation" class="form-control" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Joined Date</label>
-                <input type="date" id="joinedDate" class="form-control" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Salary</label>
-                <input type="number" step="0.01" min="0" id="salary" class="form-control" required>
-              </div>
-              <div id="profileError" class="alert alert-danger d-none"></div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary">Add Staff</button>
-            </div>
-          </form>
+      <!-- ── Staff stat cards ─────────────────────────────────────────── -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card text-center border-primary"><div class="card-body">
+            <i class="bi bi-people-fill text-primary fs-4"></i>
+            <div class="text-muted small">Total Staff</div>
+            <h3 id="statTotalStaff" class="text-primary">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-success"><div class="card-body">
+            <i class="bi bi-person-check-fill text-success fs-4"></i>
+            <div class="text-muted small">Active</div>
+            <h3 id="statActiveStaff" class="text-success">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-secondary"><div class="card-body">
+            <i class="bi bi-person-x-fill text-secondary fs-4"></i>
+            <div class="text-muted small">Deactivated</div>
+            <h3 id="statDeactivatedStaff" class="text-secondary">-</h3>
+          </div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center border-warning"><div class="card-body">
+            <i class="bi bi-diagram-3-fill text-warning fs-4"></i>
+            <div class="text-muted small">Departments</div>
+            <h3 id="statDepartments" class="text-warning">-</h3>
+          </div></div>
         </div>
       </div>
-    </div>
 
-    <div class="d-flex justify-content-end mb-2">
-      <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToCsv('profileTable', 'staff.csv')">
-        <i class="bi bi-download"></i> Export CSV
-      </button>
-    </div>
-    <table class="table table-bordered mb-5" id="profileTable">
-      <thead>
-        <tr><th>Staff ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th>Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
-      </thead>
-      <tbody id="profileTableBody"></tbody>
-    </table>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Directory</h5>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#profileAddModal">
+          <i class="bi bi-plus-lg"></i> Add Staff
+        </button>
+      </div>
 
-    <!-- Edit Staff Profile Modal -->
-    <div class="modal fade" id="staffEditModal" tabindex="-1" >
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Edit Staff Profile</h5>
+      <!-- Add Staff Profile Modal -->
+      <div class="modal fade" id="profileAddModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Add Staff Profile</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="profileForm" autocomplete="off">
+              <div class="modal-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">First Name</label>
+                    <input type="text" id="firstName" class="form-control" autocomplete="off" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Middle Name <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" id="middleName" class="form-control" autocomplete="off">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" id="lastName" class="form-control" autocomplete="off" required>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="email" class="form-control" autocomplete="off" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" id="phone" class="form-control" autocomplete="off" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Password</label>
+                    <div class="input-group">
+                      <input type="password" id="password" class="form-control" autocomplete="new-password" required>
+                      <button type="button" class="btn btn-outline-secondary" id="generatePasswordBtn" onclick="generateStaffPassword()" title="Generate a random password">
+                        <i class="bi bi-shuffle"></i> Generate
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" tabindex="-1">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
+                    <div class="form-text">Click Generate for a random secure password, then the eye icon to reveal and share it.</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Department</label>
+                    <select id="department" class="form-select" required>
+                      <option value="FRONT_DESK">Front Desk</option>
+                      <option value="ACCOUNTS">Accounts</option>
+                      <option value="MAINTENANCE">Maintenance</option>
+                      <option value="MANAGEMENT">Management</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Designation</label>
+                    <input type="text" id="designation" class="form-control" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Joined Date</label>
+                    <input type="date" id="joinedDate" class="form-control" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Salary</label>
+                    <input type="number" step="0.01" min="0" id="salary" class="form-control" required>
+                  </div>
+                </div>
+                <div id="profileError" class="alert alert-danger d-none mt-3"></div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="profileAddSubmitBtn">Add Staff</button>
+              </div>
+            </form>
           </div>
-          <form id="staffEditForm">
-            <div class="modal-body">
-              <input type="hidden" id="editStaffId">
-              <div class="mb-2">
-                <label class="form-label">Department</label>
-                <select id="editDepartment" class="form-select">
-                  <option value="FRONT_DESK">Front Desk</option>
-                  <option value="ACCOUNTS">Accounts</option>
-                  <option value="MAINTENANCE">Maintenance</option>
-                  <option value="MANAGEMENT">Management</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Designation</label>
-                <input type="text" id="editDesignation" class="form-control" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Joined Date</label>
-                <input type="date" id="editJoinedDate" class="form-control" required>
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Salary</label>
-                <input type="number" step="0.01" min="0" id="editSalary" class="form-control" required>
-              </div>
-              <div id="staffEditError" class="alert alert-danger d-none"></div>
+        </div>
+      </div>
+
+      <!-- ── Staff: search / filter ───────────────────────────────────── -->
+      <div class="row g-2 mb-2">
+        <div class="col">
+          <input type="text" id="staffSearch" class="form-control" placeholder="Search name, email, or staff ID" oninput="onStaffSearchInput()">
+        </div>
+        <div class="col-auto">
+          <select id="staffDeptFilter" class="form-select" onchange="renderStaffPage(1)">
+            <option value="">All Departments</option>
+            <option value="FRONT_DESK">Front Desk</option>
+            <option value="ACCOUNTS">Accounts</option>
+            <option value="MAINTENANCE">Maintenance</option>
+            <option value="MANAGEMENT">Management</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select id="staffStatusFilter" class="form-select" onchange="renderStaffPage(1)">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Deactivated</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary" onclick="exportStaffCsv()">
+            <i class="bi bi-download"></i> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small text-muted">Rows per page</label>
+          <select id="staffPageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderStaffPage(1)">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered mb-2" id="profileTable">
+          <thead>
+            <tr><th>Staff ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th class="text-end">Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
+          </thead>
+          <tbody id="profileTableBody">
+            <tr><td colspan="9" class="text-center text-muted py-4">Loading staff…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mb-5">
+        <small class="text-muted" id="staffPageInfo">Showing 0 of 0</small>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary" id="prevStaffPageBtn" onclick="renderStaffPage(currentStaffPage - 1)">Previous</button>
+          <button class="btn btn-sm btn-outline-secondary" id="nextStaffPageBtn" onclick="renderStaffPage(currentStaffPage + 1)">Next</button>
+        </div>
+      </div>
+
+      <!-- Edit Staff Profile Modal -->
+      <div class="modal fade" id="staffEditModal" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Edit Staff Profile</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save Changes</button>
-            </div>
-          </form>
+            <form id="staffEditForm">
+              <div class="modal-body">
+                <input type="hidden" id="editStaffId">
+                <div class="mb-2">
+                  <label class="form-label">Department</label>
+                  <select id="editDepartment" class="form-select">
+                    <option value="FRONT_DESK">Front Desk</option>
+                    <option value="ACCOUNTS">Accounts</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="MANAGEMENT">Management</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Designation</label>
+                  <input type="text" id="editDesignation" class="form-control" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Joined Date</label>
+                  <input type="date" id="editJoinedDate" class="form-control" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Salary</label>
+                  <input type="number" step="0.01" min="0" id="editSalary" class="form-control" required>
+                </div>
+                <div id="staffEditError" class="alert alert-danger d-none"></div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="staffEditSubmitBtn">Save Changes</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -268,9 +393,51 @@
         </div>
       </div>
 
+      <!-- ── Leave: search / filter ───────────────────────────────────── -->
+      <div class="row g-2 mb-2">
+        <div class="col">
+          <input type="text" id="leaveSearch" class="form-control" placeholder="Search requester or reason" oninput="onLeaveSearchInput()">
+        </div>
+        <div class="col-auto">
+          <select id="leaveStatusFilter" class="form-select" onchange="renderLeavePage(1)">
+            <option value="">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select id="leaveTypeFilter" class="form-select" onchange="renderLeavePage(1)">
+            <option value="">All Types</option>
+            <option value="SICK">Sick</option>
+            <option value="CASUAL">Casual</option>
+            <option value="ANNUAL">Annual</option>
+            <option value="UNPAID">Unpaid</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary" onclick="exportLeaveCsv()">
+            <i class="bi bi-download"></i> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small text-muted">Rows per page</label>
+          <select id="leavePageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderLeavePage(1)">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Leave table -->
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" id="leaveTable">
+        <table class="table table-hover align-middle mb-2" id="leaveTable">
           <thead class="table-light">
             <tr>
               <th>#</th>
@@ -282,13 +449,20 @@
               <th>Reason</th>
               <th>Status</th>
               <th>Reviewed By</th>
-              <th>Actions</th>
+              <th data-no-export>Actions</th>
             </tr>
           </thead>
           <tbody id="leaveTableBody">
             <tr><td colspan="10" class="text-center text-muted py-4">Loading…</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <small class="text-muted" id="leavePageInfo">Showing 0 of 0</small>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary" id="prevLeavePageBtn" onclick="renderLeavePage(currentLeavePage - 1)">Previous</button>
+          <button class="btn btn-sm btn-outline-secondary" id="nextLeavePageBtn" onclick="renderLeavePage(currentLeavePage + 1)">Next</button>
+        </div>
       </div>
     </div>
   </div>
@@ -299,6 +473,7 @@
       <div class="modal-content">
         <div class="modal-header bg-danger text-white">
           <h5 class="modal-title"><i class="bi bi-calendar2-x me-2"></i>Submit Leave Request</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <form id="leaveForm">
           <div class="modal-body">
@@ -309,37 +484,42 @@
               <div class="row g-2" id="leaveTypeCards">
                 <div class="col-6 col-md-4">
                   <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_sick" value="SICK" checked>
-                  <label class="btn btn-outline-danger w-100 leave-type-card" for="lt_sick">
+                  <label class="btn btn-outline-danger w-100 leave-type-card position-relative" for="lt_sick">
                     <i class="bi bi-thermometer-high d-block fs-4 mb-1"></i>
                     Sick Leave
+                    <span class="badge bg-danger position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_SICK"></span>
                   </label>
                 </div>
                 <div class="col-6 col-md-4">
                   <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_casual" value="CASUAL">
-                  <label class="btn btn-outline-primary w-100 leave-type-card" for="lt_casual">
+                  <label class="btn btn-outline-primary w-100 leave-type-card position-relative" for="lt_casual">
                     <i class="bi bi-emoji-smile d-block fs-4 mb-1"></i>
                     Casual Leave
+                    <span class="badge bg-primary position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_CASUAL"></span>
                   </label>
                 </div>
                 <div class="col-6 col-md-4">
                   <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_annual" value="ANNUAL">
-                  <label class="btn btn-outline-success w-100 leave-type-card" for="lt_annual">
+                  <label class="btn btn-outline-success w-100 leave-type-card position-relative" for="lt_annual">
                     <i class="bi bi-calendar-heart d-block fs-4 mb-1"></i>
                     Annual Leave
+                    <span class="badge bg-success position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_ANNUAL"></span>
                   </label>
                 </div>
                 <div class="col-6 col-md-4">
                   <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_unpaid" value="UNPAID">
-                  <label class="btn btn-outline-warning w-100 leave-type-card" for="lt_unpaid">
+                  <label class="btn btn-outline-warning w-100 leave-type-card position-relative" for="lt_unpaid">
                     <i class="bi bi-cash-stack d-block fs-4 mb-1"></i>
                     Unpaid Leave
+                    <span class="badge bg-warning text-dark position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_UNPAID"></span>
                   </label>
                 </div>
                 <div class="col-6 col-md-4">
                   <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_other" value="OTHER">
-                  <label class="btn btn-outline-secondary w-100 leave-type-card" for="lt_other">
+                  <label class="btn btn-outline-secondary w-100 leave-type-card position-relative" for="lt_other">
                     <i class="bi bi-three-dots d-block fs-4 mb-1"></i>
                     Other
+                    <span class="badge bg-secondary position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_OTHER"></span>
                   </label>
                 </div>
               </div>
@@ -374,9 +554,43 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-danger">
+            <button type="submit" class="btn btn-danger" id="leaveSubmitBtn">
               <i class="bi bi-send me-1"></i> Submit Request
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ RESET PASSWORD MODAL (owner only) ══════════════ -->
+  <div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-key me-2"></i>Reset Password</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="resetPasswordForm" autocomplete="off">
+          <div class="modal-body">
+            <input type="hidden" id="resetPasswordStaffId">
+            <p class="text-muted small mb-3">Setting a new password for <strong id="resetPasswordStaffName"></strong>.</p>
+            <label class="form-label">New Password</label>
+            <div class="input-group">
+              <input type="password" id="resetPasswordField" class="form-control" autocomplete="new-password" required>
+              <button type="button" class="btn btn-outline-secondary" onclick="generateStaffPassword('resetPasswordField')" title="Generate a random password">
+                <i class="bi bi-shuffle"></i> Generate
+              </button>
+              <button type="button" class="btn btn-outline-secondary toggle-password" data-target="resetPasswordField" tabindex="-1">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="form-text">Share this with the staff member directly — it won't be shown again after you close this window.</div>
+            <div id="resetPasswordError" class="alert alert-danger d-none mt-3"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-warning" id="resetPasswordSubmitBtn"><i class="bi bi-key me-1"></i> Set New Password</button>
           </div>
         </form>
       </div>
@@ -434,44 +648,190 @@
     }
   });
 
-
-  function statusBadge(status) {
-    const map = { APPROVED: 'success', PENDING: 'warning', REJECTED: 'danger' };
-    return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+  // ─── Toast feedback ─────────────────────────────────────────────────────
+  function showToast(message, variant) {
+    const toastEl = document.getElementById("appToast");
+    const bodyEl = document.getElementById("appToastBody");
+    if (!toastEl || !bodyEl) {
+      console.warn("Toast element missing from page — skipping toast:", message);
+      return;
+    }
+    toastEl.classList.remove("bg-success", "bg-danger");
+    toastEl.classList.add(variant === "error" ? "bg-danger" : "bg-success");
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 }).show();
   }
 
-  let profileCache = [];
+  // ─── Badges & formatting ────────────────────────────────────────────────
+  const AVATAR_COLORS = ['#0d6efd', '#198754', '#fd7e14', '#6f42c1', '#d63384', '#20c997', '#dc3545'];
+
+  function staffAvatar(name) {
+    const clean = (name || '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0])
+      : (clean.slice(0, 2) || '?');
+    let hash = 0;
+    for (let i = 0; i < clean.length; i++) hash = clean.charCodeAt(i) + ((hash << 5) - hash);
+    const color = AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+    return `<span class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-semibold"
+                  style="width:28px;height:28px;font-size:0.7rem;background:${color};flex-shrink:0;">
+              ${initials.toUpperCase()}
+            </span>`;
+  }
+
+  function departmentBadge(dept) {
+    const map = {
+      FRONT_DESK: 'primary', ACCOUNTS: 'success',
+      MAINTENANCE: 'warning text-dark', MANAGEMENT: 'info text-dark', OTHER: 'secondary',
+    };
+    const label = dept ? dept.replace('_', ' ') : '-';
+    return `<span class="badge bg-${map[dept] || 'secondary'}">${label}</span>`;
+  }
+
+  function formatSalary(value) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return value || '-';
+    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // ─── CSV export (filtered, not just current page) ──────────────────────
+  function downloadCsv(filename, rows) {
+    const csv = rows.map(r => r.map(cell => {
+      const s = String(cell ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    }).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportStaffCsv() {
+    const header = ['Staff ID', 'Name', 'Email', 'Department', 'Designation', 'Joined', 'Salary', 'Status'];
+    const rows = staffFilteredCache.map(row => [
+      row.user_display_id || row.id, row.user_name, row.user_email,
+      row.department, row.designation, row.joined_date, row.salary,
+      row.is_active ? 'Active' : 'Deactivated',
+    ]);
+    downloadCsv('staff.csv', [header, ...rows]);
+  }
+
+  function exportLeaveCsv() {
+    const header = ['#', 'Requester', 'Type', 'Start', 'End', 'Days', 'Reason', 'Status', 'Reviewed By'];
+    const rows = leaveFilteredCache.map(row => [
+      row.id, row.requester_name, row.leave_type, row.start_date, row.end_date,
+      row.duration_days, row.reason, row.status, row.reviewed_by_name || '',
+    ]);
+    downloadCsv('leave_requests.csv', [header, ...rows]);
+  }
+
+  let staffCache = [];
+  let staffFilteredCache = [];
+  let currentStaffPage = 1;
+  let staffSearchDebounce = null;
+
+  function onStaffSearchInput() {
+    clearTimeout(staffSearchDebounce);
+    staffSearchDebounce = setTimeout(() => renderStaffPage(1), 300);
+  }
 
   async function loadProfiles() {
     const res = await apiRequest('/staff/profiles/');
     if (!res) return;
+    if (!res.ok) {
+      document.getElementById('profileTableBody').innerHTML =
+        `<tr><td colspan="9" class="text-center text-danger py-4">Failed to load staff.</td></tr>`;
+      return;
+    }
     const data = await res.json();
-    profileCache = data.results;
-    const tbody = document.getElementById('profileTableBody');
-    tbody.innerHTML = '';
-    data.results.forEach(row => {
-      const statusBadge = row.is_active
-        ? '<span class="badge bg-success">Active</span>'
-        : '<span class="badge bg-secondary">Deactivated</span>';
-      const toggleBtn = row.is_active
-        ? `<button class="btn btn-sm btn-outline-danger" onclick="toggleStaffActive(${row.id}, false)"><i class="bi bi-person-x"></i></button>`
-        : `<button class="btn btn-sm btn-outline-success" onclick="toggleStaffActive(${row.id}, true)"><i class="bi bi-person-check"></i></button>`;
-      tbody.innerHTML += `
-  <tr>
-    <td>${row.user_display_id || row.id}</td><td>${row.user_name}</td><td>${row.user_email}</td>
-    <td>${row.department}</td><td>${row.designation}</td>
-    <td>${row.joined_date}</td><td>${row.salary}</td>
-    <td>${statusBadge}</td>
-    <td>
-      <button class="btn btn-sm btn-outline-primary" onclick="openStaffEdit(${row.id})"><i class="bi bi-pencil"></i></button>
-      ${toggleBtn}
-    </td>
-  </tr>`;
+    staffCache = data.results || [];
+
+    const total = staffCache.length;
+    const active = staffCache.filter(s => s.is_active).length;
+    const deactivated = total - active;
+    const departments = new Set(staffCache.map(s => s.department)).size;
+
+    document.getElementById('statTotalStaff').textContent = total;
+    document.getElementById('statActiveStaff').textContent = active;
+    document.getElementById('statDeactivatedStaff').textContent = deactivated;
+    document.getElementById('statDepartments').textContent = departments;
+
+    renderStaffPage(1);
+  }
+
+  function renderStaffPage(page) {
+    const search = document.getElementById('staffSearch').value.trim().toLowerCase();
+    const deptFilter = document.getElementById('staffDeptFilter').value;
+    const statusFilter = document.getElementById('staffStatusFilter').value;
+
+    staffFilteredCache = staffCache.filter(row => {
+      const idStr = (row.user_display_id || String(row.id)).toLowerCase();
+      const matchesSearch = !search ||
+        (row.user_name || '').toLowerCase().includes(search) ||
+        (row.user_email || '').toLowerCase().includes(search) ||
+        idStr.includes(search);
+      const matchesDept = !deptFilter || row.department === deptFilter;
+      const matchesStatus = !statusFilter ||
+        (statusFilter === 'active' ? row.is_active : !row.is_active);
+      return matchesSearch && matchesDept && matchesStatus;
     });
+
+    const pageSize = parseInt(document.getElementById('staffPageSize').value, 10);
+    const totalPages = Math.max(1, Math.ceil(staffFilteredCache.length / pageSize));
+    currentStaffPage = Math.min(Math.max(1, page), totalPages);
+    const start = (currentStaffPage - 1) * pageSize;
+    const pageRows = staffFilteredCache.slice(start, start + pageSize);
+
+    const tbody = document.getElementById('profileTableBody');
+    if (pageRows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No staff found for this filter.</td></tr>`;
+    } else {
+      tbody.innerHTML = pageRows.map(row => {
+        const statusBadge = row.is_active
+          ? '<span class="badge bg-success">Active</span>'
+          : '<span class="badge bg-secondary">Deactivated</span>';
+        const toggleBtn = row.is_active
+          ? `<button class="btn btn-sm btn-outline-danger" onclick="toggleStaffActive(${row.id}, false)" title="Deactivate"><i class="bi bi-person-x"></i></button>`
+          : `<button class="btn btn-sm btn-outline-success" onclick="toggleStaffActive(${row.id}, true)" title="Activate"><i class="bi bi-person-check"></i></button>`;
+        return `
+      <tr>
+        <td data-label="Staff ID">${row.user_display_id || row.id}</td>
+        <td data-label="Name">
+          <div class="d-flex align-items-center gap-2">
+            ${staffAvatar(row.user_name)}
+            <span>${row.user_name}</span>
+          </div>
+        </td>
+        <td data-label="Email">${row.user_email}</td>
+        <td data-label="Department">${departmentBadge(row.department)}</td>
+        <td data-label="Designation">${row.designation}</td>
+        <td data-label="Joined">${row.joined_date}</td>
+        <td data-label="Salary" class="text-end">${formatSalary(row.salary)}</td>
+        <td data-label="Status">${statusBadge}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary" onclick="openStaffEdit(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-warning" onclick="openResetPassword(${row.id}, '${(row.user_name || '').replace(/'/g, "\\'")}')" title="Reset Password"><i class="bi bi-key"></i></button>
+          ${toggleBtn}
+        </td>
+      </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('staffPageInfo').textContent = staffFilteredCache.length
+      ? `Showing ${start + 1}-${Math.min(start + pageSize, staffFilteredCache.length)} of ${staffFilteredCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('prevStaffPageBtn').disabled = currentStaffPage === 1;
+    document.getElementById('nextStaffPageBtn').disabled = currentStaffPage === totalPages;
   }
 
   function openStaffEdit(id) {
-    const row = profileCache.find(p => p.id === id);
+    const row = staffCache.find(p => p.id === id);
     if (!row) return;
     document.getElementById('editStaffId').value = row.id;
     document.getElementById('editDepartment').value = row.department;
@@ -482,26 +842,47 @@
     new bootstrap.Modal(document.getElementById('staffEditModal')).show();
   }
 
+  function closeStaffEditModalAndRefresh() {
+    try {
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('staffEditModal')).hide();
+    } catch (e) {
+      console.error('Could not close Edit Staff modal:', e);
+    }
+    loadProfiles();
+  }
+
   document.getElementById('staffEditForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('editStaffId').value;
-    const errorBox = document.getElementById('staffEditError');
-    errorBox.classList.add('d-none');
-    const payload = {
-      department: document.getElementById('editDepartment').value,
-      designation: document.getElementById('editDesignation').value,
-      joined_date: document.getElementById('editJoinedDate').value,
-      salary: document.getElementById('editSalary').value,
-    };
-    const res = await apiRequest(`/staff/profiles/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
-    if (!res) return;
-    if (res.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('staffEditModal')).hide();
-      loadProfiles();
-    } else {
-      const err = await res.json();
-      errorBox.textContent = formatApiError(err);
-      errorBox.classList.remove('d-none');
+    const btn = document.getElementById('staffEditSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const id = document.getElementById('editStaffId').value;
+      const errorBox = document.getElementById('staffEditError');
+      errorBox.classList.add('d-none');
+      const payload = {
+        department: document.getElementById('editDepartment').value,
+        designation: document.getElementById('editDesignation').value,
+        joined_date: document.getElementById('editJoinedDate').value,
+        salary: document.getElementById('editSalary').value,
+      };
+      const res = await apiRequest(`/staff/profiles/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Update request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        closeStaffEditModalAndRefresh();
+        showToast('Staff profile updated.');
+      } else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Staff update failed:', err);
+      alert('Something went wrong updating this staff member: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 
@@ -509,104 +890,253 @@
     const verb = activate ? 'reactivate' : 'deactivate';
     if (!confirm(`Are you sure you want to ${verb} this staff member's login?`)) return;
     const res = await apiRequest(`/staff/profiles/${id}/${activate ? 'activate' : 'deactivate'}/`, { method: 'POST' });
-    if (res && res.ok) loadProfiles();
+    if (res && res.ok) {
+      loadProfiles();
+      showToast(`Staff member ${activate ? 'reactivated' : 'deactivated'}.`);
+    }
     else if (res) alert(`Could not ${verb} this staff member.`);
   }
 
   document.getElementById('profileAddModal').addEventListener('hidden.bs.modal', () => {
     document.getElementById('profileError').classList.add('d-none');
-    document.getElementById('profileForm').reset();
+    const passwordField = document.getElementById('password');
+    passwordField.type = 'password';
+    const toggleIcon = document.querySelector('.toggle-password[data-target="password"] i');
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-eye-slash');
+      toggleIcon.classList.add('bi-eye');
+    }
   });
+
+  // ─── Password generator ─────────────────────────────────────────────────
+  function generateStaffPassword(fieldId) {
+    fieldId = fieldId || 'password';
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnopqrstuvwxyz';
+    const digits = '23456789';
+    const symbols = '!@#$%&*';
+    const all = upper + lower + digits + symbols;
+
+    let pwd = [
+      upper[Math.floor(Math.random() * upper.length)],
+      lower[Math.floor(Math.random() * lower.length)],
+      digits[Math.floor(Math.random() * digits.length)],
+      symbols[Math.floor(Math.random() * symbols.length)],
+    ];
+    for (let i = pwd.length; i < 12; i++) {
+      pwd.push(all[Math.floor(Math.random() * all.length)]);
+    }
+    // Shuffle so the fixed character-class positions aren't predictable
+    for (let i = pwd.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+    }
+    const passwordField = document.getElementById(fieldId);
+    passwordField.value = pwd.join('');
+    passwordField.type = 'text';
+    const toggleIcon = document.querySelector(`.toggle-password[data-target="${fieldId}"] i`);
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-eye');
+      toggleIcon.classList.add('bi-eye-slash');
+    }
+  }
 
   document.getElementById('profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const errorBox = document.getElementById('profileError');
-    errorBox.classList.add('d-none');
-    const payload = {
-      first_name: document.getElementById('firstName').value,
-      middle_name: document.getElementById('middleName').value,
-      last_name: document.getElementById('lastName').value,
-      email: document.getElementById('email').value,
-      phone: document.getElementById('phone').value,
-      password: document.getElementById('password').value,
-      department: document.getElementById('department').value,
-      designation: document.getElementById('designation').value,
-      joined_date: document.getElementById('joinedDate').value,
-      salary: document.getElementById('salary').value,
-    };
-    const res = await apiRequest('/staff/profiles/', { method: 'POST', body: JSON.stringify(payload) });
-    if (!res) return;
-    if (res.ok) {
-      document.getElementById('profileForm').reset();
-      bootstrap.Modal.getInstance(document.getElementById('profileAddModal'))?.hide();
-      loadProfiles();
-    }
-    else {
-      const err = await res.json();
-      errorBox.textContent = formatApiError(err);
-      errorBox.classList.remove('d-none');
+    const btn = document.getElementById('profileAddSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const errorBox = document.getElementById('profileError');
+      errorBox.classList.add('d-none');
+      const firstNameVal = document.getElementById('firstName').value.trim();
+      const middleNameVal = document.getElementById('middleName').value.trim();
+      const combinedFirstName = middleNameVal ? `${firstNameVal} ${middleNameVal}` : firstNameVal;
+
+      const payload = {
+        first_name: combinedFirstName,
+        last_name: document.getElementById('lastName').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        password: document.getElementById('password').value,
+        department: document.getElementById('department').value,
+        designation: document.getElementById('designation').value,
+        joined_date: document.getElementById('joinedDate').value,
+        salary: document.getElementById('salary').value,
+      };
+      const res = await apiRequest('/staff/profiles/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Add request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        document.getElementById('profileForm').reset();
+        try {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('profileAddModal')).hide();
+        } catch (e) {
+          console.error('Could not close Add Staff modal:', e);
+        }
+        loadProfiles();
+        showToast('Staff member added.');
+      }
+      else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Add staff failed:', err);
+      alert('Something went wrong adding this staff member: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 
-  function staffGeneratePassword() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    let pwd = '';
-    const arr = new Uint32Array(10);
-    crypto.getRandomValues(arr);
-    for (let i = 0; i < 10; i++) pwd += chars[arr[i] % chars.length];
-    const field = document.getElementById('password');
-    field.removeAttribute('readonly');
-    field.value = pwd;
-    field.type = 'text';
+  // ─── Reset password (existing staff) ────────────────────────────────────
+  function openResetPassword(id, name) {
+    document.getElementById('resetPasswordStaffId').value = id;
+    document.getElementById('resetPasswordStaffName').textContent = name;
+    document.getElementById('resetPasswordField').value = '';
+    document.getElementById('resetPasswordError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+  }
+
+  document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', () => {
+    const field = document.getElementById('resetPasswordField');
+    field.value = '';
+    field.type = 'password';
+    const toggleIcon = document.querySelector('.toggle-password[data-target="resetPasswordField"] i');
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-eye-slash');
+      toggleIcon.classList.add('bi-eye');
+    }
+    document.getElementById('resetPasswordError').classList.add('d-none');
+  });
+
+  document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('resetPasswordSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const id = document.getElementById('resetPasswordStaffId').value;
+      const errorBox = document.getElementById('resetPasswordError');
+      errorBox.classList.add('d-none');
+      const payload = { new_password: document.getElementById('resetPasswordField').value };
+      const res = await apiRequest(`/staff/profiles/${id}/reset-password/`, { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Reset request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        try {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('resetPasswordModal')).hide();
+        } catch (e) {
+          console.error('Could not close Reset Password modal:', e);
+        }
+        showToast('Password reset. Share the new password with the staff member.');
+      } else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Reset password failed:', err);
+      alert('Something went wrong resetting this password: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  // ═════════════════════ LEAVE REQUESTS ═════════════════════
+
+  let leaveCache = [];
+  let leaveFilteredCache = [];
+  let currentLeavePage = 1;
+  let leaveSearchDebounce = null;
+
+  function onLeaveSearchInput() {
+    clearTimeout(leaveSearchDebounce);
+    leaveSearchDebounce = setTimeout(() => renderLeavePage(1), 300);
   }
 
   async function loadLeaves() {
     const res = await apiRequest('/staff/leave-requests/');
     if (!res) return;
+    if (!res.ok) {
+      document.getElementById('leaveTableBody').innerHTML =
+        `<tr><td colspan="10" class="text-center text-danger py-4">Failed to load leave requests.</td></tr>`;
+      return;
+    }
     const data = await res.json();
-    const leaves = data.results || [];
-    const tbody = document.getElementById('leaveTableBody');
-    tbody.innerHTML = '';
+    leaveCache = data.results || [];
 
     // Update stats
     const counts = { PENDING: 0, APPROVED: 0, REJECTED: 0, CANCELLED: 0 };
-    leaves.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+    leaveCache.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
     document.getElementById('statPending').textContent   = counts.PENDING;
     document.getElementById('statApproved').textContent  = counts.APPROVED;
     document.getElementById('statRejected').textContent  = counts.REJECTED;
     document.getElementById('statCancelled').textContent = counts.CANCELLED;
 
-    if (!leaves.length) {
-      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No leave requests found.</td></tr>';
-      return;
+    renderLeavePage(1);
+  }
+
+  function renderLeavePage(page) {
+    const search = document.getElementById('leaveSearch').value.trim().toLowerCase();
+    const statusFilter = document.getElementById('leaveStatusFilter').value;
+    const typeFilter = document.getElementById('leaveTypeFilter').value;
+
+    leaveFilteredCache = leaveCache.filter(row => {
+      const matchesSearch = !search ||
+        (row.requester_name || '').toLowerCase().includes(search) ||
+        (row.reason || '').toLowerCase().includes(search);
+      const matchesStatus = !statusFilter || row.status === statusFilter;
+      const matchesType = !typeFilter || row.leave_type === typeFilter;
+      return matchesSearch && matchesStatus && matchesType;
+    });
+
+    const pageSize = parseInt(document.getElementById('leavePageSize').value, 10);
+    const totalPages = Math.max(1, Math.ceil(leaveFilteredCache.length / pageSize));
+    currentLeavePage = Math.min(Math.max(1, page), totalPages);
+    const start = (currentLeavePage - 1) * pageSize;
+    const pageRows = leaveFilteredCache.slice(start, start + pageSize);
+
+    const tbody = document.getElementById('leaveTableBody');
+    if (pageRows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No leave requests found for this filter.</td></tr>';
+    } else {
+      const userId = parseInt(localStorage.getItem('user_id'));
+      tbody.innerHTML = pageRows.map(row => {
+        const isOwner   = myRole === 'OWNER';
+        const isMine    = row.requester === userId;
+        const canReview = isOwner && row.status === 'PENDING';
+        const canCancel = isMine && row.status === 'PENDING';
+
+        let actions = [];
+        if (canReview)  actions.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openReviewModal(${row.id}, '${row.requester_name}', '${row.leave_type}', '${row.start_date}', '${row.end_date}')"><i class="bi bi-eye"></i> Review</button>`);
+        if (canCancel)  actions.push(`<button class="btn btn-sm btn-outline-danger"    onclick="cancelLeave(${row.id})"><i class="bi bi-x-circle"></i> Cancel</button>`);
+        if (!actions.length) actions.push('<span class="text-muted">—</span>');
+
+        return `
+          <tr>
+            <td data-label="#" class="text-muted small">#${row.id}</td>
+            <td data-label="Requester">${row.requester_name}</td>
+            <td data-label="Type">${leaveTypeBadge(row.leave_type)}</td>
+            <td data-label="Start">${row.start_date}</td>
+            <td data-label="End">${row.end_date}</td>
+            <td data-label="Days"><span class="badge bg-light text-dark border">${row.duration_days}d</span></td>
+            <td data-label="Reason" class="small" style="max-width:180px;white-space:normal">${row.reason}</td>
+            <td data-label="Status">${leaveStatusBadge(row.status)}</td>
+            <td data-label="Reviewed By" class="small text-muted">${row.reviewed_by_name || '—'}</td>
+            <td><div class="d-flex gap-1">${actions.join('')}</div></td>
+          </tr>`;
+      }).join('');
     }
 
-    const userId = parseInt(localStorage.getItem('user_id'));
-    leaves.forEach(row => {
-      const isOwner   = myRole === 'OWNER';
-      const isMine    = row.requester === userId;
-      const canReview = isOwner && row.status === 'PENDING';
-      const canCancel = isMine && row.status === 'PENDING';
-
-      let actions = [];
-      if (canReview)  actions.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openReviewModal(${row.id}, '${row.requester_name}', '${row.leave_type}', '${row.start_date}', '${row.end_date}')"><i class="bi bi-eye"></i> Review</button>`);
-      if (canCancel)  actions.push(`<button class="btn btn-sm btn-outline-danger"    onclick="cancelLeave(${row.id})"><i class="bi bi-x-circle"></i> Cancel</button>`);
-      if (!actions.length) actions.push('<span class="text-muted">—</span>');
-
-      tbody.innerHTML += `
-        <tr>
-          <td class="text-muted small">#${row.id}</td>
-          <td>${row.requester_name}</td>
-          <td>${leaveTypeBadge(row.leave_type)}</td>
-          <td>${row.start_date}</td>
-          <td>${row.end_date}</td>
-          <td><span class="badge bg-light text-dark border">${row.duration_days}d</span></td>
-          <td class="small" style="max-width:180px;white-space:normal">${row.reason}</td>
-          <td>${leaveStatusBadge(row.status)}</td>
-          <td class="small text-muted">${row.reviewed_by_name || '—'}</td>
-          <td><div class="d-flex gap-1">${actions.join('')}</div></td>
-        </tr>`;
-    });
+    document.getElementById('leavePageInfo').textContent = leaveFilteredCache.length
+      ? `Showing ${start + 1}-${Math.min(start + pageSize, leaveFilteredCache.length)} of ${leaveFilteredCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('prevLeavePageBtn').disabled = currentLeavePage === 1;
+    document.getElementById('nextLeavePageBtn').disabled = currentLeavePage === totalPages;
   }
 
   function leaveTypeBadge(type) {
@@ -645,8 +1175,13 @@
       body: JSON.stringify({ status: decision, review_note: note }),
     });
     if (res && res.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+      try {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModal')).hide();
+      } catch (e) {
+        console.error('Could not close Review modal:', e);
+      }
       loadLeaves();
+      showToast(`Leave request ${decision.toLowerCase()}.`);
     } else {
       errorBox.textContent = res ? formatApiError(await res.json()) : 'Request failed.';
       errorBox.classList.remove('d-none');
@@ -656,7 +1191,10 @@
   async function cancelLeave(id) {
     if (!confirm('Cancel this leave request?')) return;
     const res = await apiRequest(`/staff/leave-requests/${id}/cancel/`, { method: 'POST' });
-    if (res && res.ok) loadLeaves();
+    if (res && res.ok) {
+      loadLeaves();
+      showToast('Leave request cancelled.');
+    }
     else alert('Could not cancel the request.');
   }
 
@@ -686,33 +1224,50 @@
 
   document.getElementById('leaveForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const errorBox = document.getElementById('leaveError');
-    errorBox.classList.add('d-none');
-    const startVal = document.getElementById('startDate').value;
-    const endVal   = document.getElementById('endDate').value;
-    if (endVal < startVal) {
-      errorBox.textContent = 'End date cannot be before start date.';
-      errorBox.classList.remove('d-none');
-      return;
-    }
-    const leaveType = document.querySelector('input[name="leaveTypeRadio"]:checked').value;
-    const payload = {
-      leave_type: leaveType,
-      start_date: startVal,
-      end_date:   endVal,
-      reason:     document.getElementById('reason').value,
-    };
-    const res = await apiRequest('/staff/leave-requests/', { method: 'POST', body: JSON.stringify(payload) });
-    if (!res) return;
-    if (res.ok) {
-      document.getElementById('leaveForm').reset();
-      document.getElementById('leaveDurationPreview').textContent = '—';
-      bootstrap.Modal.getInstance(document.getElementById('leaveModal')).hide();
-      loadLeaves();
-    } else {
-      const err = await res.json();
-      errorBox.textContent = formatApiError(err);
-      errorBox.classList.remove('d-none');
+    const btn = document.getElementById('leaveSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const errorBox = document.getElementById('leaveError');
+      errorBox.classList.add('d-none');
+      const startVal = document.getElementById('startDate').value;
+      const endVal   = document.getElementById('endDate').value;
+      if (endVal < startVal) {
+        errorBox.textContent = 'End date cannot be before start date.';
+        errorBox.classList.remove('d-none');
+        return;
+      }
+      const leaveType = document.querySelector('input[name="leaveTypeRadio"]:checked').value;
+      const payload = {
+        leave_type: leaveType,
+        start_date: startVal,
+        end_date:   endVal,
+        reason:     document.getElementById('reason').value,
+      };
+      const res = await apiRequest('/staff/leave-requests/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        document.getElementById('leaveForm').reset();
+        document.getElementById('leaveDurationPreview').textContent = '—';
+        try {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('leaveModal')).hide();
+        } catch (e) {
+          console.error('Could not close Leave Request modal:', e);
+        }
+        loadLeaves();
+        showToast('Leave request submitted.');
+      } else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Submit leave failed:', err);
+      alert('Something went wrong submitting the leave request: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 
@@ -721,7 +1276,29 @@
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('startDate').min = today;
     document.getElementById('endDate').min   = today;
+    updatePendingTypeBadges();
   });
+
+  function updatePendingTypeBadges() {
+    const userId = parseInt(localStorage.getItem('user_id'));
+    const counts = {};
+    leaveCache.forEach(r => {
+      if (r.status === 'PENDING' && r.requester === userId) {
+        counts[r.leave_type] = (counts[r.leave_type] || 0) + 1;
+      }
+    });
+    ['SICK', 'CASUAL', 'ANNUAL', 'UNPAID', 'OTHER'].forEach(type => {
+      const badge = document.getElementById(`pendingBadge_${type}`);
+      if (!badge) return;
+      const count = counts[type] || 0;
+      if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('d-none');
+      } else {
+        badge.classList.add('d-none');
+      }
+    });
+  }
 
   loadProfiles();
   loadLeaves();

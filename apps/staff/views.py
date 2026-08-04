@@ -1,3 +1,5 @@
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -41,6 +43,26 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         profile.user.is_active = False
         profile.user.save(update_fields=['is_active'])
         return Response(StaffProfileSerializer(profile).data)
+
+    @action(detail=True, methods=['post'], url_path='reset-password')
+    def reset_password(self, request, pk=None):
+        """POST /api/staff/profiles/{id}/reset-password/  body: {"new_password": "..."}
+        Owner-side reset — sets a new password for the staff member's login."""
+        profile = self.get_object()
+        new_password = request.data.get('new_password')
+        if not new_password:
+            return Response(
+                {'new_password': ['This field is required.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            validate_password(new_password, user=profile.user)
+        except DjangoValidationError as e:
+            return Response({'new_password': e.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile.user.set_password(new_password)
+        profile.user.save(update_fields=['password'])
+        return Response({'detail': 'Password reset successfully.'})
 
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
