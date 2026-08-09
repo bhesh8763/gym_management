@@ -1,25 +1,16 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
-from .views import (
-    DietPlanListCreateView,
-    DietPlanDetailView,
-    MealListCreateView,
-    MealDetailView,
-    MealLogListCreateView,
-    MealLogDetailView,
-    MealLogDailySummaryView,
-)
+from .views import DietPlanViewSet, MealViewSet, MealLogViewSet, MealLogDailySummaryView
+
+router = DefaultRouter()
+router.register('diet-plans', DietPlanViewSet, basename='diet-plan')
+router.register('meals',      MealViewSet,     basename='meal')
+router.register('meal-logs',  MealLogViewSet,  basename='meal-log')
 
 urlpatterns = [
-    path('plans/', DietPlanListCreateView.as_view(), name='diet-plan-list'),
-    path('plans/<int:pk>/', DietPlanDetailView.as_view(), name='diet-plan-detail'),
-
-    path('meals/', MealListCreateView.as_view(), name='meal-list'),
-    path('meals/<int:pk>/', MealDetailView.as_view(), name='meal-detail'),
-
-    path('meal-logs/', MealLogListCreateView.as_view(), name='meal-log-list'),
-    path('meal-logs/<int:pk>/', MealLogDetailView.as_view(), name='meal-log-detail'),
-
-    # Daily summary with calorie totals + goal comparison
+    path('', include(router.urls)),
+    # Daily summary sits outside the router to avoid conflicting with the
+    # meal-logs/{id}/ detail route.
     path('meal-logs/daily-summary/', MealLogDailySummaryView.as_view(), name='meal-log-daily-summary'),
 ]

@@ -1,5 +1,5 @@
 # payments views
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -79,22 +79,29 @@ class PaymentViewSet(viewsets.ModelViewSet):
         )
         total_count = qs.count()
 
-        # Breakdown by payment method (only PAID transactions)
-        by_method = {}
+        # Breakdown by payment method — single query grouped by method
+        method_rows = (
+            qs.filter(status=Payment.PaymentStatus.PAID)
+              .values('payment_method')
+              .annotate(total=Sum('amount_paid'))
+        )
+        by_method = {row['payment_method']: float(row['total'] or 0) for row in method_rows}
+        # Ensure every defined method key is present, even if it has no data
         for method, _ in Payment.PaymentMethod.choices:
-            val = (
-                qs.filter(status=Payment.PaymentStatus.PAID, payment_method=method)
-                  .aggregate(total=Sum('amount_paid'))['total'] or 0
-            )
-            by_method[method] = float(val)
+            by_method.setdefault(method, 0.0)
 
-        # Breakdown by status
-        by_status = {}
-        for status, _ in Payment.PaymentStatus.choices:
-            sub_qs = qs.filter(status=status)
-            count = sub_qs.count()
-            total = sub_qs.aggregate(total=Sum('amount_paid'))['total'] or 0
-            by_status[status] = {'count': count, 'total': float(total)}
+        # Breakdown by status — single query grouped by status
+        status_rows = (
+            qs.values('status')
+              .annotate(count=Count('id'), total=Sum('amount_paid'))
+        )
+        by_status = {
+            row['status']: {'count': row['count'], 'total': float(row['total'] or 0)}
+            for row in status_rows
+        }
+        # Ensure every defined status key is present
+        for st, _ in Payment.PaymentStatus.choices:
+            by_status.setdefault(st, {'count': 0, 'total': 0.0})
 
         return Response({
             'total_collected': float(total_collected),

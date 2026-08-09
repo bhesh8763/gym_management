@@ -2,6 +2,7 @@
 Attendance tracking for both members and staff/trainers.
 """
 import secrets
+from datetime import datetime
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -61,13 +62,11 @@ class Attendance(models.Model):
     def duration_minutes(self):
         """Calculate time spent if check_out is recorded."""
         if self.check_in and self.check_out:
-            from datetime import datetime, timedelta
             # Combine with a dummy date so we can subtract directly
             dummy = datetime(2000, 1, 1)
             t1 = datetime.combine(dummy, self.check_in)
             t2 = datetime.combine(dummy, self.check_out)
-            delta = t2 - t1
-            return int(delta.total_seconds() / 60)
+            return int((t2 - t1).total_seconds() / 60)
         return None
 
 

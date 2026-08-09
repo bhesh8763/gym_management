@@ -4,6 +4,7 @@ Types: membership renewal, payment due, inactivity, general announcements.
 """
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Notification(models.Model):
@@ -50,7 +51,6 @@ class Notification(models.Model):
         return f'{self.recipient.get_full_name()} — {self.title}'
 
     def mark_read(self):
-        from django.utils import timezone
         if not self.is_read:
             self.is_read = True
             self.read_at = timezone.now()

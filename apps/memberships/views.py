@@ -48,7 +48,11 @@ User = get_user_model()
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _sync_expired(qs):
-    """Flip ACTIVE memberships whose end_date has passed to EXPIRED."""
+    """
+    Flip ACTIVE memberships whose end_date has passed to EXPIRED.
+    Short-circuits with a cheap EXISTS check before issuing any UPDATE,
+    so list views that have no stale memberships pay only one fast query.
+    """
     today = timezone.now().date()
     stale = qs.filter(status=Membership.Status.ACTIVE, end_date__lt=today)
     if stale.exists():

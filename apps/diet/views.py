@@ -1,16 +1,34 @@
-# diet views
-from datetime import date as date_type
+"""
+Diet module views.
 
+DietPlanViewSet   — full CRUD + ?q= / ?goal= filtering + /stats action
+MealViewSet       — full CRUD for individual meals
+MealLogViewSet    — member-scoped daily meal logging
+MealLogDailySummaryView — aggregate daily intake vs. plan calorie goal
+"""
+from datetime import date as date_cls
+
+from django.contrib.auth import get_user_model
 from django.utils import timezone
-from rest_framework import generics, status
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import IsOwnerOrStaffOrTrainer
+from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
 
 from .models import DietPlan, Meal, MealLog
-from .serializers import DietPlanSerializer, MealSerializer, MealLogSerializer
+from .serializers import (
+    DietPlanSerializer,
+    MealSerializer,
+    MealLogSerializer,
+)
+
+User = get_user_model()
+
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 DIET_DISCLAIMER = (
     "This diet plan is a general guideline and not medical advice. "
@@ -20,34 +38,87 @@ DIET_DISCLAIMER = (
 
 
 def _visible_diet_plans(user):
-    if user.role in ['OWNER', 'STAFF']:
-        return DietPlan.objects.all()
+    """Return the queryset of DietPlan records the requesting user may see."""
+    qs = DietPlan.objects.select_related('member', 'created_by').prefetch_related('meals')
+    if user.role in ('OWNER', 'STAFF'):
+        return qs.all()
     if user.is_member:
-        return DietPlan.objects.filter(member=user)
+        return qs.filter(member=user)
     if user.is_trainer:
-        return DietPlan.objects.filter(trainer=user)
-    return DietPlan.objects.none()
+        return qs.filter(created_by=user)
+    return qs.none()
 
 
-class DietPlanListCreateView(generics.ListCreateAPIView):
-    serializer_class = DietPlanSerializer
+# ─── ViewSets ─────────────────────────────────────────────────────────────────
+
+class DietPlanViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for DietPlan records.
+
+    Query parameters
+    ----------------
+    ?q=<str>     Full-text filter on plan name and member full name.
+    ?goal=<str>  Filter by goal code (WEIGHT_LOSS, MUSCLE_GAIN, …).
+    """
+
+    serializer_class   = DietPlanSerializer
     permission_classes = [IsAuthenticated]
 
+    # ── Queryset & filtering ──────────────────────────────────────────────────
+
+    def get_queryset(self):
+        qs = _visible_diet_plans(self.request.user)
+
+        q = self.request.query_params.get('q', '').strip()
+        if q:
+            qs = qs.filter(name__icontains=q) | qs.filter(
+                member__first_name__icontains=q
+            ) | qs.filter(
+                member__last_name__icontains=q
+            )
+
+        goal = self.request.query_params.get('goal', '').strip().upper()
+        if goal:
+            qs = qs.filter(goal=goal)
+
+        return qs.order_by('-created_at')
+
+    # ── Permission overrides ──────────────────────────────────────────────────
+
     def get_permissions(self):
-        if self.request.method == 'POST':
+        """
+        - List / Retrieve: any authenticated user (queryset already scopes).
+        - Create / Update / Destroy: owners, staff, or trainers only.
+        """
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
             return [IsOwnerOrStaffOrTrainer()]
         return [IsAuthenticated()]
 
-    def get_queryset(self):
-        return _visible_diet_plans(self.request.user)
+    # ── Custom actions ────────────────────────────────────────────────────────
 
+    @action(detail=False, methods=['get'], url_path='stats', permission_classes=[IsAuthenticated])
+    def stats(self, request):
+        """
+        GET /api/diet/diet-plans/stats/
 
-class DietPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = DietPlanSerializer
-    permission_classes = [IsAuthenticated]
+        Returns aggregate counts scoped to what the current user can see:
+            {
+                "total":       <int>,
+                "active":      <int>,
+                "weightLoss":  <int>,
+                "muscleGain":  <int>
+            }
+        """
+        qs = _visible_diet_plans(request.user)
+        data = {
+            'total':      qs.count(),
+            'active':     qs.filter(is_active=True).count(),
+            'weightLoss': qs.filter(goal=DietPlan.Goal.WEIGHT_LOSS).count(),
+            'muscleGain': qs.filter(goal=DietPlan.Goal.MUSCLE_GAIN).count(),
+        }
+        return Response(data)
 
-    def get_queryset(self):
-        return _visible_diet_plans(self.request.user)
+    # ── Override retrieve to include disclaimer ───────────────────────────────
 
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
@@ -55,82 +126,81 @@ class DietPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
         return response
 
 
-class MealListCreateView(generics.ListCreateAPIView):
-    queryset = Meal.objects.all()
-    serializer_class = MealSerializer
+class MealViewSet(viewsets.ModelViewSet):
+    """
+    Full CRUD for Meal records.
+    Filter by diet plan: ?diet_plan=<id>
+    """
+
+    serializer_class   = MealSerializer
     permission_classes = [IsOwnerOrStaffOrTrainer]
-
-
-class MealDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Meal.objects.all()
-    serializer_class = MealSerializer
-    permission_classes = [IsOwnerOrStaffOrTrainer]
-
-
-def _visible_meal_logs(user):
-    if user.role in ['OWNER', 'STAFF']:
-        return MealLog.objects.all()
-    if user.is_member:
-        return MealLog.objects.filter(member=user)
-    if user.is_trainer:
-        from apps.trainers.models import TrainerMemberAssignment
-        assigned_ids = TrainerMemberAssignment.objects.filter(
-            trainer=user, is_active=True
-        ).values_list('member_id', flat=True)
-        return MealLog.objects.filter(member_id__in=assigned_ids)
-    return MealLog.objects.none()
-
-
-class MealLogListCreateView(generics.ListCreateAPIView):
-    serializer_class = MealLogSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = _visible_meal_logs(self.request.user)
-        # Optional filter by date: ?date=YYYY-MM-DD
-        date_filter = self.request.query_params.get('date')
-        if date_filter:
-            qs = qs.filter(date=date_filter)
-        # Optional filter by member: ?member=<id>  (staff/owner only)
-        member_id = self.request.query_params.get('member')
-        if member_id and self.request.user.role in ['OWNER', 'STAFF', 'TRAINER']:
-            qs = qs.filter(member_id=member_id)
+        qs = Meal.objects.select_related('diet_plan').all()
+        diet_plan_id = self.request.query_params.get('diet_plan')
+        if diet_plan_id:
+            qs = qs.filter(diet_plan_id=diet_plan_id)
         return qs
 
 
-class MealLogDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = MealLogSerializer
+class MealLogViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for MealLog (member's actual daily intake).
+    Members see only their own logs; owners/staff/trainers may filter by ?member=.
+    Optional filter: ?date=YYYY-MM-DD
+    """
+
+    serializer_class   = MealLogSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return _visible_meal_logs(self.request.user)
+        user = self.request.user
+        if user.role in ('OWNER', 'STAFF'):
+            qs = MealLog.objects.all()
+        elif user.is_trainer:
+            from apps.trainers.models import TrainerMemberAssignment
+            assigned = TrainerMemberAssignment.objects.filter(
+                trainer=user, is_active=True
+            ).values_list('member_id', flat=True)
+            qs = MealLog.objects.filter(member_id__in=assigned)
+        else:
+            qs = MealLog.objects.filter(member=user)
 
+        date_filter = self.request.query_params.get('date')
+        if date_filter:
+            qs = qs.filter(date=date_filter)
+
+        member_id = self.request.query_params.get('member')
+        if member_id and user.role in ('OWNER', 'STAFF', 'TRAINER'):
+            qs = qs.filter(member_id=member_id)
+
+        return qs.order_by('-date')
+
+    def perform_create(self, serializer):
+        serializer.save(member=self.request.user)
+
+
+# ─── Daily Summary (function-style view) ─────────────────────────────────────
 
 class MealLogDailySummaryView(APIView):
     """
     GET /api/diet/meal-logs/daily-summary/
-    Optional query params:
-      ?date=YYYY-MM-DD   — defaults to today
-      ?member=<id>       — Owner/Staff/Trainer only; defaults to self for members
 
-    Returns:
-    - All meal log entries for the day
-    - Total calories consumed
-    - Calorie goal from the member's active diet plan (if any)
-    - Deficit or surplus
-    - Macro totals (protein, carbs, fat) summed from food_items
-    - Progress percentage toward calorie goal
+    Optional params:
+        ?date=YYYY-MM-DD   defaults to today
+        ?member=<id>       owner/staff/trainer only; defaults to self for members
+
+    Returns total calories consumed vs. plan goal, macros, and per-log detail.
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
 
-        # Determine which member we're reporting on
+        # Resolve target member
         member_id = request.query_params.get('member')
-        if member_id and user.role in ['OWNER', 'STAFF', 'TRAINER']:
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
+        if member_id and user.role in ('OWNER', 'STAFF', 'TRAINER'):
             try:
                 member = User.objects.get(pk=member_id, role='MEMBER')
             except User.DoesNotExist:
@@ -138,92 +208,80 @@ class MealLogDailySummaryView(APIView):
         else:
             if user.role != 'MEMBER':
                 return Response(
-                    {'error': 'Specify ?member=<id> to view a member\'s summary.'},
+                    {'error': "Specify ?member=<id> to view a member's summary."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             member = user
 
-        # Resolve date
+        # Resolve target date
         date_param = request.query_params.get('date')
         if date_param:
             try:
-                from datetime import date as date_cls
                 target_date = date_cls.fromisoformat(date_param)
             except ValueError:
-                return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'error': 'Invalid date format. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         else:
             target_date = timezone.localdate()
 
-        # Fetch all meal logs for this member on the target date
         logs = MealLog.objects.filter(member=member, date=target_date)
 
-        # Aggregate totals
-        total_calories = 0
-        total_protein = 0
-        total_carbs = 0
-        total_fat = 0
-
+        total_calories = total_protein = total_carbs = total_fat = 0
         log_list = []
         for log in logs:
             total_calories += log.total_calories
             for item in log.food_items:
                 total_protein += item.get('protein', 0)
-                total_carbs += item.get('carbs', 0)
-                total_fat += item.get('fat', 0)
+                total_carbs   += item.get('carbs', 0)
+                total_fat     += item.get('fat', 0)
             log_list.append({
-                'id': log.id,
-                'date': log.date,
+                'id': log.id, 'date': log.date,
                 'food_items': log.food_items,
                 'total_calories': log.total_calories,
                 'notes': log.notes,
                 'created_at': log.created_at,
             })
 
-        # Get calorie goal from active diet plan
-        active_plan = DietPlan.objects.filter(
-            member=member,
-            is_active=True,
-        ).order_by('-start_date').first()
+        active_plan = (
+            DietPlan.objects.filter(member=member, is_active=True)
+            .order_by('-start_date')
+            .first()
+        )
 
-        calorie_goal = active_plan.daily_calories if active_plan else None
-        protein_goal = active_plan.protein_grams if active_plan else None
-        carbs_goal = active_plan.carbs_grams if active_plan else None
-        fat_goal = active_plan.fat_grams if active_plan else None
-
-        # Calculate deficit/surplus and progress
-        calorie_balance = None
-        progress_percent = None
-        if calorie_goal:
-            calorie_balance = total_calories - calorie_goal
-            progress_percent = round((total_calories / calorie_goal) * 100, 1)
+        calorie_goal   = active_plan.daily_calories if active_plan else None
+        calorie_balance = (total_calories - calorie_goal) if calorie_goal else None
+        progress_pct    = (
+            round((total_calories / calorie_goal) * 100, 1) if calorie_goal else None
+        )
 
         return Response({
-            'member_id': member.id,
+            'member_id':   member.id,
             'member_name': member.get_full_name(),
-            'date': target_date,
-            'disclaimer': DIET_DISCLAIMER,
+            'date':        target_date,
+            'disclaimer':  DIET_DISCLAIMER,
             'summary': {
                 'total_calories_consumed': total_calories,
-                'calorie_goal': calorie_goal,
-                'calorie_balance': calorie_balance,  # negative = deficit, positive = surplus
+                'calorie_goal':            calorie_goal,
+                'calorie_balance':         calorie_balance,
                 'calorie_balance_label': (
                     'on track' if calorie_balance is None
-                    else ('deficit' if calorie_balance < 0 else ('surplus' if calorie_balance > 0 else 'exact'))
+                    else ('deficit' if calorie_balance < 0
+                          else ('surplus' if calorie_balance > 0 else 'exact'))
                 ),
-                'progress_percent': progress_percent,
+                'progress_percent': progress_pct,
                 'macros': {
-                    'protein_g': total_protein,
-                    'carbs_g': total_carbs,
-                    'fat_g': total_fat,
-                    'protein_goal_g': protein_goal,
-                    'carbs_goal_g': carbs_goal,
-                    'fat_goal_g': fat_goal,
+                    'protein_g':     total_protein,
+                    'carbs_g':       total_carbs,
+                    'fat_g':         total_fat,
+                    'protein_goal_g': active_plan.protein_g  if active_plan else None,
+                    'carbs_goal_g':   active_plan.carbs_g    if active_plan else None,
+                    'fat_goal_g':     active_plan.fats_g     if active_plan else None,
                 },
             },
             'active_plan': {
-                'id': active_plan.id,
-                'name': active_plan.name,
-                'goal': active_plan.goal,
+                'id': active_plan.id, 'name': active_plan.name, 'goal': active_plan.goal,
             } if active_plan else None,
             'meal_logs': log_list,
         })

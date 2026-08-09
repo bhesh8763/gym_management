@@ -21,10 +21,18 @@ User = get_user_model()
 # Roles that can record/view attendance for *anyone*.
 STAFF_SIDE_ROLES = (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER)
 
+# Import qrcode once at module level; views check QR_AVAILABLE before using it.
+try:
+    import qrcode
+    QR_AVAILABLE = True
+except ImportError:
+    QR_AVAILABLE = False
+
+_QR_NOT_INSTALLED = {'error': 'qrcode library not installed. Run: pip install qrcode[pil]'}
+
 
 def _generate_qr_image(data_str):
     """Generate a QR code image and return as base64 string (without data: prefix)."""
-    import qrcode
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -107,13 +115,8 @@ class MemberQRCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, member_id=None):
-        try:
-            import qrcode
-        except ImportError:
-            return Response(
-                {'error': 'qrcode library not installed. Run: pip install qrcode[pil]'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        if not QR_AVAILABLE:
+            return Response(_QR_NOT_INSTALLED, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if member_id is not None:
             if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
@@ -152,13 +155,8 @@ class MemberProfileQRView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, member_id):
-        try:
-            import qrcode
-        except ImportError:
-            return Response(
-                {'error': 'qrcode library not installed. Run: pip install qrcode[pil]'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        if not QR_AVAILABLE:
+            return Response(_QR_NOT_INSTALLED, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner or Staff can generate profile QR codes.')
@@ -288,13 +286,8 @@ class SharedCheckinQRView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:
-            import qrcode
-        except ImportError:
-            return Response(
-                {'error': 'qrcode library not installed. Run: pip install qrcode[pil]'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        if not QR_AVAILABLE:
+            return Response(_QR_NOT_INSTALLED, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner or Staff can generate the shared check-in QR.')

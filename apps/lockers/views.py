@@ -2,11 +2,11 @@ from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 from apps.accounts.permissions import IsOwnerOrStaff
 from .models import Locker, LockerAssignment
+from .serializers import LockerSerializer, LockerAssignmentSerializer
 
 
 class LockerViewSet(viewsets.ModelViewSet):
     """Owner/Staff manage the physical locker inventory."""
-    from .serializers import LockerSerializer
     serializer_class = LockerSerializer
     permission_classes = [IsOwnerOrStaff]
     queryset = Locker.objects.all()
@@ -21,7 +21,6 @@ class LockerViewSet(viewsets.ModelViewSet):
 
 class LockerAssignmentViewSet(viewsets.ModelViewSet):
     """Owner/Staff assign lockers to members."""
-    from .serializers import LockerAssignmentSerializer
     serializer_class = LockerAssignmentSerializer
     permission_classes = [IsOwnerOrStaff]
 

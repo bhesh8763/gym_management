@@ -271,7 +271,7 @@
       document.getElementById('statExpiring').textContent = data.count ?? list.length;
     }
 
-    const todayAttendance = await fetchAllPaginated(`/attendance/?date=${todayStr()}`);
+    const todayAttendance = await fetchAllPaginated(`/attendance/records/?date=${todayStr()}`);
     document.getElementById('statAttendance').textContent = todayAttendance.length;
 
     let allPayments = [];
@@ -399,7 +399,7 @@
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
       labels.push(dateStr.slice(5));
-      const records = await fetchAllPaginated(`/attendance/?date=${dateStr}`);
+      const records = await fetchAllPaginated(`/attendance/records/?date=${dateStr}`);
       counts.push(records.length);
     }
 

@@ -12,7 +12,7 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register('', AttendanceViewSet, basename='attendance')
+router.register('records', AttendanceViewSet, basename='attendance')
 
 urlpatterns = [
     # Shared check-in QR (encodes checkin.html URL — print & post at entrance)

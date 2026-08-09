@@ -59,6 +59,7 @@
       <div class="nav-section-label">Staff Management</div>
       <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
 
+
       <div class="nav-section-label">Workout & Diet</div>
       <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
       <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
@@ -106,6 +107,9 @@
       </div>
     </div>
 
+    <hr>
+
+   
     <hr>
 
     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -199,7 +203,7 @@
           <thead>
             <tr>
               <th>#</th><th>Type</th><th>From</th><th>To</th><th>Days</th>
-              <th>Reason</th><th>Status</th><th>Review Note</th>
+              <th>Reason</th><th>Status</th><th>Review Note</th><th>Actions</th>
             </tr>
           </thead>
           <tbody id="myLeaveTableBody">
@@ -218,9 +222,12 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title"><i class="bi bi-calendar2-x me-2"></i>Submit Leave Request</h5>
+        <h5 class="modal-title" id="leaveModalTitle"><i class="bi bi-calendar2-x me-2"></i>Submit Leave Request</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form id="leaveForm">
+        <!-- populated by openEditLeave(); empty = create mode -->
+        <input type="hidden" id="editLeaveId" value="">
         <div class="modal-body">
 
           <!-- Leave type cards -->
@@ -289,11 +296,30 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-danger">
-            <i class="bi bi-send me-1"></i> Submit Request
+          <button type="submit" class="btn btn-danger" id="leaveSubmitBtn">
+            <i class="bi bi-send me-1" id="leaveSubmitIcon"></i>
+            <span id="leaveSubmitLabel">Submit Request</span>
           </button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Leave: Detail -->
+<div class="modal fade" id="leaveDetailModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title"><i class="bi bi-calendar2-check me-2"></i>Leave Request Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="leaveDetailBody">
+        <!-- populated by openLeaveDetail() -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -493,7 +519,7 @@
   }
 
   async function loadAttendance() {
-    const data = await fetchAll('/attendance/');
+    const data = await fetchAll('/attendance/records/');
     if (data === null) {
       alert('Failed to load attendance records.');
       return;
@@ -697,7 +723,7 @@
       notes: document.getElementById('attNotes').value.trim(),
     };
 
-    const res = await apiRequest('/attendance/', { method: 'POST', body: JSON.stringify(payload) });
+    const res = await apiRequest('/attendance/records/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) {
       errorBox.textContent = 'Request failed to send. Check your connection or session.';
       errorBox.classList.remove('d-none');
@@ -729,8 +755,10 @@
     await loadAttendance();
     await loadInactiveMembers();
 
+   
+
     // My Leave section — visible to STAFF and TRAINER only, hidden for OWNER
-    const myRole = localStorage.getItem('user_role') || '';
+    const myRole = localStorage.getItem('user_role');
     const myLeaveSection = document.getElementById('myLeaveSection');
     if (myRole === 'OWNER') {
       myLeaveSection.style.display = 'none';
@@ -741,27 +769,31 @@
 
   })();
 
+
+
   // ── My Leave (staff / trainer) ────────────────────────────────────────────
+  let leaveCache = [];   // kept at module level so openEditLeave can look up rows
+
   async function loadMyLeaves() {
     const res = await apiRequest('/staff/leave-requests/');
     if (!res) return;
     const data = await res.json();
-    const leaves = data.results || [];
+    leaveCache = data.results || [];
 
     const counts = { PENDING: 0, APPROVED: 0, REJECTED: 0, CANCELLED: 0 };
-    leaves.forEach(r => { if (r.status in counts) counts[r.status]++; });
+    leaveCache.forEach(r => { if (r.status in counts) counts[r.status]++; });
     document.getElementById('myStat_pending').textContent   = counts.PENDING;
     document.getElementById('myStat_approved').textContent  = counts.APPROVED;
     document.getElementById('myStat_rejected').textContent  = counts.REJECTED;
     document.getElementById('myStat_cancelled').textContent = counts.CANCELLED;
 
     const tbody = document.getElementById('myLeaveTableBody');
-    if (!leaves.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">You have no leave requests yet.</td></tr>';
+    if (!leaveCache.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">You have no leave requests yet.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = leaves.map(row => {
+    tbody.innerHTML = leaveCache.map(row => {
       const reviewNote = row.review_note
         ? `<span class="text-muted small">${row.review_note}</span>`
         : '<span class="text-muted">—</span>';
@@ -776,6 +808,11 @@
           <td class="small" style="max-width:160px;white-space:normal">${row.reason}</td>
           <td>${leaveStatusBadge(row.status)}</td>
           <td style="max-width:160px;white-space:normal">${reviewNote}</td>
+          <td>
+            <button class="btn btn-sm btn-dark" onclick="openLeaveDetail(${row.id})">
+              Manage
+            </button>
+          </td>
         </tr>`;
     }).join('');
   }
@@ -800,6 +837,94 @@
       CANCELLED: 'pill-muted',
     };
     return `<span class="pill ${map[s] || 'pill-muted'}">${s}</span>`;
+  }
+
+  function openEditLeave(id) {
+    const row = leaveCache.find(r => r.id === id);
+    if (!row) return;
+
+    // Switch modal to edit mode
+    document.getElementById('editLeaveId').value = id;
+    document.getElementById('leaveModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Leave Request';
+    document.getElementById('leaveSubmitIcon').className = 'bi bi-check-lg me-1';
+    document.getElementById('leaveSubmitLabel').textContent = 'Save Changes';
+
+    // Pre-fill leave type
+    const radio = document.querySelector(`input[name="leaveTypeRadio"][value="${row.leave_type}"]`);
+    if (radio) radio.checked = true;
+
+    // Pre-fill dates (allow the existing past start_date to remain)
+    const startEl = document.getElementById('leaveStartDate');
+    const endEl   = document.getElementById('leaveEndDate');
+    startEl.value = row.start_date;
+    startEl.min   = row.start_date;
+    endEl.value   = row.end_date;
+    endEl.min     = row.start_date;
+    updateLeaveDuration();
+
+    // Pre-fill reason
+    document.getElementById('leaveReason').value = row.reason;
+
+    const errBox = document.getElementById('leaveFormError');
+    if (errBox) errBox.classList.add('d-none');
+
+    new bootstrap.Modal(document.getElementById('leaveModal')).show();
+  }
+
+  function openLeaveDetail(id) {
+    const row = leaveCache.find(r => r.id === id);
+    if (!row) return;
+
+    const typeLabels = { SICK: 'Sick', CASUAL: 'Casual', ANNUAL: 'Annual', UNPAID: 'Unpaid', OTHER: 'Other' };
+    const statusColors = { APPROVED: 'success', PENDING: 'warning text-dark', REJECTED: 'danger', CANCELLED: 'secondary' };
+
+    document.getElementById('leaveDetailBody').innerHTML = `
+      <dl class="row mb-0">
+        <dt class="col-sm-4">Request #</dt>
+        <dd class="col-sm-8 text-muted">#${row.id}</dd>
+
+        <dt class="col-sm-4">Leave Type</dt>
+        <dd class="col-sm-8">${leaveTypeBadge(row.leave_type)}</dd>
+
+        <dt class="col-sm-4">From</dt>
+        <dd class="col-sm-8">${row.start_date}</dd>
+
+        <dt class="col-sm-4">To</dt>
+        <dd class="col-sm-8">${row.end_date}</dd>
+
+        <dt class="col-sm-4">Duration</dt>
+        <dd class="col-sm-8"><span class="pill pill-muted">${row.duration_days} day${row.duration_days !== 1 ? 's' : ''}</span></dd>
+
+        <dt class="col-sm-4">Reason</dt>
+        <dd class="col-sm-8">${row.reason || '—'}</dd>
+
+        <dt class="col-sm-4">Status</dt>
+        <dd class="col-sm-8"><span class="badge bg-${statusColors[row.status] || 'secondary'}">${row.status}</span></dd>
+
+        <dt class="col-sm-4">Submitted</dt>
+        <dd class="col-sm-8 text-muted">${row.created_at ? new Date(row.created_at).toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'}) : '—'}</dd>
+
+        ${row.reviewed_by_name ? `
+        <dt class="col-sm-4">Reviewed By</dt>
+        <dd class="col-sm-8">${row.reviewed_by_name}</dd>` : ''}
+
+        ${row.review_note ? `
+        <dt class="col-sm-4">Review Note</dt>
+        <dd class="col-sm-8">${row.review_note}</dd>` : ''}
+      </dl>
+      ${row.status === 'PENDING' ? `
+      <hr>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('leaveDetailModal')).hide(); openEditLeave(${row.id})">
+          <i class="bi bi-pencil me-1"></i>Edit
+        </button>
+        <button class="btn btn-outline-danger btn-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('leaveDetailModal')).hide(); cancelLeave(${row.id})">
+          <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+      </div>` : ''}
+    `;
+
+    new bootstrap.Modal(document.getElementById('leaveDetailModal')).show();
   }
 
   // Cancel (staff/trainer cancels own pending request — kept for staff.html compatibility)
@@ -843,14 +968,29 @@
   }
 
   if (leaveModalEl) {
+    // Only reset to create-mode dates when NOT opening via openEditLeave
     leaveModalEl.addEventListener('show.bs.modal', () => {
-      const today = new Date().toISOString().split('T')[0];
-      if (leaveStartDateEl) leaveStartDateEl.min = today;
-      if (leaveEndDateEl)   leaveEndDateEl.min   = today;
+      if (!document.getElementById('editLeaveId').value) {
+        const today = new Date().toISOString().split('T')[0];
+        if (leaveStartDateEl) leaveStartDateEl.min = today;
+        if (leaveEndDateEl)   leaveEndDateEl.min   = today;
+        const preview = document.getElementById('leaveDurationPreview');
+        const errBox  = document.getElementById('leaveFormError');
+        if (preview) preview.textContent = '—';
+        if (errBox)  errBox.classList.add('d-none');
+      }
+    });
+
+    // Reset back to create mode after modal closes
+    leaveModalEl.addEventListener('hidden.bs.modal', () => {
+      document.getElementById('editLeaveId').value = '';
+      document.getElementById('leaveModalTitle').innerHTML = '<i class="bi bi-calendar2-x me-2"></i>Submit Leave Request';
+      document.getElementById('leaveSubmitIcon').className = 'bi bi-send me-1';
+      document.getElementById('leaveSubmitLabel').textContent = 'Submit Request';
+      const errBox = document.getElementById('leaveFormError');
+      if (errBox) errBox.classList.add('d-none');
       const preview = document.getElementById('leaveDurationPreview');
-      const errBox  = document.getElementById('leaveFormError');
       if (preview) preview.textContent = '—';
-      if (errBox)  errBox.classList.add('d-none');
     });
   }
 
@@ -875,10 +1015,16 @@
         reason:     (document.getElementById('leaveReason') || {}).value?.trim() || '',
       };
 
-      const res = await apiRequest('/staff/leave-requests/', { method: 'POST', body: JSON.stringify(payload) });
+      const editId = document.getElementById('editLeaveId').value;
+      const isEdit = !!editId;
+      const url    = isEdit ? `/staff/leave-requests/${editId}/` : '/staff/leave-requests/';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      const res = await apiRequest(url, { method, body: JSON.stringify(payload) });
       if (!res) return;
       if (res.ok) {
         leaveFormEl.reset();
+        document.getElementById('editLeaveId').value = '';
         const preview = document.getElementById('leaveDurationPreview');
         if (preview) preview.textContent = '—';
         const modalInst = bootstrap.Modal.getInstance(leaveModalEl);

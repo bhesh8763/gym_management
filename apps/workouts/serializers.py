@@ -1,6 +1,9 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 
 from .models import Exercise, WorkoutPlan, WorkoutDay, WorkoutDayExercise
+
+User = get_user_model()
 
 
 class ExerciseSerializer(serializers.ModelSerializer):
@@ -31,7 +34,7 @@ class WorkoutPlanSerializer(serializers.ModelSerializer):
     # Trainers creating their own plans can omit this — perform_create fills it in.
     # Owners and staff can explicitly assign any trainer by supplying a trainer id.
     trainer = serializers.PrimaryKeyRelatedField(
-        queryset=__import__('apps.accounts.models', fromlist=['User']).User.objects.filter(role='TRAINER'),
+        queryset=User.objects.filter(role='TRAINER'),
         required=False,
         allow_null=True,
     )

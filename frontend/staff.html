@@ -472,10 +472,12 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-danger text-white">
-          <h5 class="modal-title"><i class="bi bi-calendar2-x me-2"></i>Submit Leave Request</h5>
+          <h5 class="modal-title" id="leaveModalTitle"><i class="bi bi-calendar2-x me-2"></i>Submit Leave Request</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <form id="leaveForm">
+          <!-- populated by openEditLeave(); empty means create mode -->
+          <input type="hidden" id="editLeaveId" value="">
           <div class="modal-body">
 
             <!-- Leave type cards -->
@@ -555,7 +557,8 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-danger" id="leaveSubmitBtn">
-              <i class="bi bi-send me-1"></i> Submit Request
+              <i class="bi bi-send me-1" id="leaveSubmitIcon"></i>
+              <span id="leaveSubmitLabel">Submit Request</span>
             </button>
           </div>
         </form>
@@ -1107,13 +1110,15 @@
       const userId = parseInt(localStorage.getItem('user_id'));
       tbody.innerHTML = pageRows.map(row => {
         const isOwner   = myRole === 'OWNER';
-        const isMine    = row.requester === userId;
+        const isMine    = Number(row.requester) === userId;
         const canReview = isOwner && row.status === 'PENDING';
-        const canCancel = isMine && row.status === 'PENDING';
+        const canEdit   = isMine  && row.status === 'PENDING';
+        const canCancel = isMine  && row.status === 'PENDING';
 
         let actions = [];
-        if (canReview)  actions.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openReviewModal(${row.id}, '${row.requester_name}', '${row.leave_type}', '${row.start_date}', '${row.end_date}')"><i class="bi bi-eye"></i> Review</button>`);
-        if (canCancel)  actions.push(`<button class="btn btn-sm btn-outline-danger"    onclick="cancelLeave(${row.id})"><i class="bi bi-x-circle"></i> Cancel</button>`);
+        if (canReview)  actions.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openReviewModal(${row.id}, '${(row.requester_name || '').replace(/'/g, "\\'")}', '${row.leave_type}', '${row.start_date}', '${row.end_date}')"><i class="bi bi-eye"></i> Review</button>`);
+        if (canEdit)    actions.push(`<button class="btn btn-sm btn-outline-primary" onclick="openEditLeave(${row.id})" title="Edit"><i class="bi bi-pencil"></i> Edit</button>`);
+        if (canCancel)  actions.push(`<button class="btn btn-sm btn-outline-danger"  onclick="cancelLeave(${row.id})"><i class="bi bi-x-circle"></i> Cancel</button>`);
         if (!actions.length) actions.push('<span class="text-muted">—</span>');
 
         return `
@@ -1188,6 +1193,35 @@
     }
   }
 
+  function openEditLeave(id) {
+    const row = leaveCache.find(r => r.id === id);
+    if (!row) return;
+
+    // Switch modal to edit mode
+    document.getElementById('editLeaveId').value = id;
+    document.getElementById('leaveModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Leave Request';
+    document.getElementById('leaveSubmitIcon').className = 'bi bi-check-lg me-1';
+    document.getElementById('leaveSubmitLabel').textContent = 'Save Changes';
+
+    // Pre-fill leave type
+    const radio = document.querySelector(`input[name="leaveTypeRadio"][value="${row.leave_type}"]`);
+    if (radio) radio.checked = true;
+
+    // Pre-fill dates (allow existing past start_date to stay)
+    document.getElementById('startDate').value = row.start_date;
+    document.getElementById('startDate').min   = row.start_date;
+    document.getElementById('endDate').value   = row.end_date;
+    document.getElementById('endDate').min     = row.start_date;
+    updateDurationPreview();
+
+    // Pre-fill reason
+    document.getElementById('reason').value = row.reason;
+
+    document.getElementById('leaveError').classList.add('d-none');
+    updatePendingTypeBadges();
+    new bootstrap.Modal(document.getElementById('leaveModal')).show();
+  }
+
   async function cancelLeave(id) {
     if (!confirm('Cancel this leave request?')) return;
     const res = await apiRequest(`/staff/leave-requests/${id}/cancel/`, { method: 'POST' });
@@ -1243,7 +1277,11 @@
         end_date:   endVal,
         reason:     document.getElementById('reason').value,
       };
-      const res = await apiRequest('/staff/leave-requests/', { method: 'POST', body: JSON.stringify(payload) });
+      const editId = document.getElementById('editLeaveId').value;
+      const isEdit = !!editId;
+      const url    = isEdit ? `/staff/leave-requests/${editId}/` : '/staff/leave-requests/';
+      const method = isEdit ? 'PATCH' : 'POST';
+      const res = await apiRequest(url, { method, body: JSON.stringify(payload) });
       if (!res) {
         alert('Request failed to send. Check your connection or session.');
         return;
@@ -1257,7 +1295,7 @@
           console.error('Could not close Leave Request modal:', e);
         }
         loadLeaves();
-        showToast('Leave request submitted.');
+        showToast(isEdit ? 'Leave request updated.' : 'Leave request submitted.');
       } else {
         const err = await res.json();
         errorBox.textContent = formatApiError(err);
@@ -1271,12 +1309,25 @@
     }
   });
 
-  // Set date minimums when modal opens
+  // Only set today as the minimum date when opening in create mode.
+  // Edit mode (openEditLeave) sets its own dates before showing.
   document.getElementById('leaveModal').addEventListener('show.bs.modal', () => {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('startDate').min = today;
-    document.getElementById('endDate').min   = today;
+    if (!document.getElementById('editLeaveId').value) {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('startDate').min = today;
+      document.getElementById('endDate').min   = today;
+    }
     updatePendingTypeBadges();
+  });
+
+  // Reset back to create mode after modal closes
+  document.getElementById('leaveModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('editLeaveId').value = '';
+    document.getElementById('leaveModalTitle').innerHTML = '<i class="bi bi-calendar2-x me-2"></i>Submit Leave Request';
+    document.getElementById('leaveSubmitIcon').className = 'bi bi-send me-1';
+    document.getElementById('leaveSubmitLabel').textContent = 'Submit Request';
+    document.getElementById('leaveError').classList.add('d-none');
+    document.getElementById('leaveDurationPreview').textContent = '—';
   });
 
   function updatePendingTypeBadges() {

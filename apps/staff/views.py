@@ -83,6 +83,17 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(requester=self.request.user)
 
+    def perform_update(self, serializer):
+        """Only the requester can edit their own PENDING leave request."""
+        leave = self.get_object()
+        if leave.requester != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('You can only edit your own leave requests.')
+        if leave.status != 'PENDING':
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('Only pending leave requests can be edited.')
+        serializer.save()
+
     @action(detail=True, methods=['post'], permission_classes=[IsOwnerOrStaff])
     def review(self, request, pk=None):
         """POST /api/staff/leave-requests/{id}/review/  body: {"status": "APPROVED"|"REJECTED", "review_note": "..."}"""

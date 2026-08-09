@@ -42,8 +42,7 @@ def _parse_date(value, fallback):
     if not value:
         return fallback
     try:
-        from datetime import date as date_cls
-        return date_cls.fromisoformat(value)
+        return date.fromisoformat(value)
     except ValueError:
         return fallback
 
@@ -462,9 +461,9 @@ def export_memberships(request):
             str(m.start_date),
             str(m.end_date),
             float(m.price_paid),
-            'Yes' if m.is_frozen else 'No',
-            str(m.freeze_start) if hasattr(m, 'freeze_start') and m.freeze_start else '',
-            str(m.freeze_end) if hasattr(m, 'freeze_end') and m.freeze_end else '',
+            'Yes' if m.status == Membership.Status.FROZEN else 'No',
+            str(m.freeze_start) if m.freeze_start else '',
+            str(m.freeze_end) if m.freeze_end else '',
         ])
 
     return _export_response(request, 'memberships', headers, rows)

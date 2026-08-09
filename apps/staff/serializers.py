@@ -95,8 +95,12 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'requester', 'status', 'reviewed_by', 'created_at']
 
     def validate_start_date(self, value):
-        if value < timezone.now().date():
+        # On create, start_date must not be in the past.
+        # On update (PATCH), allow keeping an existing past start_date unchanged.
+        if self.instance is None and value < timezone.now().date():
             raise serializers.ValidationError('Start date cannot be in the past.')
+        if self.instance is not None and value != self.instance.start_date and value < timezone.now().date():
+            raise serializers.ValidationError('Start date cannot be changed to a past date.')
         return value
 
     def validate(self, data):
@@ -106,4 +110,29 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'end_date': 'End date cannot be before start date.'}
             )
+
+        # Prevent overlapping leave requests for the same user.
+        # Overlapping means: existing.start_date <= new.end_date AND existing.end_date >= new.start_date
+        # Only count PENDING and APPROVED leaves as "occupied" — REJECTED and CANCELLED are free.
+        if start_date and end_date:
+            requester = (
+                self.instance.requester
+                if self.instance
+                else self.context['request'].user
+            )
+            qs = LeaveRequest.objects.filter(
+                requester=requester,
+                status__in=['PENDING', 'APPROVED'],
+                start_date__lte=end_date,
+                end_date__gte=start_date,
+            )
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                conflict = qs.first()
+                raise serializers.ValidationError(
+                    f'These dates overlap with an existing {conflict.status.lower()} '
+                    f'leave request ({conflict.start_date} – {conflict.end_date}).'
+                )
+
         return data

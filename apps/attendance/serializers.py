@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Attendance
 
 
@@ -18,7 +19,6 @@ class AttendanceSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'marked_by']
 
     def get_membership(self, obj):
-        from django.utils import timezone
         membership = obj.user.memberships.filter(
             status='ACTIVE', end_date__gte=timezone.now().date()
         ).order_by('-start_date').first()

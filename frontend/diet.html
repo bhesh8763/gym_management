@@ -1,480 +1,727 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Diet - FitCore</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/theme.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-
+  <meta charset="UTF-8">
+  <title>Diet - FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
-
 <body>
 
+<!-- ══ Topbar ══════════════════════════════════════════════════════════════ -->
 <nav class="topbar">
-    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-    <span class="navbar-brand">FitCore</span>
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <span class="navbar-brand">FitCore</span>
 
-    <div class="position-relative">
-        <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
-            <i class="bi bi-bell"></i>
-            <span class="notif-badge" id="notifCount" style="display:none;">0</span>
-        </button>
-        <div class="dropdown-panel" id="notifPanel">
-            <div class="dropdown-header">Notifications</div>
-            <div id="notifList"><div class="notif-empty">No notifications</div></div>
-        </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="dropdown-header">Notifications</div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
     </div>
+  </div>
 
-    <div class="position-relative">
-        <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
-            <span class="profile-avatar" id="profileAvatar">?</span>
-            <span class="profile-meta">
-                <div class="profile-name" id="profileName">—</div>
-                <div class="profile-role" id="profileRole">—</div>
-            </span>
-            <i class="bi bi-chevron-down text-white-50"></i>
-        </button>
-        <div class="dropdown-panel profile-menu" id="profilePanel">
-            <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
-            <hr>
-            <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
-        </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-role" id="profileRole">—</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
     </div>
+  </div>
 </nav>
 
 <div id="page-content">
-
 <div class="d-flex">
-    <div class="sidebar" id="sidebar">
-        <div class="list-group list-group-flush pt-2">
-            <div class="nav-section-label">Main</div>
-            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
 
-            <div class="nav-section-label">Members</div>
-            <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
-            <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
-            <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
-            <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+  <!-- ══ Sidebar ═══════════════════════════════════════════════════════════ -->
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
 
-            <div class="nav-section-label">Staff Management</div>
-            <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+      <div class="nav-section-label">Members</div>
+      <a href="members.html"     class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+      <a href="attendance.html"  class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html"    class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
 
-            <div class="nav-section-label">Workout & Diet</div>
-            <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
-            <a href="diet.html" class="list-group-item list-group-item-action active"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+      <div class="nav-section-label">Staff Management</div>
+      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
 
-            <div class="nav-section-label">Payments</div>
-            <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+      <div class="nav-section-label">Workout &amp; Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html"     class="list-group-item list-group-item-action active"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
 
-            <div class="nav-section-label">Equipment</div>
-            <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
-            <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+      <div class="nav-section-label">Payments</div>
+      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <div class="nav-section-label">Equipment</div>
+      <a href="lockers.html"   class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
 
       <div class="nav-section-label">Insights</div>
       <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
-        </div>
+    </div>
+  </div>
+
+  <!-- ══ Main content ══════════════════════════════════════════════════════ -->
+  <div class="p-4 flex-grow-1">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="mb-0"><i class="bi bi-egg-fried me-2 text-danger"></i>Diet Plans</h3>
     </div>
 
-    <div class="p-4 flex-grow-1">
-        <h3>Diet Plans</h3>
-
-        <div class="row mt-3 g-3">
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Total Plans</h6><h2 id="totalPlans">0</h2></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Active Plans</h6><h2 id="activePlans">0</h2></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Weight Loss Plans</h6><h2 id="weightLossPlans">0</h2></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Muscle Gain Plans</h6><h2 id="muscleGainPlans">0</h2></div></div>
-            </div>
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="card stat-card stat-accent stat-info">
+          <div class="card-body">
+            <div class="text-uppercase text-muted small fw-semibold">Total Plans</div>
+            <h3 id="statTotal">—</h3>
+          </div>
         </div>
-
-        <div class="card mt-4 mb-3">
-            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-3">
-                    <h4 class="mb-0">Plans List</h4>
-                    <span class="badge bg-secondary" id="planCountBadge">0</span>
-                </div>
-
-                <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end" style="max-width: 400px;">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input
-                            type="text"
-                            id="searchPlan"
-                            class="form-control"
-                            placeholder="Search diet plans..."
-                            onkeyup="filterPlans()"
-                        >
-                    </div>
-                    <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#createPlanModal">
-                        <i class="bi bi-plus-circle"></i> Create Plan
-                    </button>
-                </div>
-            </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card stat-card stat-accent stat-success">
+          <div class="card-body">
+            <div class="text-uppercase text-muted small fw-semibold">Active Plans</div>
+            <h3 id="statActive">—</h3>
+          </div>
         </div>
-
-        <div class="card">
-            <div class="card-header">Diet Plans</div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>ID</th><th>Name</th><th>Goal</th><th>Daily Calories</th><th>Status</th><th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="plansTable"></tbody>
-                    </table>
-                </div>
-            </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card stat-card stat-accent stat-warning">
+          <div class="card-body">
+            <div class="text-uppercase text-muted small fw-semibold">Weight Loss</div>
+            <h3 id="statWeightLoss">—</h3>
+          </div>
         </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card stat-card stat-accent stat-danger">
+          <div class="card-body">
+            <div class="text-uppercase text-muted small fw-semibold">Muscle Gain</div>
+            <h3 id="statMuscleGain">—</h3>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
 
-<!-- Modals -->
+
+    <!-- Toolbar: search + goal filter + create button -->
+    <div class="card mb-3">
+      <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+          <h4 class="mb-0">Plans List</h4>
+          <span class="badge bg-secondary" id="planCountBadge">0</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end flex-wrap" style="max-width:560px;">
+          <!-- Goal filter -->
+          <select id="goalFilter" class="form-select" style="max-width:160px;" onchange="applyFilters()">
+            <option value="">All Goals</option>
+            <option value="WEIGHT_LOSS">Weight Loss</option>
+            <option value="MUSCLE_GAIN">Muscle Gain</option>
+            <option value="RECOMPOSITION">Recomposition</option>
+            <option value="MAINTENANCE">Maintenance</option>
+            <option value="ENDURANCE">Endurance</option>
+          </select>
+          <!-- Search -->
+          <div class="input-group" style="max-width:220px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="searchPlan" class="form-control" placeholder="Search plans…" oninput="applyFilters()">
+          </div>
+          <!-- Create button (hidden for MEMBER role) -->
+          <button class="btn btn-primary text-nowrap staff-only"
+                  data-bs-toggle="modal" data-bs-target="#createPlanModal">
+            <i class="bi bi-plus-circle me-1"></i> Create Plan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plans table -->
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="ps-3">#</th>
+                <th>Name</th>
+                <th>Goal</th>
+                <th>Daily Calories</th>
+                <th>Macros (P / C / F)</th>
+                <th>Status</th>
+                <th data-no-export>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="plansTable">
+              <tr><td colspan="7" class="text-center text-muted py-4">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main content -->
+</div><!-- /d-flex -->
+</div><!-- /page-content -->
+
+<!-- ══ Modal: Create Plan ════════════════════════════════════════════════════ -->
 <div class="modal fade" id="createPlanModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Create Diet Plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div class="mb-3"><label>Member</label><select id="planMember" class="form-select"><option value="">Loading members…</option></select></div>
-        <div class="mb-3"><label>Plan Name</label><input type="text" id="planName" class="form-control"></div>
-        <div class="mb-3"><label>Goal</label><select id="goal" class="form-select"><option value="WEIGHT_LOSS">Weight Loss</option><option value="MUSCLE_GAIN">Muscle Gain</option><option value="MAINTENANCE">Maintenance</option><option value="ENDURANCE">Endurance</option></select></div>
-        <div class="mb-3"><label>Daily Calories</label><input type="number" id="dailyCalories" class="form-control"></div>
-        <div class="row">
-          <div class="col mb-3"><label>Protein (g)</label><input type="number" id="proteinGrams" class="form-control"></div>
-          <div class="col mb-3"><label>Carbs (g)</label><input type="number" id="carbsGrams" class="form-control"></div>
-          <div class="col mb-3"><label>Fat (g)</label><input type="number" id="fatGrams" class="form-control"></div>
-        </div>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create Diet Plan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="createPlan()">Save Plan</button></div>
+      <div class="modal-body">
+        <div id="createFormError" class="alert alert-danger d-none"></div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Member <span class="text-danger">*</span></label>
+            <select id="createMember" class="form-select"><option value="">Loading members…</option></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Plan Name <span class="text-danger">*</span></label>
+            <input type="text" id="createName" class="form-control" placeholder="e.g. Summer Cut">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Goal</label>
+            <select id="createGoal" class="form-select">
+              <option value="WEIGHT_LOSS">Weight Loss</option>
+              <option value="MUSCLE_GAIN">Muscle Gain</option>
+              <option value="RECOMPOSITION">Recomposition</option>
+              <option value="MAINTENANCE">Maintenance</option>
+              <option value="ENDURANCE">Endurance</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Daily Calories</label>
+            <input type="number" id="createCalories" class="form-control" min="0" placeholder="kcal">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Status</label>
+            <select id="createStatus" class="form-select">
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Protein (g)</label>
+            <input type="number" id="createProtein" class="form-control" min="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Carbs (g)</label>
+            <input type="number" id="createCarbs" class="form-control" min="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Fats (g)</label>
+            <input type="number" id="createFats" class="form-control" min="0">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Start Date</label>
+            <input type="date" id="createStartDate" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">End Date</label>
+            <input type="date" id="createEndDate" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Notes</label>
+            <textarea id="createNotes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+
+        <!-- Meals section -->
+        <hr class="my-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Meals</h6>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="addMealRow('createMealsContainer')">
+            <i class="bi bi-plus-lg me-1"></i>Add Meal
+          </button>
+        </div>
+        <div id="createMealsContainer"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreatePlan()">
+          <i class="bi bi-check-lg me-1"></i>Save Plan
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- ══ Modal: Edit Plan ══════════════════════════════════════════════════════ -->
 <div class="modal fade" id="editPlanModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Edit Diet Plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input type="hidden" id="editPlanId">
-        <div class="mb-3"><label>Name</label><input type="text" id="editPlanName" class="form-control"></div>
-        <div class="mb-3"><label>Goal</label><select id="editGoal" class="form-select"><option value="WEIGHT_LOSS">Weight Loss</option><option value="MUSCLE_GAIN">Muscle Gain</option><option value="MAINTENANCE">Maintenance</option><option value="ENDURANCE">Endurance</option></select></div>
-        <div class="mb-3"><label>Daily Calories</label><input type="number" id="editDailyCalories" class="form-control"></div>
-        <div class="row">
-          <div class="col mb-3"><label>Protein (g)</label><input type="number" id="editProteinGrams" class="form-control"></div>
-          <div class="col mb-3"><label>Carbs (g)</label><input type="number" id="editCarbsGrams" class="form-control"></div>
-          <div class="col mb-3"><label>Fat (g)</label><input type="number" id="editFatGrams" class="form-control"></div>
-        </div>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Diet Plan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="updatePlan()">Update</button></div>
+      <div class="modal-body">
+        <div id="editFormError" class="alert alert-danger d-none"></div>
+        <input type="hidden" id="editPlanId">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Plan Name <span class="text-danger">*</span></label>
+            <input type="text" id="editName" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Goal</label>
+            <select id="editGoal" class="form-select">
+              <option value="WEIGHT_LOSS">Weight Loss</option>
+              <option value="MUSCLE_GAIN">Muscle Gain</option>
+              <option value="RECOMPOSITION">Recomposition</option>
+              <option value="MAINTENANCE">Maintenance</option>
+              <option value="ENDURANCE">Endurance</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Status</label>
+            <select id="editStatus" class="form-select">
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Daily Calories</label>
+            <input type="number" id="editCalories" class="form-control" min="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Protein (g)</label>
+            <input type="number" id="editProtein" class="form-control" min="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Carbs (g)</label>
+            <input type="number" id="editCarbs" class="form-control" min="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Fats (g)</label>
+            <input type="number" id="editFats" class="form-control" min="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Start Date</label>
+            <input type="date" id="editStartDate" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">End Date</label>
+            <input type="date" id="editEndDate" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Notes</label>
+            <textarea id="editNotes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <hr class="my-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Meals</h6>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="addMealRow('editMealsContainer')">
+            <i class="bi bi-plus-lg me-1"></i>Add Meal
+          </button>
+        </div>
+        <div id="editMealsContainer"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="submitEditPlan()">
+          <i class="bi bi-check-lg me-1"></i>Save Changes
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- ══ Modal: View Plan ══════════════════════════════════════════════════════ -->
 <div class="modal fade" id="viewPlanModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    Diet Plan Details
-                </h5>
-
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal">
-                </button>
-            </div>
-
-            <div class="modal-body" id="planDetails">
-
-            </div>
-
-        </div>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Diet Plan Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="viewPlanBody">Loading…</div>
     </div>
+  </div>
 </div>
-</div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
-    let allPlans = [];
+  if (!getAccessToken()) window.location.href = 'index.html';
 
-    if (!getAccessToken()) window.location.href = 'index.html';
+  // ── State ──────────────────────────────────────────────────────────────────
+  let allPlans   = [];   // full server-side page result
+  const userRole = localStorage.getItem('user_role') || '';
 
+  // Hide write-action controls from MEMBER role
+  if (userRole === 'MEMBER') {
+    document.querySelectorAll('.staff-only').forEach(el => el.classList.add('d-none'));
+  }
 
+  // ── Goal helpers ───────────────────────────────────────────────────────────
+  const GOAL_LABELS = {
+    WEIGHT_LOSS:   'Weight Loss',
+    MUSCLE_GAIN:   'Muscle Gain',
+    RECOMPOSITION: 'Recomposition',
+    MAINTENANCE:   'Maintenance',
+    ENDURANCE:     'Endurance',
+  };
+  const GOAL_BADGE = {
+    WEIGHT_LOSS:   'bg-warning text-dark',
+    MUSCLE_GAIN:   'bg-primary',
+    RECOMPOSITION: 'bg-info text-dark',
+    MAINTENANCE:   'bg-secondary',
+    ENDURANCE:     'bg-success',
+  };
+  function goalBadge(goal) {
+    const cls   = GOAL_BADGE[goal] || 'bg-secondary';
+    const label = GOAL_LABELS[goal] || goal || '—';
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+  function statusBadge(isActive) {
+    return isActive
+      ? '<span class="pill pill-success">Active</span>'
+      : '<span class="pill pill-muted">Inactive</span>';
+  }
 
-    // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
+  const MEAL_TYPES = [
+    ['BREAKFAST',     'Breakfast'],
+    ['MID_MORNING',   'Mid-Morning'],
+    ['LUNCH',         'Lunch'],
+    ['PRE_WORKOUT',   'Pre-Workout'],
+    ['POST_WORKOUT',  'Post-Workout'],
+    ['DINNER',        'Dinner'],
+    ['EVENING_SNACK', 'Evening Snack'],
+  ];
 
+  // ── Meal row builder ───────────────────────────────────────────────────────
+  function mealRowHtml(idx) {
+    const typeOptions = MEAL_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+    return `
+      <div class="meal-row border rounded p-2 mb-2 position-relative" data-idx="${idx}">
+        <button type="button" class="btn btn-sm btn-close position-absolute top-0 end-0 m-1"
+                onclick="removeMealRow(this)" title="Remove meal"></button>
+        <div class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label small">Type</label>
+            <select class="form-select form-select-sm meal-type">${typeOptions}</select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Food Name</label>
+            <input type="text" class="form-control form-control-sm meal-food" placeholder="e.g. Oats">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Portion</label>
+            <input type="text" class="form-control form-control-sm meal-portion" placeholder="100g">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Calories</label>
+            <input type="number" class="form-control form-control-sm meal-calories" min="0" placeholder="kcal">
+          </div>
+          <div class="col-md-1">
+            <label class="form-label small">Time</label>
+            <input type="time" class="form-control form-control-sm meal-time">
+          </div>
+        </div>
+      </div>`;
+  }
 
-    function goalLabel(goal) {
-        const map = {
-            WEIGHT_LOSS: 'Weight Loss',
-            MUSCLE_GAIN: 'Muscle Gain',
-            MAINTENANCE: 'Maintenance',
-            ENDURANCE: 'Endurance',
-        };
-        return map[goal] || goal || '—';
+  let mealRowCounter = 0;
+  function addMealRow(containerId) {
+    const container = document.getElementById(containerId);
+    const div = document.createElement('div');
+    div.innerHTML = mealRowHtml(mealRowCounter++);
+    container.appendChild(div.firstElementChild);
+  }
+  function removeMealRow(btn) {
+    btn.closest('.meal-row').remove();
+  }
+
+  function collectMeals(containerId) {
+    return [...document.querySelectorAll(`#${containerId} .meal-row`)].map(row => ({
+      meal_type:       row.querySelector('.meal-type').value,
+      food_name:       row.querySelector('.meal-food').value.trim(),
+      portion:         row.querySelector('.meal-portion').value.trim(),
+      calories:        parseInt(row.querySelector('.meal-calories').value) || null,
+      time_suggestion: row.querySelector('.meal-time').value || null,
+    })).filter(m => m.food_name);
+  }
+
+  // ── Load stats ─────────────────────────────────────────────────────────────
+  async function loadStats() {
+    const res = await apiRequest('/diet/diet-plans/stats/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+    document.getElementById('statTotal').textContent      = d.total      ?? '—';
+    document.getElementById('statActive').textContent     = d.active     ?? '—';
+    document.getElementById('statWeightLoss').textContent = d.weightLoss ?? '—';
+    document.getElementById('statMuscleGain').textContent = d.muscleGain ?? '—';
+  }
+
+  // ── Load plans ─────────────────────────────────────────────────────────────
+  async function loadPlans(q = '', goal = '') {
+    let url = '/diet/diet-plans/?format=json';
+    if (q)    url += `&q=${encodeURIComponent(q)}`;
+    if (goal) url += `&goal=${encodeURIComponent(goal)}`;
+
+    const res = await apiRequest(url);
+    if (!res || !res.ok) {
+      document.getElementById('plansTable').innerHTML =
+        '<tr><td colspan="7" class="text-center text-danger py-4">Failed to load plans.</td></tr>';
+      return;
+    }
+    const data = await res.json();
+    allPlans = data.results || data;
+    const total = data.count ?? allPlans.length;
+    document.getElementById('planCountBadge').textContent = total;
+    renderPlans(allPlans);
+  }
+
+  function renderPlans(plans) {
+    const tbody = document.getElementById('plansTable');
+    if (!plans.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No diet plans found.</td></tr>';
+      return;
+    }
+    const canEdit = userRole !== 'MEMBER';
+    tbody.innerHTML = plans.map(p => `
+      <tr>
+        <td class="ps-3 text-muted small">#${p.id}</td>
+        <td class="fw-semibold">${p.name}</td>
+        <td>${goalBadge(p.goal)}</td>
+        <td>${p.daily_calories ? p.daily_calories + ' kcal' : '—'}</td>
+        <td class="small text-muted">
+          ${p.protein_g ?? '—'}g&nbsp;/&nbsp;${p.carbs_g ?? '—'}g&nbsp;/&nbsp;${p.fats_g ?? '—'}g
+        </td>
+        <td>${statusBadge(p.is_active)}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-info me-1" title="View" onclick="viewPlan(${p.id})">
+            <i class="bi bi-eye"></i>
+          </button>
+          ${canEdit ? `
+          <button class="btn btn-sm btn-outline-warning me-1" title="Edit" onclick="openEditModal(${p.id})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deletePlan(${p.id})">
+            <i class="bi bi-trash"></i>
+          </button>` : ''}
+        </td>
+      </tr>`).join('');
+  }
+
+  // ── Filter (client side on current page) ──────────────────────────────────
+  function applyFilters() {
+    const q    = document.getElementById('searchPlan').value.trim();
+    const goal = document.getElementById('goalFilter').value;
+    loadPlans(q, goal);
+  }
+
+  // ── View plan detail ───────────────────────────────────────────────────────
+  async function viewPlan(id) {
+    const body = document.getElementById('viewPlanBody');
+    body.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>';
+    new bootstrap.Modal(document.getElementById('viewPlanModal')).show();
+
+    const res = await apiRequest(`/diet/diet-plans/${id}/`);
+    if (!res || !res.ok) { body.innerHTML = '<p class="text-danger">Failed to load plan.</p>'; return; }
+    const p = await res.json();
+
+    let html = `
+      <div class="row g-3 mb-3">
+        <div class="col-sm-6"><span class="text-muted small">Name</span><div class="fw-semibold">${p.name}</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Goal</span><div>${goalBadge(p.goal)}</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Status</span><div>${statusBadge(p.is_active)}</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Daily Calories</span><div class="fw-semibold">${p.daily_calories ? p.daily_calories + ' kcal' : '—'}</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Protein</span><div>${p.protein_g ?? '—'} g</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Carbs</span><div>${p.carbs_g ?? '—'} g</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Fats</span><div>${p.fats_g ?? '—'} g</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Member</span><div>${p.member_name || '—'}</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Created By</span><div>${p.created_by_name || '—'}</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Start → End</span><div>${p.start_date || '—'} → ${p.end_date || '—'}</div></div>
+        ${p.notes ? `<div class="col-12"><span class="text-muted small">Notes</span><div>${p.notes}</div></div>` : ''}
+      </div>`;
+
+    if (p.disclaimer) {
+      html += `<div class="alert alert-warning small py-2">${p.disclaimer}</div>`;
     }
 
-    async function deletePlan(id) {
-        if (!confirm("Delete this diet plan?")) return;
-        const response = await apiRequest(`/diet/plans/${id}/`, { method: "DELETE" });
-        if (response && response.ok) { alert("Diet plan deleted"); loadDietPlans(); }
-        else { alert("Delete failed"); }
+    html += `<hr><h6 class="mb-2">Meals</h6>`;
+    if (p.meals && p.meals.length) {
+      // Group by meal_type
+      const grouped = {};
+      p.meals.forEach(m => {
+        const key = m.meal_type_display || m.meal_type;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(m);
+      });
+      html += '<div class="table-responsive"><table class="table table-sm table-bordered align-middle">';
+      html += '<thead><tr><th>Type</th><th>Food</th><th>Portion</th><th>Calories</th><th>Time</th></tr></thead><tbody>';
+      p.meals.forEach(m => {
+        html += `<tr>
+          <td><span class="badge bg-secondary">${m.meal_type_display || m.meal_type}</span></td>
+          <td>${m.food_name}</td>
+          <td>${m.portion || '—'}</td>
+          <td>${m.calories != null ? m.calories + ' kcal' : '—'}</td>
+          <td>${m.time_suggestion || '—'}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<p class="text-muted">No meals added to this plan yet.</p>';
     }
 
-    function openEditModal(id, name, goal, dailyCalories, protein, carbs, fat) {
-        document.getElementById('editPlanId').value = id;
-        document.getElementById('editPlanName').value = name;
-        document.getElementById('editGoal').value = goal;
-        document.getElementById('editDailyCalories').value = dailyCalories ?? '';
-        document.getElementById('editProteinGrams').value = protein ?? '';
-        document.getElementById('editCarbsGrams').value = carbs ?? '';
-        document.getElementById('editFatGrams').value = fat ?? '';
-        new bootstrap.Modal(document.getElementById('editPlanModal')).show();
+    body.innerHTML = html;
+  }
+
+  // ── Create plan ────────────────────────────────────────────────────────────
+  document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
+    loadMembersIntoSelect('createMember');
+    document.getElementById('createMealsContainer').innerHTML = '';
+    document.getElementById('createFormError').classList.add('d-none');
+  });
+
+  async function submitCreatePlan() {
+    const errBox = document.getElementById('createFormError');
+    errBox.classList.add('d-none');
+
+    const member = document.getElementById('createMember').value;
+    const name   = document.getElementById('createName').value.trim();
+    if (!member) { showFormError(errBox, 'Please select a member.'); return; }
+    if (!name)   { showFormError(errBox, 'Plan name is required.');   return; }
+
+    const payload = {
+      member:         parseInt(member),
+      name,
+      goal:           document.getElementById('createGoal').value,
+      is_active:      document.getElementById('createStatus').value === 'true',
+      daily_calories: parseInt(document.getElementById('createCalories').value) || null,
+      protein_g:      parseInt(document.getElementById('createProtein').value)  || null,
+      carbs_g:        parseInt(document.getElementById('createCarbs').value)    || null,
+      fats_g:         parseInt(document.getElementById('createFats').value)     || null,
+      start_date:     document.getElementById('createStartDate').value || null,
+      end_date:       document.getElementById('createEndDate').value   || null,
+      notes:          document.getElementById('createNotes').value.trim(),
+      meals:          collectMeals('createMealsContainer'),
+    };
+
+    const res = await apiRequest('/diet/diet-plans/', { method: 'POST', body: JSON.stringify(payload) });
+    if (res && res.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('createPlanModal')).hide();
+      await Promise.all([loadStats(), loadPlans()]);
+    } else if (res) {
+      const err = await res.json().catch(() => ({}));
+      showFormError(errBox, formatApiError(err));
+    } else {
+      showFormError(errBox, 'Request failed. Check your connection.');
     }
+  }
 
-    async function updatePlan() {
-        const id = document.getElementById('editPlanId').value;
-        const payload = {
-            name: document.getElementById('editPlanName').value,
-            goal: document.getElementById('editGoal').value,
-            daily_calories: parseInt(document.getElementById('editDailyCalories').value) || null,
-            protein_grams: parseInt(document.getElementById('editProteinGrams').value) || null,
-            carbs_grams: parseInt(document.getElementById('editCarbsGrams').value) || null,
-            fat_grams: parseInt(document.getElementById('editFatGrams').value) || null,
-        };
-        const response = await apiRequest(`/diet/plans/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
-        if (response && response.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('editPlanModal')).hide();
-            loadDietPlans();
-            alert('Diet plan updated');
-        } else { alert('Update failed'); }
-    }
+  // ── Edit plan ──────────────────────────────────────────────────────────────
+  async function openEditModal(id) {
+    const res = await apiRequest(`/diet/diet-plans/${id}/`);
+    if (!res || !res.ok) { alert('Could not load plan data.'); return; }
+    const p = await res.json();
 
-    async function viewPlan(id) {
+    document.getElementById('editPlanId').value      = p.id;
+    document.getElementById('editName').value         = p.name;
+    document.getElementById('editGoal').value         = p.goal;
+    document.getElementById('editStatus').value       = p.is_active ? 'true' : 'false';
+    document.getElementById('editCalories').value     = p.daily_calories ?? '';
+    document.getElementById('editProtein').value      = p.protein_g      ?? '';
+    document.getElementById('editCarbs').value        = p.carbs_g        ?? '';
+    document.getElementById('editFats').value         = p.fats_g         ?? '';
+    document.getElementById('editStartDate').value    = p.start_date     ?? '';
+    document.getElementById('editEndDate').value      = p.end_date       ?? '';
+    document.getElementById('editNotes').value        = p.notes          ?? '';
+    document.getElementById('editFormError').classList.add('d-none');
 
-        const response = await apiRequest(`/diet/plans/${id}/`);
-
-        if (!response || !response.ok) {
-            alert("Unable to load plan");
-            return;
-        }
-
-        const plan = await response.json();
-
-        let html = `
-            <h4>${plan.name}</h4>
-
-            <p>
-                <strong>Goal:</strong>
-                ${goalLabel(plan.goal)}
-            </p>
-
-            <p>
-                <strong>Daily Calories:</strong>
-                ${plan.daily_calories ?? '—'}
-            </p>
-
-            <p>
-                <strong>Macros:</strong>
-                ${plan.protein_grams ?? '—'}g protein /
-                ${plan.carbs_grams ?? '—'}g carbs /
-                ${plan.fat_grams ?? '—'}g fat
-            </p>
-        `;
-
-        if (plan.notes) {
-            html += `
-                <p>
-                    <strong>Notes:</strong>
-                    ${plan.notes}
-                </p>
-            `;
-        }
-
-        if (plan.disclaimer) {
-            html += `
-                <div class="alert alert-warning">
-                    ${plan.disclaimer}
-                </div>
-            `;
-        }
-
-        html += `<hr><h5>Meals</h5>`;
-
-        if (plan.meals && plan.meals.length > 0) {
-
-            plan.meals.forEach(meal => {
-
-                html += `
-                    <h6>${meal.meal_type}${meal.total_calories ? ` — ${meal.total_calories} cal` : ''}</h6>
-                    <ul>
-                `;
-
-                (meal.food_items || []).forEach(item => {
-
-                    html += `
-                        <li>
-                            ${item.name}
-                            (${item.amount ?? '—'}${item.calories ? `, ${item.calories} cal` : ''})
-                        </li>
-                    `;
-                });
-
-                html += `</ul>`;
-            });
-        }
-        else {
-
-            html += `
-                <div class="alert alert-warning">
-                    No meals assigned.
-                </div>
-            `;
-        }
-
-        document.getElementById('planDetails').innerHTML = html;
-
-        new bootstrap.Modal(document.getElementById('viewPlanModal')).show();
-    }
-
-    async function loadDietPlans() {
-        const response = await apiRequest('/diet/plans/');
-        if (!response || !response.ok) return;
-        const data = await response.json();
-        document.getElementById('totalPlans').textContent = data.count;
-        document.getElementById('planCountBadge').textContent = data.count;
-        allPlans = data.results;
-        const plans = allPlans;
-        document.getElementById('activePlans').textContent = plans.filter(p => p.is_active).length;
-        document.getElementById('weightLossPlans').textContent = plans.filter(p => p.goal === 'WEIGHT_LOSS').length;
-        document.getElementById('muscleGainPlans').textContent = plans.filter(p => p.goal === 'MUSCLE_GAIN').length;
-
-        renderPlans(plans);
-    }
-
-
-    async function createPlan() {
-        const memberId = document.getElementById('planMember').value;
-        const name = document.getElementById('planName').value;
-        const goal = document.getElementById('goal').value;
-        const dailyCalories = document.getElementById('dailyCalories').value;
-        const protein = document.getElementById('proteinGrams').value;
-        const carbs = document.getElementById('carbsGrams').value;
-        const fat = document.getElementById('fatGrams').value;
-        if (!memberId) { alert('Please select a member'); return; }
-        if (!name) { alert('Please fill in all fields'); return; }
-        const payload = {
-            name,
-            member: memberId,
-            goal,
-            daily_calories: dailyCalories ? parseInt(dailyCalories) : null,
-            protein_grams: protein ? parseInt(protein) : null,
-            carbs_grams: carbs ? parseInt(carbs) : null,
-            fat_grams: fat ? parseInt(fat) : null,
-        };
-        const response = await apiRequest('/diet/plans/', { method: 'POST', body: JSON.stringify(payload) });
-        if (response && response.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('createPlanModal')).hide();
-            loadDietPlans();
-            alert('Diet plan created successfully');
-        } else if (response) {
-            const err = await response.json();
-            alert('Failed to create diet plan:\n' + formatApiError(err));
-        } else {
-            alert('Failed to create diet plan');
-        }
-    }
-
-    document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
-        loadMembersIntoSelect('planMember');
+    // Rebuild meal rows
+    const container = document.getElementById('editMealsContainer');
+    container.innerHTML = '';
+    (p.meals || []).forEach(() => addMealRow('editMealsContainer'));
+    const rows = container.querySelectorAll('.meal-row');
+    (p.meals || []).forEach((m, i) => {
+      if (!rows[i]) return;
+      rows[i].querySelector('.meal-type').value     = m.meal_type;
+      rows[i].querySelector('.meal-food').value     = m.food_name;
+      rows[i].querySelector('.meal-portion').value  = m.portion      || '';
+      rows[i].querySelector('.meal-calories').value = m.calories     ?? '';
+      rows[i].querySelector('.meal-time').value     = m.time_suggestion || '';
     });
 
-    function renderPlans(plans) {
+    new bootstrap.Modal(document.getElementById('editPlanModal')).show();
+  }
 
-        document.getElementById('plansTable').innerHTML =
-            plans.map(plan => `
-            <tr>
-                <td>${plan.id}</td>
-                <td>${plan.name}</td>
+  async function submitEditPlan() {
+    const errBox = document.getElementById('editFormError');
+    errBox.classList.add('d-none');
+    const id   = document.getElementById('editPlanId').value;
+    const name = document.getElementById('editName').value.trim();
+    if (!name) { showFormError(errBox, 'Plan name is required.'); return; }
 
-                <td>
-                    <span class="badge bg-primary">
-                        ${goalLabel(plan.goal)}
-                    </span>
-                </td>
+    const payload = {
+      name,
+      goal:           document.getElementById('editGoal').value,
+      is_active:      document.getElementById('editStatus').value === 'true',
+      daily_calories: parseInt(document.getElementById('editCalories').value) || null,
+      protein_g:      parseInt(document.getElementById('editProtein').value)  || null,
+      carbs_g:        parseInt(document.getElementById('editCarbs').value)    || null,
+      fats_g:         parseInt(document.getElementById('editFats').value)     || null,
+      start_date:     document.getElementById('editStartDate').value || null,
+      end_date:       document.getElementById('editEndDate').value   || null,
+      notes:          document.getElementById('editNotes').value.trim(),
+      meals:          collectMeals('editMealsContainer'),
+    };
 
-                <td>${plan.daily_calories ?? '—'}</td>
-
-                <td>
-                    <span class="badge ${
-                        plan.is_active
-                        ? 'bg-success'
-                        : 'bg-danger'
-                    }">
-                        ${
-                            plan.is_active
-                            ? 'Active'
-                            : 'Inactive'
-                        }
-                    </span>
-                </td>
-
-                <td>
-                    <button class="btn btn-sm btn-info"
-                        onclick="viewPlan(${plan.id})">
-                        <i class="bi bi-eye"></i>
-                    </button>
-
-                    <button class="btn btn-sm btn-warning"
-                        onclick="openEditModal(
-                            ${plan.id},
-                            '${plan.name}',
-                            '${plan.goal}',
-                            ${plan.daily_calories ?? 'null'},
-                            ${plan.protein_grams ?? 'null'},
-                            ${plan.carbs_grams ?? 'null'},
-                            ${plan.fat_grams ?? 'null'}
-                        )">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-
-                    <button class="btn btn-sm btn-danger"
-                        onclick="deletePlan(${plan.id})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+    const res = await apiRequest(`/diet/diet-plans/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+    if (res && res.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editPlanModal')).hide();
+      await Promise.all([loadStats(), loadPlans()]);
+    } else if (res) {
+      const err = await res.json().catch(() => ({}));
+      showFormError(errBox, formatApiError(err));
+    } else {
+      showFormError(errBox, 'Request failed. Check your connection.');
     }
+  }
 
-    function filterPlans() {
-
-        const keyword =
-            document.getElementById('searchPlan')
-            .value
-            .toLowerCase();
-
-        const filtered =
-            allPlans.filter(plan =>
-                plan.name.toLowerCase().includes(keyword)
-            );
-
-        renderPlans(filtered);
+  // ── Delete plan ────────────────────────────────────────────────────────────
+  async function deletePlan(id) {
+    if (!confirm('Delete this diet plan? This cannot be undone.')) return;
+    const res = await apiRequest(`/diet/diet-plans/${id}/`, { method: 'DELETE' });
+    if (res && (res.ok || res.status === 204)) {
+      await Promise.all([loadStats(), loadPlans()]);
+    } else {
+      alert('Delete failed.');
     }
+  }
 
-    loadDietPlans();
+  // ── Utility ────────────────────────────────────────────────────────────────
+  function showFormError(el, msg) {
+    el.textContent = msg;
+    el.classList.remove('d-none');
+  }
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  (async () => {
+    await Promise.all([loadStats(), loadPlans()]);
+  })();
 </script>
 </body>
 </html>

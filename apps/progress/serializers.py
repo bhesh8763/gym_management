@@ -1,6 +1,9 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 
 from .models import ProgressEntry, PersonalRecord
+
+User = get_user_model()
 
 
 class ProgressEntrySerializer(serializers.ModelSerializer):
@@ -8,7 +11,7 @@ class ProgressEntrySerializer(serializers.ModelSerializer):
     # Allow staff/owner to record on behalf of any member by supplying member id.
     # Members recording their own data can omit it — perform_create fills it in.
     member = serializers.PrimaryKeyRelatedField(
-        queryset=__import__('apps.accounts.models', fromlist=['User']).User.objects.filter(role='MEMBER'),
+        queryset=User.objects.filter(role='MEMBER'),
         required=False,
     )
 
@@ -29,7 +32,7 @@ class PersonalRecordSerializer(serializers.ModelSerializer):
     exercise_name = serializers.CharField(source="exercise.name", read_only=True)
     # Same pattern: writable for staff/owner, auto-filled for members
     member = serializers.PrimaryKeyRelatedField(
-        queryset=__import__('apps.accounts.models', fromlist=['User']).User.objects.filter(role='MEMBER'),
+        queryset=User.objects.filter(role='MEMBER'),
         required=False,
     )
 
