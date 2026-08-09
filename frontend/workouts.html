@@ -78,20 +78,34 @@
     </div>
 
     <div class="p-4 flex-grow-1">
+
         <h3>Workout Plans</h3>
+        <p class="page-subtitle">Create and manage assigned training programs</p>
 
         <div class="row mt-3 g-3">
             <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Total Plans</h6><h2 id="totalPlans">0</h2></div></div>
+                <div class="card shadow-sm stat-card"><div class="card-body d-flex align-items-center gap-3">
+                    <div class="stat-icon icon-total"><i class="bi bi-clipboard2-data"></i></div>
+                    <div><div class="stat-label">Total Plans</div><p class="stat-value" id="totalPlans">0</p></div>
+                </div></div>
             </div>
             <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Active Plans</h6><h2 id="activePlans">0</h2></div></div>
+                <div class="card shadow-sm stat-card"><div class="card-body d-flex align-items-center gap-3">
+                    <div class="stat-icon icon-active"><i class="bi bi-lightning-charge"></i></div>
+                    <div><div class="stat-label">Active Plans</div><p class="stat-value" id="activePlans">0</p></div>
+                </div></div>
             </div>
             <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Beginner Plans</h6><h2 id="beginnerPlans">0</h2></div></div>
+                <div class="card shadow-sm stat-card"><div class="card-body d-flex align-items-center gap-3">
+                    <div class="stat-icon icon-beginner"><i class="bi bi-flag"></i></div>
+                    <div><div class="stat-label">Beginner Plans</div><p class="stat-value" id="beginnerPlans">0</p></div>
+                </div></div>
             </div>
             <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Advanced Plans</h6><h2 id="advancedPlans">0</h2></div></div>
+                <div class="card shadow-sm stat-card"><div class="card-body d-flex align-items-center gap-3">
+                    <div class="stat-icon icon-advanced"><i class="bi bi-fire"></i></div>
+                    <div><div class="stat-label">Advanced Plans</div><p class="stat-value" id="advancedPlans">0</p></div>
+                </div></div>
             </div>
         </div>
 
@@ -102,18 +116,30 @@
                     <span class="badge bg-secondary" id="planCountBadge">0</span>
                 </div>
 
-                <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end" style="max-width: 400px;">
-                    <div class="input-group">
+                <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end flex-wrap" style="max-width: 620px;">
+                    <select id="filterDifficulty" class="form-select form-select-sm" style="max-width: 150px;" onchange="filterPlans()">
+                        <option value="">All Difficulties</option>
+                        <option value="BEGINNER">Beginner</option>
+                        <option value="INTERMEDIATE">Intermediate</option>
+                        <option value="ADVANCED">Advanced</option>
+                    </select>
+                    <select id="filterStatus" class="form-select form-select-sm" style="max-width: 150px;" onchange="filterPlans()">
+                        <option value="">All Statuses</option>
+                        <option value="DRAFT">Draft</option>
+                        <option value="PENDING">Pending Review</option>
+                        <option value="APPROVED">Approved</option>
+                    </select>
+                    <div class="input-group" style="max-width: 220px;">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input
                             type="text"
                             id="searchPlan"
                             class="form-control"
-                            placeholder="Search workout plans..."
+                            placeholder="Search plans..."
                             onkeyup="filterPlans()"
                         >
                     </div>
-                    <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#createPlanModal">
+                    <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#createPlanModal" id="createPlanBtn">
                         <i class="bi bi-plus-circle"></i> Create Plan
                     </button>
                 </div>
@@ -127,7 +153,7 @@
                     <table class="table table-hover align-middle">
                         <thead>
                             <tr>
-                                <th>ID</th><th>Name</th><th>Difficulty</th><th>Weeks</th><th>Status</th><th>Actions</th>
+                                <th>ID</th><th>Name</th><th>Member</th><th>Difficulty</th><th>Weeks</th><th>Plan Status</th><th>Active</th><th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="plansTable"></tbody>
@@ -170,27 +196,48 @@
 </div>
 
 <div class="modal fade" id="viewPlanModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
 
             <div class="modal-header">
-                <h5 class="modal-title">
-                    Workout Plan Details
-                </h5>
-
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal">
-                </button>
+                <h5 class="modal-title">Workout Plan Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body" id="planDetails">
-
+                <div class="text-center text-muted py-4"><i class="bi bi-hourglass-split"></i> Loading…</div>
             </div>
 
         </div>
     </div>
+</div>
+
+<!-- Quick-add exercise to the shared exercise library -->
+<div class="modal fade" id="newExerciseModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">New Exercise</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label>Name</label><input type="text" id="newExName" class="form-control"></div>
+        <div class="mb-3"><label>Muscle Group</label>
+          <select id="newExMuscleGroup" class="form-select">
+            <option value="CHEST">Chest</option><option value="BACK">Back</option>
+            <option value="SHOULDERS">Shoulders</option><option value="ARMS">Arms</option>
+            <option value="LEGS">Legs</option><option value="CORE">Core</option>
+            <option value="FULL_BODY">Full Body</option><option value="CARDIO">Cardio</option>
+          </select>
+        </div>
+        <div class="mb-3"><label>Type</label>
+          <select id="newExType" class="form-select">
+            <option value="STRENGTH">Strength</option><option value="CARDIO">Cardio</option>
+            <option value="FLEXIBILITY">Flexibility</option><option value="BALANCE">Balance</option>
+            <option value="PLYO">Plyometric</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="createExercise()">Add Exercise</button></div>
+    </div>
+  </div>
 </div>
 </div>
 
@@ -198,10 +245,22 @@
 <script src="js/api.js"></script>
 <script>
     let allPlans = [];
+    let allExercises = [];
+    let currentPlanId = null;   // plan currently open in the view modal
+    let currentPlanData = null;
 
     if (!getAccessToken()) window.location.href = 'index.html';
 
+    const userRole = localStorage.getItem('user_role') || '';
+    const userId = localStorage.getItem('user_id') || '';
+    const canManagePlans = ['OWNER', 'STAFF', 'TRAINER'].includes(userRole);
+    const canApprove = ['OWNER', 'STAFF'].includes(userRole);
 
+    if (!canManagePlans) {
+        // Members: read-only page — hide creation entirely.
+        const createBtn = document.getElementById('createPlanBtn');
+        if (createBtn) createBtn.style.display = 'none';
+    }
 
     // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
 
@@ -236,70 +295,262 @@
         } else { alert('Update failed'); }
     }
 
+    function statusBadgeClass(status) {
+        if (status === 'PENDING') return 'badge-pending';
+        if (status === 'APPROVED') return 'badge-approved';
+        return 'badge-draft';
+    }
+
+    function statusLabel(status) {
+        if (status === 'PENDING') return 'Pending Review';
+        if (status === 'APPROVED') return 'Approved';
+        return 'Draft';
+    }
+
+    async function ensureExercisesLoaded() {
+        if (allExercises.length) return;
+        const res = await apiRequest('/workouts/exercises/');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+        allExercises = data.results || data;
+    }
+
+    // ── View modal: details, days/exercises builder, assignments ──────────
     async function viewPlan(id) {
+        currentPlanId = id;
+        new bootstrap.Modal(document.getElementById('viewPlanModal')).show();
+        document.getElementById('planDetails').innerHTML =
+            `<div class="text-center text-muted py-4"><i class="bi bi-hourglass-split"></i> Loading…</div>`;
+        await ensureExercisesLoaded();
+        await refreshPlanDetail();
+    }
 
-        const response = await apiRequest(`/workouts/plans/${id}/`);
-
+    async function refreshPlanDetail() {
+        const response = await apiRequest(`/workouts/plans/${currentPlanId}/`);
         if (!response || !response.ok) {
-            alert("Unable to load plan");
+            document.getElementById('planDetails').innerHTML = `<div class="alert alert-danger">Unable to load plan.</div>`;
             return;
         }
+        currentPlanData = await response.json();
+        renderPlanDetail(currentPlanData);
+    }
 
-        const plan = await response.json();
+    function renderPlanDetail(plan) {
+        const isOwnPlanTrainer = userRole === 'TRAINER' && String(plan.trainer) === String(userId);
+        const canEditThisPlan = canManagePlans && (['OWNER', 'STAFF'].includes(userRole) || isOwnPlanTrainer);
 
         let html = `
-            <h4>${plan.name}</h4>
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h4 class="mb-1">${plan.name}</h4>
+                    <span class="badge badge-difficulty ${difficultyBadgeClass(plan.difficulty)} me-1">${plan.difficulty}</span>
+                    <span class="badge badge-status ${statusBadgeClass(plan.status)}">${statusLabel(plan.status)}</span>
+                </div>
+                <div class="text-end">
+                    <div class="text-muted small">Primary Member</div>
+                    <div class="fw-semibold">${plan.member_name || '—'}</div>
+                </div>
+            </div>
 
-            <p>
-                <strong>Difficulty:</strong>
-                ${plan.difficulty}
-            </p>
-
-            <p>
-                <strong>Duration:</strong>
-                ${plan.duration_weeks} Weeks
-            </p>
-
-            <hr>
+            <p class="text-muted mb-3">${plan.description || ''}</p>
+            <p class="mb-3"><strong>Duration:</strong> ${plan.duration_weeks} weeks &nbsp;•&nbsp; <strong>Trainer:</strong> ${plan.trainer_name || '—'}</p>
         `;
 
+        if (canEditThisPlan) {
+            html += `<div class="d-flex gap-2 flex-wrap mb-4">`;
+            if (plan.status === 'DRAFT') {
+                html += `<button class="btn btn-sm btn-outline-warning" onclick="setPlanStatus('PENDING')"><i class="bi bi-send"></i> Submit for Review</button>`;
+            }
+            if (canApprove && plan.status !== 'APPROVED') {
+                html += `<button class="btn btn-sm btn-success" onclick="approvePlan()"><i class="bi bi-check-circle"></i> Approve</button>`;
+            }
+            html += `<button class="btn btn-sm btn-outline-secondary" onclick="duplicatePlan()"><i class="bi bi-copy"></i> Duplicate</button>`;
+            html += `</div>`;
+        }
+
+        // ── Assigned members ──
+        if (canEditThisPlan) {
+            html += `<div class="plan-detail-section"><h6>Assigned Members</h6><div id="assignmentChips">`;
+            (plan.assignments || []).forEach(a => {
+                html += `<span class="assignment-chip">${a.member_name}<button onclick="unassignMember(${a.id})" title="Remove"><i class="bi bi-x-circle"></i></button></span>`;
+            });
+            if (!plan.assignments || plan.assignments.length === 0) {
+                html += `<span class="text-muted small">No additional members assigned.</span>`;
+            }
+            html += `</div>
+                <div class="input-group input-group-sm mt-2" style="max-width: 320px;">
+                    <select id="assignMemberSelect" class="form-select"><option value="">Loading members…</option></select>
+                    <button class="btn btn-outline-primary" onclick="assignMember()"><i class="bi bi-person-plus"></i> Assign</button>
+                </div>
+            </div>`;
+        }
+
+        // ── Days & exercises ──
+        html += `<div class="plan-detail-section"><h6>Workout Days</h6>`;
+
         if (plan.days && plan.days.length > 0) {
-
             plan.days.forEach(day => {
+                html += `<div class="day-card">
+                    <div class="day-card-header">
+                        <h6>Day ${day.day_number}${day.day_name ? ' — ' + day.day_name : ''}</h6>
+                        ${canEditThisPlan ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteDay(${day.id})"><i class="bi bi-trash"></i></button>` : ''}
+                    </div>`;
 
-                html += `
-                    <h5>${day.day_name}</h5>
-                    <ul>
-                `;
-
-                day.exercises.forEach(exercise => {
-
-                    html += `
-                        <li>
-                            ${exercise.exercise_name}
-                            (${exercise.sets} sets,
-                             ${exercise.reps} reps)
-                        </li>
-                    `;
+                (day.exercises || []).forEach(ex => {
+                    html += `<div class="exercise-row">
+                        <div>
+                            <div>${ex.exercise_name}</div>
+                            <div class="ex-meta">${ex.sets || '—'} sets × ${ex.reps || '—'} reps${ex.weight_kg ? ' · ' + ex.weight_kg + 'kg' : ''} · rest ${ex.rest_seconds}s</div>
+                        </div>
+                        ${canEditThisPlan ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteExercise(${ex.id})"><i class="bi bi-x-lg"></i></button>` : ''}
+                    </div>`;
                 });
 
-                html += `</ul>`;
+                if (canEditThisPlan) {
+                    html += `<button class="btn btn-sm btn-outline-primary mt-1" onclick="showAddExerciseForm(${day.id})"><i class="bi bi-plus-lg"></i> Add Exercise</button>
+                        <div id="addExerciseForm-${day.id}" style="display:none;" class="mt-2"></div>`;
+                }
+                html += `</div>`;
             });
+        } else {
+            html += `<div class="empty-state py-3"><i class="bi bi-calendar-x"></i>No workout days yet.</div>`;
         }
-        else {
 
-            html += `
-                <div class="alert alert-warning">
-                    No workout days assigned.
-                </div>
-            `;
+        if (canEditThisPlan) {
+            html += `<button class="btn btn-sm btn-primary mt-1" onclick="addDay()"><i class="bi bi-plus-circle"></i> Add Day</button>`;
         }
+        html += `</div>`;
 
         document.getElementById('planDetails').innerHTML = html;
 
-        new bootstrap.Modal(document.getElementById('viewPlanModal')).show();
+        if (canEditThisPlan) {
+            loadMembersIntoSelect('assignMemberSelect');
+        }
     }
 
+    function showAddExerciseForm(dayId) {
+        const container = document.getElementById(`addExerciseForm-${dayId}`);
+        if (!container) return;
+        const options = allExercises.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+        container.innerHTML = `
+            <div class="d-flex gap-2 flex-wrap align-items-end">
+                <div><label class="small text-muted">Exercise</label>
+                    <select class="form-select form-select-sm" id="exSelect-${dayId}">
+                        <option value="">Select…</option>${options}
+                    </select>
+                </div>
+                <div style="width:70px;"><label class="small text-muted">Sets</label><input type="number" class="form-control form-control-sm" id="exSets-${dayId}" value="3"></div>
+                <div style="width:70px;"><label class="small text-muted">Reps</label><input type="text" class="form-control form-control-sm" id="exReps-${dayId}" value="10"></div>
+                <div style="width:80px;"><label class="small text-muted">Rest (s)</label><input type="number" class="form-control form-control-sm" id="exRest-${dayId}" value="60"></div>
+                <button class="btn btn-sm btn-primary" onclick="addExerciseToDay(${dayId})">Add</button>
+                <button class="btn btn-sm btn-link" data-bs-toggle="modal" data-bs-target="#newExerciseModal">+ New exercise</button>
+            </div>
+        `;
+        container.style.display = 'block';
+    }
+
+    async function addDay() {
+        const nextNumber = (currentPlanData.days || []).length + 1;
+        const res = await apiRequest('/workouts/days/', {
+            method: 'POST',
+            body: JSON.stringify({ plan: currentPlanId, day_number: nextNumber, day_name: '' }),
+        });
+        if (res && res.ok) refreshPlanDetail();
+        else alert('Failed to add day');
+    }
+
+    async function deleteDay(dayId) {
+        if (!confirm('Delete this day and all its exercises?')) return;
+        const res = await apiRequest(`/workouts/days/${dayId}/`, { method: 'DELETE' });
+        if (res && res.ok) refreshPlanDetail();
+        else alert('Failed to delete day');
+    }
+
+    async function addExerciseToDay(dayId) {
+        const exerciseId = document.getElementById(`exSelect-${dayId}`).value;
+        if (!exerciseId) { alert('Select an exercise'); return; }
+        const payload = {
+            workout_day: dayId,
+            exercise: exerciseId,
+            sets: parseInt(document.getElementById(`exSets-${dayId}`).value) || null,
+            reps: document.getElementById(`exReps-${dayId}`).value,
+            rest_seconds: parseInt(document.getElementById(`exRest-${dayId}`).value) || 60,
+        };
+        const res = await apiRequest('/workouts/day-exercises/', { method: 'POST', body: JSON.stringify(payload) });
+        if (res && res.ok) refreshPlanDetail();
+        else alert('Failed to add exercise');
+    }
+
+    async function deleteExercise(exerciseEntryId) {
+        const res = await apiRequest(`/workouts/day-exercises/${exerciseEntryId}/`, { method: 'DELETE' });
+        if (res && res.ok) refreshPlanDetail();
+        else alert('Failed to remove exercise');
+    }
+
+    async function createExercise() {
+        const payload = {
+            name: document.getElementById('newExName').value,
+            muscle_group: document.getElementById('newExMuscleGroup').value,
+            exercise_type: document.getElementById('newExType').value,
+        };
+        if (!payload.name) { alert('Please enter an exercise name'); return; }
+        const res = await apiRequest('/workouts/exercises/', { method: 'POST', body: JSON.stringify(payload) });
+        if (res && res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('newExerciseModal')).hide();
+            document.getElementById('newExName').value = '';
+            allExercises = []; // force refetch so the new exercise shows up in day-builder dropdowns
+            await ensureExercisesLoaded();
+        } else {
+            const err = res ? await res.json() : null;
+            alert('Failed to add exercise' + (err ? ':\n' + formatApiError(err) : ''));
+        }
+    }
+
+    async function setPlanStatus(status) {
+        const res = await apiRequest(`/workouts/plans/${currentPlanId}/`, { method: 'PATCH', body: JSON.stringify({ status }) });
+        if (res && res.ok) { refreshPlanDetail(); loadWorkoutPlans(); }
+        else alert('Failed to update status');
+    }
+
+    async function approvePlan() {
+        const res = await apiRequest(`/workouts/plans/${currentPlanId}/approve/`, { method: 'POST' });
+        if (res && res.ok) { refreshPlanDetail(); loadWorkoutPlans(); }
+        else alert('Failed to approve plan');
+    }
+
+    async function duplicatePlan() {
+        if (!confirm('Duplicate this plan? The copy will start as a Draft.')) return;
+        const res = await apiRequest(`/workouts/plans/${currentPlanId}/duplicate/`, { method: 'POST' });
+        if (res && res.ok) {
+            const newPlan = await res.json();
+            loadWorkoutPlans();
+            alert('Plan duplicated. Opening the new copy…');
+            viewPlan(newPlan.id);
+        } else {
+            alert('Failed to duplicate plan');
+        }
+    }
+
+    async function assignMember() {
+        const memberId = document.getElementById('assignMemberSelect').value;
+        if (!memberId) { alert('Select a member'); return; }
+        const res = await apiRequest(`/workouts/plans/${currentPlanId}/assignments/`, {
+            method: 'POST',
+            body: JSON.stringify({ member: memberId }),
+        });
+        if (res && res.ok) refreshPlanDetail();
+        else if (res) { const err = await res.json(); alert('Failed to assign:\n' + formatApiError(err)); }
+        else alert('Failed to assign member');
+    }
+
+    async function unassignMember(assignmentId) {
+        if (!confirm('Remove this member from the plan?')) return;
+        const res = await apiRequest(`/workouts/plans/${currentPlanId}/assignments/${assignmentId}/`, { method: 'DELETE' });
+        if (res && res.ok) refreshPlanDetail();
+        else alert('Failed to unassign member');
+    }
+
+    // ── List / stats / filters ──────────────────────────────────────────
     async function loadWorkoutPlans() {
         const response = await apiRequest('/workouts/plans/');
         if (!response || !response.ok) return;
@@ -315,6 +566,19 @@
         renderPlans(plans);
     }
 
+    function filterPlans() {
+        const search = document.getElementById('searchPlan').value.toLowerCase();
+        const difficulty = document.getElementById('filterDifficulty').value;
+        const status = document.getElementById('filterStatus').value;
+
+        const filtered = allPlans.filter(p => {
+            const matchesSearch = !search || p.name.toLowerCase().includes(search) || (p.member_name || '').toLowerCase().includes(search);
+            const matchesDifficulty = !difficulty || p.difficulty === difficulty;
+            const matchesStatus = !status || p.status === status;
+            return matchesSearch && matchesDifficulty && matchesStatus;
+        });
+        renderPlans(filtered);
+    }
 
     async function createPlan() {
         const memberId = document.getElementById('planMember').value;
@@ -341,62 +605,71 @@
         loadMembersIntoSelect('planMember');
     });
 
-  function renderPlans(plans) {
+    function difficultyBadgeClass(difficulty) {
+        if (difficulty === 'BEGINNER') return 'badge-beginner';
+        if (difficulty === 'INTERMEDIATE') return 'badge-intermediate';
+        return 'badge-advanced';
+    }
 
-    document.getElementById('plansTable').innerHTML =
-        plans.map(plan => `
-        <tr>
-            <td>${plan.id}</td>
-            <td>${plan.name}</td>
+    function renderPlans(plans) {
 
-            <td>
-                <span class="badge bg-primary">
-                    ${plan.difficulty}
-                </span>
-            </td>
+        if (plans.length === 0) {
+            document.getElementById('plansTable').innerHTML = `
+                <tr><td colspan="8">
+                    <div class="empty-state">
+                        <i class="bi bi-clipboard-x"></i>
+                        No workout plans match your filters.
+                    </div>
+                </td></tr>
+            `;
+            return;
+        }
 
-            <td>${plan.duration_weeks}</td>
+        document.getElementById('plansTable').innerHTML =
+            plans.map(plan => `
+            <tr>
+                <td>${plan.id}</td>
+                <td>${plan.name}</td>
+                <td>${plan.member_name || '—'}</td>
 
-            <td>
-                <span class="badge ${
-                    plan.is_active
-                    ? 'bg-success'
-                    : 'bg-danger'
-                }">
-                    ${
-                        plan.is_active
-                        ? 'Active'
-                        : 'Inactive'
-                    }
-                </span>
-            </td>
+                <td>
+                    <span class="badge badge-difficulty ${difficultyBadgeClass(plan.difficulty)}">
+                        ${plan.difficulty}
+                    </span>
+                </td>
 
-            <td>
-                <button class="btn btn-sm btn-outline-info" title="View"
-                    onclick="viewPlan(${plan.id})">
-                    <i class="bi bi-eye"></i>
-                </button>
+                <td>${plan.duration_weeks}</td>
 
-                <button class="btn btn-sm btn-outline-warning" title="Edit"
-                    onclick="openEditModal(
-                        ${plan.id},
-                        '${plan.name}',
-                        '${plan.difficulty}',
-                        ${plan.duration_weeks}
-                    )">
-                    <i class="bi bi-pencil"></i>
-                </button>
+                <td>
+                    <span class="badge badge-status ${statusBadgeClass(plan.status)}">
+                        ${statusLabel(plan.status)}
+                    </span>
+                </td>
 
-                <button class="btn btn-sm btn-outline-danger" title="Delete"
-                    onclick="deletePlan(${plan.id})">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
+                <td>
+                    <span class="badge ${plan.is_active ? 'bg-success' : 'bg-secondary'}">
+                        ${plan.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
 
-loadWorkoutPlans();
+                <td>
+                    <button class="btn btn-sm btn-outline-info action-btn" title="View" onclick="viewPlan(${plan.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    ${canManagePlans ? `
+                    <button class="btn btn-sm btn-outline-warning action-btn" title="Edit"
+                        onclick="openEditModal(${plan.id}, '${plan.name}', '${plan.difficulty}', ${plan.duration_weeks})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" onclick="deletePlan(${plan.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    loadWorkoutPlans();
 </script>
 </body>
 </html>
