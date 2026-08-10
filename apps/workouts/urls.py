@@ -1,27 +1,52 @@
-
 from django.urls import path
 
 from .views import (
     ExerciseListCreateView,
     ExerciseDetailView,
-    WorkoutPlanListCreateView,
-    WorkoutPlanDetailView,
+    WorkoutTemplateListCreateView,
+    WorkoutTemplateDetailView,
+    WorkoutTemplateSubmitReviewView,
+    WorkoutTemplateApproveView,
+    WorkoutTemplateArchiveView,
+    WorkoutTemplateDuplicateView,
+    WorkoutTemplateVersionListView,
+    WorkoutTemplateVersionRestoreView,
     WorkoutDayListCreateView,
     WorkoutDayDetailView,
+    WorkoutDayMoveView,
     WorkoutDayExerciseListCreateView,
     WorkoutDayExerciseDetailView,
+    WorkoutAssignmentListCreateView,
+    WorkoutAssignmentDetailView,
+    WorkoutCompletionLogListCreateView,
 )
 
 urlpatterns = [
+    # Exercise Library
     path('exercises/', ExerciseListCreateView.as_view(), name='exercise-list'),
     path('exercises/<int:pk>/', ExerciseDetailView.as_view(), name='exercise-detail'),
 
-    path('plans/', WorkoutPlanListCreateView.as_view(), name='workout-plan-list'),
-    path('plans/<int:pk>/', WorkoutPlanDetailView.as_view(), name='workout-plan-detail'),
+    # Workout Templates (+ approval workflow actions)
+    path('templates/', WorkoutTemplateListCreateView.as_view(), name='workout-template-list'),
+    path('templates/<int:pk>/', WorkoutTemplateDetailView.as_view(), name='workout-template-detail'),
+    path('templates/<int:pk>/submit-review/', WorkoutTemplateSubmitReviewView.as_view(), name='workout-template-submit-review'),
+    path('templates/<int:pk>/approve/', WorkoutTemplateApproveView.as_view(), name='workout-template-approve'),
+    path('templates/<int:pk>/archive/', WorkoutTemplateArchiveView.as_view(), name='workout-template-archive'),
+    path('templates/<int:pk>/duplicate/', WorkoutTemplateDuplicateView.as_view(), name='workout-template-duplicate'),
+    path('templates/<int:pk>/versions/', WorkoutTemplateVersionListView.as_view(), name='workout-template-version-list'),
+    path('templates/<int:pk>/versions/<int:version_id>/restore/', WorkoutTemplateVersionRestoreView.as_view(), name='workout-template-version-restore'),
 
+    # Builder: days + exercises within a template
     path('days/', WorkoutDayListCreateView.as_view(), name='workout-day-list'),
     path('days/<int:pk>/', WorkoutDayDetailView.as_view(), name='workout-day-detail'),
-
+    path('days/<int:pk>/move/', WorkoutDayMoveView.as_view(), name='workout-day-move'),
     path('day-exercises/', WorkoutDayExerciseListCreateView.as_view(), name='workout-day-exercise-list'),
     path('day-exercises/<int:pk>/', WorkoutDayExerciseDetailView.as_view(), name='workout-day-exercise-detail'),
+
+    # Assignments: template <-> member
+    path('assignments/', WorkoutAssignmentListCreateView.as_view(), name='workout-assignment-list'),
+    path('assignments/<int:pk>/', WorkoutAssignmentDetailView.as_view(), name='workout-assignment-detail'),
+
+    # Member-facing completion logs (drives Progress tab)
+    path('completion-logs/', WorkoutCompletionLogListCreateView.as_view(), name='workout-completion-log-list'),
 ]

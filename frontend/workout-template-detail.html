@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Template Detail - FitCore</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body>
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<nav class="topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <span class="navbar-brand">FitCore</span>
+    <div class="position-relative">
+        <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+            <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
+        </button>
+        <div class="dropdown-panel" id="notifPanel">
+            <div class="dropdown-header">Notifications</div>
+            <div id="notifList"><div class="notif-empty">No notifications</div></div>
+        </div>
+    </div>
+    <div class="position-relative">
+        <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+            <span class="profile-avatar" id="profileAvatar">?</span>
+            <span class="profile-meta"><div class="profile-name" id="profileName">—</div><div class="profile-role" id="profileRole">—</div></span>
+            <i class="bi bi-chevron-down text-white-50"></i>
+        </button>
+        <div class="dropdown-panel profile-menu" id="profilePanel">
+            <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+            <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </div>
+    </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+    <div class="sidebar" id="sidebar">
+        <div class="list-group list-group-flush pt-2">
+            <div class="nav-section-label">Main</div>
+            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+            <div class="nav-section-label">Members</div>
+            <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+            <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+            <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+            <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+            <div class="nav-section-label">Staff Management</div>
+            <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+            <div class="nav-section-label">Workout & Diet</div>
+            <a href="workouts.html" class="list-group-item list-group-item-action active"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+            <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+            <div class="nav-section-label">Payments</div>
+            <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+            <div class="nav-section-label">Equipment</div>
+            <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+            <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+            <div class="nav-section-label">Insights</div>
+            <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+        </div>
+    </div>
+
+    <div class="p-4 flex-grow-1">
+        <a href="workouts.html" class="text-decoration-none text-muted small"><i class="bi bi-arrow-left"></i> Back to Templates</a>
+
+        <div class="card mt-2 mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h3 class="mb-1" id="tName">Loading…</h3>
+                        <span id="tDifficulty"></span> <span id="tStatus"></span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap" id="tActions"></div>
+                </div>
+                <div class="row mt-3 g-3">
+                    <div class="col-auto"><div class="text-muted small text-uppercase">Duration</div><div class="fw-semibold" id="tDuration">—</div></div>
+                    <div class="col-auto"><div class="text-muted small text-uppercase">Goal</div><div class="fw-semibold" id="tGoal">—</div></div>
+                    <div class="col-auto"><div class="text-muted small text-uppercase">Trainer</div><div class="fw-semibold" id="tTrainer">—</div></div>
+                    <div class="col-auto"><div class="text-muted small text-uppercase">Assigned</div><div class="fw-semibold" id="tAssigned">—</div></div>
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item"><button class="nav-link active" data-tab="days" onclick="switchTab('days')">Workout Days</button></li>
+            <li class="nav-item"><button class="nav-link" data-tab="members" onclick="switchTab('members')">Assigned Members</button></li>
+            <li class="nav-item"><button class="nav-link" data-tab="progress" onclick="switchTab('progress')">Progress</button></li>
+            <li class="nav-item"><button class="nav-link" data-tab="history" onclick="switchTab('history')">History</button></li>
+        </ul>
+
+        <div id="tab-days">
+            <div id="daysContainer"></div>
+            <button class="btn btn-outline-primary btn-sm mt-2" onclick="addDay()"><i class="bi bi-plus-circle"></i> Add Day</button>
+        </div>
+
+        <div id="tab-members" style="display:none;">
+            <div id="membersContainer"></div>
+            <button class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#assignModal"><i class="bi bi-person-plus"></i> Assign Member</button>
+        </div>
+
+        <div id="tab-progress" style="display:none;">
+            <div class="row g-3 mb-3">
+                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Average Adherence</h6><h2 id="progAvgPct">—</h2></div></div></div>
+                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Members On Track (&ge;70%)</h6><h2 id="progOnTrack">—</h2></div></div></div>
+                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Total Sessions Logged</h6><h2 id="progTotalLogs">—</h2></div></div></div>
+            </div>
+            <div id="progressContainer"></div>
+        </div>
+
+        <div id="tab-history" style="display:none;">
+            <div id="historyContainer"></div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Add Exercise Modal (2-step) -->
+<div class="modal fade" id="exModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Add Exercise</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="exTargetDayId">
+        <input type="hidden" id="exEditId">
+        <div id="exStep1">
+          <div class="text-muted small text-uppercase fw-bold mb-2">Step 1 · Search Library</div>
+          <input type="text" id="exSearchInput" class="form-control mb-2" placeholder="Search exercises…" onkeyup="renderExSearchList()">
+          <div id="exSearchList" style="max-height:240px; overflow:auto;"></div>
+        </div>
+        <div id="exStep2" style="display:none;">
+          <div class="text-muted small text-uppercase fw-bold mb-2">Step 2 · Configure — <span id="exChosenName" class="text-dark"></span></div>
+          <input type="hidden" id="exChosenId">
+          <div class="row">
+            <div class="col-4 mb-2"><label class="small">Sets</label><input type="number" id="exSets" class="form-control" value="3"></div>
+            <div class="col-4 mb-2"><label class="small">Reps</label><input type="text" id="exReps" class="form-control" value="10"></div>
+            <div class="col-4 mb-2"><label class="small">Rest (s)</label><input type="number" id="exRest" class="form-control" value="60"></div>
+            <div class="col-4 mb-2"><label class="small">Tempo</label><input type="text" id="exTempo" class="form-control" placeholder="2-0-2"></div>
+            <div class="col-4 mb-2"><label class="small">RPE</label><input type="number" id="exRpe" class="form-control" placeholder="8"></div>
+            <div class="col-4 mb-2"><label class="small">Weight (kg)</label><input type="text" id="exWeight" class="form-control"></div>
+          </div>
+          <div class="mb-2"><label class="small">Notes</label><textarea id="exNotes" class="form-control" rows="2"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="exSaveBtn" style="display:none;" onclick="saveExercise()">Save Exercise</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Assign Template</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members…</option></select></div>
+        <div class="mb-3"><label>Start date</label><input type="date" id="assignStartDate" class="form-control"></div>
+        <div class="mb-3"><label>Goal note (optional)</label><input type="text" id="assignGoalNote" class="form-control"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="submitAssignment()">Assign</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+if (!getAccessToken()) window.location.href = 'index.html';
+
+const params = new URLSearchParams(window.location.search);
+const templateId = params.get('id');
+if (!templateId) window.location.href = 'workouts.html';
+
+let currentTemplate = null;
+let exerciseLibrary = [];
+
+function showToast(message, variant) {
+    const toastEl = document.getElementById("appToast");
+    const bodyEl = document.getElementById("appToastBody");
+    if (!toastEl || !bodyEl) return;
+    toastEl.classList.remove("bg-success", "bg-danger");
+    toastEl.classList.add(variant === "error" ? "bg-danger" : "bg-success");
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2800 }).show();
+}
+
+function switchTab(name) {
+    document.querySelectorAll('.nav-tabs .nav-link').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.nav-tabs [data-tab="${name}"]`).classList.add('active');
+    ['days', 'members', 'progress', 'history'].forEach(t => {
+        document.getElementById('tab-' + t).style.display = (t === name) ? 'block' : 'none';
+    });
+    if (name === 'members') loadMembersTab();
+    if (name === 'progress') loadProgressTab();
+    if (name === 'history') loadHistoryTab();
+}
+
+function statusBadge(status) {
+    const map = { DRAFT: 'secondary', IN_REVIEW: 'info', APPROVED: 'success', ARCHIVED: 'dark' };
+    const label = { DRAFT: 'Draft', IN_REVIEW: 'In review', APPROVED: 'Approved', ARCHIVED: 'Archived' };
+    return `<span class="badge bg-${map[status] || 'secondary'}">${label[status] || status}</span>`;
+}
+function difficultyBadge(d) {
+    const map = { BEGINNER: 'success', INTERMEDIATE: 'warning', ADVANCED: 'danger' };
+    return `<span class="badge bg-${map[d] || 'secondary'}">${d}</span>`;
+}
+
+async function loadTemplate() {
+    const response = await apiRequest(`/workouts/templates/${templateId}/`);
+    if (!response || !response.ok) { showToast('Could not load template', 'error'); return; }
+    currentTemplate = await response.json();
+    renderHeader();
+    renderDays();
+}
+
+function renderHeader() {
+    const t = currentTemplate;
+    document.getElementById('tName').textContent = t.name;
+    document.getElementById('tDifficulty').innerHTML = difficultyBadge(t.difficulty);
+    document.getElementById('tStatus').innerHTML = statusBadge(t.status);
+    document.getElementById('tDuration').textContent = t.duration_weeks + ' Weeks';
+    document.getElementById('tGoal').textContent = t.goal || '—';
+    document.getElementById('tTrainer').textContent = t.trainer_name || '—';
+    document.getElementById('tAssigned').textContent = t.assigned_member_count + ' members';
+
+    const actions = [];
+    if (t.status === 'DRAFT') actions.push(`<button class="btn btn-outline-warning btn-sm" onclick="submitForReview()"><i class="bi bi-send"></i> Submit for Review</button>`);
+    if (t.status === 'IN_REVIEW') actions.push(`<button class="btn btn-success btn-sm" onclick="approveTemplate()"><i class="bi bi-check2-circle"></i> Approve</button>`);
+    actions.push(`<button class="btn btn-outline-secondary btn-sm" onclick="duplicateTemplate()"><i class="bi bi-copy"></i> Duplicate</button>`);
+    if (t.status !== 'ARCHIVED') actions.push(`<button class="btn btn-outline-dark btn-sm" onclick="archiveTemplate()"><i class="bi bi-archive"></i> Archive</button>`);
+    actions.push(`<button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignModal"><i class="bi bi-person-plus"></i> Assign</button>`);
+    document.getElementById('tActions').innerHTML = actions.join('');
+}
+
+async function submitForReview() {
+    const r = await apiRequest(`/workouts/templates/${templateId}/submit-review/`, { method: 'POST' });
+    if (r && r.ok) { showToast('Submitted for review'); loadTemplate(); } else showToast('Failed', 'error');
+}
+async function approveTemplate() {
+    const r = await apiRequest(`/workouts/templates/${templateId}/approve/`, { method: 'POST' });
+    if (r && r.ok) { showToast('Approved'); loadTemplate(); } else showToast('Owner/staff only', 'error');
+}
+async function archiveTemplate() {
+    if (!confirm('Archive this template?')) return;
+    const r = await apiRequest(`/workouts/templates/${templateId}/archive/`, { method: 'POST' });
+    if (r && r.ok) { showToast('Archived'); loadTemplate(); } else showToast('Failed', 'error');
+}
+async function duplicateTemplate() {
+    const r = await apiRequest(`/workouts/templates/${templateId}/duplicate/`, { method: 'POST', body: JSON.stringify({}) });
+    if (r && r.ok) {
+        const clone = await r.json();
+        showToast('Duplicated — opening the copy');
+        window.location.href = `workout-template-detail.html?id=${clone.id}`;
+    } else showToast('Failed', 'error');
+}
+
+function renderDays() {
+    const days = currentTemplate.days || [];
+    document.getElementById('daysContainer').innerHTML = days.map((d, i) => `
+        <div class="card mb-2">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#day-${d.id}">
+                    <strong>Week ${d.week_number} · Day ${d.day_number}</strong> ${d.day_name ? '— ' + d.day_name : ''} <span class="text-muted small">(${(d.exercises||[]).length} exercises)</span>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button class="btn btn-sm btn-outline-secondary" title="Move up" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation(); moveDay(${d.id}, 'up')"><i class="bi bi-arrow-up"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary" title="Move down" ${i === days.length - 1 ? 'disabled' : ''} onclick="event.stopPropagation(); moveDay(${d.id}, 'down')"><i class="bi bi-arrow-down"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" title="Delete day" onclick="event.stopPropagation(); deleteDay(${d.id})"><i class="bi bi-trash"></i></button>
+                    <i class="bi bi-chevron-down" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#day-${d.id}"></i>
+                </div>
+            </div>
+            <div class="collapse" id="day-${d.id}">
+                <div class="card-body">
+                    <div class="row g-2 mb-2">
+                        ${(d.exercises||[]).map(ex => `
+                            <div class="col-md-4">
+                                <div class="border rounded p-2 h-100 position-relative">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="fw-semibold">${ex.exercise_name}</div>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-link p-0 text-secondary" title="Edit" onclick='editExercise(${d.id}, ${JSON.stringify(ex)})'><i class="bi bi-pencil"></i></button>
+                                            <button class="btn btn-sm btn-link p-0 text-danger" title="Remove" onclick="deleteExerciseFromDay(${ex.id})"><i class="bi bi-x-lg"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted small mb-1">${ex.muscle_group || ''}</div>
+                                    <div class="small">${ex.sets || '-'} sets × ${ex.reps || '-'} reps · ${ex.rest_seconds || 0}s rest${ex.rpe ? ' · RPE ' + ex.rpe : ''}</div>
+                                    ${ex.notes ? `<div class="fst-italic small text-muted mt-1">"${ex.notes}"</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('') || '<div class="text-muted small">No exercises yet.</div>'}
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="openExerciseModal(${d.id})"><i class="bi bi-plus-circle"></i> Add Exercise</button>
+                </div>
+            </div>
+        </div>
+    `).join('') || '<div class="alert alert-secondary">No days yet — add the first one.</div>';
+}
+
+async function addDay() {
+    const days = currentTemplate.days || [];
+    const nextDayNumber = days.length ? Math.max(...days.map(d => d.day_number)) + 1 : 1;
+    const payload = { template: parseInt(templateId), week_number: 1, day_number: nextDayNumber, day_name: '' };
+    const r = await apiRequest('/workouts/days/', { method: 'POST', body: JSON.stringify(payload) });
+    if (r && r.ok) { showToast('Day added'); loadTemplate(); }
+    else showToast('Could not add day', 'error');
+}
+
+async function openExerciseModal(dayId) {
+    document.getElementById('exTargetDayId').value = dayId;
+    document.getElementById('exEditId').value = '';
+    document.getElementById('exStep1').style.display = 'block';
+    document.getElementById('exStep2').style.display = 'none';
+    document.getElementById('exSaveBtn').style.display = 'none';
+    document.getElementById('exSearchInput').value = '';
+    if (!exerciseLibrary.length) {
+        const r = await apiRequest('/workouts/exercises/');
+        if (r && r.ok) { const data = await r.json(); exerciseLibrary = data.results || data; }
+    }
+    renderExSearchList();
+    new bootstrap.Modal(document.getElementById('exModal')).show();
+}
+function renderExSearchList() {
+    const q = (document.getElementById('exSearchInput').value || '').toLowerCase();
+    const filtered = exerciseLibrary.filter(ex => ex.name.toLowerCase().includes(q));
+    document.getElementById('exSearchList').innerHTML = filtered.map(ex => `
+        <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-1" style="cursor:pointer;" onclick="pickExercise(${ex.id}, '${ex.name.replace(/'/g, "\\'")}')">
+            <span>${ex.name}</span><span class="text-muted small">${ex.muscle_group}</span>
+        </div>
+    `).join('') || `<div class="text-muted small">No matches. Add it in the Exercise Library first.</div>`;
+}
+function pickExercise(id, name) {
+    document.getElementById('exChosenId').value = id;
+    document.getElementById('exChosenName').textContent = name;
+    document.getElementById('exStep1').style.display = 'none';
+    document.getElementById('exStep2').style.display = 'block';
+    document.getElementById('exSaveBtn').style.display = 'inline-block';
+}
+
+// Opens the same modal already populated for editing an existing day-exercise —
+// skips straight to Step 2 since the exercise itself is already chosen.
+function editExercise(dayId, ex) {
+    document.getElementById('exTargetDayId').value = dayId;
+    document.getElementById('exEditId').value = ex.id;
+    document.getElementById('exChosenId').value = ex.exercise;
+    document.getElementById('exChosenName').textContent = ex.exercise_name;
+    document.getElementById('exSets').value = ex.sets || '';
+    document.getElementById('exReps').value = ex.reps || '';
+    document.getElementById('exRest').value = ex.rest_seconds || 60;
+    document.getElementById('exTempo').value = ex.tempo || '';
+    document.getElementById('exRpe').value = ex.rpe || '';
+    document.getElementById('exWeight').value = ex.weight_kg || '';
+    document.getElementById('exNotes').value = ex.notes || '';
+    document.getElementById('exStep1').style.display = 'none';
+    document.getElementById('exStep2').style.display = 'block';
+    document.getElementById('exSaveBtn').style.display = 'inline-block';
+    new bootstrap.Modal(document.getElementById('exModal')).show();
+}
+
+async function saveExercise() {
+    const editId = document.getElementById('exEditId').value;
+    const payload = {
+        workout_day: parseInt(document.getElementById('exTargetDayId').value),
+        exercise: parseInt(document.getElementById('exChosenId').value),
+        sets: document.getElementById('exSets').value || null,
+        reps: document.getElementById('exReps').value,
+        rest_seconds: document.getElementById('exRest').value || 60,
+        tempo: document.getElementById('exTempo').value,
+        rpe: document.getElementById('exRpe').value || null,
+        weight_kg: document.getElementById('exWeight').value || null,
+        notes: document.getElementById('exNotes').value,
+    };
+    const url = editId ? `/workouts/day-exercises/${editId}/` : '/workouts/day-exercises/';
+    const method = editId ? 'PATCH' : 'POST';
+    const r = await apiRequest(url, { method, body: JSON.stringify(payload) });
+    if (r && r.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('exModal')).hide();
+        showToast(editId ? 'Exercise updated' : 'Exercise added');
+        loadTemplate();
+    } else if (r) {
+        const err = await r.json();
+        showToast(formatApiError(err), 'error');
+    } else showToast('Failed to save exercise', 'error');
+}
+
+async function deleteExerciseFromDay(dayExerciseId) {
+    if (!confirm('Remove this exercise from the day?')) return;
+    const r = await apiRequest(`/workouts/day-exercises/${dayExerciseId}/`, { method: 'DELETE' });
+    if (r && (r.ok || r.status === 204)) { showToast('Exercise removed'); loadTemplate(); }
+    else showToast('Could not remove exercise', 'error');
+}
+
+// ─── Day reorder / delete ────────────────────────────────────────────────
+async function moveDay(dayId, direction) {
+    const r = await apiRequest(`/workouts/days/${dayId}/move/`, { method: 'POST', body: JSON.stringify({ direction }) });
+    if (r && r.ok) { loadTemplate(); }
+    else if (r) { const err = await r.json(); showToast(formatApiError(err), 'error'); }
+    else showToast('Could not reorder', 'error');
+}
+async function deleteDay(dayId) {
+    if (!confirm('Delete this entire day, including its exercises?')) return;
+    const r = await apiRequest(`/workouts/days/${dayId}/`, { method: 'DELETE' });
+    if (r && (r.ok || r.status === 204)) { showToast('Day deleted'); loadTemplate(); }
+    else showToast('Could not delete day', 'error');
+}
+
+// ─── Progress tab ────────────────────────────────────────────────────────
+async function loadProgressTab() {
+    const r = await apiRequest(`/workouts/assignments/?template=${templateId}`);
+    if (!r || !r.ok) return;
+    const data = await r.json();
+    const assignments = data.results || data;
+
+    const active = assignments.filter(a => a.status === 'ACTIVE' || a.status === 'COMPLETED');
+    const avgPct = active.length ? Math.round(active.reduce((sum, a) => sum + (a.completion_pct || 0), 0) / active.length) : 0;
+    const onTrack = active.filter(a => (a.completion_pct || 0) >= 70).length;
+
+    document.getElementById('progAvgPct').textContent = active.length ? avgPct + '%' : '—';
+    document.getElementById('progOnTrack').textContent = active.length ? `${onTrack} / ${active.length}` : '—';
+
+    const logsResp = await apiRequest(`/workouts/completion-logs/`);
+    let totalLogs = '—';
+    if (logsResp && logsResp.ok) {
+        const logsData = await logsResp.json();
+        const allLogs = logsData.results || logsData;
+        const templateAssignmentIds = new Set(assignments.map(a => a.id));
+        totalLogs = allLogs.filter(l => templateAssignmentIds.has(l.assignment)).length;
+    }
+    document.getElementById('progTotalLogs').textContent = totalLogs;
+
+    document.getElementById('progressContainer').innerHTML = assignments.map(a => `
+        <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+            <div style="min-width:160px;"><strong>${a.member_name}</strong> <span class="badge bg-${a.status === 'ACTIVE' ? 'success' : a.status === 'PAUSED' ? 'warning' : 'secondary'} ms-1">${a.status}</span></div>
+            <div class="flex-grow-1 mx-3">
+                <div class="progress" style="height:8px;">
+                    <div class="progress-bar ${a.completion_pct >= 70 ? 'bg-success' : a.completion_pct >= 40 ? 'bg-warning' : 'bg-danger'}" style="width:${a.completion_pct || 0}%"></div>
+                </div>
+            </div>
+            <div class="text-nowrap fw-semibold">${a.completion_pct || 0}%</div>
+        </div>
+    `).join('') || '<div class="alert alert-secondary">No members assigned yet — nothing to track.</div>';
+}
+
+// ─── History tab (version snapshots) ────────────────────────────────────
+async function loadHistoryTab() {
+    const r = await apiRequest(`/workouts/templates/${templateId}/versions/`);
+    if (!r || !r.ok) { document.getElementById('historyContainer').innerHTML = '<div class="alert alert-secondary">Could not load history.</div>'; return; }
+    const data = await r.json();
+    const versions = data.results || data;
+    const reasonLabel = { submitted_for_review: 'Submitted for review', approved: 'Approved', manual: 'Manual snapshot' };
+    document.getElementById('historyContainer').innerHTML = versions.map(v => `
+        <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+            <div>
+                <strong>${reasonLabel[v.reason] || v.reason}</strong>
+                <div class="text-muted small">${new Date(v.created_at).toLocaleString()} ${v.created_by_name ? '· ' + v.created_by_name : ''} · ${v.snapshot.days.length} day(s)</div>
+            </div>
+            <button class="btn btn-sm btn-outline-warning" onclick="restoreVersion(${v.id})"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
+        </div>
+    `).join('') || '<div class="alert alert-secondary">No versions captured yet — submit this template for review to capture the first one.</div>';
+}
+async function restoreVersion(versionId) {
+    if (!confirm('Restore this version? The template\'s current days and exercises will be replaced with this snapshot.')) return;
+    const r = await apiRequest(`/workouts/templates/${templateId}/versions/${versionId}/restore/`, { method: 'POST' });
+    if (r && r.ok) { showToast('Version restored'); loadTemplate(); loadHistoryTab(); }
+    else showToast('Could not restore version', 'error');
+}
+
+
+async function loadMembersTab() {
+    const r = await apiRequest(`/workouts/assignments/?template=${templateId}`);
+    if (!r || !r.ok) return;
+    const data = await r.json();
+    const assignments = data.results || data;
+    document.getElementById('membersContainer').innerHTML = assignments.map(a => `
+        <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+            <div><strong>${a.member_name}</strong> <span class="text-muted small">· ${a.completion_pct}% complete</span></div>
+            <span class="badge bg-${a.status === 'ACTIVE' ? 'success' : a.status === 'PAUSED' ? 'warning' : 'secondary'}">${a.status}</span>
+        </div>
+    `).join('') || '<div class="alert alert-secondary">No members assigned yet.</div>';
+}
+
+document.getElementById('assignModal').addEventListener('show.bs.modal', () => loadMembersIntoSelect('assignMember'));
+async function submitAssignment() {
+    const payload = {
+        template: parseInt(templateId),
+        member: document.getElementById('assignMember').value,
+        start_date: document.getElementById('assignStartDate').value,
+        goal_note: document.getElementById('assignGoalNote').value,
+    };
+    if (!payload.member || !payload.start_date) { showToast('Member and start date are required', 'error'); return; }
+    const r = await apiRequest('/workouts/assignments/', { method: 'POST', body: JSON.stringify(payload) });
+    if (r && r.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('assignModal')).hide();
+        showToast('Member assigned');
+        loadTemplate();
+        loadMembersTab();
+    } else if (r) {
+        const err = await r.json();
+        showToast(formatApiError(err), 'error');
+    } else showToast('Failed', 'error');
+}
+
+loadTemplate();
+</script>
+</body>
+</html>

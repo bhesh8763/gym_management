@@ -1333,3 +1333,121 @@ h3, h5 {
   transform: translateY(-1px);
 }
 .table-icon-btn:last-child { margin-right: 0; }
+
+
+
+/* --- Workouts page polish --- */
+.stat-card {
+    border: none;
+    border-radius: 12px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+}
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+.stat-icon.icon-total   { background: #eef1ff; color: #4a5cf5;}
+.stat-icon.icon-active  { background: #e8f9f0; color: #16a34a;}
+.stat-icon.icon-beginner{ background: #fff8e6; color: #d97706;}
+.stat-icon.icon-advanced{ background: #fdecec; color: #dc2626;}
+
+.stat-label { font-size: 0.8rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
+.stat-value { font-size: 1.6rem; font-weight: 700; margin: 0; color: #1f2937; }
+
+.page-subtitle { color: #6b7280; font-size: 0.925rem; margin-top: -4px; margin-bottom: 0; }
+
+.table-hover tbody tr:hover { background-color: #f8f9fc; }
+.table thead th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.badge-difficulty { font-weight: 600; padding: 0.4em 0.75em; border-radius: 6px; }
+.badge-beginner    { background: #e8f9f0; color: #16a34a; }
+.badge-intermediate{ background: #fff8e6; color: #b45309; }
+.badge-advanced    { background: #fdecec; color: #dc2626; }
+
+.badge-status { font-weight: 600; padding: 0.4em 0.75em; border-radius: 6px; }
+.badge-draft    { background: #f1f2f4; color: #4b5563; }
+.badge-pending  { background: #fff8e6; color: #b45309; }
+.badge-approved { background: #e8f9f0; color: #16a34a; }
+
+.action-btn { border-radius: 8px; }
+
+.empty-state { text-align: center; padding: 48px 16px; color: #9ca3af; }
+.empty-state i { font-size: 2.5rem; margin-bottom: 12px; display: block; color: #d1d5db; }
+
+/* Day / exercise builder inside the view modal */
+.day-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    background: #fafbfc;
+}
+.day-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.day-card-header h6 { margin: 0; font-weight: 700; color: #1f2937; }
+.exercise-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #edeef1;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+.exercise-row .ex-meta { color: #6b7280; font-size: 0.8rem; }
+
+/* Member assignment chips */
+.assignment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #eef1ff;
+    color: #4a5cf5;
+    border-radius: 999px;
+    padding: 4px 10px 4px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0 6px 6px 0;
+}
+.assignment-chip button {
+    background: none;
+    border: none;
+    color: #4a5cf5;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.7;
+}
+.assignment-chip button:hover { opacity: 1; }
+
+.plan-detail-section { margin-bottom: 20px; }
+.plan-detail-section h6 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    font-weight: 700;
+    margin-bottom: 10px;
+}

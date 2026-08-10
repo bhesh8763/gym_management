@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Workouts - FitCore</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="MEMBER">
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<nav class="topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <span class="navbar-brand">FitCore</span>
+    <div class="position-relative">
+        <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+            <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
+        </button>
+        <div class="dropdown-panel" id="notifPanel">
+            <div class="dropdown-header">Notifications</div>
+            <div id="notifList"><div class="notif-empty">No notifications</div></div>
+        </div>
+    </div>
+    <div class="position-relative">
+        <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+            <span class="profile-avatar" id="profileAvatar">?</span>
+            <span class="profile-meta"><div class="profile-name" id="profileName">—</div><div class="profile-role" id="profileRole">—</div></span>
+            <i class="bi bi-chevron-down text-white-50"></i>
+        </button>
+        <div class="dropdown-panel profile-menu" id="profilePanel">
+            <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+            <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </div>
+    </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+    <div class="sidebar" id="sidebar">
+        <div class="list-group list-group-flush pt-2">
+            <div class="nav-section-label">Main</div>
+            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+            <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+            <div class="nav-section-label">Workout & Diet</div>
+            <a href="my-workouts.html" class="list-group-item list-group-item-action active"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
+            <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+        </div>
+    </div>
+
+    <div class="p-4 flex-grow-1">
+        <h3>My Workouts</h3>
+        <p class="text-muted">Your assigned training programs — log a session whenever you finish one.</p>
+
+        <div id="loadingState" class="text-center text-muted py-5">
+            <div class="spinner-border" role="status"></div>
+            <div class="mt-2">Loading your workouts…</div>
+        </div>
+
+        <div id="noAssignmentsState" class="alert alert-secondary" style="display:none;">
+            You don't have a workout plan assigned yet — ask your trainer to assign one.
+        </div>
+
+        <div id="assignmentsContainer" style="display:none;"></div>
+    </div>
+</div>
+</div>
+
+<!-- Log Workout Modal -->
+<div class="modal fade" id="logModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Log This Workout</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="logAssignmentId">
+        <input type="hidden" id="logDayId">
+        <div class="mb-3"><label>Day</label><input type="text" id="logDayLabel" class="form-control" disabled></div>
+        <div class="mb-3"><label>How did it go?</label>
+          <select id="logStatus" class="form-select">
+            <option value="COMPLETED">Completed — did the whole thing</option>
+            <option value="PARTIAL">Partial — did some of it</option>
+            <option value="SKIPPED">Skipped today</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="col-6 mb-3"><label>Duration (min)</label><input type="number" id="logDuration" class="form-control"></div>
+          <div class="col-6 mb-3"><label>Calories (optional)</label><input type="number" id="logCalories" class="form-control"></div>
+        </div>
+        <div class="row">
+          <div class="col-6 mb-3"><label>Perceived difficulty (1-10)</label><input type="number" id="logDifficulty" class="form-control" min="1" max="10"></div>
+          <div class="col-6 mb-3"><label>Pain level (0-10)</label><input type="number" id="logPain" class="form-control" min="0" max="10"></div>
+        </div>
+        <div class="mb-3"><label>Notes (optional)</label><textarea id="logNotes" class="form-control" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="submitLog()">Save Log</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+if (!getAccessToken()) window.location.href = 'index.html';
+
+let myAssignments = [];
+let currentUserId = null;
+
+function showToast(message, variant) {
+    const toastEl = document.getElementById("appToast");
+    const bodyEl = document.getElementById("appToastBody");
+    if (!toastEl || !bodyEl) return;
+    toastEl.classList.remove("bg-success", "bg-danger");
+    toastEl.classList.add(variant === "error" ? "bg-danger" : "bg-success");
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2800 }).show();
+}
+
+function statusBadge(status) {
+    const map = { ACTIVE: 'success', PAUSED: 'warning', COMPLETED: 'primary', CANCELLED: 'secondary' };
+    return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+}
+
+async function loadMyWorkouts() {
+    // The assignments endpoint already scopes to "my own" for a MEMBER —
+    // enforced server-side (see _visible_assignments), not just hidden in the UI.
+    const r = await apiRequest('/workouts/assignments/');
+    document.getElementById('loadingState').style.display = 'none';
+    if (!r || !r.ok) { showToast('Could not load your workouts', 'error'); return; }
+    const data = await r.json();
+    myAssignments = (data.results || data).filter(a => a.status === 'ACTIVE' || a.status === 'PAUSED');
+
+    if (!myAssignments.length) {
+        document.getElementById('noAssignmentsState').style.display = 'block';
+        return;
+    }
+
+    const container = document.getElementById('assignmentsContainer');
+    container.style.display = 'block';
+
+    for (const assignment of myAssignments) {
+        const card = document.createElement('div');
+        card.className = 'card mb-3';
+        card.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h5 class="mb-1">${assignment.template_name}</h5>
+                        <div class="text-muted small">Started ${assignment.start_date} ${statusBadge(assignment.status)}</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold fs-4">${assignment.completion_pct || 0}%</div>
+                        <div class="text-muted small">complete</div>
+                    </div>
+                </div>
+                <div class="progress mt-2 mb-3" style="height:8px;">
+                    <div class="progress-bar ${assignment.completion_pct >= 70 ? 'bg-success' : assignment.completion_pct >= 40 ? 'bg-warning' : 'bg-danger'}" style="width:${assignment.completion_pct || 0}%"></div>
+                </div>
+                <div id="days-${assignment.id}" class="text-muted small">Loading days…</div>
+            </div>
+        `;
+        container.appendChild(card);
+        loadDaysForAssignment(assignment);
+    }
+}
+
+async function loadDaysForAssignment(assignment) {
+    const r = await apiRequest(`/workouts/templates/${assignment.template}/`);
+    const holder = document.getElementById(`days-${assignment.id}`);
+    if (!r || !r.ok) { holder.textContent = 'Could not load days.'; return; }
+    const template = await r.json();
+    const days = template.days || [];
+
+    holder.innerHTML = days.map(d => `
+        <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+            <div>
+                <strong>Week ${d.week_number} · Day ${d.day_number}</strong> ${d.day_name ? '— ' + d.day_name : ''}
+                <div class="text-muted small">${(d.exercises || []).length} exercise(s)</div>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} · Day ${d.day_number}')">
+                <i class="bi bi-check2-square"></i> Log
+            </button>
+        </div>
+    `).join('') || '<div class="text-muted small">No days in this plan yet.</div>';
+}
+
+function openLogModal(assignmentId, dayId, dayLabel) {
+    document.getElementById('logAssignmentId').value = assignmentId;
+    document.getElementById('logDayId').value = dayId;
+    document.getElementById('logDayLabel').value = dayLabel;
+    document.getElementById('logStatus').value = 'COMPLETED';
+    document.getElementById('logDuration').value = '';
+    document.getElementById('logCalories').value = '';
+    document.getElementById('logDifficulty').value = '';
+    document.getElementById('logPain').value = '';
+    document.getElementById('logNotes').value = '';
+    new bootstrap.Modal(document.getElementById('logModal')).show();
+}
+
+async function submitLog() {
+    const payload = {
+        assignment: parseInt(document.getElementById('logAssignmentId').value),
+        workout_day: parseInt(document.getElementById('logDayId').value),
+        date: new Date().toISOString().slice(0, 10),
+        status: document.getElementById('logStatus').value,
+        duration_minutes: document.getElementById('logDuration').value || null,
+        calories: document.getElementById('logCalories').value || null,
+        perceived_difficulty: document.getElementById('logDifficulty').value || null,
+        pain_level: document.getElementById('logPain').value || null,
+        notes: document.getElementById('logNotes').value,
+    };
+    const r = await apiRequest('/workouts/completion-logs/', { method: 'POST', body: JSON.stringify(payload) });
+    if (r && r.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('logModal')).hide();
+        showToast('Logged — nice work');
+        loadMyWorkouts();
+        document.getElementById('assignmentsContainer').innerHTML = '';
+    } else if (r) {
+        const err = await r.json();
+        // Already-logged-today is the most likely rejection (unique_together on
+        // assignment+day+date) — the backend's own message covers it plainly.
+        showToast(formatApiError(err), 'error');
+    } else {
+        showToast('Could not save log', 'error');
+    }
+}
+
+loadMyWorkouts();
+</script>
+</body>
+</html>

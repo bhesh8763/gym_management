@@ -7,10 +7,19 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    
 </head>
 
 <body>
+
+<!-- Toast container for save/update/delete feedback -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
 
 <nav class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
@@ -45,7 +54,6 @@
 </nav>
 
 <div id="page-content">
-
 <div class="d-flex">
     <div class="sidebar" id="sidebar">
         <div class="list-group list-group-flush pt-2">
@@ -72,331 +80,486 @@
             <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
             <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
 
-      <div class="nav-section-label">Insights</div>
-      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+            <div class="nav-section-label">Insights</div>
+            <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
         </div>
     </div>
 
     <div class="p-4 flex-grow-1">
-        <h3>Workout Plans</h3>
+        <h3>Workouts</h3>
+        <p class="text-muted">Build reusable training programs, then assign them to members.</p>
 
         <div class="row mt-3 g-3">
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Total Plans</h6><h2 id="totalPlans">0</h2></div></div>
+            <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><h6>Templates</h6><h2 id="statTemplates">0</h2></div></div></div>
+            <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><h6>Approved</h6><h2 id="statApproved">0</h2></div></div></div>
+            <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><h6>Active Assignments</h6><h2 id="statAssignments">0</h2></div></div></div>
+            <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><h6>Exercise Library</h6><h2 id="statExercises">0</h2></div></div></div>
+        </div>
+
+        <div class="alert alert-primary d-flex align-items-start gap-2 mt-4 mb-0">
+            <i class="bi bi-info-circle mt-1"></i>
+            <div>A template is no longer tied to one member — build it once, then hand it to as many members as you want from the <strong>Assignments</strong> tab.</div>
+        </div>
+
+        <ul class="nav nav-pills mt-3 mb-3" id="moduleTabs">
+            <li class="nav-item"><button class="nav-link active" data-module="templates" onclick="switchModule('templates')">Templates</button></li>
+            <li class="nav-item"><button class="nav-link" data-module="assignments" onclick="switchModule('assignments')">Assignments</button></li>
+            <li class="nav-item"><button class="nav-link" data-module="library" onclick="switchModule('library')">Exercise Library</button></li>
+        </ul>
+
+        <!-- TEMPLATES -->
+        <div id="module-templates">
+            <div class="card mb-3">
+                <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <h4 class="mb-0">Workout Templates</h4>
+                        <span class="badge bg-secondary" id="templateCountBadge">0</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                        <select id="templateStatusFilter" class="form-select form-select-sm" style="width:auto;" onchange="loadTemplates()">
+                            <option value="">All statuses</option>
+                            <option value="DRAFT">Draft</option>
+                            <option value="IN_REVIEW">In review</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="ARCHIVED">Archived</option>
+                        </select>
+                        <div class="input-group input-group-sm" style="width:220px;">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="searchTemplate" class="form-control" placeholder="Search templates…" onkeyup="debouncedTemplateSearch()">
+                        </div>
+                        <button class="btn btn-primary btn-sm text-nowrap" data-bs-toggle="modal" data-bs-target="#createTemplateModal">
+                            <i class="bi bi-plus-circle"></i> Create Template
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Active Plans</h6><h2 id="activePlans">0</h2></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Beginner Plans</h6><h2 id="beginnerPlans">0</h2></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><h6>Advanced Plans</h6><h2 id="advancedPlans">0</h2></div></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr><th>Plan</th><th>Goal</th><th>Duration</th><th>Assigned</th><th>Status</th><th>Updated</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody id="templatesTable"></tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2" id="templatesPagination"></div>
+                </div>
             </div>
         </div>
 
-        <div class="card mt-4 mb-3">
-            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-3">
-                    <h4 class="mb-0">Plans List</h4>
-                    <span class="badge bg-secondary" id="planCountBadge">0</span>
-                </div>
-
-                <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end" style="max-width: 400px;">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input
-                            type="text"
-                            id="searchPlan"
-                            class="form-control"
-                            placeholder="Search workout plans..."
-                            onkeyup="filterPlans()"
-                        >
+        <!-- ASSIGNMENTS -->
+        <div id="module-assignments" style="display:none;">
+            <div class="card mb-3">
+                <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <h4 class="mb-0">Member Assignments</h4>
+                        <span class="badge bg-secondary" id="assignmentCountBadge">0</span>
                     </div>
-                    <button class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#createPlanModal">
-                        <i class="bi bi-plus-circle"></i> Create Plan
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead><tr><th>Member</th><th>Template</th><th>Start date</th><th>Status</th><th>Actions</th></tr></thead>
+                            <tbody id="assignmentsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXERCISE LIBRARY -->
+        <div id="module-library" style="display:none;">
+            <div class="card mb-3">
+                <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <h4 class="mb-0">Exercise Library</h4>
+                        <span class="badge bg-secondary" id="exerciseCountBadge">0</span>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openNewExerciseModal()" data-bs-toggle="modal" data-bs-target="#createExerciseModal">
+                        <i class="bi bi-plus-circle"></i> New Exercise
                     </button>
                 </div>
             </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">Workout Plans</div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>ID</th><th>Name</th><th>Difficulty</th><th>Weeks</th><th>Status</th><th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="plansTable"></tbody>
-                    </table>
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead><tr><th>Exercise</th><th>Muscle</th><th>Equipment</th><th>Type</th><th>Actions</th></tr></thead>
+                            <tbody id="exercisesTable"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
+</div>
 
-<!-- Modals -->
-<div class="modal fade" id="createPlanModal" tabindex="-1">
+<!-- Create Template Modal -->
+<div class="modal fade" id="createTemplateModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Create Workout Plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h5 class="modal-title">Create Workout Template</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <div class="mb-3"><label>Member</label><select id="planMember" class="form-select"><option value="">Loading members…</option></select></div>
-        <div class="mb-3"><label>Plan Name</label><input type="text" id="planName" class="form-control"></div>
-        <div class="mb-3"><label>Difficulty</label><select id="difficulty" class="form-select"><option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option></select></div>
-        <div class="mb-3"><label>Duration (Weeks)</label><input type="number" id="durationWeeks" class="form-control"></div>
-      </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="createPlan()">Save Plan</button></div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="editPlanModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Edit Workout Plan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input type="hidden" id="editPlanId">
-        <div class="mb-3"><label>Name</label><input type="text" id="editPlanName" class="form-control"></div>
-        <div class="mb-3"><label>Difficulty</label><select id="editDifficulty" class="form-select"><option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option></select></div>
-        <div class="mb-3"><label>Duration Weeks</label><input type="number" id="editDurationWeeks" class="form-control"></div>
-      </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="updatePlan()">Update</button></div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="viewPlanModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    Workout Plan Details
-                </h5>
-
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal">
-                </button>
-            </div>
-
-            <div class="modal-body" id="planDetails">
-
-            </div>
-
+        <div class="mb-3"><label>Template Name</label><input type="text" id="tplName" class="form-control"></div>
+        <div class="mb-3"><label>Goal</label><input type="text" id="tplGoal" class="form-control" placeholder="e.g. Fat Loss, Hypertrophy"></div>
+        <div class="mb-3"><label>Difficulty</label>
+          <select id="tplDifficulty" class="form-select">
+            <option value="BEGINNER">Beginner</option>
+            <option value="INTERMEDIATE">Intermediate</option>
+            <option value="ADVANCED">Advanced</option>
+          </select>
         </div>
+        <div class="mb-3"><label>Duration (Weeks)</label><input type="number" id="tplDuration" class="form-control" value="4" min="1"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="createTemplate()">Create</button></div>
     </div>
+  </div>
 </div>
+
+<!-- Assign Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Assign Template</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="assignTemplateId">
+        <div class="alert alert-warning py-2 small" id="assignApprovalWarning" style="display:none;">
+          This template isn't Approved yet — submit it for review and get it approved before assigning.
+        </div>
+        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members…</option></select></div>
+        <div class="mb-3"><label>Start date</label><input type="date" id="assignStartDate" class="form-control"></div>
+        <div class="mb-3"><label>Goal note (optional)</label><input type="text" id="assignGoalNote" class="form-control" placeholder="e.g. prep for tournament"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="submitAssignment()">Assign</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Exercise Modal -->
+<div class="modal fade" id="createExerciseModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="exerciseModalTitle">New Exercise</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="exId">
+        <div class="mb-3"><label>Name</label><input type="text" id="exName" class="form-control"></div>
+        <div class="row">
+          <div class="col-6 mb-3"><label>Muscle Group</label>
+            <select id="exMuscle" class="form-select">
+              <option value="CHEST">Chest</option><option value="BACK">Back</option>
+              <option value="SHOULDERS">Shoulders</option><option value="ARMS">Arms</option>
+              <option value="LEGS">Legs</option><option value="CORE">Core</option>
+              <option value="FULL_BODY">Full Body</option><option value="CARDIO">Cardio</option>
+            </select>
+          </div>
+          <div class="col-6 mb-3"><label>Type</label>
+            <select id="exType" class="form-select">
+              <option value="STRENGTH">Strength</option><option value="CARDIO">Cardio</option>
+              <option value="FLEXIBILITY">Flexibility</option><option value="BALANCE">Balance</option>
+              <option value="PLYO">Plyometric</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-3"><label>Equipment</label><input type="text" id="exEquipment" class="form-control" placeholder="e.g. Barbell, Dumbbell, Bodyweight"></div>
+        <div class="mb-3"><label>Instructions</label><textarea id="exInstructions" class="form-control" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="saveExercise()">Save Exercise</button></div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
-    let allPlans = [];
+if (!getAccessToken()) window.location.href = 'index.html';
 
-    if (!getAccessToken()) window.location.href = 'index.html';
+let allTemplates = [];
+let allAssignments = [];
+let allExercises = [];
 
-
-
-    // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
-
-
-    async function deletePlan(id) {
-        if (!confirm("Delete this workout plan?")) return;
-        const response = await apiRequest(`/workouts/plans/${id}/`, { method: "DELETE" });
-        if (response && response.ok) { alert("Workout plan deleted"); loadWorkoutPlans(); }
-        else { alert("Delete failed"); }
-    }
-
-    function openEditModal(id, name, difficulty, duration) {
-        document.getElementById('editPlanId').value = id;
-        document.getElementById('editPlanName').value = name;
-        document.getElementById('editDifficulty').value = difficulty;
-        document.getElementById('editDurationWeeks').value = duration;
-        new bootstrap.Modal(document.getElementById('editPlanModal')).show();
-    }
-
-    async function updatePlan() {
-        const id = document.getElementById('editPlanId').value;
-        const payload = {
-            name: document.getElementById('editPlanName').value,
-            difficulty: document.getElementById('editDifficulty').value,
-            duration_weeks: parseInt(document.getElementById('editDurationWeeks').value)
-        };
-        const response = await apiRequest(`/workouts/plans/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
-        if (response && response.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('editPlanModal')).hide();
-            loadWorkoutPlans();
-            alert('Workout plan updated');
-        } else { alert('Update failed'); }
-    }
-
-    async function viewPlan(id) {
-
-        const response = await apiRequest(`/workouts/plans/${id}/`);
-
-        if (!response || !response.ok) {
-            alert("Unable to load plan");
-            return;
-        }
-
-        const plan = await response.json();
-
-        let html = `
-            <h4>${plan.name}</h4>
-
-            <p>
-                <strong>Difficulty:</strong>
-                ${plan.difficulty}
-            </p>
-
-            <p>
-                <strong>Duration:</strong>
-                ${plan.duration_weeks} Weeks
-            </p>
-
-            <hr>
-        `;
-
-        if (plan.days && plan.days.length > 0) {
-
-            plan.days.forEach(day => {
-
-                html += `
-                    <h5>${day.day_name}</h5>
-                    <ul>
-                `;
-
-                day.exercises.forEach(exercise => {
-
-                    html += `
-                        <li>
-                            ${exercise.exercise_name}
-                            (${exercise.sets} sets,
-                             ${exercise.reps} reps)
-                        </li>
-                    `;
-                });
-
-                html += `</ul>`;
-            });
-        }
-        else {
-
-            html += `
-                <div class="alert alert-warning">
-                    No workout days assigned.
-                </div>
-            `;
-        }
-
-        document.getElementById('planDetails').innerHTML = html;
-
-        new bootstrap.Modal(document.getElementById('viewPlanModal')).show();
-    }
-
-    async function loadWorkoutPlans() {
-        const response = await apiRequest('/workouts/plans/');
-        if (!response || !response.ok) return;
-        const data = await response.json();
-        document.getElementById('totalPlans').textContent = data.count;
-        document.getElementById('planCountBadge').textContent = data.count;
-        allPlans = data.results;
-        const plans = allPlans;
-        document.getElementById('activePlans').textContent = plans.filter(p => p.is_active).length;
-        document.getElementById('beginnerPlans').textContent = plans.filter(p => p.difficulty === 'BEGINNER').length;
-        document.getElementById('advancedPlans').textContent = plans.filter(p => p.difficulty === 'ADVANCED').length;
-
-        renderPlans(plans);
-    }
-
-
-    async function createPlan() {
-        const memberId = document.getElementById('planMember').value;
-        const name = document.getElementById('planName').value;
-        const difficulty = document.getElementById('difficulty').value;
-        const duration = document.getElementById('durationWeeks').value;
-        if (!memberId) { alert('Please select a member'); return; }
-        if (!name || !duration) { alert('Please fill in all fields'); return; }
-        const payload = { name, member: memberId, difficulty, duration_weeks: parseInt(duration) };
-        const response = await apiRequest('/workouts/plans/', { method: 'POST', body: JSON.stringify(payload) });
-        if (response && response.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('createPlanModal')).hide();
-            loadWorkoutPlans();
-            alert('Workout plan created successfully');
-        } else if (response) {
-            const err = await response.json();
-            alert('Failed to create workout plan:\n' + formatApiError(err));
-        } else {
-            alert('Failed to create workout plan');
-        }
-    }
-
-    document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
-        loadMembersIntoSelect('planMember');
-    });
-
-  function renderPlans(plans) {
-
-    document.getElementById('plansTable').innerHTML =
-        plans.map(plan => `
-        <tr>
-            <td>${plan.id}</td>
-            <td>${plan.name}</td>
-
-            <td>
-                <span class="badge bg-primary">
-                    ${plan.difficulty}
-                </span>
-            </td>
-
-            <td>${plan.duration_weeks}</td>
-
-            <td>
-                <span class="badge ${
-                    plan.is_active
-                    ? 'bg-success'
-                    : 'bg-danger'
-                }">
-                    ${
-                        plan.is_active
-                        ? 'Active'
-                        : 'Inactive'
-                    }
-                </span>
-            </td>
-
-            <td>
-                <button class="btn btn-sm btn-outline-info" title="View"
-                    onclick="viewPlan(${plan.id})">
-                    <i class="bi bi-eye"></i>
-                </button>
-
-                <button class="btn btn-sm btn-outline-warning" title="Edit"
-                    onclick="openEditModal(
-                        ${plan.id},
-                        '${plan.name}',
-                        '${plan.difficulty}',
-                        ${plan.duration_weeks}
-                    )">
-                    <i class="bi bi-pencil"></i>
-                </button>
-
-                <button class="btn btn-sm btn-outline-danger" title="Delete"
-                    onclick="deletePlan(${plan.id})">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+function showToast(message, variant) {
+    const toastEl = document.getElementById("appToast");
+    const bodyEl = document.getElementById("appToastBody");
+    if (!toastEl || !bodyEl) return;
+    toastEl.classList.remove("bg-success", "bg-danger");
+    toastEl.classList.add(variant === "error" ? "bg-danger" : "bg-success");
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2800 }).show();
 }
 
-loadWorkoutPlans();
+function switchModule(name) {
+    document.querySelectorAll('#moduleTabs .nav-link').forEach(b => b.classList.remove('active'));
+    document.querySelector(`#moduleTabs [data-module="${name}"]`).classList.add('active');
+    ['templates', 'assignments', 'library'].forEach(m => {
+        document.getElementById('module-' + m).style.display = (m === name) ? 'block' : 'none';
+    });
+    if (name === 'assignments' && !allAssignments.length) loadAssignments();
+    if (name === 'library' && !allExercises.length) loadExercises();
+}
+
+function statusBadge(status) {
+    const map = { DRAFT: 'secondary', IN_REVIEW: 'info', APPROVED: 'success', ARCHIVED: 'dark' };
+    const label = { DRAFT: 'Draft', IN_REVIEW: 'In review', APPROVED: 'Approved', ARCHIVED: 'Archived' };
+    return `<span class="badge bg-${map[status] || 'secondary'}">${label[status] || status}</span>`;
+}
+function difficultyBadge(d) {
+    const map = { BEGINNER: 'success', INTERMEDIATE: 'warning', ADVANCED: 'danger' };
+    return `<span class="badge bg-${map[d] || 'secondary'}">${d}</span>`;
+}
+function assignmentStatusBadge(status) {
+    const map = { ACTIVE: 'success', PAUSED: 'warning', COMPLETED: 'primary', CANCELLED: 'secondary' };
+    return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+}
+
+let templatesNextUrl = null;
+let templatesPrevUrl = null;
+let searchDebounceTimer = null;
+
+function debouncedTemplateSearch() {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => loadTemplates(), 350);
+}
+
+async function loadTemplates(url) {
+    const statusFilter = document.getElementById('templateStatusFilter').value;
+    const search = document.getElementById('searchTemplate').value.trim();
+    let requestUrl = url;
+    if (!requestUrl) {
+        const params = new URLSearchParams();
+        if (statusFilter) params.set('status', statusFilter);
+        if (search) params.set('search', search);
+        requestUrl = `/workouts/templates/${params.toString() ? '?' + params.toString() : ''}`;
+    }
+    const response = await apiRequest(requestUrl);
+    if (!response || !response.ok) { showToast('Could not load templates', 'error'); return; }
+    const data = await response.json();
+    allTemplates = data.results || data;
+    templatesNextUrl = data.next ? data.next.replace(/^.*\/api/, '') : null;
+    templatesPrevUrl = data.previous ? data.previous.replace(/^.*\/api/, '') : null;
+
+    // `data.count` reflects the TRUE total across all pages (page size is
+    // 20) — using allTemplates.length here would silently under-report once
+    // there's more than one page.
+    document.getElementById('statTemplates').textContent = data.count ?? allTemplates.length;
+    const approvedResp = await apiRequest('/workouts/templates/?status=APPROVED&page_size=1');
+    if (approvedResp && approvedResp.ok) {
+        const approvedData = await approvedResp.json();
+        document.getElementById('statApproved').textContent = approvedData.count ?? '0';
+    }
+    renderTemplates(data.count ?? allTemplates.length);
+}
+
+function renderTemplates(totalCount) {
+    document.getElementById('templateCountBadge').textContent = totalCount ?? allTemplates.length;
+
+    document.getElementById('templatesTable').innerHTML = allTemplates.map(t => `
+        <tr>
+            <td>
+                <a href="workout-template-detail.html?id=${t.id}" class="fw-semibold text-decoration-none">${t.name}</a>
+                <div class="text-muted small">${difficultyBadge(t.difficulty)}</div>
+            </td>
+            <td>${t.goal || '—'}</td>
+            <td>${t.duration_weeks} wk</td>
+            <td>${t.assigned_member_count} members</td>
+            <td>${statusBadge(t.status)}</td>
+            <td>${new Date(t.updated_at).toLocaleDateString()}</td>
+            <td class="text-nowrap">
+                <a href="workout-template-detail.html?id=${t.id}" class="btn btn-sm btn-outline-info" title="View"><i class="bi bi-eye"></i></a>
+                ${t.status === 'DRAFT' ? `<button class="btn btn-sm btn-outline-warning" title="Submit for review" onclick="submitForReview(${t.id})"><i class="bi bi-send"></i></button>` : ''}
+                ${t.status === 'IN_REVIEW' ? `<button class="btn btn-sm btn-outline-success" title="Approve" onclick="approveTemplate(${t.id})"><i class="bi bi-check2-circle"></i></button>` : ''}
+                <button class="btn btn-sm btn-outline-secondary" title="Duplicate" onclick="duplicateTemplate(${t.id})"><i class="bi bi-copy"></i></button>
+                <button class="btn btn-sm btn-outline-primary" title="Assign" onclick="openAssignModal(${t.id}, '${t.status}')"><i class="bi bi-person-plus"></i></button>
+                ${t.status !== 'ARCHIVED' ? `<button class="btn btn-sm btn-outline-dark" title="Archive" onclick="archiveTemplate(${t.id})"><i class="bi bi-archive"></i></button>` : ''}
+            </td>
+        </tr>
+    `).join('') || `<tr><td colspan="7" class="text-center text-muted py-4">No templates yet — create one to get started.</td></tr>`;
+
+    document.getElementById('templatesPagination').innerHTML = (templatesNextUrl || templatesPrevUrl) ? `
+        <button class="btn btn-sm btn-outline-secondary" ${templatesPrevUrl ? '' : 'disabled'} onclick="loadTemplates('${templatesPrevUrl}')"><i class="bi bi-chevron-left"></i> Prev</button>
+        <button class="btn btn-sm btn-outline-secondary" ${templatesNextUrl ? '' : 'disabled'} onclick="loadTemplates('${templatesNextUrl}')">Next <i class="bi bi-chevron-right"></i></button>
+    ` : '';
+}
+
+async function createTemplate() {
+    const payload = {
+        name: document.getElementById('tplName').value,
+        goal: document.getElementById('tplGoal').value,
+        difficulty: document.getElementById('tplDifficulty').value,
+        duration_weeks: parseInt(document.getElementById('tplDuration').value) || 4,
+    };
+    if (!payload.name) { showToast('Template name is required', 'error'); return; }
+    const response = await apiRequest('/workouts/templates/', { method: 'POST', body: JSON.stringify(payload) });
+    if (response && response.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('createTemplateModal')).hide();
+        document.getElementById('tplName').value = '';
+        document.getElementById('tplGoal').value = '';
+        loadTemplates();
+        showToast('Template created — add days and exercises next.');
+    } else if (response) {
+        const err = await response.json();
+        showToast(formatApiError(err), 'error');
+    } else {
+        showToast('Failed to create template', 'error');
+    }
+}
+
+async function submitForReview(id) {
+    const response = await apiRequest(`/workouts/templates/${id}/submit-review/`, { method: 'POST' });
+    if (response && response.ok) { showToast('Submitted for review'); loadTemplates(); }
+    else { showToast('Could not submit for review', 'error'); }
+}
+async function approveTemplate(id) {
+    const response = await apiRequest(`/workouts/templates/${id}/approve/`, { method: 'POST' });
+    if (response && response.ok) { showToast('Template approved'); loadTemplates(); }
+    else { showToast('Could not approve (owner/staff only)', 'error'); }
+}
+async function archiveTemplate(id) {
+    if (!confirm('Archive this template?')) return;
+    const response = await apiRequest(`/workouts/templates/${id}/archive/`, { method: 'POST' });
+    if (response && response.ok) { showToast('Template archived'); loadTemplates(); }
+    else { showToast('Could not archive', 'error'); }
+}
+async function duplicateTemplate(id) {
+    const response = await apiRequest(`/workouts/templates/${id}/duplicate/`, { method: 'POST', body: JSON.stringify({}) });
+    if (response && response.ok) { showToast('Duplicated as a new draft'); loadTemplates(); }
+    else { showToast('Could not duplicate', 'error'); }
+}
+
+function openAssignModal(templateId, status) {
+    document.getElementById('assignTemplateId').value = templateId;
+    document.getElementById('assignApprovalWarning').style.display = (status === 'APPROVED') ? 'none' : 'block';
+    loadMembersIntoSelect('assignMember');
+    new bootstrap.Modal(document.getElementById('assignModal')).show();
+}
+async function submitAssignment() {
+    const payload = {
+        template: parseInt(document.getElementById('assignTemplateId').value),
+        member: document.getElementById('assignMember').value,
+        start_date: document.getElementById('assignStartDate').value,
+        goal_note: document.getElementById('assignGoalNote').value,
+    };
+    if (!payload.member) { showToast('Select a member', 'error'); return; }
+    if (!payload.start_date) { showToast('Pick a start date', 'error'); return; }
+    const response = await apiRequest('/workouts/assignments/', { method: 'POST', body: JSON.stringify(payload) });
+    if (response && response.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('assignModal')).hide();
+        loadTemplates();
+        allAssignments = [];
+        showToast('Member assigned');
+    } else if (response) {
+        const err = await response.json();
+        showToast(formatApiError(err), 'error');
+    } else {
+        showToast('Assignment failed', 'error');
+    }
+}
+
+async function loadAssignments() {
+    const response = await apiRequest('/workouts/assignments/');
+    if (!response || !response.ok) return;
+    const data = await response.json();
+    allAssignments = data.results || data;
+    document.getElementById('assignmentCountBadge').textContent = allAssignments.length;
+    document.getElementById('statAssignments').textContent = allAssignments.filter(a => a.status === 'ACTIVE').length;
+    document.getElementById('assignmentsTable').innerHTML = allAssignments.map(a => `
+        <tr>
+            <td>${a.member_name}</td>
+            <td><a href="workout-template-detail.html?id=${a.template}" class="text-decoration-none">${a.template_name}</a></td>
+            <td>${a.start_date}</td>
+            <td>${assignmentStatusBadge(a.status)}</td>
+            <td>
+                ${a.status === 'ACTIVE' ? `<button class="btn btn-sm btn-outline-warning" onclick="updateAssignmentStatus(${a.id}, 'PAUSED')">Pause</button>` : ''}
+                ${a.status === 'PAUSED' ? `<button class="btn btn-sm btn-outline-success" onclick="updateAssignmentStatus(${a.id}, 'ACTIVE')">Resume</button>` : ''}
+                <button class="btn btn-sm btn-outline-secondary" onclick="updateAssignmentStatus(${a.id}, 'CANCELLED')">Cancel</button>
+            </td>
+        </tr>
+    `).join('') || `<tr><td colspan="5" class="text-center text-muted py-4">No assignments yet.</td></tr>`;
+}
+async function updateAssignmentStatus(id, status) {
+    const response = await apiRequest(`/workouts/assignments/${id}/`, { method: 'PATCH', body: JSON.stringify({ status }) });
+    if (response && response.ok) { showToast('Assignment updated'); loadAssignments(); }
+    else { showToast('Update failed', 'error'); }
+}
+
+async function loadExercises() {
+    const response = await apiRequest('/workouts/exercises/');
+    if (!response || !response.ok) return;
+    const data = await response.json();
+    allExercises = data.results || data;
+    document.getElementById('exerciseCountBadge').textContent = allExercises.length;
+    document.getElementById('statExercises').textContent = allExercises.length;
+    document.getElementById('exercisesTable').innerHTML = allExercises.map(ex => `
+        <tr>
+            <td class="fw-semibold">${ex.name}</td>
+            <td>${ex.muscle_group}</td>
+            <td>${ex.equipment || '—'}</td>
+            <td>${ex.exercise_type}</td>
+            <td class="text-nowrap">
+                <button class="btn btn-sm btn-outline-secondary" onclick='openEditExerciseModal(${JSON.stringify(ex)})'><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteExercise(${ex.id}, '${ex.name.replace(/'/g, "\\'")}')"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>
+    `).join('') || `<tr><td colspan="5" class="text-center text-muted py-4">No exercises yet — add the first one.</td></tr>`;
+}
+
+function openNewExerciseModal() {
+    document.getElementById('exerciseModalTitle').textContent = 'New Exercise';
+    document.getElementById('exId').value = '';
+    document.getElementById('exName').value = '';
+    document.getElementById('exMuscle').value = 'CHEST';
+    document.getElementById('exType').value = 'STRENGTH';
+    document.getElementById('exEquipment').value = '';
+    document.getElementById('exInstructions').value = '';
+}
+function openEditExerciseModal(ex) {
+    document.getElementById('exerciseModalTitle').textContent = 'Edit Exercise';
+    document.getElementById('exId').value = ex.id;
+    document.getElementById('exName').value = ex.name;
+    document.getElementById('exMuscle').value = ex.muscle_group;
+    document.getElementById('exType').value = ex.exercise_type;
+    document.getElementById('exEquipment').value = ex.equipment || '';
+    document.getElementById('exInstructions').value = ex.instructions || '';
+    new bootstrap.Modal(document.getElementById('createExerciseModal')).show();
+}
+async function saveExercise() {
+    const id = document.getElementById('exId').value;
+    const payload = {
+        name: document.getElementById('exName').value,
+        muscle_group: document.getElementById('exMuscle').value,
+        exercise_type: document.getElementById('exType').value,
+        equipment: document.getElementById('exEquipment').value,
+        instructions: document.getElementById('exInstructions').value,
+    };
+    if (!payload.name) { showToast('Exercise name is required', 'error'); return; }
+    const url = id ? `/workouts/exercises/${id}/` : '/workouts/exercises/';
+    const method = id ? 'PATCH' : 'POST';
+    const response = await apiRequest(url, { method, body: JSON.stringify(payload) });
+    if (response && response.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('createExerciseModal')).hide();
+        loadExercises();
+        showToast(id ? 'Exercise updated' : 'Exercise added to library');
+    } else if (response) {
+        const err = await response.json();
+        showToast(formatApiError(err), 'error');
+    } else {
+        showToast('Failed to save exercise', 'error');
+    }
+}
+async function deleteExercise(id, name) {
+    if (!confirm(`Delete "${name}"? This can't be undone, and it'll disappear from any workout day still using it.`)) return;
+    const response = await apiRequest(`/workouts/exercises/${id}/`, { method: 'DELETE' });
+    if (response && (response.ok || response.status === 204)) { showToast('Exercise deleted'); loadExercises(); }
+    else showToast('Could not delete — it may still be in use on a workout day', 'error');
+}
+
+loadTemplates();
+loadExercises();
 </script>
 </body>
 </html>
