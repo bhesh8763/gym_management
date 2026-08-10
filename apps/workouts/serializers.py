@@ -78,11 +78,9 @@ class WorkoutTemplateSerializer(serializers.ModelSerializer):
     # Trainers creating their own templates can omit this — perform_create fills it in.
     # Owners and staff can explicitly assign any trainer by supplying a trainer id.
     trainer = serializers.PrimaryKeyRelatedField(
-<<<<<<< HEAD
+
         queryset=User.objects.filter(role='TRAINER'),
-=======
-        queryset=get_user_model().objects.filter(role='TRAINER'),
->>>>>>> origin/feature/workout-polish
+        
         required=False,
         allow_null=True,
     )
