@@ -127,7 +127,7 @@ class WorkoutAssignmentSerializer(serializers.ModelSerializer):
     completion_pct = serializers.IntegerField(read_only=True)
 
     member = serializers.PrimaryKeyRelatedField(
-        queryset=__import__('apps.accounts.models', fromlist=['User']).User.objects.filter(role='MEMBER'),
+        queryset=User.objects.filter(role='MEMBER'),
     )
 
     class Meta:
