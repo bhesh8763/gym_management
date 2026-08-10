@@ -294,6 +294,9 @@ class WorkoutAssignmentListCreateView(generics.ListCreateAPIView):
         template_id = self.request.query_params.get('template')
         if template_id:
             qs = qs.filter(template_id=template_id)
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
         return qs
 
     def perform_create(self, serializer):

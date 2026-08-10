@@ -1360,6 +1360,7 @@ h3, h5 {
 .stat-icon.icon-active  { background: #e8f9f0; color: #16a34a;}
 .stat-icon.icon-beginner{ background: #fff8e6; color: #d97706;}
 .stat-icon.icon-advanced{ background: #fdecec; color: #dc2626;}
+.stat-icon.icon-library { background: #e6f4fd; color: #1789c9;}
 
 .stat-label { font-size: 0.8rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
 .stat-value { font-size: 1.6rem; font-weight: 700; margin: 0; color: #1f2937; }
@@ -1367,13 +1368,6 @@ h3, h5 {
 .page-subtitle { color: #6b7280; font-size: 0.925rem; margin-top: -4px; margin-bottom: 0; }
 
 .table-hover tbody tr:hover { background-color: #f8f9fc; }
-.table thead th {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #6b7280;
-    border-bottom: 2px solid #e5e7eb;
-}
 
 .badge-difficulty { font-weight: 600; padding: 0.4em 0.75em; border-radius: 6px; }
 .badge-beginner    { background: #e8f9f0; color: #16a34a; }
@@ -1384,6 +1378,7 @@ h3, h5 {
 .badge-draft    { background: #f1f2f4; color: #4b5563; }
 .badge-pending  { background: #fff8e6; color: #b45309; }
 .badge-approved { background: #e8f9f0; color: #16a34a; }
+.badge-archived { background: #eef0f2; color: #4a5568; }
 
 .action-btn { border-radius: 8px; }
 

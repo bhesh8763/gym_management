@@ -90,17 +90,33 @@
         <p class="text-muted">Build reusable training programs, then assign them to members.</p>
 
         <div class="row mt-3 g-3">
-            <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><h6>Templates</h6><h2 id="statTemplates">0</h2></div></div></div>
-            <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><h6>Approved</h6><h2 id="statApproved">0</h2></div></div></div>
-            <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><h6>Active Assignments</h6><h2 id="statAssignments">0</h2></div></div></div>
-            <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><h6>Exercise Library</h6><h2 id="statExercises">0</h2></div></div></div>
+            <div class="col-md-3">
+                <div class="stat-card"><div class="card-body d-flex align-items-center gap-3">
+                    <div class="stat-icon icon-total"><i class="bi bi-clipboard-data"></i></div>
+                    <div><div class="stat-label">Templates</div><div class="stat-value" id="statTemplates">0</div></div>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card"><div class="card-body d-flex align-items-center gap-3">
+                    <div class="stat-icon icon-active"><i class="bi bi-check-circle"></i></div>
+                    <div><div class="stat-label">Approved</div><div class="stat-value" id="statApproved">0</div></div>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card"><div class="card-body d-flex align-items-center gap-3">
+                    <div class="stat-icon icon-beginner"><i class="bi bi-person-check"></i></div>
+                    <div><div class="stat-label">Active Assignments</div><div class="stat-value" id="statAssignments">0</div></div>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card"><div class="card-body d-flex align-items-center gap-3">
+                    <div class="stat-icon icon-library"><i class="bi bi-collection"></i></div>
+                    <div><div class="stat-label">Exercise Library</div><div class="stat-value" id="statExercises">0</div></div>
+                </div></div>
+            </div>
         </div>
 
-        <div class="alert alert-primary d-flex align-items-start gap-2 mt-4 mb-0">
-            <i class="bi bi-info-circle mt-1"></i>
-            <div>A template is no longer tied to one member — build it once, then hand it to as many members as you want from the <strong>Assignments</strong> tab.</div>
-        </div>
-
+       
         <ul class="nav nav-pills mt-3 mb-3" id="moduleTabs">
             <li class="nav-item"><button class="nav-link active" data-module="templates" onclick="switchModule('templates')">Templates</button></li>
             <li class="nav-item"><button class="nav-link" data-module="assignments" onclick="switchModule('assignments')">Assignments</button></li>
@@ -304,14 +320,16 @@ function switchModule(name) {
 }
 
 function statusBadge(status) {
-    const map = { DRAFT: 'secondary', IN_REVIEW: 'info', APPROVED: 'success', ARCHIVED: 'dark' };
+    const map = { DRAFT: 'draft', IN_REVIEW: 'pending', APPROVED: 'approved', ARCHIVED: 'archived' };
     const label = { DRAFT: 'Draft', IN_REVIEW: 'In review', APPROVED: 'Approved', ARCHIVED: 'Archived' };
-    return `<span class="badge bg-${map[status] || 'secondary'}">${label[status] || status}</span>`;
+    return `<span class="badge-status badge-${map[status] || 'draft'}">${label[status] || status}</span>`;
 }
 function difficultyBadge(d) {
-    const map = { BEGINNER: 'success', INTERMEDIATE: 'warning', ADVANCED: 'danger' };
-    return `<span class="badge bg-${map[d] || 'secondary'}">${d}</span>`;
+    const map = { BEGINNER: 'beginner', INTERMEDIATE: 'intermediate', ADVANCED: 'advanced' };
+    const label = { BEGINNER: 'Beginner', INTERMEDIATE: 'Intermediate', ADVANCED: 'Advanced' };
+    return `<span class="badge-difficulty badge-${map[d] || 'beginner'}">${label[d] || d || '—'}</span>`;
 }
+
 function assignmentStatusBadge(status) {
     const map = { ACTIVE: 'success', PAUSED: 'warning', COMPLETED: 'primary', CANCELLED: 'secondary' };
     return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
@@ -366,16 +384,23 @@ function renderTemplates(totalCount) {
             </td>
             <td>${t.goal || '—'}</td>
             <td>${t.duration_weeks} wk</td>
-            <td>${t.assigned_member_count} members</td>
+            <td>${t.assigned_member_count} ${t.assigned_member_count === 1 ? 'member' : 'members'}</td>
             <td>${statusBadge(t.status)}</td>
             <td>${new Date(t.updated_at).toLocaleDateString()}</td>
             <td class="text-nowrap">
-                <a href="workout-template-detail.html?id=${t.id}" class="btn btn-sm btn-outline-info" title="View"><i class="bi bi-eye"></i></a>
-                ${t.status === 'DRAFT' ? `<button class="btn btn-sm btn-outline-warning" title="Submit for review" onclick="submitForReview(${t.id})"><i class="bi bi-send"></i></button>` : ''}
-                ${t.status === 'IN_REVIEW' ? `<button class="btn btn-sm btn-outline-success" title="Approve" onclick="approveTemplate(${t.id})"><i class="bi bi-check2-circle"></i></button>` : ''}
-                <button class="btn btn-sm btn-outline-secondary" title="Duplicate" onclick="duplicateTemplate(${t.id})"><i class="bi bi-copy"></i></button>
-                <button class="btn btn-sm btn-outline-primary" title="Assign" onclick="openAssignModal(${t.id}, '${t.status}')"><i class="bi bi-person-plus"></i></button>
-                ${t.status !== 'ARCHIVED' ? `<button class="btn btn-sm btn-outline-dark" title="Archive" onclick="archiveTemplate(${t.id})"><i class="bi bi-archive"></i></button>` : ''}
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        Manage
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="workout-template-detail.html?id=${t.id}"><i class="bi bi-eye me-2"></i>View</a></li>
+                        ${t.status === 'DRAFT' ? `<li><a class="dropdown-item" href="#" onclick="submitForReview(${t.id}); return false;"><i class="bi bi-send me-2"></i>Submit for Review</a></li>` : ''}
+                        ${t.status === 'IN_REVIEW' ? `<li><a class="dropdown-item" href="#" onclick="approveTemplate(${t.id}); return false;"><i class="bi bi-check2-circle me-2"></i>Approve</a></li>` : ''}
+                        <li><a class="dropdown-item" href="#" onclick="duplicateTemplate(${t.id}); return false;"><i class="bi bi-copy me-2"></i>Duplicate</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="openAssignModal(${t.id}, '${t.status}'); return false;"><i class="bi bi-person-plus me-2"></i>Assign</a></li>
+                        ${t.status !== 'ARCHIVED' ? `<li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-danger" href="#" onclick="archiveTemplate(${t.id}); return false;"><i class="bi bi-archive me-2"></i>Archive</a></li>` : ''}
+                    </ul>
+                </div>
             </td>
         </tr>
     `).join('') || `<tr><td colspan="7" class="text-center text-muted py-4">No templates yet — create one to get started.</td></tr>`;
@@ -560,6 +585,14 @@ async function deleteExercise(id, name) {
 
 loadTemplates();
 loadExercises();
+loadActiveAssignmentCount();
+
+async function loadActiveAssignmentCount() {
+    const response = await apiRequest('/workouts/assignments/?status=ACTIVE&page_size=1');
+    if (!response || !response.ok) return;
+    const data = await response.json();
+    document.getElementById('statAssignments').textContent = data.count ?? '0';
+}
 </script>
 </body>
 </html>
