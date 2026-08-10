@@ -65,7 +65,15 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        qs = Attendance.objects.select_related('user', 'marked_by').all()
+        from django.db.models import Prefetch
+        from apps.memberships.models import Membership
+
+        active_memberships = Prefetch(
+            'user__memberships',
+            queryset=Membership.objects.filter(status='ACTIVE').select_related('plan'),
+            to_attr='prefetched_active_memberships',
+        )
+        qs = Attendance.objects.select_related('user', 'marked_by').prefetch_related(active_memberships).all()
 
         user = self.request.user
         if user.role not in STAFF_SIDE_ROLES:
@@ -97,8 +105,17 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         requester = self.request.user
         instance = self.get_object()
 
-        if requester.role not in STAFF_SIDE_ROLES and instance.user != requester:
-            raise PermissionDenied('You can only update your own attendance.')
+        if requester.role not in STAFF_SIDE_ROLES:
+            if instance.user != requester:
+                raise PermissionDenied('You can only update your own attendance.')
+            # Members may only self-checkout — everything else (status,
+            # check_in, attendance_type) stays staff-controlled.
+            allowed_fields = {'check_out'}
+            attempted_fields = set(serializer.validated_data.keys())
+            if attempted_fields - allowed_fields:
+                raise PermissionDenied(
+                    'Members can only set check_out on their own attendance record.'
+                )
 
         serializer.save()
 

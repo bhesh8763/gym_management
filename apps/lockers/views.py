@@ -25,6 +25,8 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerOrStaff]
 
     def get_queryset(self):
+        self._release_expired_assignments()
+
         qs = LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').all()
         member_id = self.request.query_params.get('member')
         active_only = self.request.query_params.get('active')
@@ -33,6 +35,23 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
         if active_only == 'true':
             qs = qs.filter(is_active=True)
         return qs
+
+    def _release_expired_assignments(self):
+        """
+        Lazily deactivate any active assignment whose end_date has passed,
+        and free the locker back to AVAILABLE. Runs on every list/retrieve
+        so expired rentals don't sit as OCCUPIED indefinitely.
+        """
+        from django.utils import timezone
+        today = timezone.now().date()
+        expired = LockerAssignment.objects.select_related('locker').filter(
+            is_active=True, end_date__isnull=False, end_date__lt=today,
+        )
+        for assignment in expired:
+            assignment.is_active = False
+            assignment.save(update_fields=['is_active'])
+            assignment.locker.status = Locker.LockerStatus.AVAILABLE
+            assignment.locker.save(update_fields=['status'])
 
     def perform_create(self, serializer):
         locker = serializer.validated_data.get('locker')

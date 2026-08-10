@@ -84,6 +84,10 @@ class Payment(models.Model):
         return f'#{self.receipt_number} — {self.member.get_full_name()} — NPR {self.amount_paid}'
 
     def save(self, *args, **kwargs):
-        # Auto-compute amount_paid
-        self.amount_paid = self.amount - self.discount
+        # Only PAID/PARTIAL payments have actually received money.
+        # PENDING/FAILED/REFUNDED should not show a collected amount.
+        if self.status in (self.PaymentStatus.PAID, self.PaymentStatus.PARTIAL):
+            self.amount_paid = self.amount - self.discount
+        else:
+            self.amount_paid = Decimal('0')
         super().save(*args, **kwargs)

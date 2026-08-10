@@ -19,7 +19,15 @@ class AttendanceSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'marked_by']
 
     def get_membership(self, obj):
-        membership = obj.user.memberships.filter(
-            status='ACTIVE', end_date__gte=timezone.now().date()
-        ).order_by('-start_date').first()
+        # Use the prefetched list from the viewset when available (avoids
+        # one query per row); fall back to a direct query otherwise.
+        memberships = getattr(obj.user, 'prefetched_active_memberships', None)
+        if memberships is None:
+            memberships = obj.user.memberships.filter(
+                status='ACTIVE', end_date__gte=timezone.now().date()
+            )
+        else:
+            today = timezone.now().date()
+            memberships = [m for m in memberships if m.end_date and m.end_date >= today]
+        membership = max(memberships, key=lambda m: m.start_date, default=None)
         return membership.plan.name if membership else None
