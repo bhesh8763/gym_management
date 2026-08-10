@@ -127,11 +127,12 @@ class WorkoutTemplate(models.Model):
     def __str__(self):
         return self.name
 
-    def submit_for_review(self):
+    def submit_for_review(self, actor=None):
         if self.status != self.Status.DRAFT:
             raise ValidationError('Only draft templates can be submitted for review.')
         self.status = self.Status.IN_REVIEW
         self.save(update_fields=['status', 'updated_at'])
+        self._capture_version('submitted_for_review', actor)
 
     def approve(self, reviewer):
         if self.status != self.Status.IN_REVIEW:
@@ -139,6 +140,13 @@ class WorkoutTemplate(models.Model):
         self.status = self.Status.APPROVED
         self.reviewed_by = reviewer
         self.save(update_fields=['status', 'reviewed_by', 'updated_at'])
+        self._capture_version('approved', reviewer)
+
+    def _capture_version(self, reason, actor):
+        WorkoutTemplateVersion.objects.create(
+            template=self, snapshot=WorkoutTemplateVersion.snapshot_of(self),
+            reason=reason, created_by=actor,
+        )
 
     def archive(self):
         self.status = self.Status.ARCHIVED
@@ -179,8 +187,13 @@ class WorkoutTemplate(models.Model):
                 )
         return clone
 
-    @property
-    def assigned_member_count(self):
+    def get_assigned_member_count(self):
+        """
+        Live count. Views that list many templates annotate this same value
+        onto the queryset instead (avoids one query per row) — this method is
+        for the single-object cases that don't go through that queryset:
+        admin's list_display, and the response right after create().
+        """
         return self.assignments.filter(status=WorkoutAssignment.Status.ACTIVE).count()
 
 
@@ -289,7 +302,16 @@ class WorkoutAssignment(models.Model):
     def save(self, *args, **kwargs):
         if not self.end_date and self.template_id:
             from datetime import timedelta
-            self.end_date = self.start_date + timedelta(weeks=self.template.duration_weeks)
+            from django.utils.dateparse import parse_date
+            # start_date is normally already a date object (the API validates
+            # it through the serializer field), but anything that writes via
+            # the raw ORM — the admin, a data migration, a management command —
+            # can hand this a plain string. Don't let arithmetic below blow up.
+            start = self.start_date
+            if isinstance(start, str):
+                start = parse_date(start)
+            if start:
+                self.end_date = start + timedelta(weeks=self.template.duration_weeks)
         super().save(*args, **kwargs)
 
     @property
@@ -299,6 +321,103 @@ class WorkoutAssignment(models.Model):
             return 0
         done = self.logs.filter(status=WorkoutCompletionLog.Status.COMPLETED).values('workout_day').distinct().count()
         return round((done / total) * 100)
+
+
+class WorkoutTemplateVersion(models.Model):
+    """
+    A point-in-time snapshot of a template's structure (days + exercises),
+    captured at meaningful transitions — submit-for-review and approve —
+    not on every keystroke. Lets a trainer or owner see what changed and
+    roll back a template that was edited into a worse state after approval.
+    """
+    template = models.ForeignKey(
+        WorkoutTemplate, on_delete=models.CASCADE, related_name='versions'
+    )
+    snapshot = models.JSONField(help_text='Serialized days + exercises at the time this version was captured.')
+    reason = models.CharField(max_length=50, help_text='e.g. "submitted_for_review", "approved", "manual"')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='workout_template_versions_created',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'workout_template_versions'
+        verbose_name = 'Workout Template Version'
+        verbose_name_plural = 'Workout Template Versions'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.template.name} — v@{self.created_at:%Y-%m-%d %H:%M}'
+
+    @staticmethod
+    def snapshot_of(template):
+        """Builds the JSON-serializable structure captured for a version."""
+        return {
+            'name': template.name,
+            'goal': template.goal,
+            'description': template.description,
+            'difficulty': template.difficulty,
+            'duration_weeks': template.duration_weeks,
+            'days': [
+                {
+                    'week_number': day.week_number,
+                    'day_number': day.day_number,
+                    'day_name': day.day_name,
+                    'notes': day.notes,
+                    'exercises': [
+                        {
+                            'exercise_id': ex.exercise_id,
+                            'exercise_name': ex.exercise.name,
+                            'order': ex.order,
+                            'sets': ex.sets,
+                            'reps': ex.reps,
+                            'rest_seconds': ex.rest_seconds,
+                            'tempo': ex.tempo,
+                            'rpe': ex.rpe,
+                            'weight_kg': str(ex.weight_kg) if ex.weight_kg is not None else None,
+                            'notes': ex.notes,
+                        }
+                        for ex in day.exercises.all()
+                    ],
+                }
+                for day in template.days.all()
+            ],
+        }
+
+    def restore(self):
+        """Replaces the live template's days/exercises with this snapshot's."""
+        template = self.template
+        template.name = self.snapshot['name']
+        template.goal = self.snapshot['goal']
+        template.description = self.snapshot['description']
+        template.difficulty = self.snapshot['difficulty']
+        template.duration_weeks = self.snapshot['duration_weeks']
+        template.save()
+
+        template.days.all().delete()  # cascades to WorkoutDayExercise
+        for day_data in self.snapshot['days']:
+            day = WorkoutDay.objects.create(
+                template=template,
+                week_number=day_data['week_number'],
+                day_number=day_data['day_number'],
+                day_name=day_data['day_name'],
+                notes=day_data['notes'],
+            )
+            for ex_data in day_data['exercises']:
+                WorkoutDayExercise.objects.create(
+                    workout_day=day,
+                    exercise_id=ex_data['exercise_id'],
+                    order=ex_data['order'],
+                    sets=ex_data['sets'],
+                    reps=ex_data['reps'],
+                    rest_seconds=ex_data['rest_seconds'],
+                    tempo=ex_data['tempo'],
+                    rpe=ex_data['rpe'],
+                    weight_kg=ex_data['weight_kg'],
+                    notes=ex_data['notes'],
+                )
+        return template
 
 
 class WorkoutCompletionLog(models.Model):

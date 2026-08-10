@@ -6,6 +6,7 @@ from .models import (
     WorkoutDayExercise,
     WorkoutAssignment,
     WorkoutCompletionLog,
+    WorkoutTemplateVersion,
 )
 
 
@@ -30,7 +31,7 @@ class WorkoutTemplateAdmin(admin.ModelAdmin):
 
     @admin.display(description='Assigned')
     def assigned_member_count(self, obj):
-        return obj.assigned_member_count
+        return obj.get_assigned_member_count()
 
 
 class WorkoutDayExerciseInline(admin.TabularInline):
@@ -59,3 +60,10 @@ class WorkoutAssignmentAdmin(admin.ModelAdmin):
 class WorkoutCompletionLogAdmin(admin.ModelAdmin):
     list_display = ('assignment', 'workout_day', 'date', 'status', 'perceived_difficulty')
     list_filter = ('status',)
+
+
+@admin.register(WorkoutTemplateVersion)
+class WorkoutTemplateVersionAdmin(admin.ModelAdmin):
+    list_display = ('template', 'reason', 'created_by', 'created_at')
+    list_filter = ('reason',)
+    readonly_fields = ('snapshot',)

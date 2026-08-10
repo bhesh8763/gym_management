@@ -9,8 +9,11 @@ from .views import (
     WorkoutTemplateApproveView,
     WorkoutTemplateArchiveView,
     WorkoutTemplateDuplicateView,
+    WorkoutTemplateVersionListView,
+    WorkoutTemplateVersionRestoreView,
     WorkoutDayListCreateView,
     WorkoutDayDetailView,
+    WorkoutDayMoveView,
     WorkoutDayExerciseListCreateView,
     WorkoutDayExerciseDetailView,
     WorkoutAssignmentListCreateView,
@@ -30,10 +33,13 @@ urlpatterns = [
     path('templates/<int:pk>/approve/', WorkoutTemplateApproveView.as_view(), name='workout-template-approve'),
     path('templates/<int:pk>/archive/', WorkoutTemplateArchiveView.as_view(), name='workout-template-archive'),
     path('templates/<int:pk>/duplicate/', WorkoutTemplateDuplicateView.as_view(), name='workout-template-duplicate'),
+    path('templates/<int:pk>/versions/', WorkoutTemplateVersionListView.as_view(), name='workout-template-version-list'),
+    path('templates/<int:pk>/versions/<int:version_id>/restore/', WorkoutTemplateVersionRestoreView.as_view(), name='workout-template-version-restore'),
 
     # Builder: days + exercises within a template
     path('days/', WorkoutDayListCreateView.as_view(), name='workout-day-list'),
     path('days/<int:pk>/', WorkoutDayDetailView.as_view(), name='workout-day-detail'),
+    path('days/<int:pk>/move/', WorkoutDayMoveView.as_view(), name='workout-day-move'),
     path('day-exercises/', WorkoutDayExerciseListCreateView.as_view(), name='workout-day-exercise-list'),
     path('day-exercises/<int:pk>/', WorkoutDayExerciseDetailView.as_view(), name='workout-day-exercise-detail'),
 

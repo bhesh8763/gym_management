@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
@@ -15,6 +16,7 @@ from .models import (
     WorkoutDayExercise,
     WorkoutAssignment,
     WorkoutCompletionLog,
+    WorkoutTemplateVersion,
 )
 from .serializers import (
     ExerciseSerializer,
@@ -25,6 +27,7 @@ from .serializers import (
     WorkoutDayExerciseSerializer,
     WorkoutAssignmentSerializer,
     WorkoutCompletionLogSerializer,
+    WorkoutTemplateVersionSerializer,
 )
 
 
@@ -77,17 +80,24 @@ class WorkoutTemplateListCreateView(generics.ListCreateAPIView):
         return WorkoutTemplateListSerializer if self.request.method == 'GET' else WorkoutTemplateSerializer
 
     def get_queryset(self):
+        # Explicit order_by: annotate() combined with a filtered Count() can
+        # leave the queryset's ordering ambiguous even with Meta.ordering set,
+        # which makes DRF's pagination warn (and, worse, can actually
+        # duplicate or skip rows across pages). Pin it here.
         qs = _visible_templates(self.request.user).annotate(
             assigned_member_count=Count(
                 'assignments', filter=Q(assignments__status=WorkoutAssignment.Status.ACTIVE), distinct=True
             )
-        )
+        ).order_by('-updated_at')
         status_filter = self.request.query_params.get('status')
         difficulty = self.request.query_params.get('difficulty')
+        search = self.request.query_params.get('search')
         if status_filter:
             qs = qs.filter(status=status_filter)
         if difficulty:
             qs = qs.filter(difficulty=difficulty)
+        if search:
+            qs = qs.filter(Q(name__icontains=search) | Q(goal__icontains=search))
         return qs
 
 
@@ -100,7 +110,7 @@ class WorkoutTemplateDetailView(generics.RetrieveUpdateDestroyAPIView):
             assigned_member_count=Count(
                 'assignments', filter=Q(assignments__status=WorkoutAssignment.Status.ACTIVE), distinct=True
             )
-        )
+        ).order_by('-updated_at')
 
 
 class WorkoutTemplateSubmitReviewView(APIView):
@@ -111,7 +121,7 @@ class WorkoutTemplateSubmitReviewView(APIView):
         if not template:
             return Response(status=status.HTTP_404_NOT_FOUND)
         try:
-            template.submit_for_review()
+            template.submit_for_review(actor=request.user)
         except DjangoValidationError as exc:
             raise DRFValidationError(exc.message)
         return Response(WorkoutTemplateSerializer(template).data)
@@ -154,6 +164,32 @@ class WorkoutTemplateDuplicateView(APIView):
         return Response(WorkoutTemplateSerializer(clone).data, status=status.HTTP_201_CREATED)
 
 
+class WorkoutTemplateVersionListView(generics.ListAPIView):
+    serializer_class = WorkoutTemplateVersionSerializer
+    permission_classes = [IsOwnerOrStaffOrTrainer]
+
+    def get_queryset(self):
+        template = _visible_templates(self.request.user).filter(pk=self.kwargs['pk']).first()
+        if not template:
+            return WorkoutTemplateVersion.objects.none()
+        return template.versions.all()
+
+
+class WorkoutTemplateVersionRestoreView(APIView):
+    permission_classes = [IsOwnerOrStaffOrTrainer]
+
+    def post(self, request, pk, version_id):
+        template = _visible_templates(request.user).filter(pk=pk).first()
+        if not template:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        version = template.versions.filter(pk=version_id).first()
+        if not version:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        with transaction.atomic():
+            restored = version.restore()
+        return Response(WorkoutTemplateSerializer(restored).data)
+
+
 # ─── Workout Days / Exercises (builder) ─────────────────────────────────────
 
 class WorkoutDayListCreateView(generics.ListCreateAPIView):
@@ -170,6 +206,50 @@ class WorkoutDayDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = WorkoutDay.objects.all()
     serializer_class = WorkoutDaySerializer
     permission_classes = [IsOwnerOrStaffOrTrainer]
+
+
+class WorkoutDayMoveView(APIView):
+    """
+    Swap this day's position with the adjacent day in the same week.
+    Two PATCHes from the frontend swapping day_number directly would risk
+    the (template, week_number, day_number) unique constraint firing on the
+    intermediate state — do the swap through a temporary sentinel instead,
+    inside one transaction, so it's atomic either way.
+    """
+    permission_classes = [IsOwnerOrStaffOrTrainer]
+
+    def post(self, request, pk):
+        direction = request.data.get('direction')
+        if direction not in ('up', 'down'):
+            raise DRFValidationError({'direction': 'Must be "up" or "down".'})
+
+        day = WorkoutDay.objects.filter(pk=pk).first()
+        if not day:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        siblings = WorkoutDay.objects.filter(
+            template=day.template, week_number=day.week_number
+        ).order_by('day_number')
+        siblings_list = list(siblings)
+        idx = next((i for i, d in enumerate(siblings_list) if d.id == day.id), None)
+        if idx is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        swap_idx = idx - 1 if direction == 'up' else idx + 1
+        if swap_idx < 0 or swap_idx >= len(siblings_list):
+            raise DRFValidationError({'direction': f'Already at the {"top" if direction == "up" else "bottom"}.'})
+
+        other = siblings_list[swap_idx]
+        with transaction.atomic():
+            day_number_a, day_number_b = day.day_number, other.day_number
+            # Route through a value neither row currently holds, so neither
+            # UPDATE ever collides with the unique_together mid-swap.
+            sentinel = max(d.day_number for d in siblings_list) + 1000
+            WorkoutDay.objects.filter(pk=day.pk).update(day_number=sentinel)
+            WorkoutDay.objects.filter(pk=other.pk).update(day_number=day_number_a)
+            WorkoutDay.objects.filter(pk=day.pk).update(day_number=day_number_b)
+
+        return Response(WorkoutTemplateSerializer(day.template).data)
 
 
 class WorkoutDayExerciseListCreateView(generics.ListCreateAPIView):
@@ -215,6 +295,20 @@ class WorkoutAssignmentListCreateView(generics.ListCreateAPIView):
         if template_id:
             qs = qs.filter(template_id=template_id)
         return qs
+
+    def perform_create(self, serializer):
+        # The DB has a partial unique constraint (one ACTIVE assignment per
+        # template+member) that catches races the serializer's validate()
+        # can't — two trainers assigning the same member in the same instant
+        # can both pass validation before either commits. Without this,
+        # the loser of that race gets an unhandled IntegrityError -> 500.
+        try:
+            with transaction.atomic():
+                serializer.save()
+        except IntegrityError:
+            raise DRFValidationError(
+                {'member': 'This member already has an active assignment for this template.'}
+            )
 
 
 class WorkoutAssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
