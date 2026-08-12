@@ -667,7 +667,7 @@
               <td>${statusBadge(row.is_active)}</td>
               <td>
                 <!-- Extra icon removed for a cleaner action button -->
-                <button class="btn btn-sm btn-dark px-3 fw-medium" onclick="openManageModal(${row.id})">
+                <button class="btn btn-sm btn-dark px-3 fw-medium" onclick="window.location.href='member-detail.html?id=${row.id}'">
                   Manage
                 </button>
               </td>

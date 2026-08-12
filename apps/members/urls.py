@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.members.views import MemberDetailView, MemberListCreateView, MemberReactivateView, MyProfileView
+from apps.members.views import MemberDetailView, MemberListCreateView, MemberProfileDetailView, MemberReactivateView, MyProfileView
 from apps.members import template_views
 
 app_name = 'members'
@@ -10,6 +10,7 @@ urlpatterns = [
     path('', MemberListCreateView.as_view(), name='member-list-create'),
     path('me/', MyProfileView.as_view(), name='my-profile'),
     path('<int:pk>/reactivate/', MemberReactivateView.as_view(), name='member-reactivate'),
+    path('<int:pk>/profile-detail/', MemberProfileDetailView.as_view(), name='member-profile-detail'),
     path('<int:pk>/', MemberDetailView.as_view(), name='member-detail'),
 
     # ── UI (template views) ───────────────────────────────────────────────────

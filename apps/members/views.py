@@ -31,6 +31,7 @@ from rest_framework.views import APIView
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
 from apps.members.models import MemberProfile
 from apps.members.serializers import (
+    MemberAggregatedProfileSerializer,
     MemberCreateSerializer,
     MemberListSerializer,
     MemberProfileSerializer,
@@ -249,3 +250,20 @@ class MyProfileView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(MemberProfileSerializer(profile).data)
+
+
+# ─── Aggregated Member Profile Detail ─────────────────────────────────────────
+
+class MemberProfileDetailView(APIView):
+    """
+    GET /api/members/<id>/profile-detail/ — Aggregated profile for the detail page.
+    Returns member profile + membership, attendance, trainer, workouts, diet, progress, payments.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        profile = get_profile_or_404(pk)
+        if not (request.user.role in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER)
+                or profile.user == request.user):
+            raise PermissionDenied('You do not have permission to view this profile.')
+        return Response(MemberAggregatedProfileSerializer(profile).data)

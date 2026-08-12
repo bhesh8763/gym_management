@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Member Profile - FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    .bmi-card{border-radius:14px;padding:1.25rem;margin-top:1rem}
+    .bmi-card.bmi-underweight{background:linear-gradient(135deg,#dbeafe,#93c5fd)}
+    .bmi-card.bmi-normal{background:linear-gradient(135deg,#dcfce7,#86efac)}
+    .bmi-card.bmi-overweight{background:linear-gradient(135deg,#fef3c7,#fde68a)}
+    .bmi-card.bmi-obese{background:linear-gradient(135deg,#fee2e2,#fca5a5)}
+    .bmi-card.bmi-unknown{background:linear-gradient(135deg,#f3f4f6,#e5e7eb)}
+    .stat-mini{background:#fff;border-radius:12px;padding:1rem;box-shadow:0 2px 10px rgba(0,0,0,.05);text-align:center}
+    .stat-mini .stat-icon-sm{width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;margin-bottom:.5rem}
+    .stat-mini .stat-val{font-size:1.5rem;font-weight:800;color:#1a1a2e;line-height:1}
+    .stat-mini .stat-lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;font-weight:600;margin-top:4px}
+    .info-card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;margin-bottom:1.5rem}
+    .info-card-header{padding:1rem 1.25rem;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
+    .info-card-header h6{margin:0;font-weight:700;font-size:.9rem;color:#1a1a2e;display:flex;align-items:center;gap:.5rem}
+    .info-card-header h6 i{color:var(--brand-red)}
+    .info-card-body{padding:1.25rem}
+    .acc-panel{max-height:0;overflow:hidden;transition:max-height .3s ease;padding:0 1.25rem;}
+    .acc-panel.open{max-height:2000px;padding:1.25rem;}
+    .acc-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:1rem 1.25rem;border-radius:10px;transition:background .15s;}
+    .acc-header:hover{background:#f9fafb;}
+    .trainer-card{display:flex;align-items:center;gap:.75rem;padding:.75rem;background:#f9fafb;border-radius:10px}
+    .trainer-avatar{width:44px;height:44px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;flex-shrink:0}
+    .trainer-avatar img{width:100%;height:100%;object-fit:cover}
+    .trainer-info h6{margin:0;font-size:.9rem;font-weight:700;color:#1f2937}
+    .trainer-info p{margin:0;font-size:.75rem;color:#6b7280}
+    .edit-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1050;display:none;align-items:center;justify-content:center}
+    .edit-overlay.show{display:flex}
+    .edit-panel{background:#fff;border-radius:16px;width:90%;max-width:700px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+    .edit-panel-header{padding:1.25rem 1.5rem;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
+    .edit-panel-header h5{margin:0;font-weight:700;color:#1a1a2e}
+    .edit-panel-body{padding:1.5rem}
+    .edit-panel-footer{padding:1rem 1.5rem;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;gap:.5rem}
+    .empty-state{text-align:center;padding:2rem 1rem;color:#9ca3af}
+    .empty-state i{font-size:2rem;display:block;margin-bottom:.5rem;color:#d1d5db}
+    .empty-state p{margin:0;font-size:.85rem}
+    @media(max-width:1024px){.profile-grid{grid-template-columns:1fr!important}}
+    @media(max-width:768px){.stat-row{grid-template-columns:repeat(2,1fr)!important}}
+  </style>
+</head>
+<body data-allowed-roles="OWNER,STAFF,TRAINER">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <span class="navbar-brand">FitCore</span>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <div class="dropdown-panel" id="notifPanel"><div class="dropdown-header">Notifications</div><div id="notifList"><div class="notif-empty">No notifications</div></div></div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta"><div class="profile-name" id="profileName">&mdash;</div><div class="profile-role" id="profileRole">&mdash;</div></span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content"><div class="d-flex">
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <div class="nav-section-label">Members</div>
+      <a href="members.html" class="list-group-item list-group-item-action active" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+      <div class="nav-section-label">Staff Management</div>
+      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+      <div class="nav-section-label">Workout &amp; Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+      <div class="nav-section-label">Payments</div>
+      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+      <div class="nav-section-label">Equipment</div>
+      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+      <div class="nav-section-label">Insights</div>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+    </div>
+  </div>
+
+  <div class="flex-grow-1" style="padding:1.5rem;max-width:1400px;overflow-y:auto;">
+    <div id="profileLoading" style="display:flex;align-items:center;justify-content:center;min-height:60vh;color:#9ca3af;gap:.75rem;">
+      <div class="spinner-border text-danger"></div><span>Loading member profile&hellip;</span>
+    </div>
+    <div id="profileContent" style="display:none;"></div>
+  </div>
+</div></div>
+<div class="edit-overlay" id="editOverlay">
+  <div class="edit-panel">
+    <div class="edit-panel-header">
+      <h5><i class="bi bi-pencil me-2" style="color:var(--brand-red);"></i>Edit Member Profile</h5>
+      <button onclick="closeEdit()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9ca3af;">&times;</button>
+    </div>
+    <div class="edit-panel-body">
+      <div id="editError" style="background:#fee2e2;color:#991b1b;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;display:none;"></div>
+      <div id="editSuccess" style="background:#dcfce7;color:#166534;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;display:none;">Profile updated successfully!</div>
+      <form id="editForm">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Gender</label>
+            <select id="editGender" class="form-select form-select-sm">
+              <option value="">--</option><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option><option value="N">Prefer not to say</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Date of Birth</label>
+            <input type="date" id="editDob" class="form-control form-control-sm">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Height (cm)</label>
+            <input type="number" step="0.1" min="0" max="300" id="editHeight" class="form-control form-control-sm">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Weight (kg)</label>
+            <input type="number" step="0.01" min="0" id="editWeight" class="form-control form-control-sm">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Fitness Goal</label>
+            <select id="editGoal" class="form-select form-select-sm">
+              <option value="">--</option><option value="WEIGHT_LOSS">Weight Loss</option><option value="MUSCLE_GAIN">Muscle Gain</option><option value="ENDURANCE">Endurance</option><option value="FLEXIBILITY">Flexibility</option><option value="GENERAL">General Fitness</option><option value="REHAB">Rehabilitation</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Fitness Level</label>
+            <select id="editLevel" class="form-select form-select-sm">
+              <option value="BEGINNER">Beginner</option><option value="INTERMEDIATE">Intermediate</option><option value="ADVANCED">Advanced</option>
+            </select>
+          </div>
+        </div>
+        <hr style="margin:1rem 0;border-color:#f3f4f6;">
+        <div style="font-size:.75rem;font-weight:600;color:#6b7280;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.05em;">Address &amp; Emergency Contact</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div style="grid-column:1/-1;">
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Address</label>
+            <input type="text" id="editAddress" class="form-control form-control-sm">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Emergency Contact Name</label>
+            <input type="text" id="editEmName" class="form-control form-control-sm">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Emergency Contact Phone</label>
+            <input type="tel" id="editEmPhone" class="form-control form-control-sm" maxlength="10">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Medical Conditions</label>
+            <textarea id="editMedical" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Notes</label>
+            <textarea id="editNotes" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="edit-panel-footer">
+      <button onclick="closeEdit()" class="btn btn-secondary btn-sm" style="padding:.5rem 1.25rem;border-radius:8px;">Cancel</button>
+      <button onclick="saveEdit()" id="editSaveBtn" class="btn btn-primary btn-sm" style="padding:.5rem 1.25rem;border-radius:8px;background:var(--brand-red);border-color:var(--brand-red);">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+if (!getAccessToken()) window.location.href = 'index.html';
+var params = new URLSearchParams(window.location.search);
+var memberId = params.get('id');
+var profileData = null;
+
+function bmiCat(bmi){
+  if(!bmi)return{l:'Unknown',c:'bmi-unknown',clr:'#6b7280'};
+  if(bmi<18.5)return{l:'Underweight',c:'bmi-underweight',clr:'#2563eb'};
+  if(bmi<25)return{l:'Normal',c:'bmi-normal',clr:'#16a34a'};
+  if(bmi<30)return{l:'Overweight',c:'bmi-overweight',clr:'#d97706'};
+  return{l:'Obese',c:'bmi-obese',clr:'#dc2626'};
+}
+function msB(s){
+  var m={ACTIVE:'background:#dcfce7;color:#166534;',EXPIRED:'background:#f3f4f6;color:#6b7280;',FROZEN:'background:#dbeafe;color:#1d4ed8;',CANCELLED:'background:#fee2e2;color:#991b1b;',PENDING:'background:#fef3c7;color:#92400e;'};
+  return '<span style="'+(m[s]||'')+'padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">'+s+'</span>';
+}
+function pmi(m){var map={CASH:'bi-cash-stack',ESEWA:'bi-phone',KHALTI:'bi-phone',BANK:'bi-bank',CARD:'bi-credit-card'};return map[m]||'bi-wallet2';}
+
+function toggleAcc(id){
+  var panel=document.getElementById('acc-'+id);
+  var chev=document.getElementById('chev-'+id);
+  var isOpen=panel.classList.contains('open');
+  if(isOpen){panel.classList.remove('open');chev.style.transform='rotate(0deg)';}
+  else{panel.classList.add('open');chev.style.transform='rotate(180deg)';}
+}
+
+function openEdit(){
+  if(!profileData)return;
+  var d=profileData;var u=d.user;
+  document.getElementById('editGender').value=d.gender||'';
+  document.getElementById('editDob').value=d.date_of_birth||'';
+  document.getElementById('editHeight').value=d.height_cm||'';
+  document.getElementById('editWeight').value=d.weight_kg||'';
+  document.getElementById('editGoal').value=d.fitness_goal||'';
+  document.getElementById('editLevel').value=d.fitness_level||'BEGINNER';
+  document.getElementById('editAddress').value=d.address||'';
+  document.getElementById('editEmName').value=d.emergency_contact_name||'';
+  document.getElementById('editEmPhone').value=d.emergency_contact_phone||'';
+  document.getElementById('editMedical').value=d.medical_conditions||'';
+  document.getElementById('editNotes').value=d.notes||'';
+  document.getElementById('editError').style.display='none';
+  document.getElementById('editSuccess').style.display='none';
+  document.getElementById('editOverlay').classList.add('show');
+}
+function closeEdit(){document.getElementById('editOverlay').classList.remove('show');}
+
+async function saveEdit(){
+  var btn=document.getElementById('editSaveBtn');
+  btn.disabled=true;btn.textContent='Saving...';
+  document.getElementById('editError').style.display='none';
+  document.getElementById('editSuccess').style.display='none';
+
+  var payload={
+    gender:document.getElementById('editGender').value,
+    date_of_birth:document.getElementById('editDob').value||null,
+    height_cm:document.getElementById('editHeight').value||null,
+    weight_kg:document.getElementById('editWeight').value||null,
+    fitness_goal:document.getElementById('editGoal').value,
+    fitness_level:document.getElementById('editLevel').value,
+    address:document.getElementById('editAddress').value,
+    emergency_contact_name:document.getElementById('editEmName').value,
+    emergency_contact_phone:document.getElementById('editEmPhone').value,
+    medical_conditions:document.getElementById('editMedical').value,
+    notes:document.getElementById('editNotes').value
+  };
+
+  var res=await apiRequest('/members/'+memberId+'/',{method:'PATCH',body:JSON.stringify(payload)});
+  btn.disabled=false;btn.textContent='Save Changes';
+
+  if(!res){
+    document.getElementById('editError').textContent='Network error. Please try again.';document.getElementById('editError').style.display='block';return;
+  }
+  if(res.ok){
+    document.getElementById('editSuccess').style.display='block';
+    setTimeout(function(){closeEdit();loadProfile();},800);
+  }else{
+    var err=await res.json();
+    var msg=typeof err==='object'?Object.values(err).flat().join(' '):'Update failed';
+    document.getElementById('editError').textContent=msg;document.getElementById('editError').style.display='block';
+  }
+}
+
+async function loadProfile(){
+  if(!memberId){window.location.href='members.html';return;}
+  var res=await apiRequest('/members/'+memberId+'/profile-detail/');
+  if(!res||!res.ok){document.getElementById('profileLoading').innerHTML='<div style="text-align:center;color:#dc2626;"><i class="bi bi-exclamation-circle" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>Could not load member profile.</div>';return;}
+  var d=await res.json();
+  profileData=d;
+  document.getElementById('profileLoading').style.display='none';
+  var c=document.getElementById('profileContent');c.style.display='block';
+  var u=d.user;
+  document.title=u.full_name+' - FitCore';
+  var av=u.profile_picture?'<img src="'+u.profile_picture+'" style="width:100%;height:100%;object-fit:cover;">':(u.first_name||'?').charAt(0).toUpperCase();
+  var st=u.is_active?'<span style="background:#dcfce7;color:#166534;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Active</span>':'<span style="background:#fee2e2;color:#991b1b;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Inactive</span>';
+  var jd=new Date(u.date_joined).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  var at=d.attendance_stats||{this_month:0,streak:0};
+  var dl=d.active_membership?d.active_membership.days_remaining:'--';
+  var wp=d.active_workout?d.active_workout.completion_pct:'0';
+  var bi=bmiCat(d.bmi);
+
+  var tr='<div class="empty-state"><i class="bi bi-person-workspace"></i><p>No trainer assigned</p></div>';
+  if(d.assigned_trainer){var t=d.assigned_trainer;var sp=(t.specializations||[]).join(', ');tr='<div class="trainer-card"><div class="trainer-avatar">'+(t.profile_picture?'<img src="'+t.profile_picture+'">':t.full_name.charAt(0).toUpperCase())+'</div><div class="trainer-info"><h6>'+t.full_name+'</h6><p>'+(sp||'No specializations')+(t.experience_years?' | '+t.experience_years+' yrs exp':'')+'</p></div></div>';}
+
+  var mh='<div class="empty-state"><i class="bi bi-card-checklist"></i><p>No active membership</p></div>';
+  if(d.active_membership){var m=d.active_membership;mh='<div style="border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem;background:#fafbfc;"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;"><div><div style="font-size:1.1rem;font-weight:700;color:#1a1a2e;">'+m.plan_name+'</div><div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">'+m.start_date+' to '+m.end_date+'</div></div><div style="display:flex;gap:.5rem;align-items:center;">'+msB(m.status)+'<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2ff;color:#4f46e5;padding:4px 12px;border-radius:8px;font-size:.8rem;font-weight:700;">'+m.days_remaining+' Days</span></div></div><div style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap;"><div><label style="font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;display:block;margin-bottom:2px;">Plan Price</label><span style="font-size:1rem;font-weight:700;color:#1a1a2e;">NPR '+m.plan_price+'</span></div><div><label style="font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;display:block;margin-bottom:2px;">Paid</label><span style="font-size:1rem;font-weight:700;color:#16a34a;">NPR '+m.price_paid+'</span></div><div><label style="font-size:.65rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;display:block;margin-bottom:2px;">Duration</label><span style="font-size:1rem;font-weight:700;color:#1a1a2e;">'+m.duration_days+' days</span></div></div><div style="display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap;"><a href="memberships.html?member='+memberId+'" style="font-size:.8rem;font-weight:600;color:var(--brand-red);text-decoration:none;padding:4px 10px;border-radius:6px;">Renew</a><a href="memberships.html?member='+memberId+'" style="font-size:.8rem;font-weight:600;color:var(--brand-red);text-decoration:none;padding:4px 10px;border-radius:6px;">Upgrade</a><a href="payments.html?member='+memberId+'" style="font-size:.8rem;font-weight:600;color:var(--brand-red);text-decoration:none;padding:4px 10px;border-radius:6px;">Payment History</a></div></div>';}
+
+  var hh='<div class="empty-state"><i class="bi bi-clock-history"></i><p>No membership history</p></div>';
+  if(d.membership_history&&d.membership_history.length){
+    hh='<table style="width:100%;font-size:.85rem;"><thead><tr><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;text-align:left;">Plan</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Status</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Dates</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Paid</th></tr></thead><tbody>';
+    d.membership_history.forEach(function(x){hh+='<tr><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:500;">'+x.plan_name+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;text-align:center;">'+msB(x.status)+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;color:#6b7280;font-size:.8rem;">'+x.start_date+' to '+x.end_date+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:600;">NPR '+x.price_paid+'</td></tr>';});
+    hh+='</tbody></table>';}
+
+  var ph='<div class="empty-state"><i class="bi bi-cash-coin"></i><p>No payment records</p></div>';
+  if(d.recent_payments&&d.recent_payments.length){
+    ph='<table style="width:100%;font-size:.85rem;"><thead><tr><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;text-align:left;">Date</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">For</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Method</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Amount</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Status</th></tr></thead><tbody>';
+    d.recent_payments.forEach(function(p){var dt=p.paid_at?new Date(p.paid_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'--';
+      ph+='<tr><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;color:#6b7280;font-size:.8rem;">'+dt+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:500;">'+(p.plan_name||p.payment_for)+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;"><i class="bi '+pmi(p.payment_method)+' me-1"></i>'+p.payment_method+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:700;">NPR '+p.amount_paid+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;">'+msB(p.status)+'</td></tr>';});
+    ph+='</tbody></table>';}
+
+  var dh='<div class="empty-state"><i class="bi bi-egg-fried"></i><p>No active diet plan</p></div>';
+  if(d.active_diet_plan){var dp=d.active_diet_plan;dh='<div style="border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem;background:#fafbfc;"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;"><div><div style="font-size:1.1rem;font-weight:700;color:#1a1a2e;">'+dp.name+'</div><div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">Goal: '+dp.goal+'</div></div><span style="background:#dcfce7;color:#166534;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Active</span></div><div style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap;"><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#1a1a2e;">'+dp.daily_calories+'</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Calories</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#16a34a;">'+dp.protein_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Protein</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#d97706;">'+dp.carbs_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Carbs</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#dc2626;">'+dp.fats_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Fats</div></div></div><div style="margin-top:.75rem;font-size:.8rem;color:#6b7280;">'+dp.meal_count+' meals planned</div></div>';}
+
+  var wh='<div class="empty-state"><i class="bi bi-heart-pulse"></i><p>No active workout plan</p></div>';
+  if(d.active_workout){var w=d.active_workout;var dm={BEGINNER:'background:#dcfce7;color:#166534;',INTERMEDIATE:'background:#fef3c7;color:#92400e;',ADVANCED:'background:#fee2e2;color:#991b1b;'};wh='<div style="border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem;background:#fafbfc;"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;"><div><div style="font-size:1.1rem;font-weight:700;color:#1a1a2e;">'+w.template_name+'</div><div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">'+(w.start_date||'')+' to '+(w.end_date||'')+'</div></div><span style="'+(dm[w.difficulty]||'')+'padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">'+(w.difficulty||'')+'</span></div>'+(w.goal_note?'<div style="margin-top:.5rem;font-size:.85rem;color:#6b7280;"><i class="bi bi-info-circle me-1"></i>'+w.goal_note+'</div>':'')+'<div style="margin-top:1rem;"><div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px;"><span style="font-weight:600;color:#374151;">Completion</span><span style="font-weight:700;color:#1a1a2e;">'+w.completion_pct+'%</span></div><div style="height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden;"><div style="height:100%;border-radius:3px;background:var(--brand-red);width:'+w.completion_pct+'%;"></div></div></div></div>';}
+
+  var rh='<div class="empty-state"><i class="bi bi-trophy"></i><p>No progress records yet</p></div>';
+  if(d.latest_progress){var lp=d.latest_progress;rh='<div style="border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem;background:#fafbfc;margin-bottom:1rem;"><div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:.5rem;">Latest Progress ('+lp.date+')</div><div style="display:flex;gap:1.5rem;flex-wrap:wrap;">';if(lp.weight_kg)rh+='<div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;">'+lp.weight_kg+'</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Weight (kg)</div></div>';if(lp.body_fat_percentage)rh+='<div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;">'+lp.body_fat_percentage+'%</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Body Fat</div></div>';if(lp.muscle_mass_kg)rh+='<div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;">'+lp.muscle_mass_kg+'</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Muscle (kg)</div></div>';if(lp.bmi)rh+='<div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;">'+lp.bmi+'</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">BMI</div></div>';rh+='</div></div>';}
+  if(d.personal_records&&d.personal_records.length){rh+='<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:.5rem;">Personal Records</div><table style="width:100%;font-size:.85rem;"><thead><tr><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;text-align:left;">Exercise</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Value</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Date</th></tr></thead><tbody>';d.personal_records.forEach(function(pr){rh+='<tr><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:500;">'+pr.exercise_name+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:700;">'+pr.value+' '+pr.unit+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;color:#6b7280;font-size:.8rem;">'+pr.date+'</td></tr>';});rh+='</tbody></table>';}
+
+  c.innerHTML=
+    '<div style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:1.5rem 2rem;display:flex;align-items:center;gap:1.5rem;margin-bottom:1.5rem;">'+
+    '<a href="members.html" style="background:none;border:2px solid #e5e7eb;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;text-decoration:none;flex-shrink:0;"><i class="bi bi-arrow-left"></i></a>'+
+    '<div style="width:72px;height:72px;border-radius:14px;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,var(--brand-red),#ff6b6b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem;font-weight:700;">'+av+'</div>'+
+    '<div style="flex:1;"><h2 style="margin:0;font-weight:700;font-size:1.4rem;color:#1a1a2e;">'+u.full_name+'</h2><div style="display:flex;align-items:center;gap:1rem;margin-top:.3rem;flex-wrap:wrap;"><span style="background:#f3f4f6;padding:2px 10px;border-radius:6px;font-weight:600;color:#374151;font-size:.8rem;">'+(u.display_id||'MEM-'+u.id)+'</span><span style="font-size:.85rem;color:#6b7280;">'+u.email+'</span><span style="font-size:.85rem;color:#6b7280;">Joined '+jd+'</span>'+st+'</div></div>'+
+    '<div style="display:flex;gap:.5rem;flex-shrink:0;"><button class="btn btn-primary btn-sm" onclick="openEdit()" style="border-radius:10px;padding:.5rem 1rem;font-weight:600;font-size:.85rem;background:var(--brand-red);border-color:var(--brand-red);"><i class="bi bi-pencil me-1"></i> Edit</button></div></div>'+
+
+    '<div class="stat-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.5rem;">'+
+    '<div class="stat-mini"><div class="stat-icon-sm" style="background:#dbeafe;color:#2563eb;"><i class="bi bi-calendar-check"></i></div><div class="stat-val">'+at.this_month+'</div><div class="stat-lbl">This Month</div></div>'+
+    '<div class="stat-mini"><div class="stat-icon-sm" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-lightning-charge"></i></div><div class="stat-val">'+wp+'%</div><div class="stat-lbl">Workout</div></div>'+
+    '<div class="stat-mini"><div class="stat-icon-sm" style="background:#fef3c7;color:#d97706;"><i class="bi bi-clock"></i></div><div class="stat-val">'+dl+'</div><div class="stat-lbl">Days Left</div></div>'+
+    '<div class="stat-mini"><div class="stat-icon-sm" style="background:#f3e8ff;color:#9333ea;"><i class="bi bi-fire"></i></div><div class="stat-val">'+at.streak+'</div><div class="stat-lbl">Streak</div></div></div>'+
+
+    '<div class="profile-grid" style="display:grid;grid-template-columns:380px 1fr;gap:1.5rem;align-items:start;"><div>'+
+
+    '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-person"></i> Personal Info</h6><button onclick="openEdit()" style="background:none;border:none;color:var(--brand-red);cursor:pointer;font-size:.8rem;font-weight:600;"><i class="bi bi-pencil"></i></button></div><div class="info-card-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Gender</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.gender_display||'--')+'</span></div>'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Date of Birth</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.date_of_birth||'--')+'</span></div>'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Phone</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(u.phone||'--')+'</span></div>'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Email</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+u.email+'</span></div>'+
+    '<div style="grid-column:1/-1;"><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Address</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.address||'--')+'</span></div>'+
+    '</div></div></div>'+
+
+    '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-heart-pulse"></i> Fitness</h6><button onclick="openEdit()" style="background:none;border:none;color:var(--brand-red);cursor:pointer;font-size:.8rem;font-weight:600;"><i class="bi bi-pencil"></i></button></div><div class="info-card-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Goal</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.fitness_goal_display||'--')+'</span></div>'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Level</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.fitness_level_display||'--')+'</span></div>'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Height</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.height_cm?d.height_cm+' cm':'--')+'</span></div>'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Weight</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.weight_kg?d.weight_kg+' kg':'--')+'</span></div>'+
+    '</div>'+
+    '<div class="bmi-card '+bi.c+'" style="border-radius:14px;padding:1.25rem;margin-top:1rem;"><div style="font-size:.8rem;color:#6b7280;font-weight:600;">BMI</div><div style="font-size:2rem;font-weight:800;color:#1a1a2e;line-height:1;">'+(d.bmi||'--')+'</div><div style="font-size:.85rem;font-weight:700;margin-top:.3rem;color:'+bi.clr+';">'+(d.bmi?bi.l:'No data')+'</div></div>'+
+    '</div></div>'+
+
+    '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-shield-check"></i> Emergency</h6><button onclick="openEdit()" style="background:none;border:none;color:var(--brand-red);cursor:pointer;font-size:.8rem;font-weight:600;"><i class="bi bi-pencil"></i></button></div><div class="info-card-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Contact Name</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.emergency_contact_name||'--')+'</span></div>'+
+    '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Contact Phone</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.emergency_contact_phone||'--')+'</span></div>'+
+    '<div style="grid-column:1/-1;"><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Medical Conditions</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">'+(d.medical_conditions||'None recorded')+'</span></div>'+
+    '</div></div></div>'+
+
+    '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-person-workspace"></i> Assigned Trainer</h6></div><div class="info-card-body">'+tr+'</div></div>'+
+    '</div><div>'+
+
+    '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-card-checklist"></i> Active Membership</h6></div><div class="info-card-body">'+mh+'</div></div>'+
+
+    '<div class="info-card" style="overflow:visible;">'+
+
+    '<div style="border-bottom:1px solid #f3f4f6;">'+
+    '<div class="acc-header" onclick="toggleAcc(\'history\')"><h6 style="margin:0;font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:.5rem;"><i class="bi bi-card-checklist" style="color:var(--brand-red);"></i> Membership History</h6><i id="chev-history" class="bi bi-chevron-down" style="color:#9ca3af;transition:transform .2s;"></i></div>'+
+    '<div id="acc-history" class="acc-panel">'+hh+'</div></div>'+
+
+    '<div style="border-bottom:1px solid #f3f4f6;">'+
+    '<div class="acc-header" onclick="toggleAcc(\'payments\')"><h6 style="margin:0;font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:.5rem;"><i class="bi bi-cash-coin" style="color:var(--brand-red);"></i> Payments</h6><i id="chev-payments" class="bi bi-chevron-down" style="color:#9ca3af;transition:transform .2s;"></i></div>'+
+    '<div id="acc-payments" class="acc-panel">'+ph+'</div></div>'+
+
+    '<div style="border-bottom:1px solid #f3f4f6;">'+
+    '<div class="acc-header" onclick="toggleAcc(\'diet\')"><h6 style="margin:0;font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:.5rem;"><i class="bi bi-egg-fried" style="color:var(--brand-red);"></i> Diet Plan</h6><i id="chev-diet" class="bi bi-chevron-down" style="color:#9ca3af;transition:transform .2s;"></i></div>'+
+    '<div id="acc-diet" class="acc-panel">'+dh+'</div></div>'+
+
+    '<div style="border-bottom:1px solid #f3f4f6;">'+
+    '<div class="acc-header" onclick="toggleAcc(\'workout\')"><h6 style="margin:0;font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:.5rem;"><i class="bi bi-heart-pulse" style="color:var(--brand-red);"></i> Workout Plan</h6><i id="chev-workout" class="bi bi-chevron-down" style="color:#9ca3af;transition:transform .2s;"></i></div>'+
+    '<div id="acc-workout" class="acc-panel">'+wh+'</div></div>'+
+
+    '<div>'+
+    '<div class="acc-header" onclick="toggleAcc(\'records\')"><h6 style="margin:0;font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:.5rem;"><i class="bi bi-trophy" style="color:var(--brand-red);"></i> Personal Records</h6><i id="chev-records" class="bi bi-chevron-down" style="color:#9ca3af;transition:transform .2s;"></i></div>'+
+    '<div id="acc-records" class="acc-panel">'+rh+'</div></div>'+
+
+    '</div></div></div>';
+}
+loadProfile().then(function(){setTimeout(function(){toggleAcc('history');},50);});
+</script>
+</body>
+</html>
