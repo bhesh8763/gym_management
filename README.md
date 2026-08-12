@@ -60,6 +60,61 @@ python manage.py runserver
 python manage.py test apps.accounts.tests
 ```
 
+### 9. Run all tests
+```
+python manage.py test
+```
+
+---
+
+## Scheduled Tasks (Windows Task Scheduler)
+
+The `send_reminders` management command generates daily notifications for:
+- Membership renewals / expiry
+- Pending payments
+- Member inactivity (no check-in for 14+ days)
+- Workout reminders (active plan but no session logged in 3+ days)
+
+### Quick setup
+
+1. Create the log directory:
+```
+mkdir C:\Users\bsaru\Desktop\gym\logs
+```
+
+2. Register the task (elevated PowerShell — **edit the path first**):
+```powershell
+schtasks /create `
+  /tn "GymDailyReminders" `
+  /tr "C:\Users\bsaru\Desktop\gym\scripts\run_reminders.bat" `
+  /sc DAILY `
+  /st 08:00 `
+  /ru SYSTEM `
+  /f
+```
+
+Or import the included XML definition (already configured for this machine):
+```powershell
+schtasks /create /xml "C:\Users\bsaru\Desktop\gym\scripts\GymDailyReminders.xml" /tn "GymDailyReminders"
+```
+
+3. Verify:
+```
+schtasks /query /tn "GymDailyReminders"
+```
+
+4. Test immediately:
+```
+schtasks /run /tn "GymDailyReminders"
+```
+
+Output is appended to `logs\reminders.log`.
+
+> **Moving to Linux?** Replace the batch script with a cron job:
+> ```
+> 0 8 * * * cd /path/to/gym && venv/bin/python manage.py send_reminders >> logs/reminders.log 2>&1
+> ```
+
 ---
 
 ## API Endpoints

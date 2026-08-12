@@ -127,7 +127,7 @@ class MemberListCreateView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         profile = serializer.save()
         return Response(
-            MemberProfileSerializer(profile).data,
+            MemberProfileSerializer(profile, context={'request': request}).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -168,25 +168,39 @@ class MemberDetailView(APIView):
         profile = self._get_profile(pk)
         if not self._can_read(request, profile):
             raise PermissionDenied('You do not have permission to view this profile.')
-        return Response(MemberProfileSerializer(profile).data)
+        return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
     def patch(self, request, pk):
         profile = self._get_profile(pk)
         if not self._can_write(request, profile):
             raise PermissionDenied('You do not have permission to update this profile.')
+
+        # profile_picture lives on User, not MemberProfile — handle it separately
+        if 'profile_picture' in request.FILES:
+            user = profile.user
+            user.profile_picture = request.FILES['profile_picture']
+            user.save(update_fields=['profile_picture'])
+
         serializer = MemberProfileUpdateSerializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(MemberProfileSerializer(profile).data)
+        return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
     def put(self, request, pk):
         if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner/Staff can perform full profile updates.')
         profile = self._get_profile(pk)
+
+        # profile_picture lives on User, not MemberProfile — handle it separately
+        if 'profile_picture' in request.FILES:
+            user = profile.user
+            user.profile_picture = request.FILES['profile_picture']
+            user.save(update_fields=['profile_picture'])
+
         serializer = MemberProfileUpdateSerializer(profile, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(MemberProfileSerializer(profile).data)
+        return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
     def delete(self, request, pk):
         if not self._can_delete(request):
@@ -216,7 +230,7 @@ class MemberReactivateView(APIView):
         user = profile.user
         user.is_active = True
         user.save(update_fields=['is_active'])
-        return Response(MemberProfileSerializer(profile).data)
+        return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
 
 # ─── Member's Own Profile ─────────────────────────────────────────────────────
@@ -240,16 +254,22 @@ class MyProfileView(APIView):
         if not request.user.is_member:
             raise PermissionDenied('This endpoint is for members only.')
         profile = self._get_own_profile(request.user)
-        return Response(MemberProfileSerializer(profile).data)
+        return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
     def patch(self, request):
         if not request.user.is_member:
             raise PermissionDenied('This endpoint is for members only.')
         profile = self._get_own_profile(request.user)
+
+        # profile_picture lives on User
+        if 'profile_picture' in request.FILES:
+            request.user.profile_picture = request.FILES['profile_picture']
+            request.user.save(update_fields=['profile_picture'])
+
         serializer = MemberProfileUpdateSerializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(MemberProfileSerializer(profile).data)
+        return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
 
 # ─── Aggregated Member Profile Detail ─────────────────────────────────────────
@@ -266,4 +286,4 @@ class MemberProfileDetailView(APIView):
         if not (request.user.role in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER)
                 or profile.user == request.user):
             raise PermissionDenied('You do not have permission to view this profile.')
-        return Response(MemberAggregatedProfileSerializer(profile).data)
+        return Response(MemberAggregatedProfileSerializer(profile, context={'request': request}).data)

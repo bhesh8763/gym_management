@@ -38,6 +38,10 @@
     .edit-panel-header h5{margin:0;font-weight:700;color:#1a1a2e}
     .edit-panel-body{padding:1.5rem}
     .edit-panel-footer{padding:1rem 1.5rem;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;gap:.5rem}
+    .photo-upload-ring{width:88px;height:88px;border-radius:50%;overflow:hidden;cursor:pointer;position:relative;flex-shrink:0;border:3px solid #e5e7eb;transition:border-color .2s;}
+    .photo-upload-ring:hover{border-color:var(--brand-red);}
+    .photo-upload-ring:hover .photo-upload-overlay{opacity:1;}
+    .photo-upload-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:.6rem;font-weight:600;opacity:0;transition:opacity .2s;text-align:center;gap:2px;}
     .empty-state{text-align:center;padding:2rem 1rem;color:#9ca3af}
     .empty-state i{font-size:2rem;display:block;margin-bottom:.5rem;color:#d1d5db}
     .empty-state p{margin:0;font-size:.85rem}
@@ -109,6 +113,23 @@
       <div id="editError" style="background:#fee2e2;color:#991b1b;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;display:none;"></div>
       <div id="editSuccess" style="background:#dcfce7;color:#166534;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;display:none;">Profile updated successfully!</div>
       <form id="editForm">
+        <!-- ── Photo upload ─────────────────────────────────────── -->
+        <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid #f3f4f6;">
+          <div class="photo-upload-ring" onclick="document.getElementById('photoInput').click();" title="Click to change photo">
+            <div id="editPhotoPreview" style="width:100%;height:100%;background:linear-gradient(135deg,var(--brand-red),#ff6b6b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;font-weight:700;"></div>
+            <div class="photo-upload-overlay"><i class="bi bi-camera" style="font-size:1.2rem;"></i>Change</div>
+          </div>
+          <div>
+            <div style="font-weight:600;color:#1f2937;font-size:.9rem;">Profile Photo</div>
+            <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">JPG, PNG or WEBP · max 5 MB</div>
+            <button type="button" onclick="document.getElementById('photoInput').click();"
+              style="margin-top:.5rem;font-size:.75rem;font-weight:600;color:var(--brand-red);background:none;border:none;cursor:pointer;padding:0;">
+              <i class="bi bi-upload me-1"></i>Upload new photo
+            </button>
+          </div>
+          <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="previewPhoto(this)">
+        </div>
+        <!-- ── Other fields ───────────────────────────────────── -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
           <div>
             <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Gender</label>
@@ -206,6 +227,15 @@ function toggleAcc(id){
 function openEdit(){
   if(!profileData)return;
   var d=profileData;var u=d.user;
+  // Photo preview
+  var preview=document.getElementById('editPhotoPreview');
+  if(u.profile_picture){
+    preview.innerHTML='<img src="'+u.profile_picture+'" style="width:100%;height:100%;object-fit:cover;">';
+  } else {
+    preview.innerHTML=(u.first_name||'?').charAt(0).toUpperCase();
+    preview.style.cssText='width:100%;height:100%;background:linear-gradient(135deg,var(--brand-red),#ff6b6b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;font-weight:700;';
+  }
+  document.getElementById('photoInput').value='';
   document.getElementById('editGender').value=d.gender||'';
   document.getElementById('editDob').value=d.date_of_birth||'';
   document.getElementById('editHeight').value=d.height_cm||'';
@@ -223,27 +253,89 @@ function openEdit(){
 }
 function closeEdit(){document.getElementById('editOverlay').classList.remove('show');}
 
+function previewPhoto(input){
+  if(!input.files||!input.files[0])return;
+  var file=input.files[0];
+  if(file.size>5*1024*1024){
+    alert('Image is too large. Please choose a file under 5 MB.');
+    input.value='';return;
+  }
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var preview=document.getElementById('editPhotoPreview');
+    preview.innerHTML='<img src="'+e.target.result+'" style="width:100%;height:100%;object-fit:cover;">';
+    preview.style.cssText='';
+  };
+  reader.readAsDataURL(file);
+}
+
 async function saveEdit(){
   var btn=document.getElementById('editSaveBtn');
   btn.disabled=true;btn.textContent='Saving...';
   document.getElementById('editError').style.display='none';
   document.getElementById('editSuccess').style.display='none';
 
-  var payload={
-    gender:document.getElementById('editGender').value,
-    date_of_birth:document.getElementById('editDob').value||null,
-    height_cm:document.getElementById('editHeight').value||null,
-    weight_kg:document.getElementById('editWeight').value||null,
-    fitness_goal:document.getElementById('editGoal').value,
-    fitness_level:document.getElementById('editLevel').value,
-    address:document.getElementById('editAddress').value,
-    emergency_contact_name:document.getElementById('editEmName').value,
-    emergency_contact_phone:document.getElementById('editEmPhone').value,
-    medical_conditions:document.getElementById('editMedical').value,
-    notes:document.getElementById('editNotes').value
-  };
+  // Check if user selected a new photo
+  var photoFile=document.getElementById('photoInput').files[0];
+  var res;
 
-  var res=await apiRequest('/members/'+memberId+'/',{method:'PATCH',body:JSON.stringify(payload)});
+  if(photoFile) {
+    // Use FormData when uploading a file
+    var fd=new FormData();
+    
+    var gender = document.getElementById('editGender').value;
+    if(gender) fd.append('gender', gender);
+    
+    var dob = document.getElementById('editDob').value;
+    if(dob) fd.append('date_of_birth', dob);
+    
+    var ht = document.getElementById('editHeight').value;
+    if(ht) fd.append('height_cm', ht);
+    
+    var wt = document.getElementById('editWeight').value;
+    if(wt) fd.append('weight_kg', wt);
+    
+    var goal = document.getElementById('editGoal').value;
+    if(goal) fd.append('fitness_goal', goal);
+    
+    var level = document.getElementById('editLevel').value;
+    if(level) fd.append('fitness_level', level);
+    
+    var address = document.getElementById('editAddress').value;
+    if(address) fd.append('address', address);
+    
+    var emName = document.getElementById('editEmName').value;
+    if(emName) fd.append('emergency_contact_name', emName);
+    
+    var emPhone = document.getElementById('editEmPhone').value;
+    if(emPhone) fd.append('emergency_contact_phone', emPhone);
+    
+    var medical = document.getElementById('editMedical').value;
+    if(medical) fd.append('medical_conditions', medical);
+    
+    var notes = document.getElementById('editNotes').value;
+    if(notes) fd.append('notes', notes);
+
+    fd.append('profile_picture', photoFile);
+    res = await apiRequest('/members/'+memberId+'/',{method:'PATCH',body:fd,isFormData:true});
+  } else {
+    // Use JSON when no file upload
+    var payload={
+      gender:document.getElementById('editGender').value,
+      date_of_birth:document.getElementById('editDob').value||null,
+      height_cm:document.getElementById('editHeight').value||null,
+      weight_kg:document.getElementById('editWeight').value||null,
+      fitness_goal:document.getElementById('editGoal').value,
+      fitness_level:document.getElementById('editLevel').value,
+      address:document.getElementById('editAddress').value,
+      emergency_contact_name:document.getElementById('editEmName').value,
+      emergency_contact_phone:document.getElementById('editEmPhone').value,
+      medical_conditions:document.getElementById('editMedical').value,
+      notes:document.getElementById('editNotes').value
+    };
+    res = await apiRequest('/members/'+memberId+'/',{method:'PATCH',body:JSON.stringify(payload)});
+  }
+
   btn.disabled=false;btn.textContent='Save Changes';
 
   if(!res){
@@ -253,7 +345,9 @@ async function saveEdit(){
     document.getElementById('editSuccess').style.display='block';
     setTimeout(function(){closeEdit();loadProfile();},800);
   }else{
-    var err=await res.json();
+    console.log('Response status:', res.status);
+    var err=await res.json().catch(()=>({error:'Could not parse error response'}));
+    console.log('Error response:', err);
     var msg=typeof err==='object'?Object.values(err).flat().join(' '):'Update failed';
     document.getElementById('editError').textContent=msg;document.getElementById('editError').style.display='block';
   }
@@ -270,6 +364,7 @@ async function loadProfile(){
   var u=d.user;
   document.title=u.full_name+' - FitCore';
   var av=u.profile_picture?'<img src="'+u.profile_picture+'" style="width:100%;height:100%;object-fit:cover;">':(u.first_name||'?').charAt(0).toUpperCase();
+  console.log('Profile picture URL:', u.profile_picture); // Debug log
   var st=u.is_active?'<span style="background:#dcfce7;color:#166534;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Active</span>':'<span style="background:#fee2e2;color:#991b1b;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Inactive</span>';
   var jd=new Date(u.date_joined).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   var at=d.attendance_stats||{this_month:0,streak:0};

@@ -3,13 +3,37 @@ Generates automated notifications for:
   - Membership renewals (expiring within REMINDER_WINDOW_DAYS)
   - Payments that are pending/overdue
   - Member inactivity (no attendance in INACTIVITY_THRESHOLD_DAYS)
+  - Workout reminders (active assignment but no log in WORKOUT_REMINDER_DAYS)
 
 Run manually:
     python manage.py send_reminders
 
-Run daily via cron / Windows Task Scheduler, e.g.:
-    0 8 * * * cd /path/to/project && venv/bin/python manage.py send_reminders
+────────────────────────────────────────────────────────────────────────────────
+Windows Task Scheduler — daily at 08:00
+────────────────────────────────────────────────────────────────────────────────
+A ready-made batch script is provided at:
+    scripts\\run_reminders.bat
 
+To register it with Task Scheduler, open an elevated PowerShell and run:
+
+    schtasks /create ^
+      /tn "GymDailyReminders" ^
+      /tr "C:\\path\\to\\gym\\scripts\\run_reminders.bat" ^
+      /sc DAILY ^
+      /st 08:00 ^
+      /ru SYSTEM ^
+      /f
+
+Or import the included XML task definition:
+    schtasks /create /xml scripts\\GymDailyReminders.xml /tn "GymDailyReminders"
+
+To verify the task is registered:
+    schtasks /query /tn "GymDailyReminders"
+
+To run it immediately for testing:
+    schtasks /run /tn "GymDailyReminders"
+
+────────────────────────────────────────────────────────────────────────────────
 Idempotent: skips creating a duplicate reminder if one was already sent
 today for the same user + type + related object.
 """
@@ -23,12 +47,16 @@ from apps.memberships.models import Membership
 from apps.notifications.models import Notification
 from apps.payments.models import Payment
 
-REMINDER_WINDOW_DAYS = 3      # send a renewal reminder this many days before expiry
+REMINDER_WINDOW_DAYS = 3        # send a renewal reminder this many days before expiry
 INACTIVITY_THRESHOLD_DAYS = 14  # flag a member inactive after this many days with no check-in
+WORKOUT_REMINDER_DAYS = 3       # remind a member if they haven't logged a workout in this many days
 
 
 class Command(BaseCommand):
-    help = 'Generate membership renewal, payment due, and inactivity notifications.'
+    help = (
+        'Generate membership renewal, payment due, inactivity, and '
+        'workout-reminder notifications.'
+    )
 
     def handle(self, *args, **options):
         today = timezone.now().date()
@@ -36,10 +64,11 @@ class Command(BaseCommand):
         renewal_count = self._send_membership_renewal_reminders(today)
         payment_count = self._send_payment_due_reminders(today)
         inactivity_count = self._send_inactivity_alerts(today)
+        workout_count = self._send_workout_reminders(today)
 
         self.stdout.write(self.style.SUCCESS(
             f'Done. Created {renewal_count} renewal, {payment_count} payment-due, '
-            f'{inactivity_count} inactivity notifications.'
+            f'{inactivity_count} inactivity, {workout_count} workout-reminder notifications.'
         ))
 
     # ── Membership renewal / expiry ─────────────────────────────────────────
@@ -128,12 +157,15 @@ class Command(BaseCommand):
         active_members = User.objects.filter(role=User.Role.MEMBER, is_active=True)
         for member in active_members:
             last_visit = (
-                Attendance.objects.filter(user=member).order_by('-date').values_list('date', flat=True).first()
+                Attendance.objects.filter(user=member)
+                .order_by('-date')
+                .values_list('date', flat=True)
+                .first()
             )
             if last_visit is not None and last_visit >= cutoff:
                 continue  # visited recently, nothing to do
             if last_visit is None:
-                continue  # never checked in at all — not an "inactivity" case, skip for now
+                continue  # never checked in at all — not an "inactivity" case
 
             if self._already_sent_today(member.id, Notification.NotificationType.INACTIVITY):
                 continue
@@ -143,9 +175,64 @@ class Command(BaseCommand):
                 recipient_id=member.id,
                 notification_type=Notification.NotificationType.INACTIVITY,
                 title='We miss you at the gym!',
-                message=f"You haven't checked in for {days_absent} days. Come back and keep your progress going!",
+                message=(
+                    f"You haven't checked in for {days_absent} days. "
+                    f"Come back and keep your progress going!"
+                ),
             )
             count += 1
+        return count
+
+    # ── Workout reminder ─────────────────────────────────────────────────────
+    def _send_workout_reminders(self, today):
+        """
+        Send a WORKOUT_REMINDER to every member who:
+          1. Has at least one ACTIVE WorkoutAssignment, AND
+          2. Has not logged any workout (WorkoutCompletionLog) in the last
+             WORKOUT_REMINDER_DAYS days.
+
+        Logic: having a plan but no recent log means the member is overdue
+        for a session.  Members with no plan at all are intentionally excluded
+        (they have nothing scheduled, so a reminder would be misleading).
+        """
+        from apps.workouts.models import WorkoutAssignment, WorkoutCompletionLog
+
+        cutoff = today - timedelta(days=WORKOUT_REMINDER_DAYS)
+        count = 0
+
+        # Members with at least one active assignment
+        members_with_plan = (
+            WorkoutAssignment.objects.filter(status=WorkoutAssignment.Status.ACTIVE)
+            .values_list('member_id', flat=True)
+            .distinct()
+        )
+
+        # Of those, find who logged a workout recently — we'll exclude them
+        recently_logged = (
+            WorkoutCompletionLog.objects.filter(
+                assignment__member_id__in=members_with_plan,
+                date__gte=cutoff,
+            )
+            .values_list('assignment__member_id', flat=True)
+            .distinct()
+        )
+
+        overdue_member_ids = set(members_with_plan) - set(recently_logged)
+
+        for member_id in overdue_member_ids:
+            if self._already_sent_today(member_id, Notification.NotificationType.WORKOUT_REMINDER):
+                continue
+            Notification.objects.create(
+                recipient_id=member_id,
+                notification_type=Notification.NotificationType.WORKOUT_REMINDER,
+                title="Time for your workout! 💪",
+                message=(
+                    f"You haven't logged a workout in {WORKOUT_REMINDER_DAYS}+ days. "
+                    f"Your active plan is waiting — let's get back on track!"
+                ),
+            )
+            count += 1
+
         return count
 
     # ── Helper ───────────────────────────────────────────────────────────────

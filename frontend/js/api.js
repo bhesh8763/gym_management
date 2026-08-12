@@ -87,16 +87,21 @@ async function refreshAccessToken() {
 // "couldn't complete this request" case, so existing `if (!res) return;`
 // checks in callers handle it automatically.
 async function apiRequest(path, options = {}) {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
-  };
+  // When sending FormData (file uploads), do NOT set Content-Type — the
+  // browser sets it automatically with the correct multipart boundary.
+  const isFormData = options.isFormData || options.body instanceof FormData;
+  const headers = isFormData
+    ? { ...(options.headers || {}) }
+    : { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
+  // Strip the helper flag before passing options to fetch
+  const { isFormData: _ignored, ...fetchOptions } = options;
+
   let res;
   try {
-    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers });
   } catch (e) {
     console.error(`Network error on ${path}:`, e);
     return null;
@@ -108,7 +113,7 @@ async function apiRequest(path, options = {}) {
       // Retry the original request once with the new access token.
       const retryHeaders = { ...headers, Authorization: `Bearer ${newToken}` };
       try {
-        res = await fetch(`${API_BASE}${path}`, { ...options, headers: retryHeaders });
+        res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers: retryHeaders });
       } catch (e) {
         console.error(`Network error retrying ${path}:`, e);
         return null;

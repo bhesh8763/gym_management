@@ -19,6 +19,7 @@ class MemberUserSerializer(serializers.ModelSerializer):
     """Lightweight user fields embedded in profile responses."""
 
     full_name = serializers.SerializerMethodField()
+    profile_picture = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -30,6 +31,15 @@ class MemberUserSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return obj.get_full_name()
+
+    def get_profile_picture(self, obj):
+        if not obj.profile_picture:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.profile_picture.url)
+        # Fallback to relative URL if no request context
+        return obj.profile_picture.url
 
 
 # ─── Main profile serializers ─────────────────────────────────────────────────
@@ -167,7 +177,7 @@ class MemberListSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     phone = serializers.CharField(source='user.phone', read_only=True)
     is_active = serializers.BooleanField(source='user.is_active', read_only=True)
-    profile_picture = serializers.ImageField(source='user.profile_picture', read_only=True)
+    profile_picture = serializers.SerializerMethodField()
     bmi = serializers.SerializerMethodField()
     fitness_goal_display = serializers.CharField(source='get_fitness_goal_display', read_only=True)
     fitness_level_display = serializers.CharField(source='get_fitness_level_display', read_only=True)
@@ -185,6 +195,14 @@ class MemberListSerializer(serializers.ModelSerializer):
 
     def get_bmi(self, obj):
         return obj.bmi
+
+    def get_profile_picture(self, obj):
+        if not obj.user.profile_picture:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.user.profile_picture.url)
+        return obj.user.profile_picture.url
 
     def get_current_membership(self, obj):
         """
