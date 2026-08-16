@@ -88,6 +88,10 @@
       <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+
+      
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
       <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
@@ -391,6 +395,22 @@ async function loadProfile(){
       ph+='<tr><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;color:#6b7280;font-size:.8rem;">'+dt+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:500;">'+(p.plan_name||p.payment_for)+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;"><i class="bi '+pmi(p.payment_method)+' me-1"></i>'+p.payment_method+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:700;">NPR '+p.amount_paid+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;">'+msB(p.status)+'</td></tr>';});
     ph+='</tbody></table>';}
 
+  var dhHTML='<div class="empty-state"><i class="bi bi-check-circle"></i><p>No outstanding dues</p></div>';
+  if(d.payment_dues&&d.payment_dues.length){
+    dhHTML='<div style="display:flex;flex-direction:column;gap:.75rem;">';
+    d.payment_dues.forEach(function(due){
+      var icon=due.payment_for==='LOCKER'?'bi-lock':'bi-card-checklist';
+      var clr=due.payment_for==='LOCKER'?'#d97706':'#dc2626';
+      dhHTML+='<div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border:1px solid #fde68a;border-radius:10px;background:#fffbeb;">'+
+        '<div style="display:flex;align-items:center;gap:.75rem;">'+
+          '<div style="width:36px;height:36px;border-radius:8px;background:'+clr+'15;color:'+clr+';display:flex;align-items:center;justify-content:center;font-size:1rem;"><i class="bi '+icon+'"></i></div>'+
+          '<div><div style="font-weight:700;font-size:.9rem;color:#1a1a2e;">'+due.label+'</div>'+
+          '<div style="font-size:.75rem;color:#92400e;">'+due.payment_for+'</div></div></div>'+
+        '<div style="text-align:right;"><div style="font-weight:800;font-size:1rem;color:#dc2626;">NPR '+due.amount.toFixed(2)+'</div>'+
+        '<div style="font-size:.7rem;color:#92400e;font-weight:600;">DUE</div></div></div>';
+    });
+    dhHTML+='</div>';}
+
   var dh='<div class="empty-state"><i class="bi bi-egg-fried"></i><p>No active diet plan</p></div>';
   if(d.active_diet_plan){var dp=d.active_diet_plan;dh='<div style="border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem;background:#fafbfc;"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;"><div><div style="font-size:1.1rem;font-weight:700;color:#1a1a2e;">'+dp.name+'</div><div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">Goal: '+dp.goal+'</div></div><span style="background:#dcfce7;color:#166534;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Active</span></div><div style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap;"><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#1a1a2e;">'+dp.daily_calories+'</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Calories</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#16a34a;">'+dp.protein_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Protein</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#d97706;">'+dp.carbs_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Carbs</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#dc2626;">'+dp.fats_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:#9ca3af;font-weight:600;">Fats</div></div></div><div style="margin-top:.75rem;font-size:.8rem;color:#6b7280;">'+dp.meal_count+' meals planned</div></div>';}
 
@@ -443,6 +463,8 @@ async function loadProfile(){
     '</div><div>'+
 
     '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-card-checklist"></i> Active Membership</h6></div><div class="info-card-body">'+mh+'</div></div>'+
+
+    '<div class="info-card" style="border:2px solid #fde68a;background:#fffbeb;"><div class="info-card-header" style="background:#fef3c7;border-bottom:1px solid #fde68a;"><h6 style="margin:0;font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:.5rem;"><i class="bi bi-exclamation-triangle" style="color:#d97706;"></i> Payment Dues</h6></div><div class="info-card-body">'+dhHTML+'</div></div>'+
 
     '<div class="info-card" style="overflow:visible;">'+
 

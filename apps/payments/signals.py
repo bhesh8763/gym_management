@@ -13,6 +13,39 @@ from .models import Payment
 
 
 @receiver(post_save, sender=Payment)
+def activate_membership_on_payment(sender, instance, created, **kwargs):
+    """
+    When a membership payment is confirmed as PAID, activate the linked
+    membership and update its price_paid field.
+    """
+    if instance.status != Payment.PaymentStatus.PAID:
+        return
+    if instance.payment_for != Payment.PaymentFor.MEMBERSHIP:
+        return
+    if not instance.membership_id:
+        return
+
+    from apps.memberships.models import Membership
+
+    membership = Membership.objects.filter(id=instance.membership_id).first()
+    if not membership:
+        return
+
+    # Activate if currently PENDING
+    update_fields = []
+    if membership.status == Membership.Status.PENDING:
+        membership.status = Membership.Status.ACTIVE
+        update_fields.append('status')
+
+    # Update price_paid to reflect the amount paid
+    membership.price_paid = instance.amount_paid
+    update_fields.append('price_paid')
+
+    if update_fields:
+        membership.save(update_fields=update_fields)
+
+
+@receiver(post_save, sender=Payment)
 def notify_payment_received(sender, instance, created, **kwargs):
     """
     Create a PAYMENT_RECEIVED notification for the member whenever a payment

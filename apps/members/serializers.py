@@ -269,6 +269,7 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
     # Payments
     recent_payments = serializers.SerializerMethodField()
+    payment_dues = serializers.SerializerMethodField()
 
     class Meta:
         model = MemberProfile
@@ -287,7 +288,7 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
             'active_workout',
             'active_diet_plan',
             'latest_progress', 'personal_records',
-            'recent_payments',
+            'recent_payments', 'payment_dues',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
@@ -438,3 +439,46 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
             'paid_at': p.paid_at,
             'receipt_number': p.receipt_number,
         } for p in payments]
+
+    def get_payment_dues(self, obj):
+        from decimal import Decimal
+        from apps.memberships.models import Membership
+        from apps.lockers.models import LockerAssignment
+
+        dues = []
+
+        pending_memberships = Membership.objects.filter(
+            member=obj.user, status=Membership.Status.PENDING
+        ).select_related('plan').order_by('-created_at')
+        for pm in pending_memberships:
+            outstanding = pm.plan.price - (pm.price_paid or Decimal('0'))
+            if outstanding > 0:
+                dues.append({
+                    'payment_for': 'MEMBERSHIP',
+                    'reference_id': pm.id,
+                    'label': f'{pm.plan.name} Membership',
+                    'amount': float(outstanding),
+                })
+
+        active_locker = LockerAssignment.objects.filter(
+            member=obj.user, is_active=True
+        ).select_related('locker').first()
+        if active_locker and active_locker.locker.monthly_fee > 0:
+            from apps.payments.models import Payment
+            now = timezone.now()
+            has_paid = Payment.objects.filter(
+                member=obj.user,
+                payment_for='LOCKER',
+                status='PAID',
+                created_at__year=now.year,
+                created_at__month=now.month,
+            ).exists()
+            if not has_paid:
+                dues.append({
+                    'payment_for': 'LOCKER',
+                    'reference_id': active_locker.id,
+                    'label': f'Locker {active_locker.locker.locker_number} Fee',
+                    'amount': float(active_locker.locker.monthly_fee),
+                })
+
+        return dues

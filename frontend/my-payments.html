@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Payments - FitCore</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="MEMBER">
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<nav class="topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <span class="navbar-brand">FitCore</span>
+    <div class="position-relative">
+        <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+            <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
+        </button>
+        <div class="dropdown-panel" id="notifPanel">
+            <div class="dropdown-header">Notifications</div>
+            <div id="notifList"><div class="notif-empty">No notifications</div></div>
+        </div>
+    </div>
+    <div class="position-relative">
+        <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+            <span class="profile-avatar" id="profileAvatar">?</span>
+            <span class="profile-meta"><div class="profile-name" id="profileName">—</div><div class="profile-role" id="profileRole">—</div></span>
+            <i class="bi bi-chevron-down text-white-50"></i>
+        </button>
+        <div class="dropdown-panel profile-menu" id="profilePanel">
+            <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+            <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </div>
+    </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+    <div class="sidebar" id="sidebar">
+        <div class="list-group list-group-flush pt-2">
+            <div class="nav-section-label">Main</div>
+            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+            <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+            <div class="nav-section-label">Workout & Diet</div>
+            <a href="my-workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
+            <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+
+            <div class="nav-section-label">Payments</div>
+            <a href="my-payments.html" class="list-group-item list-group-item-action active"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+
+            <div class="nav-section-label">System</div>
+            <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
+        </div>
+    </div>
+
+    <div class="p-4 flex-grow-1">
+        <h3>My Payments</h3>
+        <p class="text-muted">Pay what you owe and review your payment history.</p>
+
+        <div id="loadingState" class="text-center text-muted py-5">
+            <div class="spinner-border" role="status"></div>
+            <div class="mt-2">Loading your payments…</div>
+        </div>
+
+        <div id="pageBody" style="display:none;">
+
+          <!-- Outstanding dues -->
+          <h5 class="mb-3">Outstanding Dues</h5>
+          <div id="noDuesState" class="alert alert-success d-none">
+            <i class="bi bi-check-circle"></i> You're all caught up — nothing due right now.
+          </div>
+          <div id="duesContainer" class="row g-3 mb-4"></div>
+
+          <!-- Pending Khalti payments -->
+          <div id="pendingSection" class="d-none mb-4">
+            <h5 class="mb-3"><i class="bi bi-hourglass-split text-warning"></i> Pending Khalti Payments</h5>
+            <div id="pendingContainer" class="row g-3"></div>
+          </div>
+
+          <!-- Payment history -->
+          <h5 class="mb-3">Payment History</h5>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr>
+                  <th>Receipt #</th>
+                  <th>For</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr><td colspan="6" class="text-center text-muted py-4">No payment records yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Pay Modal -->
+<div class="modal fade" id="payModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="payModalTitle">Pay</h5>
+      </div>
+      <form id="payForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Amount Due</label>
+            <input type="text" id="payAmountDisplay" class="form-control" disabled>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Payment Method</label>
+            <select id="payMethod" class="form-select" required>
+              <option value="KHALTI" selected>Khalti (Online)</option>
+              <option value="ESEWA" disabled>eSewa (Coming Soon)</option>
+              <option value="CARD" disabled>Card (Coming Soon)</option>
+              <option value="BANK" disabled>Bank Transfer (Coming Soon)</option>
+              <option value="OTHER" disabled>Other (Coming Soon)</option>
+            </select>
+            <div class="form-text" id="payMethodHint">
+              <i class="bi bi-info-circle"></i> You'll be redirected to Khalti to complete this payment securely.
+            </div>
+          </div>
+          <div id="payError" class="alert alert-danger d-none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span class="spinner-border spinner-border-sm d-none" id="paySpinner"></span>
+            Pay with Khalti
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+if (!getAccessToken()) window.location.href = 'index.html';
+
+let duesCache = [];
+let selectedDue = null;
+
+function showToast(message, variant) {
+    const toastEl = document.getElementById("appToast");
+    const bodyEl = document.getElementById("appToastBody");
+    if (!toastEl || !bodyEl) return;
+    toastEl.classList.remove("bg-success", "bg-danger", "bg-warning");
+    toastEl.classList.add(variant === "error" ? "bg-danger" : variant === "warning" ? "bg-warning" : "bg-success");
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3500 }).show();
+}
+
+function statusBadge(status) {
+    const map = { PAID: 'success', PENDING: 'warning', FAILED: 'danger', REFUNDED: 'secondary', PARTIAL: 'info' };
+    return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+}
+
+function dueIcon(paymentFor) {
+    return paymentFor === 'LOCKER' ? 'bi-lock' : 'bi-card-checklist';
+}
+
+function methodBadge(method) {
+    const map = { CASH: 'cash-stack', ESEWA: 'phone', KHALTI: 'phone', BANK: 'bank', CARD: 'credit-card' };
+    return `<i class="bi bi-${map[method] || 'wallet2'}"></i> ${method}`;
+}
+
+async function loadDues() {
+    const res = await apiRequest('/payments/my-dues/');
+    if (!res) return;
+    if (!res.ok) { showToast('Could not load your dues', 'error'); return; }
+    const data = await res.json();
+    duesCache = data.dues || [];
+
+    const container = document.getElementById('duesContainer');
+    const noDues = document.getElementById('noDuesState');
+    container.innerHTML = '';
+
+    if (!duesCache.length) {
+        noDues.classList.remove('d-none');
+        return;
+    }
+    noDues.classList.add('d-none');
+
+    duesCache.forEach((due, idx) => {
+        container.innerHTML += `
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="text-muted small text-uppercase">${due.payment_for === 'LOCKER' ? 'Locker' : 'Membership'}</div>
+                  <div class="fw-bold"><i class="bi ${dueIcon(due.payment_for)} me-1"></i>${due.label}</div>
+                  <div class="text-success fw-bold mt-1">NPR ${due.amount.toFixed(2)}</div>
+                </div>
+                <button class="btn btn-primary" onclick="openPayModal(${idx})">
+                  <i class="bi bi-phone"></i> Pay Now
+                </button>
+              </div>
+            </div>
+          </div>`;
+    });
+}
+
+async function loadPendingPayments() {
+    const res = await apiRequest('/payments/?status=PENDING&payment_method=KHALTI');
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    const pending = (data.results || []).filter(p => p.payment_method === 'KHALTI');
+
+    const section = document.getElementById('pendingSection');
+    const container = document.getElementById('pendingContainer');
+    container.innerHTML = '';
+
+    if (!pending.length) {
+        section.classList.add('d-none');
+        return;
+    }
+
+    section.classList.remove('d-none');
+    pending.forEach(p => {
+        const created = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        container.innerHTML += `
+          <div class="col-md-6">
+            <div class="card border-warning">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div class="text-muted small">${p.receipt_number}</div>
+                    <div class="fw-bold">${p.payment_for} — NPR ${parseFloat(p.amount).toFixed(2)}</div>
+                    <div class="text-muted small">Created: ${created}</div>
+                  </div>
+                  <button class="btn btn-outline-warning btn-sm" onclick="retryKhaltiPayment('${p.id}', '${p.transaction_id || ''}')">
+                    <i class="bi bi-arrow-clockwise"></i> Retry Verify
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+    });
+}
+
+async function retryKhaltiPayment(paymentId, pidx) {
+    if (!paymentId) return;
+    showToast('Retrying payment verification...', 'warning');
+
+    const res = await apiRequest('/payments/retry-khalti/', {
+        method: 'POST',
+        body: JSON.stringify({ payment_id: paymentId }),
+    });
+
+    if (!res) return;
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.status === 'PAID') {
+        showToast('Payment verified successfully!');
+    } else if (res.ok && data.status === 'FAILED') {
+        showToast('Payment was not completed.', 'error');
+    } else if (res.ok) {
+        showToast('Payment is still pending — try again shortly.', 'warning');
+    } else {
+        showToast(typeof formatApiError === 'function' ? formatApiError(data) : 'Verification failed', 'error');
+    }
+
+    await loadPendingPayments();
+    await loadDues();
+    await loadHistory();
+}
+
+function openPayModal(idx) {
+    selectedDue = duesCache[idx];
+    document.getElementById('payModalTitle').textContent = `Pay — ${selectedDue.label}`;
+    document.getElementById('payAmountDisplay').value = `NPR ${selectedDue.amount.toFixed(2)}`;
+    document.getElementById('payError').classList.add('d-none');
+    document.getElementById('payForm').reset();
+    document.getElementById('payMethod').value = 'KHALTI';
+    document.getElementById('paySpinner').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('payModal')).show();
+}
+
+document.getElementById('payForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selectedDue) return;
+    const errorBox = document.getElementById('payError');
+    errorBox.classList.add('d-none');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const spinner = document.getElementById('paySpinner');
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    const payload = {
+        payment_for: selectedDue.payment_for,
+        reference_id: selectedDue.reference_id,
+        payment_method: document.getElementById('payMethod').value,
+    };
+
+    try {
+        const res = await apiRequest('/payments/pay/', { method: 'POST', body: JSON.stringify(payload) });
+        if (!res) return;
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            errorBox.textContent = (typeof formatApiError === 'function') ? formatApiError(data) : JSON.stringify(data);
+            errorBox.classList.remove('d-none');
+            return;
+        }
+
+        if (data.payment_url) {
+            showToast('Redirecting to Khalti...');
+            window.location.href = data.payment_url;
+            return;
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('payModal'))?.hide();
+        showToast('Payment recorded — pending verification.');
+        await loadDues();
+        await loadHistory();
+    } catch (err) {
+        errorBox.textContent = 'Network error — please try again.';
+        errorBox.classList.remove('d-none');
+    } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
+
+async function verifyKhaltiIfReturning() {
+    const params = new URLSearchParams(window.location.search);
+    const pidx = params.get('pidx');
+    if (!pidx) return;
+
+    // Clean the URL immediately so a page refresh doesn't re-trigger this.
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    showToast('Verifying your Khalti payment...');
+    const res = await apiRequest('/payments/verify-khalti/', {
+        method: 'POST',
+        body: JSON.stringify({ pidx }),
+    });
+    if (!res) return;
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.status === 'PAID') {
+        showToast('Payment successful!');
+    } else if (res.ok && data.status === 'FAILED') {
+        showToast('Payment was not completed.', 'error');
+    } else if (res.ok) {
+        showToast('Payment is still processing — check back shortly.', 'warning');
+    } else {
+        showToast((typeof formatApiError === 'function') ? formatApiError(data) : 'Could not verify payment', 'error');
+    }
+    await loadPendingPayments();
+    await loadDues();
+    await loadHistory();
+}
+
+async function loadHistory() {
+    let all = [];
+    let path = '/payments/';
+    while (path) {
+        const res = await apiRequest(path);
+        if (!res || !res.ok) break;
+        const data = await res.json();
+        all = all.concat(data.results);
+        path = data.next ? data.next.replace(API_BASE, '') : null;
+    }
+
+    const tbody = document.getElementById('historyTableBody');
+    if (!all.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No payment records yet.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = all.map(row => `
+        <tr>
+          <td><code>${row.receipt_number}</code></td>
+          <td>${row.payment_for}</td>
+          <td>NPR ${parseFloat(row.amount).toFixed(2)}</td>
+          <td>${methodBadge(row.payment_method)}</td>
+          <td>${statusBadge(row.status)}</td>
+          <td>${new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+        </tr>`).join('');
+}
+
+(async () => {
+    await Promise.all([loadDues(), loadPendingPayments(), loadHistory()]);
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('pageBody').style.display = '';
+    await verifyKhaltiIfReturning();
+})();
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ Covers membership plans, and the member membership lifecycle:
 create/assign, freeze, unfreeze, renew, and cancel.
 """
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -118,8 +119,8 @@ class MembershipCreateSerializer(serializers.ModelSerializer):
         plan = validated_data['plan']
         start_date = validated_data.get('start_date') or timezone.now().date()
         end_date = start_date + timedelta(days=plan.duration_days)
-        price_paid = validated_data.get('price_paid', plan.price)
-        status = validated_data.get('status', Membership.Status.ACTIVE)
+        price_paid = validated_data.get('price_paid', Decimal('0'))
+        status = validated_data.get('status', Membership.Status.PENDING)
 
         return Membership.objects.create(
             member=validated_data['member'],
