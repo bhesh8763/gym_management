@@ -865,3 +865,79 @@ async function showMemberQuickView(memberId) {
     <p class="mb-0"><i class="bi bi-card-checklist me-1"></i>${escapeHtml(m.membership_status || '—')}</p>
   `;
 }
+
+// ── Topbar bell notifications ─────────────────────────────────────────────
+// Shared across all pages. Called once on initial page load and after any
+// mark-as-read action so the badge + dropdown stay in sync without per-page
+// duplication. notifications.html has its own full-page implementation and
+// calls refreshTopbarBell() directly — this function is the equivalent used
+// by every other page.
+async function loadTopbarNotifications() {
+  const res = await apiRequest('/notifications/?is_read=false');
+  if (!res || !res.ok) return;
+  const data = await res.json();
+  const items = data.results || data;
+
+  // Badge
+  const badge = document.getElementById('notifCount');
+  if (badge) {
+    if (items.length > 0) {
+      badge.style.display = 'inline-block';
+      badge.textContent = items.length > 99 ? '99+' : items.length;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // Mark-all button — enable only when there are unread items
+  const markAllBtn = document.getElementById('notifMarkAllBtn');
+  if (markAllBtn) markAllBtn.disabled = items.length === 0;
+
+  // List
+  const listEl = document.getElementById('notifList');
+  if (!listEl) return;
+  listEl.innerHTML = items.length
+    ? items.slice(0, 6).map(n => `
+        <div class="notif-item" onclick="markTopbarNotifRead(${n.id})" style="cursor:pointer;" id="topbar-notif-${n.id}">
+          <div style="font-size:0.85rem;font-weight:600;">${escapeHtml(n.title)}</div>
+          <div class="text-muted" style="font-size:0.78rem;">${escapeHtml(n.message.length > 80 ? n.message.substring(0, 80) + '…' : n.message)}</div>
+        </div>`).join('')
+    : '<div class="notif-empty">No new notifications</div>';
+}
+
+async function markTopbarNotifRead(id) {
+  const res = await apiRequest(`/notifications/${id}/read/`, { method: 'PATCH' });
+  if (!res || !res.ok) return;
+  // Remove the item from the dropdown immediately
+  const row = document.getElementById(`topbar-notif-${id}`);
+  if (row) row.remove();
+  // Recount badge from remaining items
+  const remaining = document.querySelectorAll('#notifList .notif-item').length;
+  const badge = document.getElementById('notifCount');
+  if (badge) {
+    if (remaining > 0) {
+      badge.textContent = remaining > 99 ? '99+' : remaining;
+    } else {
+      badge.style.display = 'none';
+      const listEl = document.getElementById('notifList');
+      if (listEl) listEl.innerHTML = '<div class="notif-empty">No new notifications</div>';
+    }
+  }
+  const markAllBtn = document.getElementById('notifMarkAllBtn');
+  if (markAllBtn) markAllBtn.disabled = remaining === 0;
+}
+
+async function markAllTopbarNotificationsRead() {
+  const btn = document.getElementById('notifMarkAllBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+  }
+  const res = await apiRequest('/notifications/mark-all-read/', { method: 'POST' });
+  if (res && res.ok) {
+    await loadTopbarNotifications();
+  } else if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check2-all me-1"></i>Mark all as read';
+  }
+}

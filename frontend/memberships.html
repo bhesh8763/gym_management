@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -19,8 +19,16 @@
       <span class="notif-badge" id="notifCount" style="display:none;">0</span>
     </button>
     <div class="dropdown-panel" id="notifPanel">
-      <div class="dropdown-header">Notifications</div>
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
       <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
     </div>
   </div>
 
@@ -109,47 +117,16 @@
 
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h5 class="mb-0">Membership Plans</h5>
-      <button type="button" class="btn btn-primary" onclick="togglePlanForm()">
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPlanModal">
         <i class="bi bi-plus-circle"></i> New Plan
       </button>
     </div>
 
-    <form id="planForm" class="row g-2 mb-3 align-items-end d-none">
-      <div class="col-auto">
-        <label class="form-label">Name</label>
-        <input type="text" id="planName" class="form-control" required>
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Billing Cycle</label>
-        <select id="planCycle" class="form-select">
-          <option value="MONTHLY">Monthly</option>
-          <option value="QUARTERLY">Quarterly (3 months)</option>
-          <option value="HALF_YEARLY">Half Yearly (6 months)</option>
-          <option value="ANNUAL">Annual</option>
-          <option value="CUSTOM">Custom</option>
-        </select>
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Duration (days)</label>
-        <input type="number" id="planDuration" class="form-control" required>
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Price (NPR)</label>
-        <input type="number" step="0.01" min="0" id="planPrice" class="form-control" required>
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Description</label>
-        <input type="text" id="planDescription" class="form-control">
-      </div>
-      <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Save Plan</button>
-      </div>
-    </form>
 
     <div class="table-responsive mb-4">
       <table class="table table-bordered table-sm mb-0">
         <thead>
-          <tr><th>Name</th><th>Cycle</th><th>Duration</th><th>Price (NPR)</th><th>Status</th><th>Actions</th></tr>
+          <tr><th>Name</th><th>Cycle</th><th>Duration</th><th>Price (NPR)</th><th>Actions</th></tr>
         </thead>
         <tbody id="planTableBody"></tbody>
       </table>
@@ -260,6 +237,53 @@
   </div>
 </div>
 
+<!-- Create Plan Modal -->
+<div class="modal fade" id="createPlanModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Create New Plan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="planForm" class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Name</label>
+            <input type="text" id="planName" class="form-control" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Billing Cycle</label>
+            <select id="planCycle" class="form-select" required>
+              <option value="MONTHLY">Monthly</option>
+              <option value="QUARTERLY">Quarterly (3 months)</option>
+              <option value="HALF_YEARLY">Half Yearly (6 months)</option>
+              <option value="ANNUAL">Annual</option>
+              <option value="CUSTOM">Custom</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Duration (days)</label>
+            <input type="number" id="planDuration" class="form-control" required disabled>
+            <small class="text-muted" id="durationHint">Duration is automatically set based on billing cycle</small>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Price (NPR)</label>
+            <input type="number" step="0.01" min="0" id="planPrice" class="form-control" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Description</label>
+            <input type="text" id="planDescription" class="form-control">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitPlanForm()">Create Plan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Plan: Manage Modal -->
 <div class="modal fade" id="managePlanModal" tabindex="-1">
   <div class="modal-dialog">
@@ -292,19 +316,14 @@
               <small class="text-muted d-block">Description</small>
               <span id="planManageDescription">—</span>
             </div>
-            <button class="quick-action-btn w-100 justify-content-center" onclick="openEditPlanModalFromManage()">
-              <i class="bi bi-pencil"></i> Edit Details
-            </button>
-          </div>
-        </div>
-
-        <div class="manage-section">
-          <div class="manage-section-head"><i class="bi bi-shield-check"></i> STATUS</div>
-          <div class="manage-section-body d-flex justify-content-between align-items-center">
-            <span class="pill" id="planManageStatusPill">—</span>
-            <button class="btn btn-outline-danger btn-sm" onclick="deletePlanFromManage()">
-              <i class="bi bi-trash"></i> Delete Plan
-            </button>
+            <div class="d-flex gap-2">
+              <button class="quick-action-btn flex-grow-1 justify-content-center" onclick="openEditPlanModalFromManage()">
+                <i class="bi bi-pencil"></i> Edit Details
+              </button>
+              <button class="btn btn-outline-danger btn-sm" onclick="deletePlanFromManage()">
+                <i class="bi bi-trash"></i> Delete Plan
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -522,15 +541,6 @@
 
   restrictPastDates('assignStart');
 
-  function togglePlanForm() {
-    const form = document.getElementById('planForm');
-    form.classList.toggle('d-none');
-    const btn = document.querySelector('[onclick="togglePlanForm()"]');
-    const isOpen = !form.classList.contains('d-none');
-    btn.innerHTML = isOpen
-      ? '<i class="bi bi-dash-circle"></i> Cancel'
-      : '<i class="bi bi-plus-circle"></i> New Plan';
-  }
 
   function pillClassForStatus(status) {
     const map = {
@@ -615,13 +625,13 @@
 
   // ── Plans ────────────────────────────────────────────────────────────────
   async function loadPlans() {
-    const plans = await fetchAll('/memberships/plans/');
+    const plans = await fetchAll('/memberships/plans/?is_active=true');
     if (!plans) return;
     plansCache = plans;
 
     const tbody = document.getElementById('planTableBody');
     if (plans.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No membership plans yet — click "+ New Plan" to create one.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No membership plans yet — click "+ New Plan" to create one.</td></tr>`;
     } else {
       tbody.innerHTML = plans.map(p => `
         <tr>
@@ -629,7 +639,6 @@
           <td>${p.billing_cycle_display}</td>
           <td>${p.duration_days} days</td>
           <td>${p.price}</td>
-          <td>${p.is_active ? '<span class="pill pill-success">Active</span>' : '<span class="pill pill-muted">Inactive</span>'}</td>
           <td><button class="manage-btn btn btn-sm" onclick="openPlanManage(${p.id})">Manage</button></td>
         </tr>`).join('');
     }
@@ -658,8 +667,6 @@
     document.getElementById('planManageDuration').textContent = p.duration_days + ' days';
     document.getElementById('planManagePrice').textContent = 'NPR ' + p.price;
     document.getElementById('planManageDescription').textContent = p.description || '—';
-    document.getElementById('planManageStatusPill').className = 'pill ' + (p.is_active ? 'pill-success' : 'pill-muted');
-    document.getElementById('planManageStatusPill').textContent = p.is_active ? 'Active' : 'Inactive';
     new bootstrap.Modal(document.getElementById('managePlanModal')).show();
   }
 
@@ -683,8 +690,63 @@
     document.getElementById('editPlanPrice').value = p.price;
     document.getElementById('editPlanDescription').value = p.description || '';
     document.getElementById('editPlanStatus').value = p.is_active ? 'true' : 'false';
+    
+    // Set up duration field state based on billing cycle
+    toggleDurationField();
+    
     new bootstrap.Modal(document.getElementById('editPlanModal')).show();
   }
+
+  function toggleDurationField() {
+    const cycle = document.getElementById('editPlanCycle').value;
+    const durationField = document.getElementById('editPlanDuration');
+    
+    if (cycle === 'CUSTOM') {
+      durationField.disabled = false;
+      durationField.style.backgroundColor = '';
+    } else {
+      durationField.disabled = true;
+      durationField.style.backgroundColor = '#f8f9fa';
+      // Set duration based on cycle
+      const cycleDurationMap = {
+        MONTHLY: 30,
+        QUARTERLY: 90,
+        HALF_YEARLY: 180,
+        ANNUAL: 365,
+      };
+      durationField.value = cycleDurationMap[cycle] || 30;
+    }
+  }
+
+  // Add event listener for billing cycle changes
+  document.getElementById('editPlanCycle').addEventListener('change', toggleDurationField);
+
+  // Add same logic for create plan modal
+  function toggleCreateDurationField() {
+    const cycle = document.getElementById('planCycle').value;
+    const durationField = document.getElementById('planDuration');
+    const hint = document.getElementById('durationHint');
+    
+    if (cycle === 'CUSTOM') {
+      durationField.disabled = false;
+      durationField.style.backgroundColor = '';
+      hint.textContent = 'Enter custom duration in days';
+    } else {
+      durationField.disabled = true;
+      durationField.style.backgroundColor = '#f8f9fa';
+      hint.textContent = 'Duration is automatically set based on billing cycle';
+      // Set duration based on cycle
+      const cycleDurationMap = {
+        MONTHLY: 30,
+        QUARTERLY: 90,
+        HALF_YEARLY: 180,
+        ANNUAL: 365,
+      };
+      durationField.value = cycleDurationMap[cycle] || 30;
+    }
+  }
+
+  document.getElementById('planCycle').addEventListener('change', toggleCreateDurationField);
 
   async function updatePlan() {
     const id = document.getElementById('editPlanId').value;
@@ -710,8 +772,39 @@
     }
   }
 
-  document.getElementById('planForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  const cycleDurationMap = {
+    MONTHLY: 30,
+    QUARTERLY: 90,
+    HALF_YEARLY: 180,
+    ANNUAL: 365,
+  };
+
+  function updateDurationField() {
+    const cycle = document.getElementById('planCycle').value;
+    const durationField = document.getElementById('planDuration');
+    const durationHint = document.getElementById('durationHint');
+
+    if (cycle === 'CUSTOM') {
+      durationField.disabled = false;
+      durationField.required = true;
+      durationHint.textContent = 'Enter custom duration in days';
+    } else {
+      const days = cycleDurationMap[cycle];
+      durationField.value = days;
+      durationField.disabled = true;
+      durationField.required = false;
+      durationHint.textContent = `Duration is automatically set to ${days} days for ${cycle.toLowerCase()}`;
+    }
+  }
+
+  document.getElementById('planCycle').addEventListener('change', updateDurationField);
+
+  // Initialize on modal open
+  document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
+    updateDurationField();
+  });
+
+  async function submitPlanForm() {
     const payload = {
       name: document.getElementById('planName').value.trim(),
       billing_cycle: document.getElementById('planCycle').value,
@@ -723,20 +816,24 @@
     if (!res) return;
     if (res.ok) {
       document.getElementById('planForm').reset();
-      document.getElementById('planForm').classList.add('d-none');
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('createPlanModal')).hide();
       loadPlans();
     } else {
       const err = await res.json();
       alert('Failed to create plan: ' + JSON.stringify(err));
     }
-  });
+  }
 
   async function deletePlan(id) {
     if (!confirm('Delete this plan? Existing memberships keep it, but it will no longer be assignable.')) return;
     const res = await apiRequest(`/memberships/plans/${id}/`, { method: 'DELETE' });
     if (!res) return;
-    if (res.ok) loadPlans();
-    else alert('Failed to delete plan.');
+    if (res.ok) {
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('managePlanModal')).hide();
+      loadPlans();
+    } else {
+      alert('Failed to delete plan.');
+    }
   }
 
   // ── Memberships Search/Filter ─────────────────────────────────────────────
@@ -1140,6 +1237,8 @@
     await loadPlans();
     await loadMemberships();
   })();
+
+  loadTopbarNotifications();
 </script>
 </body>
 </html>

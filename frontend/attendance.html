@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -20,8 +20,16 @@
       <span class="notif-badge" id="notifCount" style="display:none;">0</span>
     </button>
     <div class="dropdown-panel" id="notifPanel">
-      <div class="dropdown-header">Notifications</div>
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
       <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
     </div>
   </div>
 
@@ -412,9 +420,64 @@
   </div>
 </div>
 
+<!-- Attendance: Manage Modal -->
+<div class="modal fade" id="manageAttendanceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="d-flex align-items-center">
+          <div class="member-avatar-lg" id="attendanceManageAvatar">A</div>
+          <div class="ms-3">
+            <h5 class="mb-0" id="attendanceManageName">—</h5>
+            <div class="manage-sub" id="attendanceManageSub">—</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="manage-section">
+          <div class="manage-section-head"><i class="bi bi-info-circle"></i> DETAILS</div>
+          <div class="manage-section-body">
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <small class="text-muted d-block">Date</small>
+                <strong id="attendanceManageDate">—</strong>
+              </div>
+              <div class="col-6">
+                <small class="text-muted d-block">Status</small>
+                <span id="attendanceManageStatus">—</span>
+              </div>
+            </div>
+            <div class="mb-3">
+              <small class="text-muted d-block">Membership</small>
+              <span id="attendanceManageMembership">—</span>
+            </div>
+            <div class="mb-3">
+              <small class="text-muted d-block">Notes</small>
+              <span id="attendanceManageNotes">—</span>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="quick-action-btn flex-grow-1 justify-content-center" onclick="openEditAttendanceModalFromManage()">
+                <i class="bi bi-pencil"></i> Edit Details
+              </button>
+              <button class="btn btn-outline-danger btn-sm" onclick="deleteAttendanceFromManage()">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
+  console.log('=== ATTENDANCE SCRIPT STARTING ===');
   if (!getAccessToken()) window.location.href = 'index.html';
 
   // ── Shared Check-In QR ────────────────────────────────────────────────────
@@ -528,6 +591,7 @@
       return;
     }
     allAttendance = data;
+    window.allAttendance = allAttendance;
     renderAttendance(allAttendance);
     updateTodayStats();
   }
@@ -556,22 +620,116 @@
         <td>${statusBadge(record.status)}</td>
         <td>${record.membership || '-'}</td>
         <td>
-          <button class="table-icon-btn" title="View" onclick="viewAttendance(${record.id})">
-            <i class="bi bi-eye"></i>
-          </button>
-          <button class="table-icon-btn" title="Edit" onclick="openEditAttendanceModal(${record.id})">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="table-icon-btn" title="Delete" onclick="deleteAttendance(${record.id})">
-            <i class="bi bi-trash"></i>
-          </button>
+          <button class="manage-btn btn btn-sm" onclick="openAttendanceManage(${record.id})">Manage</button>
         </td>
       </tr>`).join('');
   }
 
+  let currentManageAttendanceId = null;
+
+  function ensureAttendanceManageModal() {
+    if (document.getElementById('manageAttendanceModal')) return;
+    
+    const modalHtml = `
+    <div class="modal fade" id="manageAttendanceModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="d-flex align-items-center">
+              <div class="member-avatar-lg" id="attendanceManageAvatar">A</div>
+              <div class="ms-3">
+                <h5 class="mb-0" id="attendanceManageName">—</h5>
+                <div class="manage-sub" id="attendanceManageSub">—</div>
+              </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="manage-section">
+              <div class="manage-section-head"><i class="bi bi-info-circle"></i> DETAILS</div>
+              <div class="manage-section-body">
+                <div class="row g-3 mb-3">
+                  <div class="col-6">
+                    <small class="text-muted d-block">Date</small>
+                    <strong id="attendanceManageDate">—</strong>
+                  </div>
+                  <div class="col-6">
+                    <small class="text-muted d-block">Status</small>
+                    <span id="attendanceManageStatus">—</span>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <small class="text-muted d-block">Membership</small>
+                  <span id="attendanceManageMembership">—</span>
+                </div>
+                <div class="mb-3">
+                  <small class="text-muted d-block">Notes</small>
+                  <span id="attendanceManageNotes">—</span>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="quick-action-btn flex-grow-1 justify-content-center" onclick="openEditAttendanceModalFromManage()">
+                    <i class="bi bi-pencil"></i> Edit Details
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" onclick="deleteAttendanceFromManage()">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  }
+
+  function openAttendanceManage(id) {
+    console.log('openAttendanceManage called with id:', id);
+    
+    // Ensure modal exists
+    ensureAttendanceManageModal();
+    
+    const allData = window.allAttendance || allAttendance;
+    const record = allData ? allData.find(r => r.id === id) : null;
+    if (!record) {
+      console.log('No record found for id:', id);
+      return;
+    }
+    
+    currentManageAttendanceId = id;
+    
+    document.getElementById('attendanceManageAvatar').textContent = record.user_name.charAt(0).toUpperCase();
+    document.getElementById('attendanceManageName').textContent = record.user_name;
+    document.getElementById('attendanceManageSub').textContent = record.date;
+    document.getElementById('attendanceManageDate').textContent = record.date;
+    document.getElementById('attendanceManageStatus').innerHTML = statusBadge(record.status);
+    document.getElementById('attendanceManageMembership').textContent = record.membership || '—';
+    document.getElementById('attendanceManageNotes').textContent = record.notes || '—';
+    
+    new bootstrap.Modal(document.getElementById('manageAttendanceModal')).show();
+  }
+
+  function openEditAttendanceModalFromManage() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('manageAttendanceModal')).hide();
+    openEditAttendanceModal(currentManageAttendanceId);
+  }
+
+  function deleteAttendanceFromManage() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('manageAttendanceModal')).hide();
+    deleteAttendance(currentManageAttendanceId);
+  }
+
   function viewAttendance(id) {
-    const record = allAttendance.find(r => r.id === id);
-    if (!record) return;
+    const allData = window.allAttendance || allAttendance;
+    const record = allData.find(r => r.id === id);
+    if (!record) {
+      console.log('No attendance record found for id:', id);
+      return;
+    }
     document.getElementById('attendanceDetails').innerHTML = `
       <p><strong>Member:</strong> ${record.user_name}</p>
       <p><strong>Date:</strong> ${record.date}</p>
@@ -583,8 +741,12 @@
   }
 
   function openEditAttendanceModal(id) {
-    const record = allAttendance.find(r => r.id === id);
-    if (!record) return;
+    const allData = window.allAttendance || allAttendance;
+    const record = allData.find(r => r.id === id);
+    if (!record) {
+      console.log('No attendance record found for id:', id);
+      return;
+    }
     document.getElementById('editAttendanceId').value = record.id;
     document.getElementById('editAttendanceDate').value = record.date;
     document.getElementById('editAttendanceStatus').value = record.status;
@@ -599,7 +761,7 @@
       status: document.getElementById('editAttendanceStatus').value,
       notes: document.getElementById('editAttendanceNotes').value.trim(),
     };
-    const res = await apiRequest(`/attendance/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+    const res = await apiRequest(`/attendance/records/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
     if (!res) {
       alert('Update request failed to send. Check your connection or session.');
       return;
@@ -616,7 +778,7 @@
 
   async function deleteAttendance(id) {
     if (!confirm('Delete this attendance record?')) return;
-    const res = await apiRequest(`/attendance/${id}/`, { method: 'DELETE' });
+    const res = await apiRequest(`/attendance/records/${id}/`, { method: 'DELETE' });
     if (!res) return;
     if (res.ok) {
       await loadAttendance();
@@ -628,13 +790,13 @@
 
   function filterAttendance() {
     const keyword = document.getElementById('searchAttendance').value.toLowerCase();
-    const filtered = allAttendance.filter(r => r.user_name.toLowerCase().includes(keyword));
+    const filtered = (window.allAttendance || allAttendance).filter(r => r.user_name.toLowerCase().includes(keyword));
     renderAttendance(filtered);
   }
 
   function updateTodayStats() {
     const today = todayStr();
-    const todayRecords = allAttendance.filter(r => r.date === today);
+    const todayRecords = (window.allAttendance || allAttendance).filter(r => r.date === today);
     const present = todayRecords.filter(r => r.status === 'PRESENT').length;
     const absent = todayRecords.filter(r => r.status === 'ABSENT').length;
     document.getElementById('presentToday').textContent = present;
@@ -644,7 +806,7 @@
   // ── Inactive Members (no PRESENT record in last 14 days) ────────────────
   async function loadInactiveMembers() {
     const lastVisit = {};
-    allAttendance.forEach(r => {
+    (window.allAttendance || allAttendance).forEach(r => {
       if (r.status !== 'PRESENT') return;
       if (!lastVisit[r.user_name] || r.date > lastVisit[r.user_name]) {
         lastVisit[r.user_name] = r.date;
@@ -1040,6 +1202,23 @@
     });
   }
 
+
+  loadTopbarNotifications();
+
+  // Expose variables and functions for SPA compatibility
+  window.allAttendance = allAttendance;
+  window.openAttendanceManage = openAttendanceManage;
+  window.openEditAttendanceModalFromManage = openEditAttendanceModalFromManage;
+  window.deleteAttendanceFromManage = deleteAttendanceFromManage;
+  window.viewAttendance = viewAttendance;
+  window.openEditAttendanceModal = openEditAttendanceModal;
+  window.deleteAttendance = deleteAttendance;
+  
+  // Test exposure
+  console.log('Functions exposed:', {
+    openAttendanceManage: typeof window.openAttendanceManage,
+    allAttendance: window.allAttendance ? window.allAttendance.length : 'undefined'
+  });
 </script>
 </body>
 </html>
