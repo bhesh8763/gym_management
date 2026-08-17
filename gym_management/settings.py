@@ -184,3 +184,11 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Gym Management <norep
 
 # Frontend base URL — used in password reset emails
 FRONTEND_URL = config('FRONTEND_URL', default='http://192.168.100.234:5500')
+# ─── KHALTI (sandbox) ───────────────────────────────────────────────────────
+# Get KHALTI_SECRET_KEY from your merchant dashboard at test-admin.khalti.com
+# (Sign up as a merchant there — login OTP for sandbox is always 987654).
+# dev.khalti.com is the sandbox base URL; switch to https://khalti.com/api/v2/
+# only once you have a live merchant account with production keys.
+KHALTI_SECRET_KEY = config('KHALTI_SECRET_KEY', default='')
+KHALTI_BASE_URL = config('KHALTI_BASE_URL', default='https://dev.khalti.com/api/v2')
+KHALTI_WEBHOOK_URL = config('KHALTI_WEBHOOK_URL', default='')
