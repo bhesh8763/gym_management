@@ -80,9 +80,9 @@
           </div>
           <div id="duesContainer" class="row g-3 mb-4"></div>
 
-          <!-- Pending Khalti payments -->
+          <!-- Pending online payments -->
           <div id="pendingSection" class="d-none mb-4">
-            <h5 class="mb-3"><i class="bi bi-hourglass-split text-warning"></i> Pending Khalti Payments</h5>
+            <h5 class="mb-3"><i class="bi bi-hourglass-split text-warning"></i> Pending Online Payments</h5>
             <div id="pendingContainer" class="row g-3"></div>
           </div>
 
@@ -128,7 +128,7 @@
             <label class="form-label">Payment Method</label>
             <select id="payMethod" class="form-select" required>
               <option value="KHALTI" selected>Khalti (Online)</option>
-              <option value="ESEWA" disabled>eSewa (Coming Soon)</option>
+              <option value="ESEWA">eSewa (Online)</option>
               <option value="CARD" disabled>Card (Coming Soon)</option>
               <option value="BANK" disabled>Bank Transfer (Coming Soon)</option>
               <option value="OTHER" disabled>Other (Coming Soon)</option>
@@ -143,7 +143,7 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">
             <span class="spinner-border spinner-border-sm d-none" id="paySpinner"></span>
-            Pay with Khalti
+            <span id="paySubmitLabel">Pay with Khalti</span>
           </button>
         </div>
       </form>
@@ -220,10 +220,10 @@ async function loadDues() {
 }
 
 async function loadPendingPayments() {
-    const res = await apiRequest('/payments/?status=PENDING&payment_method=KHALTI');
+    const res = await apiRequest('/payments/?status=PENDING');
     if (!res || !res.ok) return;
     const data = await res.json();
-    const pending = (data.results || []).filter(p => p.payment_method === 'KHALTI');
+    const pending = (data.results || []).filter(p => p.payment_method === 'KHALTI' || p.payment_method === 'ESEWA');
 
     const section = document.getElementById('pendingSection');
     const container = document.getElementById('pendingContainer');
@@ -237,6 +237,7 @@ async function loadPendingPayments() {
     section.classList.remove('d-none');
     pending.forEach(p => {
         const created = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const retryFn = p.payment_method === 'ESEWA' ? 'retryEsewaPayment' : 'retryKhaltiPayment';
         container.innerHTML += `
           <div class="col-md-6">
             <div class="card border-warning">
@@ -244,10 +245,10 @@ async function loadPendingPayments() {
                 <div class="d-flex justify-content-between align-items-start">
                   <div>
                     <div class="text-muted small">${p.receipt_number}</div>
-                    <div class="fw-bold">${p.payment_for} — NPR ${parseFloat(p.amount).toFixed(2)}</div>
+                    <div class="fw-bold">${p.payment_for} — NPR ${parseFloat(p.amount).toFixed(2)} <span class="badge bg-secondary">${p.payment_method}</span></div>
                     <div class="text-muted small">Created: ${created}</div>
                   </div>
-                  <button class="btn btn-outline-warning btn-sm" onclick="retryKhaltiPayment('${p.id}', '${p.transaction_id || ''}')">
+                  <button class="btn btn-outline-warning btn-sm" onclick="${retryFn}('${p.id}', '${p.transaction_id || ''}')">
                     <i class="bi bi-arrow-clockwise"></i> Retry Verify
                   </button>
                 </div>
@@ -284,6 +285,33 @@ async function retryKhaltiPayment(paymentId, pidx) {
     await loadHistory();
 }
 
+async function retryEsewaPayment(paymentId) {
+    if (!paymentId) return;
+    showToast('Retrying payment verification...', 'warning');
+
+    const res = await apiRequest('/payments/retry-esewa/', {
+        method: 'POST',
+        body: JSON.stringify({ payment_id: paymentId }),
+    });
+
+    if (!res) return;
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.status === 'PAID') {
+        showToast('Payment verified successfully!');
+    } else if (res.ok && data.status === 'FAILED') {
+        showToast('Payment was not completed.', 'error');
+    } else if (res.ok) {
+        showToast('Payment is still pending — try again shortly.', 'warning');
+    } else {
+        showToast(typeof formatApiError === 'function' ? formatApiError(data) : 'Verification failed', 'error');
+    }
+
+    await loadPendingPayments();
+    await loadDues();
+    await loadHistory();
+}
+
 function openPayModal(idx) {
     selectedDue = duesCache[idx];
     document.getElementById('payModalTitle').textContent = `Pay — ${selectedDue.label}`;
@@ -292,8 +320,20 @@ function openPayModal(idx) {
     document.getElementById('payForm').reset();
     document.getElementById('payMethod').value = 'KHALTI';
     document.getElementById('paySpinner').classList.add('d-none');
+    updatePayMethodUI();
     new bootstrap.Modal(document.getElementById('payModal')).show();
 }
+
+function updatePayMethodUI() {
+    const method = document.getElementById('payMethod').value;
+    const hint = document.getElementById('payMethodHint');
+    const submitLabel = document.getElementById('paySubmitLabel');
+    const gatewayName = method === 'ESEWA' ? 'eSewa' : 'Khalti';
+    hint.innerHTML = `<i class="bi bi-info-circle"></i> You'll be redirected to ${gatewayName} to complete this payment securely.`;
+    if (submitLabel) submitLabel.textContent = `Pay with ${gatewayName}`;
+}
+
+document.getElementById('payMethod').addEventListener('change', updatePayMethodUI);
 
 document.getElementById('payForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -328,6 +368,12 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
             return;
         }
 
+        if (data.esewa_form_fields) {
+            showToast('Redirecting to eSewa...');
+            submitEsewaForm(data.esewa_action_url, data.esewa_form_fields);
+            return;
+        }
+
         bootstrap.Modal.getInstance(document.getElementById('payModal'))?.hide();
         showToast('Payment recorded — pending verification.');
         await loadDues();
@@ -340,6 +386,25 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
         spinner.classList.add('d-none');
     }
 });
+
+// eSewa ePay v2 requires an actual browser-submitted HTML form POST with
+// the signed fields as hidden inputs — there is no redirect URL to just
+// navigate to (unlike Khalti). This builds that form on the fly and
+// submits it, taking the browser to eSewa's hosted checkout page.
+function submitEsewaForm(actionUrl, fields) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = actionUrl;
+    Object.entries(fields).forEach(([name, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+}
 
 async function verifyKhaltiIfReturning() {
     const params = new URLSearchParams(window.location.search);
@@ -365,6 +430,36 @@ async function verifyKhaltiIfReturning() {
         showToast('Payment is still processing — check back shortly.', 'warning');
     } else {
         showToast((typeof formatApiError === 'function') ? formatApiError(data) : 'Could not verify payment', 'error');
+    }
+    await loadPendingPayments();
+    await loadDues();
+    await loadHistory();
+}
+
+async function verifyEsewaIfReturning() {
+    const params = new URLSearchParams(window.location.search);
+    const dataParam = params.get('data');
+    if (!dataParam) return;
+
+    // Clean the URL immediately so a page refresh doesn't re-trigger this.
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    showToast('Verifying your eSewa payment...');
+    const res = await apiRequest('/payments/verify-esewa/', {
+        method: 'POST',
+        body: JSON.stringify({ data: dataParam }),
+    });
+    if (!res) return;
+    const responseData = await res.json().catch(() => ({}));
+
+    if (res.ok && responseData.status === 'PAID') {
+        showToast('Payment successful!');
+    } else if (res.ok && responseData.status === 'FAILED') {
+        showToast('Payment was not completed.', 'error');
+    } else if (res.ok) {
+        showToast('Payment is still processing — check back shortly.', 'warning');
+    } else {
+        showToast((typeof formatApiError === 'function') ? formatApiError(responseData) : 'Could not verify payment', 'error');
     }
     await loadPendingPayments();
     await loadDues();
@@ -403,6 +498,7 @@ async function loadHistory() {
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('pageBody').style.display = '';
     await verifyKhaltiIfReturning();
+    await verifyEsewaIfReturning();
 })();
 </script>
 </body>

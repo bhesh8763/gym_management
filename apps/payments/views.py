@@ -23,7 +23,8 @@ from apps.accounts.permissions import IsAnyStaffRole, IsMember, IsOwnerOrStaff
 from apps.lockers.models import LockerAssignment
 from apps.memberships.models import Membership
 from .models import Payment
-from .providers import khalti
+from .providers import esewa, khalti
+from .providers.esewa import EsewaError
 from .providers.khalti import KhaltiError
 from .serializers import PaymentSerializer
 
@@ -48,11 +49,13 @@ class PaymentViewSet(viewsets.ModelViewSet):
       POST /api/payments/pay/            — current member pays one of those dues
       POST /api/payments/verify-khalti/  — confirm a Khalti checkout after the member returns
       POST /api/payments/retry-khalti/   — retry verification for a pending Khalti payment
+      POST /api/payments/verify-esewa/   — confirm an eSewa checkout after the member returns
+      POST /api/payments/retry-esewa/    — retry verification for a pending eSewa payment
     """
     serializer_class = PaymentSerializer
 
     def get_permissions(self):
-        if self.action in ('my_dues', 'pay', 'verify_khalti', 'retry_khalti'):
+        if self.action in ('my_dues', 'pay', 'verify_khalti', 'retry_khalti', 'verify_esewa', 'retry_esewa'):
             return [IsMember()]
         if self.action == 'summary':
             return [IsOwnerOrStaff()]
@@ -189,6 +192,12 @@ class PaymentViewSet(viewsets.ModelViewSet):
         which re-checks the transaction with Khalti directly (never trusts
         the redirect alone).
 
+        For ESEWA: creates the Payment as PENDING and returns signed form
+        fields ("esewa_form_fields") plus "esewa_action_url" — the frontend
+        must build and auto-submit a hidden HTML form POST with those fields
+        directly to esewa_action_url. eSewa redirects back with a base64
+        ?data= param, which the frontend passes to verify-esewa/.
+
         For any other method: lands as PENDING for now — settling those
         (e.g. reception confirming cash) goes through the existing
         owner/staff edit flow.
@@ -250,6 +259,26 @@ class PaymentViewSet(viewsets.ModelViewSet):
                             return Response(data, status=200)
                     except KhaltiError:
                         pass
+                if dup.payment_method == Payment.PaymentMethod.ESEWA and dup.transaction_id:
+                    try:
+                        lookup = esewa.check_status(dup.transaction_id, dup.amount)
+                        if lookup.get('status') in ('CANCELED', 'NOT_FOUND'):
+                            dup.status = Payment.PaymentStatus.FAILED
+                            dup.notes = f'eSewa status: {lookup["status"]}'
+                            dup.save()
+                        else:
+                            # Re-sign a fresh form for the same pending payment
+                            # rather than reusing old fields (eSewa rejects a
+                            # stale/expired form submission).
+                            form_fields = esewa.build_form_fields(dup)
+                            dup.transaction_id = form_fields['transaction_uuid']
+                            dup.save()
+                            data = PaymentSerializer(dup).data
+                            data['esewa_action_url'] = settings.ESEWA_BASE_URL
+                            data['esewa_form_fields'] = form_fields
+                            return Response(data, status=200)
+                    except EsewaError:
+                        pass
 
         amount, membership = self._resolve_due_amount(user, payment_for, reference_id)
 
@@ -276,11 +305,29 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     {'detail': f'Could not start Khalti checkout: {exc}'},
                     status=502,
                 )
-            # Store Khalti's pidx so verify-khalti/ can look this payment back up.
             payment.transaction_id = result['pidx']
             payment.save()
             data = PaymentSerializer(payment).data
             data['payment_url'] = result['payment_url']
+            return Response(data, status=201)
+
+        if payment_method == Payment.PaymentMethod.ESEWA:
+            try:
+                form_fields = esewa.build_form_fields(payment)
+            except EsewaError as exc:
+                logger.error('eSewa build_form_fields failed for payment %s: %s', payment.id, exc)
+                payment.status = Payment.PaymentStatus.FAILED
+                payment.notes = f'eSewa initiate failed: {exc}'
+                payment.save()
+                return Response(
+                    {'detail': f'Could not start eSewa checkout: {exc}'},
+                    status=502,
+                )
+            payment.transaction_id = form_fields['transaction_uuid']
+            payment.save()
+            data = PaymentSerializer(payment).data
+            data['esewa_action_url'] = settings.ESEWA_BASE_URL
+            data['esewa_form_fields'] = form_fields
             return Response(data, status=201)
 
         return Response(PaymentSerializer(payment).data, status=201)
@@ -397,6 +444,111 @@ class PaymentViewSet(viewsets.ModelViewSet):
             payment.save()
             logger.warning('Khalti amount mismatch for payment %s', payment.id)
         # Otherwise (Pending/Initiated) — leave PENDING, member can retry verification.
+
+        return Response(PaymentSerializer(payment).data)
+
+    @action(detail=False, methods=['post'], url_path='verify-esewa')
+    def verify_esewa(self, request):
+        """
+        Confirms an eSewa payment after the member returns from checkout.
+
+        Body: {"data": "<base64 string from the ?data= query param
+               eSewa appended to success_url/failure_url>"}
+
+        The base64 payload is decoded and its own signature is verified
+        first (anti-tampering — a member could otherwise hand-craft a fake
+        ?data= param). Then, as defence in depth, eSewa's status-check API
+        is called directly and cross-checked against our own amount before
+        marking the payment PAID — the redirect payload alone is never
+        trusted for that decision.
+        Idempotent: calling this twice on an already-PAID payment is a no-op.
+        """
+        data_param = request.data.get('data')
+        if not data_param:
+            raise ValidationError({'data': 'This field is required.'})
+
+        try:
+            decoded = esewa.decode_response(data_param)
+        except EsewaError as exc:
+            logger.error('eSewa response decode/verify failed: %s', exc)
+            return Response({'detail': f'Could not verify eSewa response: {exc}'}, status=502)
+
+        transaction_uuid = decoded.get('transaction_uuid')
+        payment = get_object_or_404(Payment, transaction_id=transaction_uuid, member=request.user)
+
+        if payment.status == Payment.PaymentStatus.PAID:
+            return Response(PaymentSerializer(payment).data)
+
+        try:
+            result = esewa.verify_payment(transaction_uuid, payment.amount)
+        except EsewaError as exc:
+            logger.error('eSewa verify failed for transaction_uuid=%s: %s', transaction_uuid, exc)
+            return Response({'detail': f'Could not verify with eSewa: {exc}'}, status=502)
+
+        return self._apply_esewa_result(payment, result)
+
+    @action(detail=False, methods=['post'], url_path='retry-esewa')
+    def retry_esewa(self, request):
+        """
+        Retry verification for a pending eSewa payment.
+
+        Body: {"payment_id": <id>}  (the Payment record's PK)
+
+        Useful when the member didn't complete the redirect or verification
+        failed transiently. Only works for PENDING payments with an ESEWA method.
+        """
+        payment_id = request.data.get('payment_id')
+        if not payment_id:
+            raise ValidationError({'payment_id': 'This field is required.'})
+
+        payment = get_object_or_404(
+            Payment,
+            id=payment_id,
+            member=request.user,
+            payment_method=Payment.PaymentMethod.ESEWA,
+            status=Payment.PaymentStatus.PENDING,
+        )
+
+        if not payment.transaction_id:
+            return Response(
+                {'detail': 'No eSewa transaction associated with this payment.'},
+                status=400,
+            )
+
+        try:
+            result = esewa.verify_payment(payment.transaction_id, payment.amount)
+        except EsewaError as exc:
+            logger.error('eSewa retry verify failed for payment %s: %s', payment.id, exc)
+            return Response({'detail': f'Could not verify with eSewa: {exc}'}, status=502)
+
+        return self._apply_esewa_result(payment, result)
+
+    def _apply_esewa_result(self, payment, result):
+        """Apply eSewa verification result to a payment record."""
+        gateway_status = result['status']
+        verified = result['verified']
+
+        if verified:
+            payment.status = Payment.PaymentStatus.PAID
+            payment.paid_at = timezone.now()
+            payment.notes = f'Verified via eSewa status check — ref {result["ref_id"]}'
+            payment.save()
+            logger.info('eSewa payment %s verified successfully', payment.id)
+        elif gateway_status in ('CANCELED', 'NOT_FOUND'):
+            payment.status = Payment.PaymentStatus.FAILED
+            payment.notes = f'eSewa status: {gateway_status}'
+            payment.save()
+            logger.info('eSewa payment %s status: %s', payment.id, gateway_status)
+        elif gateway_status == 'COMPLETE' and not verified:
+            # Amount mismatch is a red flag — don't activate, leave it PENDING
+            # for staff to look into rather than silently trusting it.
+            payment.notes = (
+                f'eSewa reported COMPLETE but amount mismatch: '
+                f'expected {payment.amount}, got {result["raw"].get("total_amount")}'
+            )
+            payment.save()
+            logger.warning('eSewa amount mismatch for payment %s', payment.id)
+        # Otherwise (PENDING/AMBIGUOUS) — leave PENDING, member can retry verification.
 
         return Response(PaymentSerializer(payment).data)
 
