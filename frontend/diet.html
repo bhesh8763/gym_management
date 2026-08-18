@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -9,10 +9,10 @@
 </head>
 <body>
 
-<!-- ══ Topbar ══════════════════════════════════════════════════════════════ -->
+<!-- -- Topbar -------------------------------------------------------------- -->
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <span class="navbar-brand">FitCore</span>
+  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\">FitCore</span></a>
 
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -37,8 +37,8 @@
     <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
       <span class="profile-avatar" id="profileAvatar">?</span>
       <span class="profile-meta">
-        <div class="profile-name" id="profileName">—</div>
-        <div class="profile-role" id="profileRole">—</div>
+        <div class="profile-name" id="profileName">�</div>
+        <div class="profile-role" id="profileRole">�</div>
       </span>
       <i class="bi bi-chevron-down text-white-50"></i>
     </button>
@@ -53,7 +53,7 @@
 <div id="page-content">
 <div class="d-flex">
 
-  <!-- ══ Sidebar ═══════════════════════════════════════════════════════════ -->
+  <!-- -- Sidebar ----------------------------------------------------------- -->
   <div class="sidebar" id="sidebar">
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
@@ -89,7 +89,7 @@
     </div>
   </div>
 
-  <!-- ══ Main content ══════════════════════════════════════════════════════ -->
+  <!-- -- Main content ------------------------------------------------------ -->
   <div class="p-4 flex-grow-1">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -102,7 +102,7 @@
         <div class="card stat-card stat-accent stat-info">
           <div class="card-body">
             <div class="text-uppercase text-muted small fw-semibold">Total Plans</div>
-            <h3 id="statTotal">—</h3>
+            <h3 id="statTotal">�</h3>
           </div>
         </div>
       </div>
@@ -110,7 +110,7 @@
         <div class="card stat-card stat-accent stat-success">
           <div class="card-body">
             <div class="text-uppercase text-muted small fw-semibold">Active Plans</div>
-            <h3 id="statActive">—</h3>
+            <h3 id="statActive">�</h3>
           </div>
         </div>
       </div>
@@ -118,7 +118,7 @@
         <div class="card stat-card stat-accent stat-warning">
           <div class="card-body">
             <div class="text-uppercase text-muted small fw-semibold">Weight Loss</div>
-            <h3 id="statWeightLoss">—</h3>
+            <h3 id="statWeightLoss">�</h3>
           </div>
         </div>
       </div>
@@ -126,7 +126,7 @@
         <div class="card stat-card stat-accent stat-danger">
           <div class="card-body">
             <div class="text-uppercase text-muted small fw-semibold">Muscle Gain</div>
-            <h3 id="statMuscleGain">—</h3>
+            <h3 id="statMuscleGain">�</h3>
           </div>
         </div>
       </div>
@@ -153,7 +153,7 @@
           <!-- Search -->
           <div class="input-group" style="max-width:220px;">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="searchPlan" class="form-control" placeholder="Search plans…" oninput="applyFilters()">
+            <input type="text" id="searchPlan" class="form-control" placeholder="Search plans�" oninput="applyFilters()">
           </div>
           <!-- Create button (hidden for MEMBER role) -->
           <button class="btn btn-primary text-nowrap staff-only"
@@ -181,7 +181,7 @@
               </tr>
             </thead>
             <tbody id="plansTable">
-              <tr><td colspan="7" class="text-center text-muted py-4">Loading…</td></tr>
+              <tr><td colspan="7" class="text-center text-muted py-4">Loading�</td></tr>
             </tbody>
           </table>
         </div>
@@ -192,7 +192,7 @@
 </div><!-- /d-flex -->
 </div><!-- /page-content -->
 
-<!-- ══ Modal: Create Plan ════════════════════════════════════════════════════ -->
+<!-- -- Modal: Create Plan ---------------------------------------------------- -->
 <div class="modal fade" id="createPlanModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -205,7 +205,7 @@
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label fw-semibold">Member <span class="text-danger">*</span></label>
-            <select id="createMember" class="form-select"><option value="">Loading members…</option></select>
+            <select id="createMember" class="form-select"><option value="">Loading members�</option></select>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Plan Name <span class="text-danger">*</span></label>
@@ -278,7 +278,7 @@
   </div>
 </div>
 
-<!-- ══ Modal: Edit Plan ══════════════════════════════════════════════════════ -->
+<!-- -- Modal: Edit Plan ------------------------------------------------------ -->
 <div class="modal fade" id="editPlanModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -359,7 +359,7 @@
   </div>
 </div>
 
-<!-- ══ Modal: View Plan ══════════════════════════════════════════════════════ -->
+<!-- -- Modal: View Plan ------------------------------------------------------ -->
 <div class="modal fade" id="viewPlanModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -367,7 +367,7 @@
         <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Diet Plan Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body" id="viewPlanBody">Loading…</div>
+      <div class="modal-body" id="viewPlanBody">Loading�</div>
     </div>
   </div>
 </div>
@@ -378,7 +378,7 @@
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
-  // ── State ──────────────────────────────────────────────────────────────────
+  // -- State ------------------------------------------------------------------
   let allPlans   = [];   // full server-side page result
   const userRole = localStorage.getItem('user_role') || '';
 
@@ -387,7 +387,7 @@
     document.querySelectorAll('.staff-only').forEach(el => el.classList.add('d-none'));
   }
 
-  // ── Goal helpers ───────────────────────────────────────────────────────────
+  // -- Goal helpers -----------------------------------------------------------
   const GOAL_LABELS = {
     WEIGHT_LOSS:   'Weight Loss',
     MUSCLE_GAIN:   'Muscle Gain',
@@ -404,7 +404,7 @@
   };
   function goalBadge(goal) {
     const cls   = GOAL_BADGE[goal] || 'bg-secondary';
-    const label = GOAL_LABELS[goal] || goal || '—';
+    const label = GOAL_LABELS[goal] || goal || '�';
     return `<span class="badge ${cls}">${label}</span>`;
   }
   function statusBadge(isActive) {
@@ -423,7 +423,7 @@
     ['EVENING_SNACK', 'Evening Snack'],
   ];
 
-  // ── Meal row builder ───────────────────────────────────────────────────────
+  // -- Meal row builder -------------------------------------------------------
   function mealRowHtml(idx) {
     const typeOptions = MEAL_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
     return `
@@ -476,18 +476,18 @@
     })).filter(m => m.food_name);
   }
 
-  // ── Load stats ─────────────────────────────────────────────────────────────
+  // -- Load stats -------------------------------------------------------------
   async function loadStats() {
     const res = await apiRequest('/diet/diet-plans/stats/');
     if (!res || !res.ok) return;
     const d = await res.json();
-    document.getElementById('statTotal').textContent      = d.total      ?? '—';
-    document.getElementById('statActive').textContent     = d.active     ?? '—';
-    document.getElementById('statWeightLoss').textContent = d.weightLoss ?? '—';
-    document.getElementById('statMuscleGain').textContent = d.muscleGain ?? '—';
+    document.getElementById('statTotal').textContent      = d.total      ?? '�';
+    document.getElementById('statActive').textContent     = d.active     ?? '�';
+    document.getElementById('statWeightLoss').textContent = d.weightLoss ?? '�';
+    document.getElementById('statMuscleGain').textContent = d.muscleGain ?? '�';
   }
 
-  // ── Load plans ─────────────────────────────────────────────────────────────
+  // -- Load plans -------------------------------------------------------------
   async function loadPlans(q = '', goal = '') {
     let url = '/diet/diet-plans/?format=json';
     if (q)    url += `&q=${encodeURIComponent(q)}`;
@@ -518,9 +518,9 @@
         <td class="ps-3 text-muted small">#${p.id}</td>
         <td class="fw-semibold">${p.name}</td>
         <td>${goalBadge(p.goal)}</td>
-        <td>${p.daily_calories ? p.daily_calories + ' kcal' : '—'}</td>
+        <td>${p.daily_calories ? p.daily_calories + ' kcal' : '�'}</td>
         <td class="small text-muted">
-          ${p.protein_g ?? '—'}g&nbsp;/&nbsp;${p.carbs_g ?? '—'}g&nbsp;/&nbsp;${p.fats_g ?? '—'}g
+          ${p.protein_g ?? '�'}g&nbsp;/&nbsp;${p.carbs_g ?? '�'}g&nbsp;/&nbsp;${p.fats_g ?? '�'}g
         </td>
         <td>${statusBadge(p.is_active)}</td>
         <td>
@@ -538,14 +538,14 @@
       </tr>`).join('');
   }
 
-  // ── Filter (client side on current page) ──────────────────────────────────
+  // -- Filter (client side on current page) ----------------------------------
   function applyFilters() {
     const q    = document.getElementById('searchPlan').value.trim();
     const goal = document.getElementById('goalFilter').value;
     loadPlans(q, goal);
   }
 
-  // ── View plan detail ───────────────────────────────────────────────────────
+  // -- View plan detail -------------------------------------------------------
   async function viewPlan(id) {
     const body = document.getElementById('viewPlanBody');
     body.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>';
@@ -560,13 +560,13 @@
         <div class="col-sm-6"><span class="text-muted small">Name</span><div class="fw-semibold">${p.name}</div></div>
         <div class="col-sm-3"><span class="text-muted small">Goal</span><div>${goalBadge(p.goal)}</div></div>
         <div class="col-sm-3"><span class="text-muted small">Status</span><div>${statusBadge(p.is_active)}</div></div>
-        <div class="col-sm-3"><span class="text-muted small">Daily Calories</span><div class="fw-semibold">${p.daily_calories ? p.daily_calories + ' kcal' : '—'}</div></div>
-        <div class="col-sm-3"><span class="text-muted small">Protein</span><div>${p.protein_g ?? '—'} g</div></div>
-        <div class="col-sm-3"><span class="text-muted small">Carbs</span><div>${p.carbs_g ?? '—'} g</div></div>
-        <div class="col-sm-3"><span class="text-muted small">Fats</span><div>${p.fats_g ?? '—'} g</div></div>
-        <div class="col-sm-4"><span class="text-muted small">Member</span><div>${p.member_name || '—'}</div></div>
-        <div class="col-sm-4"><span class="text-muted small">Created By</span><div>${p.created_by_name || '—'}</div></div>
-        <div class="col-sm-4"><span class="text-muted small">Start → End</span><div>${p.start_date || '—'} → ${p.end_date || '—'}</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Daily Calories</span><div class="fw-semibold">${p.daily_calories ? p.daily_calories + ' kcal' : '�'}</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Protein</span><div>${p.protein_g ?? '�'} g</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Carbs</span><div>${p.carbs_g ?? '�'} g</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Fats</span><div>${p.fats_g ?? '�'} g</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Member</span><div>${p.member_name || '�'}</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Created By</span><div>${p.created_by_name || '�'}</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Start ? End</span><div>${p.start_date || '�'} ? ${p.end_date || '�'}</div></div>
         ${p.notes ? `<div class="col-12"><span class="text-muted small">Notes</span><div>${p.notes}</div></div>` : ''}
       </div>`;
 
@@ -589,9 +589,9 @@
         html += `<tr>
           <td><span class="badge bg-secondary">${m.meal_type_display || m.meal_type}</span></td>
           <td>${m.food_name}</td>
-          <td>${m.portion || '—'}</td>
-          <td>${m.calories != null ? m.calories + ' kcal' : '—'}</td>
-          <td>${m.time_suggestion || '—'}</td>
+          <td>${m.portion || '�'}</td>
+          <td>${m.calories != null ? m.calories + ' kcal' : '�'}</td>
+          <td>${m.time_suggestion || '�'}</td>
         </tr>`;
       });
       html += '</tbody></table></div>';
@@ -602,7 +602,7 @@
     body.innerHTML = html;
   }
 
-  // ── Create plan ────────────────────────────────────────────────────────────
+  // -- Create plan ------------------------------------------------------------
   document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
     loadMembersIntoSelect('createMember');
     document.getElementById('createMealsContainer').innerHTML = '';
@@ -645,7 +645,7 @@
     }
   }
 
-  // ── Edit plan ──────────────────────────────────────────────────────────────
+  // -- Edit plan --------------------------------------------------------------
   async function openEditModal(id) {
     const res = await apiRequest(`/diet/diet-plans/${id}/`);
     if (!res || !res.ok) { alert('Could not load plan data.'); return; }
@@ -714,7 +714,7 @@
     }
   }
 
-  // ── Delete plan ────────────────────────────────────────────────────────────
+  // -- Delete plan ------------------------------------------------------------
   async function deletePlan(id) {
     if (!confirm('Delete this diet plan? This cannot be undone.')) return;
     const res = await apiRequest(`/diet/diet-plans/${id}/`, { method: 'DELETE' });
@@ -725,13 +725,13 @@
     }
   }
 
-  // ── Utility ────────────────────────────────────────────────────────────────
+  // -- Utility ----------------------------------------------------------------
   function showFormError(el, msg) {
     el.textContent = msg;
     el.classList.remove('d-none');
   }
 
-  // ── Boot ───────────────────────────────────────────────────────────────────
+  // -- Boot -------------------------------------------------------------------
   (async () => {
     await Promise.all([loadStats(), loadPlans()]);
   })();

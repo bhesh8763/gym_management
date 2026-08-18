@@ -25,9 +25,9 @@ class StaffProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_user(self, value):
-        if value.role != User.Role.STAFF:
+        if value.role not in [User.Role.STAFF, User.Role.TRAINER]:
             raise serializers.ValidationError(
-                'Staff profiles can only be created for users with the STAFF role.'
+                'Staff profiles can only be created for users with the STAFF or TRAINER role.'
             )
         return value
 

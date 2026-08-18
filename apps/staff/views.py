@@ -16,11 +16,16 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'create':
+            if self.request and 'user' in self.request.data:
+                return StaffProfileSerializer
             return StaffCreateSerializer
         return StaffProfileSerializer
 
     def create(self, request, *args, **kwargs):
-        serializer = StaffCreateSerializer(data=request.data)
+        if 'user' in request.data:
+            serializer = StaffProfileSerializer(data=request.data)
+        else:
+            serializer = StaffCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         profile = serializer.save()
         return Response(

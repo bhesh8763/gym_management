@@ -1,8 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Staff — FitCore</title>
+  <title>Staff � FitCore</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -53,7 +53,7 @@
 
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <span class="navbar-brand">FitCore</span>
+  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\">FitCore</span></a>
 
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -78,8 +78,8 @@
     <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
       <span class="profile-avatar" id="profileAvatar">?</span>
       <span class="profile-meta">
-        <div class="profile-name" id="profileName">—</div>
-        <div class="profile-role" id="profileRole">—</div>
+        <div class="profile-name" id="profileName">�</div>
+        <div class="profile-role" id="profileRole">�</div>
       </span>
       <i class="bi bi-chevron-down text-white-50"></i>
     </button>
@@ -131,7 +131,7 @@
     <div data-roles="OWNER" id="staffProfilesSection">
       <h3>Staff Profiles</h3>
 
-      <!-- ── Staff stat cards ─────────────────────────────────────────── -->
+      <!-- -- Staff stat cards ------------------------------------------- -->
       <div class="row mb-4">
         <div class="col-md-3">
           <div class="card text-center border-primary"><div class="card-body">
@@ -251,7 +251,7 @@
         </div>
       </div>
 
-      <!-- ── Staff: search / filter ───────────────────────────────────── -->
+      <!-- -- Staff: search / filter ------------------------------------- -->
       <div class="row g-2 mb-2">
         <div class="col">
           <input type="text" id="staffSearch" class="form-control" placeholder="Search name, email, or staff ID" oninput="onStaffSearchInput()">
@@ -297,7 +297,7 @@
             <tr><th>Staff ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th class="text-end">Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
           </thead>
           <tbody id="profileTableBody">
-            <tr><td colspan="9" class="text-center text-muted py-4">Loading staff…</td></tr>
+            <tr><td colspan="9" class="text-center text-muted py-4">Loading staff�</td></tr>
           </tbody>
         </table>
       </div>
@@ -356,7 +356,7 @@
 
     <hr>
 
-    <!-- ══════════════ LEAVE REQUESTS SECTION ══════════════ -->
+    <!-- -------------- LEAVE REQUESTS SECTION -------------- -->
     <div id="leaveRequestsSection">
 
       <!-- Section header -->
@@ -373,7 +373,7 @@
         <div class="col-6 col-md-3">
           <div class="card text-center border-0 shadow-sm">
             <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-warning" id="statPending">—</div>
+              <div class="fs-3 fw-bold text-warning" id="statPending">�</div>
               <div class="small text-muted">Pending</div>
             </div>
           </div>
@@ -381,7 +381,7 @@
         <div class="col-6 col-md-3">
           <div class="card text-center border-0 shadow-sm">
             <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-success" id="statApproved">—</div>
+              <div class="fs-3 fw-bold text-success" id="statApproved">�</div>
               <div class="small text-muted">Approved</div>
             </div>
           </div>
@@ -389,7 +389,7 @@
         <div class="col-6 col-md-3">
           <div class="card text-center border-0 shadow-sm">
             <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-danger" id="statRejected">—</div>
+              <div class="fs-3 fw-bold text-danger" id="statRejected">�</div>
               <div class="small text-muted">Rejected</div>
             </div>
           </div>
@@ -397,14 +397,14 @@
         <div class="col-6 col-md-3">
           <div class="card text-center border-0 shadow-sm">
             <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-secondary" id="statCancelled">—</div>
+              <div class="fs-3 fw-bold text-secondary" id="statCancelled">�</div>
               <div class="small text-muted">Cancelled</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ── Leave: search / filter ───────────────────────────────────── -->
+      <!-- -- Leave: search / filter ------------------------------------- -->
       <div class="row g-2 mb-2">
         <div class="col">
           <input type="text" id="leaveSearch" class="form-control" placeholder="Search requester or reason" oninput="onLeaveSearchInput()">
@@ -464,7 +464,7 @@
             </tr>
           </thead>
           <tbody id="leaveTableBody">
-            <tr><td colspan="10" class="text-center text-muted py-4">Loading…</td></tr>
+            <tr><td colspan="10" class="text-center text-muted py-4">Loading�</td></tr>
           </tbody>
         </table>
       </div>
@@ -478,7 +478,7 @@
     </div>
   </div>
 
-  <!-- ══════════════ LEAVE REQUEST MODAL ══════════════ -->
+  <!-- -------------- LEAVE REQUEST MODAL -------------- -->
   <div class="modal fade" id="leaveModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -550,7 +550,7 @@
               </div>
               <div class="col-md-2 d-flex flex-column justify-content-end">
                 <div class="card border-0 bg-light text-center py-2">
-                  <div class="fw-bold fs-5" id="leaveDurationPreview">—</div>
+                  <div class="fw-bold fs-5" id="leaveDurationPreview">�</div>
                   <div class="small text-muted">days</div>
                 </div>
               </div>
@@ -560,7 +560,7 @@
             <div class="mb-3">
               <label class="form-label fw-semibold">Reason</label>
               <textarea id="reason" class="form-control" rows="3"
-                        placeholder="Briefly describe your reason for leave…" required></textarea>
+                        placeholder="Briefly describe your reason for leave�" required></textarea>
             </div>
 
             <div id="leaveError" class="alert alert-danger d-none"></div>
@@ -577,7 +577,7 @@
     </div>
   </div>
 
-  <!-- ══════════════ RESET PASSWORD MODAL (owner only) ══════════════ -->
+  <!-- -------------- RESET PASSWORD MODAL (owner only) -------------- -->
   <div class="modal fade" id="resetPasswordModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -599,7 +599,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div class="form-text">Share this with the staff member directly — it won't be shown again after you close this window.</div>
+            <div class="form-text">Share this with the staff member directly � it won't be shown again after you close this window.</div>
             <div id="resetPasswordError" class="alert alert-danger d-none mt-3"></div>
           </div>
           <div class="modal-footer">
@@ -611,7 +611,7 @@
     </div>
   </div>
 
-  <!-- ══════════════ REVIEW MODAL (owner only) ══════════════ -->
+  <!-- -------------- REVIEW MODAL (owner only) -------------- -->
   <div class="modal fade" id="reviewModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -635,7 +635,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Review Note <span class="text-muted fw-normal">(optional)</span></label>
-            <textarea id="reviewNote" class="form-control" rows="2" placeholder="Add a note for the staff member…"></textarea>
+            <textarea id="reviewNote" class="form-control" rows="2" placeholder="Add a note for the staff member�"></textarea>
           </div>
           <div id="reviewError" class="alert alert-danger d-none"></div>
         </div>
@@ -662,12 +662,12 @@
     }
   });
 
-  // ─── Toast feedback ─────────────────────────────────────────────────────
+  // --- Toast feedback -----------------------------------------------------
   function showToast(message, variant) {
     const toastEl = document.getElementById("appToast");
     const bodyEl = document.getElementById("appToastBody");
     if (!toastEl || !bodyEl) {
-      console.warn("Toast element missing from page — skipping toast:", message);
+      console.warn("Toast element missing from page � skipping toast:", message);
       return;
     }
     toastEl.classList.remove("bg-success", "bg-danger");
@@ -676,7 +676,7 @@
     bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 }).show();
   }
 
-  // ─── Badges & formatting ────────────────────────────────────────────────
+  // --- Badges & formatting ------------------------------------------------
   const AVATAR_COLORS = ['#0d6efd', '#198754', '#fd7e14', '#6f42c1', '#d63384', '#20c997', '#dc3545'];
 
   function staffAvatar(name) {
@@ -709,7 +709,7 @@
     return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  // ─── CSV export (filtered, not just current page) ──────────────────────
+  // --- CSV export (filtered, not just current page) ----------------------
   function downloadCsv(filename, rows) {
     const csv = rows.map(r => r.map(cell => {
       const s = String(cell ?? '');
@@ -922,7 +922,7 @@
     }
   });
 
-  // ─── Password generator ─────────────────────────────────────────────────
+  // --- Password generator -------------------------------------------------
   function generateStaffPassword(fieldId) {
     fieldId = fieldId || 'password';
     const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -1005,7 +1005,7 @@
     }
   });
 
-  // ─── Reset password (existing staff) ────────────────────────────────────
+  // --- Reset password (existing staff) ------------------------------------
   function openResetPassword(id, name) {
     document.getElementById('resetPasswordStaffId').value = id;
     document.getElementById('resetPasswordStaffName').textContent = name;
@@ -1060,7 +1060,7 @@
     }
   });
 
-  // ═════════════════════ LEAVE REQUESTS ═════════════════════
+  // --------------------- LEAVE REQUESTS ---------------------
 
   let leaveCache = [];
   let leaveFilteredCache = [];
@@ -1130,7 +1130,7 @@
         if (canReview)  actions.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openReviewModal(${row.id}, '${(row.requester_name || '').replace(/'/g, "\\'")}', '${row.leave_type}', '${row.start_date}', '${row.end_date}')"><i class="bi bi-eye"></i> Review</button>`);
         if (canEdit)    actions.push(`<button class="btn btn-sm btn-outline-primary" onclick="openEditLeave(${row.id})" title="Edit"><i class="bi bi-pencil"></i> Edit</button>`);
         if (canCancel)  actions.push(`<button class="btn btn-sm btn-outline-danger"  onclick="cancelLeave(${row.id})"><i class="bi bi-x-circle"></i> Cancel</button>`);
-        if (!actions.length) actions.push('<span class="text-muted">—</span>');
+        if (!actions.length) actions.push('<span class="text-muted">�</span>');
 
         return `
           <tr>
@@ -1142,7 +1142,7 @@
             <td data-label="Days"><span class="badge bg-light text-dark border">${row.duration_days}d</span></td>
             <td data-label="Reason" class="small" style="max-width:180px;white-space:normal">${row.reason}</td>
             <td data-label="Status">${leaveStatusBadge(row.status)}</td>
-            <td data-label="Reviewed By" class="small text-muted">${row.reviewed_by_name || '—'}</td>
+            <td data-label="Reviewed By" class="small text-muted">${row.reviewed_by_name || '�'}</td>
             <td><div class="d-flex gap-1">${actions.join('')}</div></td>
           </tr>`;
       }).join('');
@@ -1175,7 +1175,7 @@
   function openReviewModal(id, name, type, start, end) {
     document.getElementById('reviewLeaveId').value = id;
     document.getElementById('reviewLeaveInfo').textContent =
-      `${name} — ${type} leave from ${start} to ${end}`;
+      `${name} � ${type} leave from ${start} to ${end}`;
     document.getElementById('reviewNote').value = '';
     document.getElementById('reviewError').classList.add('d-none');
     new bootstrap.Modal(document.getElementById('reviewModal')).show();
@@ -1256,7 +1256,7 @@
       el.textContent = '!';
       el.classList.add('text-danger');
     } else {
-      el.textContent = '—';
+      el.textContent = '�';
       el.classList.remove('text-danger');
     }
   }
@@ -1299,7 +1299,7 @@
       }
       if (res.ok) {
         document.getElementById('leaveForm').reset();
-        document.getElementById('leaveDurationPreview').textContent = '—';
+        document.getElementById('leaveDurationPreview').textContent = '�';
         try {
           bootstrap.Modal.getOrCreateInstance(document.getElementById('leaveModal')).hide();
         } catch (e) {
@@ -1338,7 +1338,7 @@
     document.getElementById('leaveSubmitIcon').className = 'bi bi-send me-1';
     document.getElementById('leaveSubmitLabel').textContent = 'Submit Request';
     document.getElementById('leaveError').classList.add('d-none');
-    document.getElementById('leaveDurationPreview').textContent = '—';
+    document.getElementById('leaveDurationPreview').textContent = '�';
   });
 
   function updatePendingTypeBadges() {

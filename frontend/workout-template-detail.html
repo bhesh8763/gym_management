@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -20,7 +20,7 @@
 
 <nav class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-    <span class="navbar-brand">FitCore</span>
+    <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\">FitCore</span></a>
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
             <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
@@ -41,7 +41,7 @@
     <div class="position-relative">
         <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
             <span class="profile-avatar" id="profileAvatar">?</span>
-            <span class="profile-meta"><div class="profile-name" id="profileName">—</div><div class="profile-role" id="profileRole">—</div></span>
+            <span class="profile-meta"><div class="profile-name" id="profileName">�</div><div class="profile-role" id="profileRole">�</div></span>
             <i class="bi bi-chevron-down text-white-50"></i>
         </button>
         <div class="dropdown-panel profile-menu" id="profilePanel">
@@ -92,16 +92,16 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                     <div>
-                        <h3 class="mb-1" id="tName">Loading…</h3>
+                        <h3 class="mb-1" id="tName">Loading�</h3>
                         <span id="tDifficulty"></span> <span id="tStatus"></span>
                     </div>
                     <div class="d-flex gap-2 flex-wrap" id="tActions"></div>
                 </div>
                 <div class="row mt-3 g-3">
-                    <div class="col-auto"><div class="text-muted small text-uppercase">Duration</div><div class="fw-semibold" id="tDuration">—</div></div>
-                    <div class="col-auto"><div class="text-muted small text-uppercase">Goal</div><div class="fw-semibold" id="tGoal">—</div></div>
-                    <div class="col-auto"><div class="text-muted small text-uppercase">Trainer</div><div class="fw-semibold" id="tTrainer">—</div></div>
-                    <div class="col-auto"><div class="text-muted small text-uppercase">Assigned</div><div class="fw-semibold" id="tAssigned">—</div></div>
+                    <div class="col-auto"><div class="text-muted small text-uppercase">Duration</div><div class="fw-semibold" id="tDuration">�</div></div>
+                    <div class="col-auto"><div class="text-muted small text-uppercase">Goal</div><div class="fw-semibold" id="tGoal">�</div></div>
+                    <div class="col-auto"><div class="text-muted small text-uppercase">Trainer</div><div class="fw-semibold" id="tTrainer">�</div></div>
+                    <div class="col-auto"><div class="text-muted small text-uppercase">Assigned</div><div class="fw-semibold" id="tAssigned">�</div></div>
                 </div>
             </div>
         </div>
@@ -125,9 +125,9 @@
 
         <div id="tab-progress" style="display:none;">
             <div class="row g-3 mb-3">
-                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Average Adherence</h6><h2 id="progAvgPct">—</h2></div></div></div>
-                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Members On Track (&ge;70%)</h6><h2 id="progOnTrack">—</h2></div></div></div>
-                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Total Sessions Logged</h6><h2 id="progTotalLogs">—</h2></div></div></div>
+                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Average Adherence</h6><h2 id="progAvgPct">�</h2></div></div></div>
+                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Members On Track (&ge;70%)</h6><h2 id="progOnTrack">�</h2></div></div></div>
+                <div class="col-md-4"><div class="card"><div class="card-body"><h6 class="text-muted">Total Sessions Logged</h6><h2 id="progTotalLogs">�</h2></div></div></div>
             </div>
             <div id="progressContainer"></div>
         </div>
@@ -148,12 +148,12 @@
         <input type="hidden" id="exTargetDayId">
         <input type="hidden" id="exEditId">
         <div id="exStep1">
-          <div class="text-muted small text-uppercase fw-bold mb-2">Step 1 · Search Library</div>
-          <input type="text" id="exSearchInput" class="form-control mb-2" placeholder="Search exercises…" onkeyup="renderExSearchList()">
+          <div class="text-muted small text-uppercase fw-bold mb-2">Step 1 � Search Library</div>
+          <input type="text" id="exSearchInput" class="form-control mb-2" placeholder="Search exercises�" onkeyup="renderExSearchList()">
           <div id="exSearchList" style="max-height:240px; overflow:auto;"></div>
         </div>
         <div id="exStep2" style="display:none;">
-          <div class="text-muted small text-uppercase fw-bold mb-2">Step 2 · Configure — <span id="exChosenName" class="text-dark"></span></div>
+          <div class="text-muted small text-uppercase fw-bold mb-2">Step 2 � Configure � <span id="exChosenName" class="text-dark"></span></div>
           <input type="hidden" id="exChosenId">
           <div class="row">
             <div class="col-4 mb-2"><label class="small">Sets</label><input type="number" id="exSets" class="form-control" value="3"></div>
@@ -180,7 +180,7 @@
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Assign Template</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members…</option></select></div>
+        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members�</option></select></div>
         <div class="mb-3"><label>Start date</label><input type="date" id="assignStartDate" class="form-control"></div>
         <div class="mb-3"><label>Goal note (optional)</label><input type="text" id="assignGoalNote" class="form-control"></div>
       </div>
@@ -246,8 +246,8 @@ function renderHeader() {
     document.getElementById('tDifficulty').innerHTML = difficultyBadge(t.difficulty);
     document.getElementById('tStatus').innerHTML = statusBadge(t.status);
     document.getElementById('tDuration').textContent = t.duration_weeks + ' Weeks';
-    document.getElementById('tGoal').textContent = t.goal || '—';
-    document.getElementById('tTrainer').textContent = t.trainer_name || '—';
+    document.getElementById('tGoal').textContent = t.goal || '�';
+    document.getElementById('tTrainer').textContent = t.trainer_name || '�';
     document.getElementById('tAssigned').textContent = t.assigned_member_count + ' members';
 
     const actions = [];
@@ -276,7 +276,7 @@ async function duplicateTemplate() {
     const r = await apiRequest(`/workouts/templates/${templateId}/duplicate/`, { method: 'POST', body: JSON.stringify({}) });
     if (r && r.ok) {
         const clone = await r.json();
-        showToast('Duplicated — opening the copy');
+        showToast('Duplicated � opening the copy');
         window.location.href = `workout-template-detail.html?id=${clone.id}`;
     } else showToast('Failed', 'error');
 }
@@ -287,7 +287,7 @@ function renderDays() {
         <div class="card mb-2">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#day-${d.id}">
-                    <strong>Week ${d.week_number} · Day ${d.day_number}</strong> ${d.day_name ? '— ' + d.day_name : ''} <span class="text-muted small">(${(d.exercises||[]).length} exercises)</span>
+                    <strong>Week ${d.week_number} � Day ${d.day_number}</strong> ${d.day_name ? '� ' + d.day_name : ''} <span class="text-muted small">(${(d.exercises||[]).length} exercises)</span>
                 </div>
                 <div class="d-flex align-items-center gap-1">
                     <button class="btn btn-sm btn-outline-secondary" title="Move up" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation(); moveDay(${d.id}, 'up')"><i class="bi bi-arrow-up"></i></button>
@@ -310,7 +310,7 @@ function renderDays() {
                                         </div>
                                     </div>
                                     <div class="text-muted small mb-1">${ex.muscle_group || ''}</div>
-                                    <div class="small">${ex.sets || '-'} sets × ${ex.reps || '-'} reps · ${ex.rest_seconds || 0}s rest${ex.rpe ? ' · RPE ' + ex.rpe : ''}</div>
+                                    <div class="small">${ex.sets || '-'} sets � ${ex.reps || '-'} reps � ${ex.rest_seconds || 0}s rest${ex.rpe ? ' � RPE ' + ex.rpe : ''}</div>
                                     ${ex.notes ? `<div class="fst-italic small text-muted mt-1">"${ex.notes}"</div>` : ''}
                                 </div>
                             </div>
@@ -320,7 +320,7 @@ function renderDays() {
                 </div>
             </div>
         </div>
-    `).join('') || '<div class="alert alert-secondary">No days yet — add the first one.</div>';
+    `).join('') || '<div class="alert alert-secondary">No days yet � add the first one.</div>';
 }
 
 async function addDay() {
@@ -363,7 +363,7 @@ function pickExercise(id, name) {
     document.getElementById('exSaveBtn').style.display = 'inline-block';
 }
 
-// Opens the same modal already populated for editing an existing day-exercise —
+// Opens the same modal already populated for editing an existing day-exercise �
 // skips straight to Step 2 since the exercise itself is already chosen.
 function editExercise(dayId, ex) {
     document.getElementById('exTargetDayId').value = dayId;
@@ -416,7 +416,7 @@ async function deleteExerciseFromDay(dayExerciseId) {
     else showToast('Could not remove exercise', 'error');
 }
 
-// ─── Day reorder / delete ────────────────────────────────────────────────
+// --- Day reorder / delete ------------------------------------------------
 async function moveDay(dayId, direction) {
     const r = await apiRequest(`/workouts/days/${dayId}/move/`, { method: 'POST', body: JSON.stringify({ direction }) });
     if (r && r.ok) { loadTemplate(); }
@@ -430,7 +430,7 @@ async function deleteDay(dayId) {
     else showToast('Could not delete day', 'error');
 }
 
-// ─── Progress tab ────────────────────────────────────────────────────────
+// --- Progress tab --------------------------------------------------------
 async function loadProgressTab() {
     const r = await apiRequest(`/workouts/assignments/?template=${templateId}`);
     if (!r || !r.ok) return;
@@ -441,11 +441,11 @@ async function loadProgressTab() {
     const avgPct = active.length ? Math.round(active.reduce((sum, a) => sum + (a.completion_pct || 0), 0) / active.length) : 0;
     const onTrack = active.filter(a => (a.completion_pct || 0) >= 70).length;
 
-    document.getElementById('progAvgPct').textContent = active.length ? avgPct + '%' : '—';
-    document.getElementById('progOnTrack').textContent = active.length ? `${onTrack} / ${active.length}` : '—';
+    document.getElementById('progAvgPct').textContent = active.length ? avgPct + '%' : '�';
+    document.getElementById('progOnTrack').textContent = active.length ? `${onTrack} / ${active.length}` : '�';
 
     const logsResp = await apiRequest(`/workouts/completion-logs/`);
-    let totalLogs = '—';
+    let totalLogs = '�';
     if (logsResp && logsResp.ok) {
         const logsData = await logsResp.json();
         const allLogs = logsData.results || logsData;
@@ -464,10 +464,10 @@ async function loadProgressTab() {
             </div>
             <div class="text-nowrap fw-semibold">${a.completion_pct || 0}%</div>
         </div>
-    `).join('') || '<div class="alert alert-secondary">No members assigned yet — nothing to track.</div>';
+    `).join('') || '<div class="alert alert-secondary">No members assigned yet � nothing to track.</div>';
 }
 
-// ─── History tab (version snapshots) ────────────────────────────────────
+// --- History tab (version snapshots) ------------------------------------
 async function loadHistoryTab() {
     const r = await apiRequest(`/workouts/templates/${templateId}/versions/`);
     if (!r || !r.ok) { document.getElementById('historyContainer').innerHTML = '<div class="alert alert-secondary">Could not load history.</div>'; return; }
@@ -478,11 +478,11 @@ async function loadHistoryTab() {
         <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
             <div>
                 <strong>${reasonLabel[v.reason] || v.reason}</strong>
-                <div class="text-muted small">${new Date(v.created_at).toLocaleString()} ${v.created_by_name ? '· ' + v.created_by_name : ''} · ${v.snapshot.days.length} day(s)</div>
+                <div class="text-muted small">${new Date(v.created_at).toLocaleString()} ${v.created_by_name ? '� ' + v.created_by_name : ''} � ${v.snapshot.days.length} day(s)</div>
             </div>
             <button class="btn btn-sm btn-outline-warning" onclick="restoreVersion(${v.id})"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
         </div>
-    `).join('') || '<div class="alert alert-secondary">No versions captured yet — submit this template for review to capture the first one.</div>';
+    `).join('') || '<div class="alert alert-secondary">No versions captured yet � submit this template for review to capture the first one.</div>';
 }
 async function restoreVersion(versionId) {
     if (!confirm('Restore this version? The template\'s current days and exercises will be replaced with this snapshot.')) return;
@@ -499,7 +499,7 @@ async function loadMembersTab() {
     const assignments = data.results || data;
     document.getElementById('membersContainer').innerHTML = assignments.map(a => `
         <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
-            <div><strong>${a.member_name}</strong> <span class="text-muted small">· ${a.completion_pct}% complete</span></div>
+            <div><strong>${a.member_name}</strong> <span class="text-muted small">� ${a.completion_pct}% complete</span></div>
             <span class="badge bg-${a.status === 'ACTIVE' ? 'success' : a.status === 'PAUSED' ? 'warning' : 'secondary'}">${a.status}</span>
         </div>
     `).join('') || '<div class="alert alert-secondary">No members assigned yet.</div>';

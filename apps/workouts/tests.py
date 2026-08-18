@@ -11,11 +11,11 @@ Coverage:
     - Members only ever see templates they've actually been assigned
     - Duplicate() produces an independent Draft copy, not a shared reference
 """
+from datetime import date, timedelta
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-
-from datetime import date
 
 from apps.workouts.models import WorkoutTemplate, WorkoutAssignment, WorkoutDay
 
@@ -31,7 +31,15 @@ def make_user(email, role=User.Role.MEMBER, first_name='Test', last_name='User',
     )
 
 
-class WorkoutTemplateApprovalTestCase(APITestCase):
+class WorkoutAPITestCase(APITestCase):
+    def get_future_date(self, days=1):
+        return timezone.now().date() + timedelta(days=days)
+        
+    def get_future_date_str(self, days=1):
+        return self.get_future_date(days).strftime('%Y-%m-%d')
+
+
+class WorkoutTemplateApprovalTestCase(WorkoutAPITestCase):
     def setUp(self):
         self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
         self.trainer = make_user('trainer@gym.com', role=User.Role.TRAINER)
@@ -78,8 +86,9 @@ class WorkoutTemplateApprovalTestCase(APITestCase):
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
 
 
-class WorkoutAssignmentTestCase(APITestCase):
+class WorkoutAssignmentTestCase(WorkoutAPITestCase):
     def setUp(self):
+        super().setUp()
         self.owner = make_user('owner2@gym.com', role=User.Role.OWNER)
         self.trainer = make_user('trainer3@gym.com', role=User.Role.TRAINER)
         self.member = make_user('member@gym.com', role=User.Role.MEMBER)
@@ -96,7 +105,7 @@ class WorkoutAssignmentTestCase(APITestCase):
         self.client.force_authenticate(self.trainer)
         r = self.client.post('/api/workouts/assignments/', {
             'template': self.draft_template.id, 'member': self.member.id,
-            'start_date': '2026-08-10',
+            'start_date': self.get_future_date_str(1),
         })
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -104,7 +113,7 @@ class WorkoutAssignmentTestCase(APITestCase):
         self.client.force_authenticate(self.trainer)
         r = self.client.post('/api/workouts/assignments/', {
             'template': self.approved_template.id, 'member': self.member.id,
-            'start_date': '2026-08-10',
+            'start_date': self.get_future_date_str(1),
         })
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
         self.assertEqual(WorkoutAssignment.objects.count(), 1)
@@ -114,12 +123,12 @@ class WorkoutAssignmentTestCase(APITestCase):
         surfaces it as a clean 400, not an unhandled IntegrityError."""
         WorkoutAssignment.objects.create(
             template=self.approved_template, member=self.member,
-            status=WorkoutAssignment.Status.ACTIVE, start_date=date(2026, 8, 1),
+            status=WorkoutAssignment.Status.ACTIVE, start_date=self.get_future_date(0),
         )
         self.client.force_authenticate(self.trainer)
         r = self.client.post('/api/workouts/assignments/', {
             'template': self.approved_template.id, 'member': self.member.id,
-            'start_date': '2026-08-10',
+            'start_date': self.get_future_date_str(1),
         })
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(WorkoutAssignment.objects.filter(
@@ -129,7 +138,7 @@ class WorkoutAssignmentTestCase(APITestCase):
     def test_member_only_sees_own_assignments(self):
         WorkoutAssignment.objects.create(
             template=self.approved_template, member=self.member,
-            status=WorkoutAssignment.Status.ACTIVE, start_date=date(2026, 8, 1),
+            status=WorkoutAssignment.Status.ACTIVE, start_date=self.get_future_date(0),
         )
         self.client.force_authenticate(self.other_member)
         r = self.client.get('/api/workouts/assignments/')
@@ -143,11 +152,13 @@ class WorkoutAssignmentTestCase(APITestCase):
 
         WorkoutAssignment.objects.create(
             template=self.approved_template, member=self.member,
-            status=WorkoutAssignment.Status.ACTIVE, start_date=date(2026, 8, 1),
+            status=WorkoutAssignment.Status.ACTIVE, start_date=self.get_future_date(0),
         )
         r = self.client.get('/api/workouts/templates/')
         self.assertEqual(r.data['count'], 1)
         self.assertEqual(r.data['results'][0]['id'], self.approved_template.id)
+# ... rest of file (kept same)
+
 
 
 class WorkoutTemplateDuplicateTestCase(APITestCase):

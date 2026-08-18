@@ -20,7 +20,7 @@
 
 <nav class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-    <span class="navbar-brand">FitCore</span>
+    <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\">FitCore</span></a>
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
             <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
@@ -45,22 +45,24 @@
 
 <div id="page-content">
 <div class="d-flex">
-    <div class="sidebar" id="sidebar">
-        <div class="list-group list-group-flush pt-2">
-            <div class="nav-section-label">Main</div>
-            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
-            <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
-            <div class="nav-section-label">Workout & Diet</div>
-            <a href="my-workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
-            <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
 
-            <div class="nav-section-label">Payments</div>
-            <a href="my-payments.html" class="list-group-item list-group-item-action active"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <div class="nav-section-label">Workout & Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
 
-            <div class="nav-section-label">System</div>
-            <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
-        </div>
+      <div class="nav-section-label">Payments</div>
+      <a href="my-payments.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+
+      <div class="nav-section-label">System</div>
+      <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
     </div>
+  </div>
 
     <div class="p-4 flex-grow-1">
         <h3>My Payments</h3>

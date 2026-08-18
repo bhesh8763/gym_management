@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -20,7 +20,7 @@
 
 <nav class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-    <span class="navbar-brand">FitCore</span>
+    <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\">FitCore</span></a>
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
             <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
@@ -41,7 +41,7 @@
     <div class="position-relative">
         <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
             <span class="profile-avatar" id="profileAvatar">?</span>
-            <span class="profile-meta"><div class="profile-name" id="profileName">â€”</div><div class="profile-role" id="profileRole">â€”</div></span>
+            <span class="profile-meta"><div class="profile-name" id="profileName">—</div><div class="profile-role" id="profileRole">—</div></span>
             <i class="bi bi-chevron-down text-white-50"></i>
         </button>
         <div class="dropdown-panel profile-menu" id="profilePanel">
@@ -53,36 +53,36 @@
 
 <div id="page-content">
 <div class="d-flex">
-    <div class="sidebar" id="sidebar">
-        <div class="list-group list-group-flush pt-2">
-            <div class="nav-section-label">Main</div>
-            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
-            <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
-            <div class="nav-section-label">Workout & Diet</div>
-            <a href="my-workouts.html" class="list-group-item list-group-item-action active"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
-            <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
 
-<div class="nav-section-label">Payments</div>
-<a href="my-payments.html" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <div class="nav-section-label">Workout & Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
 
-<div class="nav-section-label">System</div>
+      <div class="nav-section-label">Payments</div>
+      <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
 
-
-            <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
-        </div>
+      <div class="nav-section-label">System</div>
+      <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
     </div>
+  </div>
 
     <div class="p-4 flex-grow-1">
         <h3>My Workouts</h3>
-        <p class="text-muted">Your assigned training programs â€” log a session whenever you finish one.</p>
+        <p class="text-muted">Your assigned training programs — log a session whenever you finish one.</p>
 
         <div id="loadingState" class="text-center text-muted py-5">
             <div class="spinner-border" role="status"></div>
-            <div class="mt-2">Loading your workoutsâ€¦</div>
+            <div class="mt-2">Loading your workouts…</div>
         </div>
 
         <div id="noAssignmentsState" class="alert alert-secondary" style="display:none;">
-            You don't have a workout plan assigned yet â€” ask your trainer to assign one.
+            You don't have a workout plan assigned yet — ask your trainer to assign one.
         </div>
 
         <div id="assignmentsContainer" style="display:none;"></div>
@@ -101,8 +101,8 @@
         <div class="mb-3"><label>Day</label><input type="text" id="logDayLabel" class="form-control" disabled></div>
         <div class="mb-3"><label>How did it go?</label>
           <select id="logStatus" class="form-select">
-            <option value="COMPLETED">Completed â€” did the whole thing</option>
-            <option value="PARTIAL">Partial â€” did some of it</option>
+            <option value="COMPLETED">Completed — did the whole thing</option>
+            <option value="PARTIAL">Partial — did some of it</option>
             <option value="SKIPPED">Skipped today</option>
           </select>
         </div>
@@ -145,7 +145,7 @@ function statusBadge(status) {
 }
 
 async function loadMyWorkouts() {
-    // The assignments endpoint already scopes to "my own" for a MEMBER â€”
+    // The assignments endpoint already scopes to "my own" for a MEMBER —
     // enforced server-side (see _visible_assignments), not just hidden in the UI.
     const r = await apiRequest('/workouts/assignments/');
     document.getElementById('loadingState').style.display = 'none';
@@ -179,7 +179,7 @@ async function loadMyWorkouts() {
                 <div class="progress mt-2 mb-3" style="height:8px;">
                     <div class="progress-bar ${assignment.completion_pct >= 70 ? 'bg-success' : assignment.completion_pct >= 40 ? 'bg-warning' : 'bg-danger'}" style="width:${assignment.completion_pct || 0}%"></div>
                 </div>
-                <div id="days-${assignment.id}" class="text-muted small">Loading daysâ€¦</div>
+                <div id="days-${assignment.id}" class="text-muted small">Loading days…</div>
             </div>
         `;
         container.appendChild(card);
@@ -197,10 +197,10 @@ async function loadDaysForAssignment(assignment) {
     holder.innerHTML = days.map(d => `
         <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
             <div>
-                <strong>Week ${d.week_number} Â· Day ${d.day_number}</strong> ${d.day_name ? 'â€” ' + d.day_name : ''}
+                <strong>Week ${d.week_number} · Day ${d.day_number}</strong> ${d.day_name ? '— ' + d.day_name : ''}
                 <div class="text-muted small">${(d.exercises || []).length} exercise(s)</div>
             </div>
-            <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} Â· Day ${d.day_number}')">
+            <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} · Day ${d.day_number}')">
                 <i class="bi bi-check2-square"></i> Log
             </button>
         </div>
@@ -235,13 +235,13 @@ async function submitLog() {
     const r = await apiRequest('/workouts/completion-logs/', { method: 'POST', body: JSON.stringify(payload) });
     if (r && r.ok) {
         bootstrap.Modal.getInstance(document.getElementById('logModal')).hide();
-        showToast('Logged â€” nice work');
+        showToast('Logged — nice work');
         loadMyWorkouts();
         document.getElementById('assignmentsContainer').innerHTML = '';
     } else if (r) {
         const err = await r.json();
         // Already-logged-today is the most likely rejection (unique_together on
-        // assignment+day+date) â€” the backend's own message covers it plainly.
+        // assignment+day+date) — the backend's own message covers it plainly.
         showToast(formatApiError(err), 'error');
     } else {
         showToast('Could not save log', 'error');

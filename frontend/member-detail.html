@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -53,7 +53,7 @@
 
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <span class="navbar-brand">FitCore</span>
+  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\">FitCore</span></a>
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
     <div class="dropdown-panel" id="notifPanel">
@@ -128,7 +128,7 @@
       <div id="editError" style="background:#fee2e2;color:#991b1b;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;display:none;"></div>
       <div id="editSuccess" style="background:#dcfce7;color:#166534;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;display:none;">Profile updated successfully!</div>
       <form id="editForm">
-        <!-- ── Photo upload ─────────────────────────────────────── -->
+        <!-- -- Photo upload --------------------------------------- -->
         <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid #f3f4f6;">
           <div class="photo-upload-ring" onclick="document.getElementById('photoInput').click();" title="Click to change photo">
             <div id="editPhotoPreview" style="width:100%;height:100%;background:linear-gradient(135deg,var(--brand-red),#ff6b6b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;font-weight:700;"></div>
@@ -136,7 +136,7 @@
           </div>
           <div>
             <div style="font-weight:600;color:#1f2937;font-size:.9rem;">Profile Photo</div>
-            <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">JPG, PNG or WEBP · max 5 MB</div>
+            <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">JPG, PNG or WEBP � max 5 MB</div>
             <button type="button" onclick="document.getElementById('photoInput').click();"
               style="margin-top:.5rem;font-size:.75rem;font-weight:600;color:var(--brand-red);background:none;border:none;cursor:pointer;padding:0;">
               <i class="bi bi-upload me-1"></i>Upload new photo
@@ -144,7 +144,7 @@
           </div>
           <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="previewPhoto(this)">
         </div>
-        <!-- ── Other fields ───────────────────────────────────── -->
+        <!-- -- Other fields ------------------------------------- -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
           <div>
             <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Gender</label>

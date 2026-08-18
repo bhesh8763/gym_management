@@ -12,7 +12,9 @@ Coverage:
     - Only MEMBER-role users can be assigned a locker (limit_choices_to)
     - RBAC: members cannot manage lockers/assignments themselves
 """
+from datetime import timedelta
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -41,6 +43,9 @@ class LockerAPITestCase(APITestCase):
                                  first_name='Alice', last_name='Smith')
         self.lockers_url = '/api/lockers/lockers/'
         self.assignments_url = '/api/lockers/assignments/'
+
+    def get_future_date_str(self, days=1):
+        return (timezone.now().date() + timedelta(days=days)).strftime('%Y-%m-%d')
 
     def auth_as(self, user):
         self.client.credentials(
@@ -81,8 +86,8 @@ class LockerAssignmentTests(LockerAPITestCase):
         r = self.client.post(self.assignments_url, {
             'locker': self.locker.id,
             'member': self.member.id,
-            'start_date': '2026-07-20',
-            'end_date': '2026-07-31',
+            'start_date': self.get_future_date_str(0),
+            'end_date': self.get_future_date_str(11),
             'is_active': True,
         })
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
@@ -97,8 +102,8 @@ class LockerAssignmentTests(LockerAPITestCase):
         r = self.client.post(self.assignments_url, {
             'locker': self.locker.id,
             'member': self.owner.id,  # not a MEMBER
-            'start_date': '2026-07-20',
-            'end_date': '2026-07-31',
+            'start_date': self.get_future_date_str(0),
+            'end_date': self.get_future_date_str(11),
             'is_active': True,
         })
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
@@ -108,8 +113,8 @@ class LockerAssignmentTests(LockerAPITestCase):
         r = self.client.post(self.assignments_url, {
             'locker': self.locker.id,
             'member': self.member.id,
-            'start_date': '2026-07-20',
-            'end_date': '2026-07-31',
+            'start_date': self.get_future_date_str(0),
+            'end_date': self.get_future_date_str(11),
             'is_active': True,
         })
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)

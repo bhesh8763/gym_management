@@ -94,10 +94,9 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         requester = self.request.user
-        target_user = serializer.validated_data.get('user')
 
-        if requester.role not in STAFF_SIDE_ROLES and target_user != requester:
-            raise PermissionDenied('You can only record your own attendance.')
+        if requester.role not in STAFF_SIDE_ROLES:
+            raise PermissionDenied('Only staff-side roles can create attendance records.')
 
         serializer.save(marked_by=requester)
 

@@ -12,7 +12,9 @@ Coverage:
     - Filtering by date/user/type
     - RBAC: members cannot create attendance records, staff-side roles can
 """
+from datetime import timedelta
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -44,7 +46,13 @@ class AttendanceAPITestCase(APITestCase):
         self.member = make_user('alice@gym.com', role=User.Role.MEMBER,
                                  first_name='Alice', last_name='Smith')
 
-        self.list_url = '/api/attendance/'
+        self.list_url = '/api/attendance/records/'
+        
+    def get_today_str(self):
+        return timezone.now().date().strftime('%Y-%m-%d')
+    
+    def get_yesterday_str(self):
+        return (timezone.now().date() - timedelta(days=1)).strftime('%Y-%m-%d')
 
     def auth_as(self, user):
         self.client.credentials(
@@ -63,7 +71,7 @@ class AttendanceCreateTests(AttendanceAPITestCase):
         r = self.client.post(self.list_url, {
             'user': self.member.id,
             'attendance_type': 'MEMBER',
-            'date': '2026-07-20',
+            'date': self.get_today_str(),
             'check_in': '09:00:00',
         })
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
@@ -74,7 +82,7 @@ class AttendanceCreateTests(AttendanceAPITestCase):
         r = self.client.post(self.list_url, {
             'user': self.member.id,
             'attendance_type': 'MEMBER',
-            'date': '2026-07-20',
+            'date': self.get_today_str(),
             'check_in': '09:00:00',
         })
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
@@ -83,7 +91,7 @@ class AttendanceCreateTests(AttendanceAPITestCase):
         r = self.client.post(self.list_url, {
             'user': self.member.id,
             'attendance_type': 'MEMBER',
-            'date': '2026-07-20',
+            'date': self.get_today_str(),
             'check_in': '09:00:00',
         })
         self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -94,7 +102,7 @@ class AttendanceCreateTests(AttendanceAPITestCase):
         payload = {
             'user': self.member.id,
             'attendance_type': 'MEMBER',
-            'date': '2026-07-20',
+            'date': self.get_today_str(),
             'check_in': '09:00:00',
         }
         first = self.client.post(self.list_url, payload)
@@ -112,11 +120,11 @@ class AttendanceCheckOutTests(AttendanceAPITestCase):
         self.record = Attendance.objects.create(
             user=self.member,
             attendance_type='MEMBER',
-            date='2026-07-20',
+            date=self.get_today_str(),
             check_in='09:00:00',
             marked_by=self.staff,
         )
-        self.detail_url = f'/api/attendance/{self.record.id}/'
+        self.detail_url = f'/api/attendance/records/{self.record.id}/'
 
     def test_staff_can_check_out(self):
         self.auth_as(self.staff)
@@ -139,11 +147,11 @@ class AttendanceListTests(AttendanceAPITestCase):
         super().setUp()
         Attendance.objects.create(
             user=self.member, attendance_type='MEMBER',
-            date='2026-07-18', check_in='09:00:00', marked_by=self.staff,
+            date=self.get_yesterday_str(), check_in='09:00:00', marked_by=self.staff,
         )
         Attendance.objects.create(
             user=self.staff, attendance_type='STAFF',
-            date='2026-07-20', check_in='08:00:00', marked_by=self.owner,
+            date=self.get_today_str(), check_in='08:00:00', marked_by=self.owner,
         )
 
     def test_owner_can_list_all(self):
@@ -154,9 +162,9 @@ class AttendanceListTests(AttendanceAPITestCase):
 
     def test_filter_by_date(self):
         self.auth_as(self.owner)
-        r = self.client.get(self.list_url, {'date': '2026-07-20'})
+        r = self.client.get(self.list_url, {'date': self.get_today_str()})
         self.assertEqual(r.data['count'], 1)
-        self.assertEqual(r.data['results'][0]['date'], '2026-07-20')
+        self.assertEqual(r.data['results'][0]['date'], self.get_today_str())
 
     def test_filter_by_user(self):
         self.auth_as(self.owner)

@@ -32,3 +32,7 @@ Thumbs.db
 .opencode/
 opencode.json
 AGENTS.md
+
+#local files
+debug_serializer.py
+logo.png

@@ -12,7 +12,9 @@ Coverage:
     - Non-owner/staff only see their own leave requests
     - Review action (approve/reject) restricted to owner/staff
 """
+from datetime import timedelta
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -46,6 +48,11 @@ class StaffAPITestCase(APITestCase):
         self.client.credentials(
             HTTP_AUTHORIZATION=f'Bearer {str(RefreshToken.for_user(user).access_token)}'
         )
+    
+    def get_future_dates(self):
+        start = timezone.now().date() + timedelta(days=1)
+        end = start + timedelta(days=2)
+        return start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d')
 
 
 class StaffProfileTests(StaffAPITestCase):
@@ -79,10 +86,11 @@ class StaffProfileTests(StaffAPITestCase):
 class LeaveRequestTests(StaffAPITestCase):
     def test_trainer_can_submit_own_leave_request(self):
         self.auth_as(self.trainer)
+        start, end = self.get_future_dates()
         r = self.client.post(self.leaves_url, {
             'leave_type': 'SICK',
-            'start_date': '2026-07-25',
-            'end_date': '2026-07-26',
+            'start_date': start,
+            'end_date': end,
             'reason': 'Fever',
         })
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
@@ -92,15 +100,17 @@ class LeaveRequestTests(StaffAPITestCase):
     def test_requester_field_cannot_be_spoofed(self):
         """Even if a client tries to set 'requester' to someone else, it should be ignored."""
         self.auth_as(self.trainer)
+        start, end = self.get_future_dates()
         r = self.client.post(self.leaves_url, {
             'requester': self.owner.id,  # attempt to spoof
             'leave_type': 'SICK',
-            'start_date': '2026-07-25',
-            'end_date': '2026-07-26',
+            'start_date': start,
+            'end_date': end,
             'reason': 'Fever',
         })
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
         self.assertEqual(r.data['requester'], self.trainer.id)  # not owner.id
+
 
     def test_non_staff_only_sees_own_requests(self):
         LeaveRequest.objects.create(

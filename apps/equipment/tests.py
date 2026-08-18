@@ -12,7 +12,9 @@ Coverage:
     - Filtering maintenance by equipment/status
     - RBAC: members cannot manage equipment or maintenance
 """
+from datetime import timedelta
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -41,6 +43,9 @@ class EquipmentAPITestCase(APITestCase):
                                  first_name='Alice', last_name='Smith')
         self.equipment_url = '/api/equipment/equipment/'
         self.maintenance_url = '/api/equipment/maintenance/'
+        
+    def get_future_date_str(self, days=1):
+        return (timezone.now().date() + timedelta(days=days)).strftime('%Y-%m-%d')
 
     def auth_as(self, user):
         self.client.credentials(
@@ -104,7 +109,7 @@ class MaintenanceRecordTests(EquipmentAPITestCase):
         r = self.client.post(self.maintenance_url, {
             'equipment': self.treadmill.id,
             'maintenance_type': 'ROUTINE',
-            'scheduled_date': '2026-07-25',
+            'scheduled_date': self.get_future_date_str(1),
             'cost': '1200.00',
             'description': 'Belt check',
         })
@@ -117,7 +122,7 @@ class MaintenanceRecordTests(EquipmentAPITestCase):
         r = self.client.post(self.maintenance_url, {
             'equipment': self.treadmill.id,
             'maintenance_type': 'ROUTINE',
-            'scheduled_date': '2026-07-25',
+            'scheduled_date': self.get_future_date_str(1),
             'description': 'Belt check',
         })
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
@@ -125,12 +130,12 @@ class MaintenanceRecordTests(EquipmentAPITestCase):
     def test_filter_by_equipment(self):
         MaintenanceRecord.objects.create(
             equipment=self.treadmill, maintenance_type='ROUTINE',
-            scheduled_date='2026-07-25', description='Check',
+            scheduled_date=self.get_future_date_str(1), description='Check',
         )
         other_equipment = Equipment.objects.create(name='Bike', category='Cardio', quantity=1)
         MaintenanceRecord.objects.create(
             equipment=other_equipment, maintenance_type='REPAIR',
-            scheduled_date='2026-07-26', description='Fix pedal',
+            scheduled_date=self.get_future_date_str(2), description='Fix pedal',
         )
         self.auth_as(self.owner)
         r = self.client.get(self.maintenance_url, {'equipment': self.treadmill.id})
@@ -139,7 +144,7 @@ class MaintenanceRecordTests(EquipmentAPITestCase):
     def test_filter_by_status(self):
         MaintenanceRecord.objects.create(
             equipment=self.treadmill, maintenance_type='ROUTINE',
-            scheduled_date='2026-07-25', description='Check',
+            scheduled_date=self.get_future_date_str(1), description='Check',
             status=MaintenanceRecord.MaintenanceStatus.COMPLETED,
         )
         self.auth_as(self.owner)
