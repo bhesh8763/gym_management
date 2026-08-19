@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Staff — FitCore</title>
+  <title>Staff â€“ FitCore</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
 
@@ -60,7 +60,15 @@
 
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phoneâ€¦" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
 
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -85,8 +93,8 @@
     <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
       <span class="profile-avatar" id="profileAvatar">?</span>
       <span class="profile-meta">
-        <div class="profile-name" id="profileName">—</div>
-        <div class="profile-role" id="profileRole">—</div>
+        <div class="profile-name" id="profileName">â€“</div>
+        <div class="profile-role" id="profileRole">â€“</div>
       </span>
       <i class="bi bi-chevron-down text-white-50"></i>
     </button>
@@ -138,35 +146,35 @@
     <div data-roles="OWNER" id="staffProfilesSection">
       <h3>Staff Profiles</h3>
 
-      <!-- -- Staff stat cards ------------------------------------------- -->
-      <div class="row mb-4">
+      <!-- Staff stat cards -->
+      <div class="row mb-4 g-3">
         <div class="col-md-3">
-          <div class="card text-center border-primary"><div class="card-body">
-            <i class="bi bi-people-fill text-primary fs-4"></i>
-            <div class="text-muted small">Total Staff</div>
-            <h3 id="statTotalStaff" class="text-primary">-</h3>
-          </div></div>
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-total"><i class="bi bi-people-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Total Staff</div>
+            <h3 id="statTotalStaff">-</h3>
+          </div>
         </div>
         <div class="col-md-3">
-          <div class="card text-center border-success"><div class="card-body">
-            <i class="bi bi-person-check-fill text-success fs-4"></i>
-            <div class="text-muted small">Active</div>
-            <h3 id="statActiveStaff" class="text-success">-</h3>
-          </div></div>
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-active"><i class="bi bi-person-check-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Active</div>
+            <h3 id="statActiveStaff">-</h3>
+          </div>
         </div>
         <div class="col-md-3">
-          <div class="card text-center border-secondary"><div class="card-body">
-            <i class="bi bi-person-x-fill text-secondary fs-4"></i>
-            <div class="text-muted small">Deactivated</div>
-            <h3 id="statDeactivatedStaff" class="text-secondary">-</h3>
-          </div></div>
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-advanced"><i class="bi bi-person-x-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Deactivated</div>
+            <h3 id="statDeactivatedStaff">-</h3>
+          </div>
         </div>
         <div class="col-md-3">
-          <div class="card text-center border-warning"><div class="card-body">
-            <i class="bi bi-diagram-3-fill text-warning fs-4"></i>
-            <div class="text-muted small">Departments</div>
-            <h3 id="statDepartments" class="text-warning">-</h3>
-          </div></div>
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-beginner"><i class="bi bi-diagram-3-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Departments</div>
+            <h3 id="statDepartments">-</h3>
+          </div>
         </div>
       </div>
 
@@ -304,7 +312,7 @@
             <tr><th>Staff ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th class="text-end">Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
           </thead>
           <tbody id="profileTableBody">
-            <tr><td colspan="9" class="text-center text-muted py-4">Loading staff…</td></tr>
+            <tr><td colspan="9" class="text-center text-muted py-4">Loading staffï¿½</td></tr>
           </tbody>
         </table>
       </div>
@@ -380,7 +388,7 @@
         <div class="col-6 col-md-3">
           <div class="card text-center border-0 shadow-sm">
             <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-warning" id="statPending">—</div>
+              <div class="fs-3 fw-bold text-warning" id="statPending">â€“</div>
               <div class="small text-muted">Pending</div>
             </div>
           </div>
@@ -388,7 +396,7 @@
         <div class="col-6 col-md-3">
           <div class="card text-center border-0 shadow-sm">
             <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-success" id="statApproved">—</div>
+              <div class="fs-3 fw-bold text-success" id="statApproved">â€“</div>
               <div class="small text-muted">Approved</div>
             </div>
           </div>
@@ -396,7 +404,7 @@
         <div class="col-6 col-md-3">
           <div class="card text-center border-0 shadow-sm">
             <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-danger" id="statRejected">—</div>
+              <div class="fs-3 fw-bold text-danger" id="statRejected">â€“</div>
               <div class="small text-muted">Rejected</div>
             </div>
           </div>
@@ -404,7 +412,7 @@
         <div class="col-6 col-md-3">
           <div class="card text-center border-0 shadow-sm">
             <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-secondary" id="statCancelled">—</div>
+              <div class="fs-3 fw-bold text-secondary" id="statCancelled">â€“</div>
               <div class="small text-muted">Cancelled</div>
             </div>
           </div>
@@ -471,7 +479,7 @@
             </tr>
           </thead>
           <tbody id="leaveTableBody">
-            <tr><td colspan="10" class="text-center text-muted py-4">Loading…</td></tr>
+            <tr><td colspan="10" class="text-center text-muted py-4">Loadingï¿½</td></tr>
           </tbody>
         </table>
       </div>
@@ -557,7 +565,7 @@
               </div>
               <div class="col-md-2 d-flex flex-column justify-content-end">
                 <div class="card border-0 bg-light text-center py-2">
-                  <div class="fw-bold fs-5" id="leaveDurationPreview">—</div>
+                  <div class="fw-bold fs-5" id="leaveDurationPreview">â€“</div>
                   <div class="small text-muted">days</div>
                 </div>
               </div>
@@ -567,7 +575,7 @@
             <div class="mb-3">
               <label class="form-label fw-semibold">Reason</label>
               <textarea id="reason" class="form-control" rows="3"
-                        placeholder="Briefly describe your reason for leave…" required></textarea>
+                        placeholder="Briefly describe your reason for leaveï¿½" required></textarea>
             </div>
 
             <div id="leaveError" class="alert alert-danger d-none"></div>
@@ -606,7 +614,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div class="form-text">Share this with the staff member directly — it won't be shown again after you close this window.</div>
+            <div class="form-text">Share this with the staff member directly â€“ it won't be shown again after you close this window.</div>
             <div id="resetPasswordError" class="alert alert-danger d-none mt-3"></div>
           </div>
           <div class="modal-footer">
@@ -642,7 +650,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Review Note <span class="text-muted fw-normal">(optional)</span></label>
-            <textarea id="reviewNote" class="form-control" rows="2" placeholder="Add a note for the staff member…"></textarea>
+            <textarea id="reviewNote" class="form-control" rows="2" placeholder="Add a note for the staff memberï¿½"></textarea>
           </div>
           <div id="reviewError" class="alert alert-danger d-none"></div>
         </div>
@@ -674,7 +682,7 @@
     const toastEl = document.getElementById("appToast");
     const bodyEl = document.getElementById("appToastBody");
     if (!toastEl || !bodyEl) {
-      console.warn("Toast element missing from page — skipping toast:", message);
+      console.warn("Toast element missing from page â€“ skipping toast:", message);
       return;
     }
     toastEl.classList.remove("bg-success", "bg-danger");
@@ -1137,7 +1145,7 @@
         if (canReview)  actions.push(`<button class="btn btn-sm btn-outline-secondary" onclick="openReviewModal(${row.id}, '${(row.requester_name || '').replace(/'/g, "\\'")}', '${row.leave_type}', '${row.start_date}', '${row.end_date}')"><i class="bi bi-eye"></i> Review</button>`);
         if (canEdit)    actions.push(`<button class="btn btn-sm btn-outline-primary" onclick="openEditLeave(${row.id})" title="Edit"><i class="bi bi-pencil"></i> Edit</button>`);
         if (canCancel)  actions.push(`<button class="btn btn-sm btn-outline-danger"  onclick="cancelLeave(${row.id})"><i class="bi bi-x-circle"></i> Cancel</button>`);
-        if (!actions.length) actions.push('<span class="text-muted">—</span>');
+        if (!actions.length) actions.push('<span class="text-muted cell-center">â€“</span>');
 
         return `
           <tr>
@@ -1149,7 +1157,7 @@
             <td data-label="Days"><span class="badge bg-light text-dark border">${row.duration_days}d</span></td>
             <td data-label="Reason" class="small" style="max-width:180px;white-space:normal">${row.reason}</td>
             <td data-label="Status">${leaveStatusBadge(row.status)}</td>
-            <td data-label="Reviewed By" class="small text-muted">${row.reviewed_by_name || '—'}</td>
+            <td data-label="Reviewed By" class="small text-muted cell-center">${row.reviewed_by_name || 'â€“'}</td>
             <td><div class="d-flex gap-1">${actions.join('')}</div></td>
           </tr>`;
       }).join('');
@@ -1182,7 +1190,7 @@
   function openReviewModal(id, name, type, start, end) {
     document.getElementById('reviewLeaveId').value = id;
     document.getElementById('reviewLeaveInfo').textContent =
-      `${name} — ${type} leave from ${start} to ${end}`;
+      `${name} â€“ ${type} leave from ${start} to ${end}`;
     document.getElementById('reviewNote').value = '';
     document.getElementById('reviewError').classList.add('d-none');
     new bootstrap.Modal(document.getElementById('reviewModal')).show();
@@ -1263,7 +1271,7 @@
       el.textContent = '!';
       el.classList.add('text-danger');
     } else {
-      el.textContent = '—';
+      el.textContent = 'â€“';
       el.classList.remove('text-danger');
     }
   }
@@ -1306,7 +1314,7 @@
       }
       if (res.ok) {
         document.getElementById('leaveForm').reset();
-        document.getElementById('leaveDurationPreview').textContent = '—';
+        document.getElementById('leaveDurationPreview').textContent = 'â€“';
         try {
           bootstrap.Modal.getOrCreateInstance(document.getElementById('leaveModal')).hide();
         } catch (e) {
@@ -1345,7 +1353,7 @@
     document.getElementById('leaveSubmitIcon').className = 'bi bi-send me-1';
     document.getElementById('leaveSubmitLabel').textContent = 'Submit Request';
     document.getElementById('leaveError').classList.add('d-none');
-    document.getElementById('leaveDurationPreview').textContent = '—';
+    document.getElementById('leaveDurationPreview').textContent = 'â€“';
   });
 
   function updatePendingTypeBadges() {

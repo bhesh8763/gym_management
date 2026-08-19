@@ -126,34 +126,34 @@
     <!-- Stat cards � clickable, each links to its filtered view -->
     <div class="row g-3">
       <div class="col-md-3">
-        <a href="members.html" class="card p-3 text-center stat-card spa-link">
-          <div class="stat-icon"><i class="bi bi-people"></i></div>
-          <div class="stat-value" id="statMembers">�</div>
-          <small class="text-muted">Total members</small>
+        <a href="members.html" class="card stat-card spa-link h-100">
+          <div class="stat-icon icon-total"><i class="bi bi-people"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total members</div>
+          <h3 id="statMembers"></h3>
           <div class="stat-delta" id="statMembersDelta"></div>
         </a>
       </div>
       <div class="col-md-3">
-        <a href="attendance.html" class="card p-3 text-center stat-card spa-link">
-          <div class="stat-icon"><i class="bi bi-calendar-check"></i></div>
-          <div class="stat-value" id="statAttendance">�</div>
-          <small class="text-muted">Today's attendance</small>
+        <a href="attendance.html" class="card stat-card spa-link h-100">
+          <div class="stat-icon icon-active"><i class="bi bi-calendar-check"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Today's attendance</div>
+          <h3 id="statAttendance"></h3>
           <div class="stat-delta" id="statAttendanceDelta"></div>
         </a>
       </div>
       <div class="col-md-3">
-        <a href="payments.html?status=PAID" class="card p-3 text-center stat-card spa-link">
-          <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
-          <div class="stat-value" id="statRevenue">�</div>
-          <small class="text-muted">Revenue this month</small>
+        <a href="payments.html?status=PAID" class="card stat-card spa-link h-100">
+          <div class="stat-icon icon-library"><i class="bi bi-cash-coin"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Revenue this month</div>
+          <h3 id="statRevenue"></h3>
           <div class="stat-delta" id="statRevenueDelta"></div>
         </a>
       </div>
       <div class="col-md-3">
-        <a href="memberships.html?status=expiring" class="card p-3 text-center stat-card spa-link">
-          <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
-          <div class="stat-value" id="statExpiring">�</div>
-          <small class="text-muted">Expiring memberships</small>
+        <a href="memberships.html?status=expiring" class="card stat-card spa-link h-100">
+          <div class="stat-icon icon-beginner"><i class="bi bi-exclamation-circle"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Expiring memberships</div>
+          <h3 id="statExpiring"></h3>
           <div class="stat-delta" id="statExpiringDelta"></div>
         </a>
       </div>

@@ -342,6 +342,21 @@ syncSidebarCollapsedState();
     contentEl.innerHTML = newContentEl.innerHTML;
     if (doc.title) document.title = doc.title;
 
+    // SPA modal fix: carry over modals that live outside #page-content.
+    // Remove any modals that sit outside #page-content (from previous page),
+    // then inject the new page's outside modals into the live DOM.
+    document.body.querySelectorAll('.modal.fade').forEach(el => {
+      if (!contentEl.contains(el)) el.remove();
+    });
+    doc.querySelectorAll('.modal.fade').forEach(modal => {
+      if (!newContentEl.contains(modal)) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = modal.outerHTML;
+        const imported = wrapper.firstElementChild;
+        document.body.appendChild(imported);
+      }
+    });
+
     const newRoles = doc.body.getAttribute('data-allowed-roles');
     if (newRoles) document.body.setAttribute('data-allowed-roles', newRoles);
     else document.body.removeAttribute('data-allowed-roles');

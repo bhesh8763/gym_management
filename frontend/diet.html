@@ -19,7 +19,16 @@
 <!-- -- Topbar -------------------------------------------------------------- -->
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
+  <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phoneï¿½" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+
 
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -44,8 +53,8 @@
     <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
       <span class="profile-avatar" id="profileAvatar">?</span>
       <span class="profile-meta">
-        <div class="profile-name" id="profileName">—</div>
-        <div class="profile-role" id="profileRole">—</div>
+        <div class="profile-name" id="profileName">â€“</div>
+        <div class="profile-role" id="profileRole">â€“</div>
       </span>
       <i class="bi bi-chevron-down text-white-50"></i>
     </button>
@@ -108,34 +117,30 @@
     <div class="row g-3 mb-4">
       <div class="col-6 col-md-3">
         <div class="card stat-card stat-accent stat-info">
-          <div class="card-body">
-            <div class="text-uppercase text-muted small fw-semibold">Total Plans</div>
-            <h3 id="statTotal">—</h3>
-          </div>
+          <div class="stat-icon"><i class="bi bi-journal-text"></i></div>
+          <div class="text-uppercase text-muted small fw-semibold">Total Plans</div>
+          <h3 id="statTotal">â€“</h3>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="card stat-card stat-accent stat-success">
-          <div class="card-body">
-            <div class="text-uppercase text-muted small fw-semibold">Active Plans</div>
-            <h3 id="statActive">—</h3>
-          </div>
+          <div class="stat-icon"><i class="bi bi-check-circle"></i></div>
+          <div class="text-uppercase text-muted small fw-semibold">Active Plans</div>
+          <h3 id="statActive">â€“</h3>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="card stat-card stat-accent stat-warning">
-          <div class="card-body">
-            <div class="text-uppercase text-muted small fw-semibold">Weight Loss</div>
-            <h3 id="statWeightLoss">—</h3>
-          </div>
+          <div class="stat-icon"><i class="bi bi-arrow-down-circle"></i></div>
+          <div class="text-uppercase text-muted small fw-semibold">Weight Loss</div>
+          <h3 id="statWeightLoss">â€“</h3>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="card stat-card stat-accent stat-danger">
-          <div class="card-body">
-            <div class="text-uppercase text-muted small fw-semibold">Muscle Gain</div>
-            <h3 id="statMuscleGain">—</h3>
-          </div>
+          <div class="stat-icon"><i class="bi bi-arrow-up-circle"></i></div>
+          <div class="text-uppercase text-muted small fw-semibold">Muscle Gain</div>
+          <h3 id="statMuscleGain">â€“</h3>
         </div>
       </div>
     </div>
@@ -161,7 +166,7 @@
           <!-- Search -->
           <div class="input-group" style="max-width:220px;">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="searchPlan" class="form-control" placeholder="Search plans…" oninput="applyFilters()">
+            <input type="text" id="searchPlan" class="form-control" placeholder="Search plansï¿½" oninput="applyFilters()">
           </div>
           <!-- Create button (hidden for MEMBER role) -->
           <button class="btn btn-primary text-nowrap staff-only"
@@ -189,7 +194,7 @@
               </tr>
             </thead>
             <tbody id="plansTable">
-              <tr><td colspan="7" class="text-center text-muted py-4">Loading…</td></tr>
+              <tr><td colspan="7" class="text-center text-muted py-4">Loadingï¿½</td></tr>
             </tbody>
           </table>
         </div>
@@ -213,7 +218,7 @@
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label fw-semibold">Member <span class="text-danger">*</span></label>
-            <select id="createMember" class="form-select"><option value="">Loading members…</option></select>
+            <select id="createMember" class="form-select"><option value="">Loading membersï¿½</option></select>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Plan Name <span class="text-danger">*</span></label>
@@ -375,7 +380,7 @@
         <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Diet Plan Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body" id="viewPlanBody">Loading…</div>
+      <div class="modal-body" id="viewPlanBody">Loadingï¿½</div>
     </div>
   </div>
 </div>
@@ -412,7 +417,7 @@
   };
   function goalBadge(goal) {
     const cls   = GOAL_BADGE[goal] || 'bg-secondary';
-    const label = GOAL_LABELS[goal] || goal || '—';
+    const label = GOAL_LABELS[goal] || goal || 'â€“';
     return `<span class="badge ${cls}">${label}</span>`;
   }
   function statusBadge(isActive) {
@@ -489,10 +494,10 @@
     const res = await apiRequest('/diet/diet-plans/stats/');
     if (!res || !res.ok) return;
     const d = await res.json();
-    document.getElementById('statTotal').textContent      = d.total      ?? '—';
-    document.getElementById('statActive').textContent     = d.active     ?? '—';
-    document.getElementById('statWeightLoss').textContent = d.weightLoss ?? '—';
-    document.getElementById('statMuscleGain').textContent = d.muscleGain ?? '—';
+    document.getElementById('statTotal').textContent      = d.total      ?? 'â€“';
+    document.getElementById('statActive').textContent     = d.active     ?? 'â€“';
+    document.getElementById('statWeightLoss').textContent = d.weightLoss ?? 'â€“';
+    document.getElementById('statMuscleGain').textContent = d.muscleGain ?? 'â€“';
   }
 
   // -- Load plans -------------------------------------------------------------
@@ -526,9 +531,9 @@
         <td class="ps-3 text-muted small">#${p.id}</td>
         <td class="fw-semibold">${p.name}</td>
         <td>${goalBadge(p.goal)}</td>
-        <td>${p.daily_calories ? p.daily_calories + ' kcal' : '—'}</td>
+        <td>${p.daily_calories ? p.daily_calories + ' kcal' : 'â€“'}</td>
         <td class="small text-muted">
-          ${p.protein_g ?? '—'}g&nbsp;/&nbsp;${p.carbs_g ?? '—'}g&nbsp;/&nbsp;${p.fats_g ?? '—'}g
+          ${p.protein_g ?? 'â€“'}g&nbsp;/&nbsp;${p.carbs_g ?? 'â€“'}g&nbsp;/&nbsp;${p.fats_g ?? 'â€“'}g
         </td>
         <td>${statusBadge(p.is_active)}</td>
         <td>
@@ -568,13 +573,13 @@
         <div class="col-sm-6"><span class="text-muted small">Name</span><div class="fw-semibold">${p.name}</div></div>
         <div class="col-sm-3"><span class="text-muted small">Goal</span><div>${goalBadge(p.goal)}</div></div>
         <div class="col-sm-3"><span class="text-muted small">Status</span><div>${statusBadge(p.is_active)}</div></div>
-        <div class="col-sm-3"><span class="text-muted small">Daily Calories</span><div class="fw-semibold">${p.daily_calories ? p.daily_calories + ' kcal' : '—'}</div></div>
-        <div class="col-sm-3"><span class="text-muted small">Protein</span><div>${p.protein_g ?? '—'} g</div></div>
-        <div class="col-sm-3"><span class="text-muted small">Carbs</span><div>${p.carbs_g ?? '—'} g</div></div>
-        <div class="col-sm-3"><span class="text-muted small">Fats</span><div>${p.fats_g ?? '—'} g</div></div>
-        <div class="col-sm-4"><span class="text-muted small">Member</span><div>${p.member_name || '—'}</div></div>
-        <div class="col-sm-4"><span class="text-muted small">Created By</span><div>${p.created_by_name || '—'}</div></div>
-        <div class="col-sm-4"><span class="text-muted small">Start ? End</span><div>${p.start_date || '—'} ? ${p.end_date || '—'}</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Daily Calories</span><div class="fw-semibold">${p.daily_calories ? p.daily_calories + ' kcal' : 'â€“'}</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Protein</span><div>${p.protein_g ?? 'â€“'} g</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Carbs</span><div>${p.carbs_g ?? 'â€“'} g</div></div>
+        <div class="col-sm-3"><span class="text-muted small">Fats</span><div>${p.fats_g ?? 'â€“'} g</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Member</span><div>${p.member_name || 'â€“'}</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Created By</span><div>${p.created_by_name || 'â€“'}</div></div>
+        <div class="col-sm-4"><span class="text-muted small">Start ? End</span><div>${p.start_date || 'â€“'} ? ${p.end_date || 'â€“'}</div></div>
         ${p.notes ? `<div class="col-12"><span class="text-muted small">Notes</span><div>${p.notes}</div></div>` : ''}
       </div>`;
 
@@ -597,9 +602,9 @@
         html += `<tr>
           <td><span class="badge bg-secondary">${m.meal_type_display || m.meal_type}</span></td>
           <td>${m.food_name}</td>
-          <td>${m.portion || '—'}</td>
-          <td>${m.calories != null ? m.calories + ' kcal' : '—'}</td>
-          <td>${m.time_suggestion || '—'}</td>
+          <td class="cell-center">${m.portion || 'â€“'}</td>
+          <td>${m.calories != null ? m.calories + ' kcal' : 'â€“'}</td>
+          <td class="cell-center">${m.time_suggestion || 'â€“'}</td>
         </tr>`;
       });
       html += '</tbody></table></div>';

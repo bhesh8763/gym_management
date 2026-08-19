@@ -27,7 +27,16 @@
 
 <nav class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-    <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phoneï¿½" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
             <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
@@ -48,7 +57,7 @@
     <div class="position-relative">
         <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
             <span class="profile-avatar" id="profileAvatar">?</span>
-            <span class="profile-meta"><div class="profile-name" id="profileName">—</div><div class="profile-role" id="profileRole">—</div></span>
+            <span class="profile-meta"><div class="profile-name" id="profileName">â€“</div><div class="profile-role" id="profileRole">â€“</div></span>
             <i class="bi bi-chevron-down text-white-50"></i>
         </button>
         <div class="dropdown-panel profile-menu" id="profilePanel">
@@ -82,7 +91,7 @@
 
     <div class="p-4 flex-grow-1">
         <h3>My Workouts</h3>
-        <p class="text-muted">Your assigned training programs — log a session whenever you finish one.</p>
+        <p class="text-muted">Your assigned training programs â€“ log a session whenever you finish one.</p>
 
         <div id="loadingState" class="text-center text-muted py-5">
             <div class="spinner-border" role="status"></div>
@@ -90,7 +99,7 @@
         </div>
 
         <div id="noAssignmentsState" class="alert alert-secondary" style="display:none;">
-            You don't have a workout plan assigned yet — ask your trainer to assign one.
+            You don't have a workout plan assigned yet â€“ ask your trainer to assign one.
         </div>
 
         <div id="assignmentsContainer" style="display:none;"></div>
@@ -109,8 +118,8 @@
         <div class="mb-3"><label>Day</label><input type="text" id="logDayLabel" class="form-control" disabled></div>
         <div class="mb-3"><label>How did it go?</label>
           <select id="logStatus" class="form-select">
-            <option value="COMPLETED">Completed — did the whole thing</option>
-            <option value="PARTIAL">Partial — did some of it</option>
+            <option value="COMPLETED">Completed â€“ did the whole thing</option>
+            <option value="PARTIAL">Partial â€“ did some of it</option>
             <option value="SKIPPED">Skipped today</option>
           </select>
         </div>
@@ -153,7 +162,7 @@ function statusBadge(status) {
 }
 
 async function loadMyWorkouts() {
-    // The assignments endpoint already scopes to "my own" for a MEMBER —
+    // The assignments endpoint already scopes to "my own" for a MEMBER â€“
     // enforced server-side (see _visible_assignments), not just hidden in the UI.
     const r = await apiRequest('/workouts/assignments/');
     document.getElementById('loadingState').style.display = 'none';
@@ -205,7 +214,7 @@ async function loadDaysForAssignment(assignment) {
     holder.innerHTML = days.map(d => `
         <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
             <div>
-                <strong>Week ${d.week_number} · Day ${d.day_number}</strong> ${d.day_name ? '— ' + d.day_name : ''}
+                <strong>Week ${d.week_number} · Day ${d.day_number}</strong> ${d.day_name ? 'â€“ ' + d.day_name : ''}
                 <div class="text-muted small">${(d.exercises || []).length} exercise(s)</div>
             </div>
             <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} · Day ${d.day_number}')">
@@ -243,13 +252,13 @@ async function submitLog() {
     const r = await apiRequest('/workouts/completion-logs/', { method: 'POST', body: JSON.stringify(payload) });
     if (r && r.ok) {
         bootstrap.Modal.getInstance(document.getElementById('logModal')).hide();
-        showToast('Logged — nice work');
+        showToast('Logged â€“ nice work');
         loadMyWorkouts();
         document.getElementById('assignmentsContainer').innerHTML = '';
     } else if (r) {
         const err = await r.json();
         // Already-logged-today is the most likely rejection (unique_together on
-        // assignment+day+date) — the backend's own message covers it plainly.
+        // assignment+day+date) â€“ the backend's own message covers it plainly.
         showToast(formatApiError(err), 'error');
     } else {
         showToast('Could not save log', 'error');

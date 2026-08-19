@@ -20,7 +20,16 @@
 
 <nav class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-    <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phoneï¿½" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+
 
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -45,8 +54,8 @@
         <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
             <span class="profile-avatar" id="profileAvatar">?</span>
             <span class="profile-meta">
-                <div class="profile-name" id="profileName">—</div>
-                <div class="profile-role" id="profileRole">—</div>
+                <div class="profile-name" id="profileName">â€“</div>
+                <div class="profile-role" id="profileRole">â€“</div>
             </span>
             <i class="bi bi-chevron-down text-white-50"></i>
         </button>
@@ -103,7 +112,7 @@
             <div class="d-flex align-items-center gap-2">
                 <label for="memberSelect" class="text-muted small mb-0">Member</label>
                 <select class="form-select" id="memberSelect" style="min-width:240px;" onchange="onMemberChange()">
-                    <option value="">Loading members…</option>
+                    <option value="">Loading membersï¿½</option>
                 </select>
             </div>
         </div>
@@ -112,28 +121,25 @@
             <div class="row mb-4 g-3">
                 <div class="col-md-3">
                     <div class="card stat-card stat-accent stat-info">
-                        <div class="card-body">
-                            <div class="text-uppercase text-muted small fw-semibold">Total Entries</div>
-                            <h3 id="totalEntries">0</h3>
-                        </div>
+                        <div class="stat-icon"><i class="bi bi-clipboard-data"></i></div>
+                        <div class="text-uppercase text-muted small fw-semibold">Total Entries</div>
+                        <h3 id="totalEntries">0</h3>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card stat-card stat-accent stat-success">
-                        <div class="card-body">
-                            <div class="text-uppercase text-muted small fw-semibold">Current Weight</div>
-                            <h3 id="latestWeight" class="text-success">—</h3>
-                            <div class="stat-delta flat" id="weightDelta"></div>
-                        </div>
+                        <div class="stat-icon"><i class="bi bi-speedometer"></i></div>
+                        <div class="text-uppercase text-muted small fw-semibold">Current Weight</div>
+                        <h3 id="latestWeight" class="text-success">â€“</h3>
+                        <div class="stat-delta flat" id="weightDelta"></div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card stat-card stat-accent stat-warning">
-                        <div class="card-body">
-                            <div class="text-uppercase text-muted small fw-semibold">Current BMI</div>
-                            <h3 id="latestBmi" class="text-warning">—</h3>
-                            <div class="stat-delta flat" id="bmiDelta"></div>
-                        </div>
+                        <div class="stat-icon"><i class="bi bi-heart-pulse"></i></div>
+                        <div class="text-uppercase text-muted small fw-semibold">Current BMI</div>
+                        <h3 id="latestBmi" class="text-warning">â€“</h3>
+                        <div class="stat-delta flat" id="bmiDelta"></div>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -313,7 +319,7 @@
         select.innerHTML = allMembers.map(m => {
             const name = m.full_name || m.name || 'Unnamed member';
             const code = m.member_code || m.code || '';
-            return `<option value="${m.id}">${name}${code ? ' — ' + code : ''}</option>`;
+            return `<option value="${m.id}">${name}${code ? ' â€“ ' + code : ''}</option>`;
         }).join('');
 
         onMemberChange();
@@ -343,8 +349,8 @@
             const latest = allEntries[0]; // ordering = ['-date']
             const previous = allEntries[1]; // may be undefined if only one entry exists
 
-            document.getElementById('latestWeight').textContent = latest.weight_kg ? `${latest.weight_kg} kg` : '—';
-            document.getElementById('latestBmi').textContent = latest.bmi ?? '—';
+            document.getElementById('latestWeight').textContent = latest.weight_kg ? `${latest.weight_kg} kg` : 'â€“';
+            document.getElementById('latestBmi').textContent = latest.bmi ?? 'â€“';
 
             renderDelta('weightDelta', latest.weight_kg, previous ? previous.weight_kg : null, 'kg');
             renderDelta('bmiDelta', latest.bmi, previous ? previous.bmi : null, '');
@@ -357,7 +363,7 @@
         renderEntries(allEntries);
     }
 
-    // Shows the change vs the previous logged entry — direction only, no
+    // Shows the change vs the previous logged entry â€“ direction only, no
     // "good/bad" color judgment, since whether weight going up or down is
     // desirable depends entirely on the individual member's own goal.
     function renderDelta(elId, current, prevVal, unit) {
@@ -420,10 +426,10 @@
             entries.map(entry => `
             <tr>
                 <td>${entry.date}</td>
-                <td>${entry.weight_kg ?? '—'}</td>
-                <td>${entry.bmi ?? '—'}</td>
-                <td>${entry.body_fat_percentage ?? '—'}</td>
-                <td>${entry.muscle_mass_kg ?? '—'}</td>
+        <td class="cell-center">${entry.weight_kg ?? 'â€“'}</td>
+        <td class="cell-center">${entry.bmi ?? 'â€“'}</td>
+        <td class="cell-center">${entry.body_fat_percentage ?? 'â€“'}</td>
+        <td class="cell-center">${entry.muscle_mass_kg ?? 'â€“'}</td>
                 <td>
                     <button class="btn manage-btn btn-sm" title="Edit"
                         onclick="openEditEntryModal(

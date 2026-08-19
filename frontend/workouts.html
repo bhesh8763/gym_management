@@ -30,7 +30,16 @@
 
 <nav class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-    <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phoneï¿½" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+
 
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -55,8 +64,8 @@
         <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
             <span class="profile-avatar" id="profileAvatar">?</span>
             <span class="profile-meta">
-                <div class="profile-name" id="profileName">—</div>
-                <div class="profile-role" id="profileRole">—</div>
+                <div class="profile-name" id="profileName">â€“</div>
+                <div class="profile-role" id="profileRole">â€“</div>
             </span>
             <i class="bi bi-chevron-down text-white-50"></i>
         </button>
@@ -113,28 +122,32 @@
 
         <div class="row mt-3 g-3">
             <div class="col-md-3">
-                <div class="stat-card"><div class="card-body d-flex align-items-center gap-3">
+                <div class="card stat-card h-100 shadow-sm">
                     <div class="stat-icon icon-total"><i class="bi bi-clipboard-data"></i></div>
-                    <div><div class="stat-label">Templates</div><div class="stat-value" id="statTemplates">0</div></div>
-                </div></div>
+                    <div class="text-muted small text-uppercase fw-semibold">Templates</div>
+                    <h3 id="statTemplates">0</h3>
+                </div>
             </div>
             <div class="col-md-3">
-                <div class="stat-card"><div class="card-body d-flex align-items-center gap-3">
+                <div class="card stat-card h-100 shadow-sm">
                     <div class="stat-icon icon-active"><i class="bi bi-check-circle"></i></div>
-                    <div><div class="stat-label">Approved</div><div class="stat-value" id="statApproved">0</div></div>
-                </div></div>
+                    <div class="text-muted small text-uppercase fw-semibold">Approved</div>
+                    <h3 id="statApproved">0</h3>
+                </div>
             </div>
             <div class="col-md-3">
-                <div class="stat-card"><div class="card-body d-flex align-items-center gap-3">
+                <div class="card stat-card h-100 shadow-sm">
                     <div class="stat-icon icon-beginner"><i class="bi bi-person-check"></i></div>
-                    <div><div class="stat-label">Active Assignments</div><div class="stat-value" id="statAssignments">0</div></div>
-                </div></div>
+                    <div class="text-muted small text-uppercase fw-semibold">Active Assignments</div>
+                    <h3 id="statAssignments">0</h3>
+                </div>
             </div>
             <div class="col-md-3">
-                <div class="stat-card"><div class="card-body d-flex align-items-center gap-3">
+                <div class="card stat-card h-100 shadow-sm">
                     <div class="stat-icon icon-library"><i class="bi bi-collection"></i></div>
-                    <div><div class="stat-label">Exercise Library</div><div class="stat-value" id="statExercises">0</div></div>
-                </div></div>
+                    <div class="text-muted small text-uppercase fw-semibold">Exercise Library</div>
+                    <h3 id="statExercises">0</h3>
+                </div>
             </div>
         </div>
 
@@ -163,7 +176,7 @@
                         </select>
                         <div class="input-group input-group-sm" style="width:220px;">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" id="searchTemplate" class="form-control" placeholder="Search templates…" onkeyup="debouncedTemplateSearch()">
+                            <input type="text" id="searchTemplate" class="form-control" placeholder="Search templatesï¿½" onkeyup="debouncedTemplateSearch()">
                         </div>
                         <button class="btn btn-primary btn-sm text-nowrap" data-bs-toggle="modal" data-bs-target="#createTemplateModal">
                             <i class="bi bi-plus-circle"></i> Create Template
@@ -268,9 +281,9 @@
       <div class="modal-body">
         <input type="hidden" id="assignTemplateId">
         <div class="alert alert-warning py-2 small" id="assignApprovalWarning" style="display:none;">
-          This template isn't Approved yet — submit it for review and get it approved before assigning.
+          This template isn't Approved yet â€“ submit it for review and get it approved before assigning.
         </div>
-        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members…</option></select></div>
+        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading membersï¿½</option></select></div>
         <div class="mb-3"><label>Start date</label><input type="date" id="assignStartDate" class="form-control"></div>
         <div class="mb-3"><label>Goal note (optional)</label><input type="text" id="assignGoalNote" class="form-control" placeholder="e.g. prep for tournament"></div>
       </div>
@@ -349,7 +362,7 @@ function statusBadge(status) {
 function difficultyBadge(d) {
     const map = { BEGINNER: 'beginner', INTERMEDIATE: 'intermediate', ADVANCED: 'advanced' };
     const label = { BEGINNER: 'Beginner', INTERMEDIATE: 'Intermediate', ADVANCED: 'Advanced' };
-    return `<span class="badge-difficulty badge-${map[d] || 'beginner'}">${label[d] || d || '—'}</span>`;
+    return `<span class="badge-difficulty badge-${map[d] || 'beginner'}">${label[d] || d || 'â€“'}</span>`;
 }
 
 function assignmentStatusBadge(status) {
@@ -384,7 +397,7 @@ async function loadTemplates(url) {
     templatesPrevUrl = data.previous ? data.previous.replace(/^.*\/api/, '') : null;
 
     // `data.count` reflects the TRUE total across all pages (page size is
-    // 20) — using allTemplates.length here would silently under-report once
+    // 20) â€“ using allTemplates.length here would silently under-report once
     // there's more than one page.
     document.getElementById('statTemplates').textContent = data.count ?? allTemplates.length;
     const approvedResp = await apiRequest('/workouts/templates/?status=APPROVED&page_size=1');
@@ -404,7 +417,7 @@ function renderTemplates(totalCount) {
                 <a href="workout-template-detail.html?id=${t.id}" class="fw-semibold text-decoration-none">${t.name}</a>
                 <div class="text-muted small">${difficultyBadge(t.difficulty)}</div>
             </td>
-            <td>${t.goal || '—'}</td>
+            <td class="cell-center">${t.goal || 'â€“'}</td>
             <td>${t.duration_weeks} wk</td>
             <td>${t.assigned_member_count} ${t.assigned_member_count === 1 ? 'member' : 'members'}</td>
             <td>${statusBadge(t.status)}</td>
@@ -413,7 +426,7 @@ function renderTemplates(totalCount) {
                 <button class="manage-btn btn btn-sm" onclick="openWorkoutManage(${t.id})">Manage</button>
             </td>
         </tr>
-    `).join('') || `<tr><td colspan="7" class="text-center text-muted py-4">No templates yet — create one to get started.</td></tr>`;
+    `).join('') || `<tr><td colspan="7" class="text-center text-muted py-4">No templates yet â€“ create one to get started.</td></tr>`;
 
     document.getElementById('templatesPagination').innerHTML = (templatesNextUrl || templatesPrevUrl) ? `
         <button class="btn btn-sm btn-outline-secondary" ${templatesPrevUrl ? '' : 'disabled'} onclick="loadTemplates('${templatesPrevUrl}')"><i class="bi bi-chevron-left"></i> Prev</button>
@@ -435,7 +448,7 @@ async function createTemplate() {
         document.getElementById('tplName').value = '';
         document.getElementById('tplGoal').value = '';
         loadTemplates();
-        showToast('Template created — add days and exercises next.');
+        showToast('Template created â€“ add days and exercises next.');
     } else if (response) {
         const err = await response.json();
         showToast(formatApiError(err), 'error');
@@ -533,14 +546,14 @@ async function loadExercises() {
         <tr>
             <td class="fw-semibold">${ex.name}</td>
             <td>${ex.muscle_group}</td>
-            <td>${ex.equipment || '—'}</td>
+            <td class="cell-center">${ex.equipment || 'â€“'}</td>
             <td>${ex.exercise_type}</td>
             <td class="text-nowrap">
                 <button class="btn btn-sm btn-outline-secondary" onclick='openEditExerciseModal(${JSON.stringify(ex)})'><i class="bi bi-pencil"></i></button>
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteExercise(${ex.id}, '${ex.name.replace(/'/g, "\\'")}')"><i class="bi bi-trash"></i></button>
             </td>
         </tr>
-    `).join('') || `<tr><td colspan="5" class="text-center text-muted py-4">No exercises yet — add the first one.</td></tr>`;
+    `).join('') || `<tr><td colspan="5" class="text-center text-muted py-4">No exercises yet â€“ add the first one.</td></tr>`;
 }
 
 function openNewExerciseModal() {
@@ -590,7 +603,7 @@ async function deleteExercise(id, name) {
     if (!confirm(`Delete "${name}"? This can't be undone, and it'll disappear from any workout day still using it.`)) return;
     const response = await apiRequest(`/workouts/exercises/${id}/`, { method: 'DELETE' });
     if (response && (response.ok || response.status === 204)) { showToast('Exercise deleted'); loadExercises(); }
-    else showToast('Could not delete — it may still be in use on a workout day', 'error');
+    else showToast('Could not delete â€“ it may still be in use on a workout day', 'error');
 }
 
 loadTemplates();

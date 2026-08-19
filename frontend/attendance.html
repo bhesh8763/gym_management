@@ -19,7 +19,16 @@
 
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
+  <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone�" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+
 
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -104,25 +113,29 @@
     <div class="row mb-4">
       <div class="col-md-3">
         <div class="card stat-card stat-accent stat-info">
-          <div class="text-muted small">Total Members</div>
+          <div class="stat-icon"><i class="bi bi-people"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total Members</div>
           <h3 id="totalMembers">-</h3>
         </div>
       </div>
       <div class="col-md-3">
         <div class="card stat-card stat-accent stat-success">
-          <div class="text-muted small">Present Today</div>
+          <div class="stat-icon"><i class="bi bi-person-check"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Present Today</div>
           <h3 id="presentToday" class="text-success">-</h3>
         </div>
       </div>
       <div class="col-md-3">
         <div class="card stat-card stat-accent stat-danger">
-          <div class="text-muted small">Absent Today</div>
+          <div class="stat-icon"><i class="bi bi-person-x"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Absent Today</div>
           <h3 id="absentToday" style="color:var(--brand-red)">-</h3>
         </div>
       </div>
       <div class="col-md-3">
         <div class="card stat-card stat-accent stat-warning">
-          <div class="text-muted small">Inactive Members</div>
+          <div class="stat-icon"><i class="bi bi-person-dash"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Inactive Members</div>
           <h3 id="inactiveMembers" class="text-warning">-</h3>
         </div>
       </div>
