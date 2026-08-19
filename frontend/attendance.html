@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attendance — FitCore</title>
+  <title>Attendance ï¿½ FitCore</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -12,7 +12,7 @@
 
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\">FitCore</span></a>
+  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
 
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
@@ -37,8 +37,8 @@
     <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
       <span class="profile-avatar" id="profileAvatar">?</span>
       <span class="profile-meta">
-        <div class="profile-name" id="profileName">—</div>
-        <div class="profile-role" id="profileRole">—</div>
+        <div class="profile-name" id="profileName">ï¿½</div>
+        <div class="profile-role" id="profileRole">ï¿½</div>
       </span>
       <i class="bi bi-chevron-down text-white-50"></i>
     </button>
@@ -187,25 +187,25 @@
         <div class="col-md-3">
           <div class="card stat-card stat-accent stat-warning">
             <div class="text-muted small">Pending</div>
-            <h3 id="myStat_pending" class="text-warning">—</h3>
+            <h3 id="myStat_pending" class="text-warning">ï¿½</h3>
           </div>
         </div>
         <div class="col-md-3">
           <div class="card stat-card stat-accent stat-success">
             <div class="text-muted small">Approved</div>
-            <h3 id="myStat_approved" class="text-success">—</h3>
+            <h3 id="myStat_approved" class="text-success">ï¿½</h3>
           </div>
         </div>
         <div class="col-md-3">
           <div class="card stat-card stat-accent stat-danger">
             <div class="text-muted small">Rejected</div>
-            <h3 id="myStat_rejected" class="text-secondary">—</h3>
+            <h3 id="myStat_rejected" class="text-secondary">ï¿½</h3>
           </div>
         </div>
         <div class="col-md-3">
           <div class="card stat-card stat-accent stat-info">
             <div class="text-muted small">Cancelled</div>
-            <h3 id="myStat_cancelled" class="text-info">—</h3>
+            <h3 id="myStat_cancelled" class="text-info">ï¿½</h3>
           </div>
         </div>
       </div>
@@ -220,7 +220,7 @@
             </tr>
           </thead>
           <tbody id="myLeaveTableBody">
-            <tr><td colspan="9" class="text-center text-muted py-4">Loading…</td></tr>
+            <tr><td colspan="9" class="text-center text-muted py-4">Loadingï¿½</td></tr>
           </tbody>
         </table>
       </div>
@@ -292,7 +292,7 @@
             </div>
             <div class="col-md-2 d-flex flex-column justify-content-end">
               <div class="card border-0 bg-light text-center py-2">
-                <div class="fw-bold fs-5" id="leaveDurationPreview">—</div>
+                <div class="fw-bold fs-5" id="leaveDurationPreview">ï¿½</div>
                 <div class="small text-muted">days</div>
               </div>
             </div>
@@ -302,7 +302,7 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Reason</label>
             <textarea id="leaveReason" class="form-control" rows="3"
-                      placeholder="Briefly describe your reason…" required></textarea>
+                      placeholder="Briefly describe your reasonï¿½" required></textarea>
           </div>
 
           <div id="leaveFormError" class="alert alert-danger d-none"></div>
@@ -430,8 +430,8 @@
         <div class="d-flex align-items-center">
           <div class="member-avatar-lg" id="attendanceManageAvatar">A</div>
           <div class="ms-3">
-            <h5 class="mb-0" id="attendanceManageName">—</h5>
-            <div class="manage-sub" id="attendanceManageSub">—</div>
+            <h5 class="mb-0" id="attendanceManageName">ï¿½</h5>
+            <div class="manage-sub" id="attendanceManageSub">ï¿½</div>
           </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -443,20 +443,20 @@
             <div class="row g-3 mb-3">
               <div class="col-6">
                 <small class="text-muted d-block">Date</small>
-                <strong id="attendanceManageDate">—</strong>
+                <strong id="attendanceManageDate">ï¿½</strong>
               </div>
               <div class="col-6">
                 <small class="text-muted d-block">Status</small>
-                <span id="attendanceManageStatus">—</span>
+                <span id="attendanceManageStatus">ï¿½</span>
               </div>
             </div>
             <div class="mb-3">
               <small class="text-muted d-block">Membership</small>
-              <span id="attendanceManageMembership">—</span>
+              <span id="attendanceManageMembership">ï¿½</span>
             </div>
             <div class="mb-3">
               <small class="text-muted d-block">Notes</small>
-              <span id="attendanceManageNotes">—</span>
+              <span id="attendanceManageNotes">ï¿½</span>
             </div>
             <div class="d-flex gap-2">
               <button class="quick-action-btn flex-grow-1 justify-content-center" onclick="openEditAttendanceModalFromManage()">
@@ -479,7 +479,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
-  console.log('=== ATTENDANCE SCRIPT STARTING ===');
   if (!getAccessToken()) window.location.href = 'index.html';
 
   // -- Shared Check-In QR ----------------------------------------------------
@@ -524,7 +523,7 @@
         </style>
       </head>
       <body>
-        <h2>FitCore — Member Check-In</h2>
+        <h2>FitCore ï¿½ Member Check-In</h2>
         <p>Scan to check in</p>
         <br>
         <img src="${imgSrc}" alt="Check-In QR">
@@ -640,8 +639,8 @@
             <div class="d-flex align-items-center">
               <div class="member-avatar-lg" id="attendanceManageAvatar">A</div>
               <div class="ms-3">
-                <h5 class="mb-0" id="attendanceManageName">—</h5>
-                <div class="manage-sub" id="attendanceManageSub">—</div>
+                <h5 class="mb-0" id="attendanceManageName">ï¿½</h5>
+                <div class="manage-sub" id="attendanceManageSub">ï¿½</div>
               </div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -653,20 +652,20 @@
                 <div class="row g-3 mb-3">
                   <div class="col-6">
                     <small class="text-muted d-block">Date</small>
-                    <strong id="attendanceManageDate">—</strong>
+                    <strong id="attendanceManageDate">ï¿½</strong>
                   </div>
                   <div class="col-6">
                     <small class="text-muted d-block">Status</small>
-                    <span id="attendanceManageStatus">—</span>
+                    <span id="attendanceManageStatus">ï¿½</span>
                   </div>
                 </div>
                 <div class="mb-3">
                   <small class="text-muted d-block">Membership</small>
-                  <span id="attendanceManageMembership">—</span>
+                  <span id="attendanceManageMembership">ï¿½</span>
                 </div>
                 <div class="mb-3">
                   <small class="text-muted d-block">Notes</small>
-                  <span id="attendanceManageNotes">—</span>
+                  <span id="attendanceManageNotes">ï¿½</span>
                 </div>
                 <div class="d-flex gap-2">
                   <button class="quick-action-btn flex-grow-1 justify-content-center" onclick="openEditAttendanceModalFromManage()">
@@ -690,15 +689,12 @@
   }
 
   function openAttendanceManage(id) {
-    console.log('openAttendanceManage called with id:', id);
-    
     // Ensure modal exists
     ensureAttendanceManageModal();
     
     const allData = window.allAttendance || allAttendance;
     const record = allData ? allData.find(r => r.id === id) : null;
     if (!record) {
-      console.log('No record found for id:', id);
       return;
     }
     
@@ -709,8 +705,8 @@
     document.getElementById('attendanceManageSub').textContent = record.date;
     document.getElementById('attendanceManageDate').textContent = record.date;
     document.getElementById('attendanceManageStatus').innerHTML = statusBadge(record.status);
-    document.getElementById('attendanceManageMembership').textContent = record.membership || '—';
-    document.getElementById('attendanceManageNotes').textContent = record.notes || '—';
+    document.getElementById('attendanceManageMembership').textContent = record.membership || 'ï¿½';
+    document.getElementById('attendanceManageNotes').textContent = record.notes || 'ï¿½';
     
     new bootstrap.Modal(document.getElementById('manageAttendanceModal')).show();
   }
@@ -729,15 +725,14 @@
     const allData = window.allAttendance || allAttendance;
     const record = allData.find(r => r.id === id);
     if (!record) {
-      console.log('No attendance record found for id:', id);
       return;
     }
     document.getElementById('attendanceDetails').innerHTML = `
       <p><strong>Member:</strong> ${record.user_name}</p>
       <p><strong>Date:</strong> ${record.date}</p>
       <p><strong>Status:</strong> ${statusBadge(record.status)}</p>
-      <p><strong>Membership:</strong> ${record.membership || '—'}</p>
-      <p><strong>Notes:</strong> ${record.notes || '—'}</p>
+      <p><strong>Membership:</strong> ${record.membership || 'ï¿½'}</p>
+      <p><strong>Notes:</strong> ${record.notes || 'ï¿½'}</p>
     `;
     new bootstrap.Modal(document.getElementById('viewAttendanceModal')).show();
   }
@@ -746,7 +741,6 @@
     const allData = window.allAttendance || allAttendance;
     const record = allData.find(r => r.id === id);
     if (!record) {
-      console.log('No attendance record found for id:', id);
       return;
     }
     document.getElementById('editAttendanceId').value = record.id;
@@ -924,7 +918,7 @@
 
    
 
-    // My Leave section — visible to STAFF and TRAINER only, hidden for OWNER
+    // My Leave section ï¿½ visible to STAFF and TRAINER only, hidden for OWNER
     const myRole = localStorage.getItem('user_role');
     const myLeaveSection = document.getElementById('myLeaveSection');
     if (myRole === 'OWNER') {
@@ -963,7 +957,7 @@
     tbody.innerHTML = leaveCache.map(row => {
       const reviewNote = row.review_note
         ? `<span class="text-muted small">${row.review_note}</span>`
-        : '<span class="text-muted">—</span>';
+        : '<span class="text-muted">ï¿½</span>';
 
       return `
         <tr>
@@ -1063,13 +1057,13 @@
         <dd class="col-sm-8"><span class="pill pill-muted">${row.duration_days} day${row.duration_days !== 1 ? 's' : ''}</span></dd>
 
         <dt class="col-sm-4">Reason</dt>
-        <dd class="col-sm-8">${row.reason || '—'}</dd>
+        <dd class="col-sm-8">${row.reason || 'ï¿½'}</dd>
 
         <dt class="col-sm-4">Status</dt>
         <dd class="col-sm-8"><span class="badge bg-${statusColors[row.status] || 'secondary'}">${row.status}</span></dd>
 
         <dt class="col-sm-4">Submitted</dt>
-        <dd class="col-sm-8 text-muted">${row.created_at ? new Date(row.created_at).toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'}) : '—'}</dd>
+        <dd class="col-sm-8 text-muted">${row.created_at ? new Date(row.created_at).toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'}) : 'ï¿½'}</dd>
 
         ${row.reviewed_by_name ? `
         <dt class="col-sm-4">Reviewed By</dt>
@@ -1094,7 +1088,7 @@
     new bootstrap.Modal(document.getElementById('leaveDetailModal')).show();
   }
 
-  // Cancel (staff/trainer cancels own pending request — kept for staff.html compatibility)
+  // Cancel (staff/trainer cancels own pending request ï¿½ kept for staff.html compatibility)
   async function cancelLeave(id) {
     if (!confirm('Cancel this leave request?')) return;
     const res = await apiRequest(`/staff/leave-requests/${id}/cancel/`, { method: 'POST' });
@@ -1114,7 +1108,7 @@
       el.textContent = '!';
       el.classList.add('text-danger');
     } else {
-      el.textContent = '—';
+      el.textContent = 'ï¿½';
       el.classList.remove('text-danger');
     }
   }
@@ -1143,7 +1137,7 @@
         if (leaveEndDateEl)   leaveEndDateEl.min   = today;
         const preview = document.getElementById('leaveDurationPreview');
         const errBox  = document.getElementById('leaveFormError');
-        if (preview) preview.textContent = '—';
+        if (preview) preview.textContent = 'ï¿½';
         if (errBox)  errBox.classList.add('d-none');
       }
     });
@@ -1157,7 +1151,7 @@
       const errBox = document.getElementById('leaveFormError');
       if (errBox) errBox.classList.add('d-none');
       const preview = document.getElementById('leaveDurationPreview');
-      if (preview) preview.textContent = '—';
+      if (preview) preview.textContent = 'ï¿½';
     });
   }
 
@@ -1193,7 +1187,7 @@
         leaveFormEl.reset();
         document.getElementById('editLeaveId').value = '';
         const preview = document.getElementById('leaveDurationPreview');
-        if (preview) preview.textContent = '—';
+        if (preview) preview.textContent = 'ï¿½';
         const modalInst = bootstrap.Modal.getInstance(leaveModalEl);
         if (modalInst) modalInst.hide();
         loadMyLeaves();
@@ -1215,12 +1209,6 @@
   window.viewAttendance = viewAttendance;
   window.openEditAttendanceModal = openEditAttendanceModal;
   window.deleteAttendance = deleteAttendance;
-  
-  // Test exposure
-  console.log('Functions exposed:', {
-    openAttendanceManage: typeof window.openAttendanceManage,
-    allAttendance: window.allAttendance ? window.allAttendance.length : 'undefined'
-  });
 </script>
 </body>
 </html>

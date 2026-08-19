@@ -292,9 +292,6 @@ syncSidebarCollapsedState();
 
      const wrapped = `(function(){\ntry {\n${code}\n${exposures}\n} catch (err) {\nconsole.error('SPA page script threw — code after the error point did not run:', err);\n}\n})();`;
 
-     console.log('=== ABOUT TO INJECT, length:', wrapped.length, '===');
-     console.log(wrapped);
-
      const s = document.createElement('script');
      s.textContent = wrapped;
      document.body.appendChild(s);

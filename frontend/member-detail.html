@@ -53,7 +53,7 @@
 
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\">FitCore</span></a>
+  <a href=\"dashboard.html\" class=\"navbar-brand d-flex align-items-center text-decoration-none\"><span style=\"font-size: 1.5rem; font-weight: 700;\"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
     <div class="dropdown-panel" id="notifPanel">
@@ -136,7 +136,7 @@
           </div>
           <div>
             <div style="font-weight:600;color:#1f2937;font-size:.9rem;">Profile Photo</div>
-            <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">JPG, PNG or WEBP · max 5 MB</div>
+            <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">JPG, PNG or WEBP ï¿½ max 5 MB</div>
             <button type="button" onclick="document.getElementById('photoInput').click();"
               style="margin-top:.5rem;font-size:.75rem;font-weight:600;color:var(--brand-red);background:none;border:none;cursor:pointer;padding:0;">
               <i class="bi bi-upload me-1"></i>Upload new photo
@@ -360,9 +360,7 @@ async function saveEdit(){
     document.getElementById('editSuccess').style.display='block';
     setTimeout(function(){closeEdit();loadProfile();},800);
   }else{
-    console.log('Response status:', res.status);
     var err=await res.json().catch(()=>({error:'Could not parse error response'}));
-    console.log('Error response:', err);
     var msg=typeof err==='object'?Object.values(err).flat().join(' '):'Update failed';
     document.getElementById('editError').textContent=msg;document.getElementById('editError').style.display='block';
   }
@@ -379,7 +377,6 @@ async function loadProfile(){
   var u=d.user;
   document.title=u.full_name+' - FitCore';
   var av=u.profile_picture?'<img src="'+u.profile_picture+'" style="width:100%;height:100%;object-fit:cover;">':(u.first_name||'?').charAt(0).toUpperCase();
-  console.log('Profile picture URL:', u.profile_picture); // Debug log
   var st=u.is_active?'<span style="background:#dcfce7;color:#166534;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Active</span>':'<span style="background:#fee2e2;color:#991b1b;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Inactive</span>';
   var jd=new Date(u.date_joined).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   var at=d.attendance_stats||{this_month:0,streak:0};
