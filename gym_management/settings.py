@@ -192,3 +192,18 @@ FRONTEND_URL = config('FRONTEND_URL', default='http://192.168.100.234:5500')
 KHALTI_SECRET_KEY = config('KHALTI_SECRET_KEY', default='')
 KHALTI_BASE_URL = config('KHALTI_BASE_URL', default='https://dev.khalti.com/api/v2')
 KHALTI_WEBHOOK_URL = config('KHALTI_WEBHOOK_URL', default='')
+
+
+# ─── ESEWA (sandbox) ────────────────────────────────────────────────────────
+# eSewa ePay v2. Test merchant code EPAYTEST / test secret key 8gBm/:&EnhH.1/q
+# are eSewa's own published sandbox credentials — safe to default to them for
+# development. Override with real values in .env for production.
+# Docs: https://developer.esewa.com.np/pages/Epay
+ESEWA_MERCHANT_CODE = config('ESEWA_MERCHANT_CODE', default='EPAYTEST')
+ESEWA_SECRET_KEY = config('ESEWA_SECRET_KEY', default='8gBm/:&EnhH.1/q')
+ESEWA_BASE_URL = config(
+    'ESEWA_BASE_URL', default='https://rc-epay.esewa.com.np/api/epay/main/v2/form'
+)
+ESEWA_STATUS_CHECK_URL = config(
+    'ESEWA_STATUS_CHECK_URL', default='https://rc.esewa.com.np/api/epay/transaction/status/'
+)

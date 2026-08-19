@@ -180,7 +180,11 @@ def check_status(transaction_uuid, total_amount):
     except requests.RequestException as exc:
         raise EsewaError(f'Could not reach eSewa: {exc}') from exc
 
-    data = resp.json() if resp.content else {}
+    try:
+        data = resp.json() if resp.content else {}
+    except (ValueError, KeyError):
+        raise EsewaError(f'eSewa returned non-JSON (HTTP {resp.status_code}): {resp.text[:200]}')
+
     if resp.status_code != 200:
         raise EsewaError(data.get('message') or data or f'eSewa returned HTTP {resp.status_code}')
 
