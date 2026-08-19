@@ -235,50 +235,76 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 pass
 
             if existing_paid.exists():
-                dup = existing_paid.first()
-                if dup.status == Payment.PaymentStatus.PAID:
+                # Separate PAID and PENDING — PAID is a hard block, PENDING
+                # needs handling.
+                paid_dups = existing_paid.filter(status=Payment.PaymentStatus.PAID)
+                pending_dups = existing_paid.filter(status=Payment.PaymentStatus.PENDING)
+
+                if paid_dups.exists():
+                    dup = paid_dups.first()
                     raise ValidationError({
                         'detail': f'You have already paid for this {payment_for.lower()} this month. '
                                   f'Receipt: {dup.receipt_number}'
                     })
-                # If PENDING, return the existing payment so the member can
-                # complete or retry it instead of creating a duplicate.
-                if dup.payment_method == Payment.PaymentMethod.KHALTI and dup.transaction_id:
-                    try:
-                        lookup = khalti.lookup_payment(dup.transaction_id)
-                        if lookup.get('status') in ('Expired', 'User canceled'):
-                            dup.status = Payment.PaymentStatus.FAILED
-                            dup.notes = f'Khalti status: {lookup["status"]}'
-                            dup.save()
-                        else:
+
+                if not pending_dups.exists():
+                    pass  # All were PAID (handled above), fall through to create
+                else:
+                    dup = pending_dups.first()
+
+                    # Clean up ALL stale PENDING payments for this due — only
+                    # keep at most one (the one we'll return or the new one we
+                    # create below).  This prevents the pile-up of abandoned
+                    # PENDING records from failed gateway redirects.
+                    stale_ids = list(pending_dups.values_list('id', flat=True))
+
+                    if dup.payment_method == payment_method:
+                        # Same method → reuse the existing payment.
+                        if payment_method == Payment.PaymentMethod.KHALTI and dup.transaction_id:
+                            # Mark all OTHER pending as FAILED, keep dup
+                            pending_dups.exclude(id=dup.id).update(
+                                status=Payment.PaymentStatus.FAILED,
+                                notes='Superseded by newer payment attempt',
+                            )
                             data = PaymentSerializer(dup).data
                             data['payment_url'] = (
                                 f'{settings.KHALTI_BASE_URL}/checkout'
                                 f'?pidx={dup.transaction_id}'
                             )
                             return Response(data, status=200)
-                    except KhaltiError:
-                        pass
-                if dup.payment_method == Payment.PaymentMethod.ESEWA and dup.transaction_id:
-                    try:
-                        lookup = esewa.check_status(dup.transaction_id, dup.amount)
-                        if lookup.get('status') in ('CANCELED', 'NOT_FOUND'):
-                            dup.status = Payment.PaymentStatus.FAILED
-                            dup.notes = f'eSewa status: {lookup["status"]}'
-                            dup.save()
-                        else:
-                            # Re-sign a fresh form for the same pending payment
-                            # rather than reusing old fields (eSewa rejects a
-                            # stale/expired form submission).
-                            form_fields = esewa.build_form_fields(dup)
+                        if payment_method == Payment.PaymentMethod.ESEWA:
+                            # Re-sign fresh form fields (eSewa rejects stale
+                            # submissions) and return them for the existing
+                            # payment.  Mark all OTHER pending as FAILED.
+                            try:
+                                form_fields = esewa.build_form_fields(dup)
+                            except EsewaError as exc:
+                                raise ValidationError({
+                                    'detail': f'Could not prepare eSewa checkout: {exc}'
+                                })
+                            pending_dups.exclude(id=dup.id).update(
+                                status=Payment.PaymentStatus.FAILED,
+                                notes='Superseded by newer payment attempt',
+                            )
                             dup.transaction_id = form_fields['transaction_uuid']
                             dup.save()
                             data = PaymentSerializer(dup).data
                             data['esewa_action_url'] = settings.ESEWA_BASE_URL
                             data['esewa_form_fields'] = form_fields
                             return Response(data, status=200)
-                    except EsewaError:
-                        pass
+                        # Other methods — mark extras as FAILED, return dup
+                        pending_dups.exclude(id=dup.id).update(
+                            status=Payment.PaymentStatus.FAILED,
+                            notes='Superseded by newer payment attempt',
+                        )
+                        return Response(PaymentSerializer(dup).data, status=200)
+                    else:
+                        # Different method → invalidate ALL pending payments
+                        # for this due and fall through to create a fresh one.
+                        Payment.objects.filter(id__in=stale_ids).update(
+                            status=Payment.PaymentStatus.FAILED,
+                            notes=f'Canceled: member switched to {payment_method}',
+                        )
 
         amount, membership = self._resolve_due_amount(user, payment_for, reference_id)
 

@@ -118,6 +118,67 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
         serializer.save()
 
+    @action(detail=False, methods=['post'], url_path='check-in')
+    def check_in(self, request):
+        """
+        POST /api/attendance/records/check-in/
+        Member self check-in for today. Creates today's attendance record
+        with the current time, unless one already exists.
+        """
+        user = request.user
+        if user.role != User.Role.MEMBER:
+            raise PermissionDenied('Only members can self check-in here.')
+
+        today = timezone.localdate()
+        now_time = timezone.localtime().time()
+
+        attendance, created = Attendance.objects.get_or_create(
+            user=user,
+            date=today,
+            defaults={
+                'attendance_type': Attendance.AttendanceType.MEMBER,
+                'status': Attendance.Status.PRESENT,
+                'check_in': now_time,
+            },
+        )
+        if not created:
+            return Response(
+                {'error': 'You are already checked in for today.',
+                 'attendance': AttendanceSerializer(attendance).data},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(AttendanceSerializer(attendance).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='check-out')
+    def check_out(self, request):
+        """
+        POST /api/attendance/records/check-out/
+        Member self check-out for today's existing attendance record.
+        """
+        user = request.user
+        if user.role != User.Role.MEMBER:
+            raise PermissionDenied('Only members can self check-out here.')
+
+        today = timezone.localdate()
+        try:
+            attendance = Attendance.objects.get(user=user, date=today)
+        except Attendance.DoesNotExist:
+            return Response(
+                {'error': 'You have not checked in today yet.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if attendance.check_out is not None:
+            return Response(
+                {'error': 'You are already checked out for today.',
+                 'attendance': AttendanceSerializer(attendance).data},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        attendance.check_out = timezone.localtime().time()
+        attendance.save(update_fields=['check_out'])
+        return Response(AttendanceSerializer(attendance).data)
+
 
 class MemberQRCodeView(APIView):
     """

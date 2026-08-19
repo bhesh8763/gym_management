@@ -49,7 +49,7 @@
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
-      <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
       <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
 
       <div class="nav-section-label">Workout & Diet</div>
@@ -57,6 +57,7 @@
       <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
 
       <div class="nav-section-label">Payments</div>
+      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
 
       <div class="nav-section-label">System</div>
@@ -108,49 +109,49 @@
             </table>
           </div>
 
-        </div>
-    </div>
-</div>
-</div>
-
-<!-- Pay Modal -->
-<div class="modal fade" id="payModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="payModalTitle">Pay</h5>
-      </div>
-      <form id="payForm">
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Amount Due</label>
-            <input type="text" id="payAmountDisplay" class="form-control" disabled>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Payment Method</label>
-            <select id="payMethod" class="form-select" required>
-              <option value="KHALTI" selected>Khalti (Online)</option>
-              <option value="ESEWA">eSewa (Online)</option>
-              <option value="CARD" disabled>Card (Coming Soon)</option>
-              <option value="BANK" disabled>Bank Transfer (Coming Soon)</option>
-              <option value="OTHER" disabled>Other (Coming Soon)</option>
-            </select>
-            <div class="form-text" id="payMethodHint">
-              <i class="bi bi-info-circle"></i> You'll be redirected to Khalti to complete this payment securely.
+          <!-- Pay Modal -->
+          <div class="modal fade" id="payModal" tabindex="-1">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="payModalTitle">Pay</h5>
+                </div>
+                <form id="payForm">
+                  <div class="modal-body">
+                    <div class="mb-3">
+                      <label class="form-label">Amount Due</label>
+                      <input type="text" id="payAmountDisplay" class="form-control" disabled>
+                    </div>
+                    <div class="mb-2">
+                      <label class="form-label">Payment Method</label>
+                      <select id="payMethod" class="form-select" required>
+                        <option value="KHALTI" selected>Khalti (Online)</option>
+                        <option value="ESEWA">eSewa (Online)</option>
+                        <option value="CARD" disabled>Card (Coming Soon)</option>
+                        <option value="BANK" disabled>Bank Transfer (Coming Soon)</option>
+                        <option value="OTHER" disabled>Other (Coming Soon)</option>
+                      </select>
+                      <div class="form-text" id="payMethodHint">
+                        <i class="bi bi-info-circle"></i> You'll be redirected to Khalti to complete this payment securely.
+                      </div>
+                    </div>
+                    <div id="payError" class="alert alert-danger d-none"></div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                      <span class="spinner-border spinner-border-sm d-none" id="paySpinner"></span>
+                      <span id="paySubmitLabel">Pay with Khalti</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-          <div id="payError" class="alert alert-danger d-none"></div>
+
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">
-            <span class="spinner-border spinner-border-sm d-none" id="paySpinner"></span>
-            <span id="paySubmitLabel">Pay with Khalti</span>
-          </button>
-        </div>
-      </form>
     </div>
-  </div>
+</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -160,6 +161,12 @@ if (!getAccessToken()) window.location.href = 'index.html';
 
 let duesCache = [];
 let selectedDue = null;
+
+function hidePendingIfNoDues() {
+    if (!duesCache.length) {
+        document.getElementById('pendingSection').classList.add('d-none');
+    }
+}
 
 function showToast(message, variant) {
     const toastEl = document.getElementById("appToast");
@@ -285,6 +292,7 @@ async function retryKhaltiPayment(paymentId, pidx) {
     await loadPendingPayments();
     await loadDues();
     await loadHistory();
+    hidePendingIfNoDues();
 }
 
 async function retryEsewaPayment(paymentId) {
@@ -312,6 +320,7 @@ async function retryEsewaPayment(paymentId) {
     await loadPendingPayments();
     await loadDues();
     await loadHistory();
+    hidePendingIfNoDues();
 }
 
 function openPayModal(idx) {
@@ -380,6 +389,7 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
         showToast('Payment recorded — pending verification.');
         await loadDues();
         await loadHistory();
+        hidePendingIfNoDues();
     } catch (err) {
         errorBox.textContent = 'Network error — please try again.';
         errorBox.classList.remove('d-none');
@@ -436,6 +446,7 @@ async function verifyKhaltiIfReturning() {
     await loadPendingPayments();
     await loadDues();
     await loadHistory();
+    hidePendingIfNoDues();
 }
 
 async function verifyEsewaIfReturning() {
@@ -466,6 +477,7 @@ async function verifyEsewaIfReturning() {
     await loadPendingPayments();
     await loadDues();
     await loadHistory();
+    hidePendingIfNoDues();
 }
 
 async function loadHistory() {
@@ -475,7 +487,7 @@ async function loadHistory() {
         const res = await apiRequest(path);
         if (!res || !res.ok) break;
         const data = await res.json();
-        all = all.concat(data.results);
+        all = all.concat(data.results || []);
         path = data.next ? data.next.replace(API_BASE, '') : null;
     }
 
@@ -496,11 +508,31 @@ async function loadHistory() {
 }
 
 (async () => {
-    await Promise.all([loadDues(), loadPendingPayments(), loadHistory()]);
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('pageBody').style.display = '';
-    await verifyKhaltiIfReturning();
-    await verifyEsewaIfReturning();
+    // Each loadX() already guards its own `if (!res) return` on network/auth
+    // failure, but a genuinely unexpected error (bad JSON, a null field we
+    // didn't expect, etc.) inside any one of them would otherwise reject the
+    // whole Promise.all silently — and since nothing after it ever runs, the
+    // spinner never gets hidden and the page looks permanently stuck until a
+    // hard refresh happens to dodge whatever triggered it. try/finally makes
+    // sure the spinner always comes down and the real error is at least
+    // visible in the console instead of vanishing.
+    try {
+        await Promise.all([loadDues(), loadPendingPayments(), loadHistory()]);
+        hidePendingIfNoDues();
+    } catch (err) {
+        console.error('Failed to load payments page data:', err);
+        showToast('Something went wrong loading your payments — please refresh.', 'error');
+    } finally {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('pageBody').style.display = '';
+    }
+
+    try {
+        await verifyKhaltiIfReturning();
+        await verifyEsewaIfReturning();
+    } catch (err) {
+        console.error('Payment return-verification failed:', err);
+    }
 })();
 </script>
 </body>
