@@ -6,12 +6,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
 
-  <style>
-    /* Force white FitCore link + push profile right */
-    nav.topbar a.navbar-brand,
-    nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
-    nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
-  </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body data-allowed-roles="OWNER,STAFF">
@@ -129,6 +123,11 @@
 
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
+      <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
+      <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
 
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action active" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
@@ -255,7 +254,7 @@
           <tr><th>ID</th><th>Number</th><th>Location</th><th>Status</th><th>Fee</th><th data-no-export>Actions</th></tr>
         </thead>
         <tbody id="lockerTableBody">
-          <tr><td colspan="6" class="text-center text-muted py-4">Loading lockers…</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-4">Loading lockersï¿½</td></tr>
         </tbody>
       </table>
     </div>
@@ -319,7 +318,7 @@
       <div class="col-auto">
         <label class="form-label">Locker</label>
         <select id="assignLockerId" class="form-select" required style="min-width: 160px;">
-          <option value="">Loading lockers…</option>
+          <option value="">Loading lockersï¿½</option>
         </select>
       </div>
       <div class="col-auto position-relative">
@@ -376,7 +375,7 @@
           <tr><th>ID</th><th>Locker #</th><th>Member</th><th>Start</th><th>End</th><th>Active</th><th data-no-export>Actions</th></tr>
         </thead>
         <tbody id="assignTableBody">
-          <tr><td colspan="7" class="text-center text-muted py-4">Loading assignments…</td></tr>
+          <tr><td colspan="7" class="text-center text-muted py-4">Loading assignmentsï¿½</td></tr>
         </tbody>
       </table>
     </div>
@@ -513,7 +512,7 @@
     const select = document.getElementById('assignLockerId');
     const available = lockerCache.filter(l => l.status === 'AVAILABLE');
     select.innerHTML = available.length
-      ? '<option value="">Select a locker…</option>' +
+      ? '<option value="">Select a lockerï¿½</option>' +
         available.map(l => `<option value="${l.id}">${l.locker_number} (${l.location || '-'})</option>`).join('')
       : '<option value="">No available lockers</option>';
   }
@@ -575,7 +574,7 @@
   });
 
   async function deleteLocker(id) {
-    if (!confirm('Delete this locker? This cannot be undone.')) return;
+    if (!(await confirmAction('Delete this locker? This cannot be undone.', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
     const res = await apiRequest(`/lockers/lockers/${id}/`, { method: 'DELETE' });
     if (res && (res.ok || res.status === 204)) {
       loadLockers();
@@ -648,7 +647,7 @@
         <div class="notif-item" role="button" style="cursor:pointer"
              onclick="selectAssignMember(${m.user_id}, '${(m.full_name + ' â€“ ' + m.email).replace(/'/g, "\\'")}')">
           <strong>${m.full_name}</strong><br>
-          <span class="text-muted small">${m.email}${m.phone ? ' · ' + m.phone : ''}</span>
+          <span class="text-muted small">${m.email}${m.phone ? ' ï¿½ ' + m.phone : ''}</span>
         </div>`).join('');
     }
     box.classList.add('show');
@@ -735,7 +734,7 @@
   }
 
   async function releaseAssignment(id) {
-    if (!confirm('Release this locker? It will become available again.')) return;
+    if (!(await confirmAction('Release this locker? It will become available again.', { confirmText: 'Release', variant: 'warning', icon: 'bi-unlock' }))) return;
     const res = await apiRequest(`/lockers/assignments/${id}/`, {
       method: 'PATCH',
       body: JSON.stringify({ is_active: false }),
@@ -749,7 +748,7 @@
   }
 
   async function deleteAssignment(id) {
-    if (!confirm('Delete this assignment record?')) return;
+    if (!(await confirmAction('Delete this assignment record?', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
     const res = await apiRequest(`/lockers/assignments/${id}/`, { method: 'DELETE' });
     if (res && (res.ok || res.status === 204)) {
       loadAssignments();

@@ -351,6 +351,8 @@ syncSidebarCollapsedState();
 
     if (myToken !== navToken) return; // superseded while scripts were loading
 
+    // Replace #page-content entirely (ensures scripts + modals load correctly)
+    // The transition:fix on sidebar CSS prevents visual bounce.
     contentEl.innerHTML = newContentEl.innerHTML;
     if (doc.title) document.title = doc.title;
 
@@ -373,13 +375,14 @@ syncSidebarCollapsedState();
     if (newRoles) document.body.setAttribute('data-allowed-roles', newRoles);
     else document.body.removeAttribute('data-allowed-roles');
 
-    document.querySelectorAll('.sidebar a.list-group-item').forEach(a => {
-      a.classList.toggle('active', a.getAttribute('href') === url);
-    });
-
     applySidebarRoleVisibility();
     enforcePageRoleAccess();
     syncSidebarCollapsedState();
+
+    // Update sidebar active state after content swap
+    document.querySelectorAll('.sidebar a.list-group-item').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === url);
+    });
 
     doc.querySelectorAll('script:not([src])').forEach(scriptEl => {
       runInlineScript(scriptEl.textContent);
@@ -964,4 +967,113 @@ async function markAllTopbarNotificationsRead() {
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-check2-all me-1"></i>Mark all as read';
   }
+}
+
+// ── Dark Mode ───────────────────────────────────────────────────────────
+// Persists the user's theme preference in localStorage and applies it on
+// every page load. The toggle button is injected into the topbar once.
+
+function applyTheme() {
+  const theme = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeIcon(theme);
+}
+
+function updateThemeIcon(theme) {
+  const icon = document.querySelector('.dark-mode-toggle i');
+  if (!icon) return;
+  if (theme === 'dark') {
+    icon.className = 'bi bi-sun-fill';
+  } else {
+    icon.className = 'bi bi-moon-fill';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', next);
+  document.documentElement.setAttribute('data-theme', next);
+  updateThemeIcon(next);
+}
+
+function injectDarkModeToggle() {
+  // Find the profile-trigger's parent .position-relative and insert before it
+  const profileContainer = document.querySelector('.topbar .position-relative:last-child');
+  if (!profileContainer || document.querySelector('.dark-mode-toggle')) return;
+
+  const btn = document.createElement('button');
+  btn.className = 'dark-mode-toggle';
+  btn.setAttribute('aria-label', 'Toggle dark mode');
+  btn.setAttribute('title', 'Toggle dark mode');
+  btn.innerHTML = '<i class="bi bi-moon-fill"></i>';
+  btn.addEventListener('click', toggleTheme);
+  profileContainer.parentNode.insertBefore(btn, profileContainer);
+}
+
+// Apply saved theme immediately so there's no flash of wrong theme
+applyTheme();
+injectDarkModeToggle();
+
+// ── Custom Confirm Modal ───────────────────────────────────────────
+// Replaces the browser's native confirm() with a styled modal that
+// matches the dark mode theme. Returns a Promise<boolean>.
+//
+// Usage:  const ok = await confirmAction('Delete this item?');
+//         if (!ok) return;
+//
+// Options: { title, message, confirmText, cancelText, variant, icon }
+//   variant: 'danger' | 'warning' | 'info' | 'success'
+function confirmAction(message, options = {}) {
+  const {
+    title = 'Are you sure?',
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
+    variant = 'danger',
+    icon = variant === 'danger' ? 'bi-exclamation-triangle' : variant === 'warning' ? 'bi-exclamation-circle' : variant === 'success' ? 'bi-check-circle' : 'bi-info-circle'
+  } = options;
+
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-box">
+        <div class="confirm-icon-wrap">
+          <div class="confirm-icon-circle ${variant}"><i class="bi ${icon}"></i></div>
+        </div>
+        <div class="confirm-body">
+          <h5>${escapeHtml(title)}</h5>
+          <p>${escapeHtml(message)}</p>
+        </div>
+        <div class="confirm-actions">
+          <button class="btn confirm-cancel" data-action="cancel">${escapeHtml(cancelText)}</button>
+          <button class="btn confirm-${variant}" data-action="confirm">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+
+    function cleanup(result) {
+      overlay.remove();
+      resolve(result);
+    }
+
+    // Prevent click/mousedown from propagating to Bootstrap modals behind
+    overlay.addEventListener('click', e => {
+      e.stopPropagation();
+      const action = e.target.closest('[data-action]');
+      if (action) cleanup(action.dataset.action === 'confirm');
+      else if (e.target === overlay) cleanup(false);
+    });
+    overlay.addEventListener('mousedown', e => e.stopPropagation());
+
+    // Prevent Escape/Enter from reaching Bootstrap modals behind
+    overlay.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Escape') cleanup(false);
+      if (e.key === 'Enter') cleanup(true);
+    });
+
+    document.body.appendChild(overlay);
+    overlay.focus();
+  });
 }

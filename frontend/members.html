@@ -6,12 +6,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
 
-  <style>
-    /* Force white FitCore link + push profile right */
-    nav.topbar a.navbar-brand,
-    nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
-    nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
-  </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <style>
     /* Page-specific overrides - global theme handles stat-card, modals, etc. */
@@ -95,6 +89,11 @@
 
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
+      <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
+      <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
 
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
@@ -291,8 +290,8 @@
     <div class="d-flex justify-content-between align-items-center mt-3">
       <small class="text-muted" id="pageInfo">Showing 0 of 0</small>
       <div>
-        <button class="btn btn-sm btn-outline-secondary me-1" id="prevPageBtn" onclick="renderPage(currentPage - 1)">Previous</button>
-        <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" onclick="renderPage(currentPage + 1)">Next</button>
+        <button class="btn btn-sm btn-outline-secondary me-1" id="prevPageBtn" onclick="renderPage('prev')">Previous</button>
+        <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" onclick="renderPage('next')">Next</button>
       </div>
     </div>
   </div>
@@ -549,9 +548,9 @@
     return all;
   }
 
-  let allMembers = [];
-  let currentPage = 1;
-  let searchDebounceTimer = null;
+  var allMembers = [];
+  var currentPage = 1;
+  var searchDebounceTimer = null;
 
   function onSearchInput() {
     clearTimeout(searchDebounceTimer);
@@ -602,6 +601,8 @@
     try {
       const pageSize = parseInt(document.getElementById('pageSize').value, 10);
       const totalPages = Math.max(1, Math.ceil(allMembers.length / pageSize));
+      if (page === 'prev') page = currentPage - 1;
+      else if (page === 'next') page = currentPage + 1;
       currentPage = Math.min(Math.max(1, page), totalPages);
 
       const start = (currentPage - 1) * pageSize;
@@ -780,7 +781,7 @@
     const msg = makeActive
       ? 'Activate this member? Their account will be marked active again.'
       : 'Deactivate this member? Their account will be marked inactive but not deleted.';
-    if (!confirm(msg)) return;
+    if (!(await confirmAction(msg, { confirmText: makeActive ? 'Activate' : 'Deactivate', variant: makeActive ? 'success' : 'warning', icon: makeActive ? 'bi-person-check' : 'bi-person-x' }))) return;
 
     let res;
     if (makeActive) {
@@ -793,6 +794,7 @@
 
     if (!res) return;
     if (res.ok) {
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('manageMemberModal')).hide();
       loadMembers();
     } else {
       const err = await res.json();
@@ -891,14 +893,12 @@
       statusBtn.textContent = 'Deactivate Member';
       statusBtn.className = 'btn btn-outline-danger btn-sm px-3 fw-medium';
       statusBtn.onclick = () => {
-        bootstrap.Modal.getInstance(manageModalEl).hide();
         toggleMemberStatus(profileId, false);
       };
     } else {
       statusBtn.textContent = 'Activate Member';
       statusBtn.className = 'btn btn-outline-success btn-sm px-3 fw-medium';
       statusBtn.onclick = () => {
-        bootstrap.Modal.getInstance(manageModalEl).hide();
         toggleMemberStatus(profileId, true);
       };
     }
