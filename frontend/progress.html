@@ -91,8 +91,13 @@
             <div class="nav-section-label">Payments</div>
             <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
 
+            <div class="nav-section-label">Membership</div>
+            <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
+
+            <div class="nav-section-label">My Activity</div>
             <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
             <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+            <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
 
             <div class="nav-section-label">Equipment</div>
             <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
@@ -109,15 +114,15 @@
     <div class="p-4 flex-grow-1">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <h3 class="mb-0">Progress Tracking</h3>
-            <div class="d-flex align-items-center gap-2">
+            <div id="memberSelectWrapper" class="d-flex align-items-center gap-2">
                 <label for="memberSelect" class="text-muted small mb-0">Member</label>
                 <select class="form-select" id="memberSelect" style="min-width:240px;" onchange="onMemberChange()">
-                    <option value="">Loading members�</option>
+                    <option value="">Loading members…</option>
                 </select>
             </div>
         </div>
 
-        <div id="memberDetailSection">
+        <div id="memberDetailSection" style="display:none;">
             <div class="row mb-4 g-3">
                 <div class="col-md-3">
                     <div class="card stat-card stat-accent stat-info">
@@ -192,7 +197,7 @@
                         </tr>
                     </thead>
                     <tbody id="entriesTable">
-                        <tr><td colspan="6" class="text-center text-muted py-4">Select a member to view progress.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-4" id="entriesEmptyMsg">Select a member to view progress.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -291,7 +296,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="js/api.js"></script>
 <script>
     let allEntries = [];
@@ -299,9 +304,25 @@
     let allMembers = [];
     let selectedMember = null; // { id, name, meta }
     let weightTrendChartInstance = null;
+    const currentUserRole = localStorage.getItem('user_role') || '';
 
     if (!getAccessToken()) window.location.href = 'index.html';
+
     async function loadMemberDropdown() {
+        if (currentUserRole === 'MEMBER') {
+            const wrapper = document.getElementById('memberSelectWrapper');
+            if (wrapper) wrapper.style.display = 'none';
+            const meResp = await apiRequest('/members/me/');
+            if (!meResp || !meResp.ok) return;
+            const meData = await meResp.json();
+            selectedMember = { id: meData.id, name: meData.full_name || meData.name || '' };
+            document.getElementById('entriesEmptyMsg').textContent = 'No progress entries logged yet.';
+            document.getElementById('memberDetailSection').style.display = '';
+            loadEntries();
+            loadExercisesForPrForm();
+            loadPrs();
+            return;
+        }
         const select = document.getElementById('memberSelect');
         const response = await apiRequest('/members/');
         if (!response || !response.ok) {
@@ -323,6 +344,7 @@
         }).join('');
 
         onMemberChange();
+        document.getElementById('memberDetailSection').style.display = '';
     }
 
     function onMemberChange() {
@@ -339,7 +361,8 @@
     // -- Progress Entries -------------------------------------------------
     async function loadEntries() {
         if (!selectedMember) return;
-        const response = await apiRequest(`/progress/entries/?member=${selectedMember.id}`);
+        const memberParam = currentUserRole === 'MEMBER' ? '' : `?member=${selectedMember.id}`;
+        const response = await apiRequest(`/progress/entries/${memberParam}`);
         if (!response || !response.ok) return;
         const data = await response.json();
         allEntries = data.results;
@@ -450,10 +473,30 @@
         `).join('');
     }
 
+    function validateEntryForm() {
+        const date = document.getElementById('entryDate').value;
+        if (!date) { alert('Date is required.'); return false; }
+        const weight = document.getElementById('entryWeight').value;
+        if (weight !== '' && (isNaN(weight) || parseFloat(weight) <= 0)) { alert('Weight must be a positive number.'); return false; }
+        const height = document.getElementById('entryHeight').value;
+        if (height !== '' && (isNaN(height) || parseFloat(height) <= 0)) { alert('Height must be a positive number.'); return false; }
+        const bodyFat = document.getElementById('entryBodyFat').value;
+        if (bodyFat !== '' && (isNaN(bodyFat) || parseFloat(bodyFat) < 0 || parseFloat(bodyFat) > 100)) { alert('Body fat must be between 0 and 100.'); return false; }
+        const muscleMass = document.getElementById('entryMuscleMass').value;
+        if (muscleMass !== '' && (isNaN(muscleMass) || parseFloat(muscleMass) <= 0)) { alert('Muscle mass must be a positive number.'); return false; }
+        for (const [id, label] of [['entryChest','Chest'],['entryWaist','Waist'],['entryHips','Hips'],['entryBicep','Bicep'],['entryThigh','Thigh']]) {
+            const v = document.getElementById(id).value;
+            if (v !== '' && (isNaN(v) || parseFloat(v) <= 0)) { alert(label + ' must be a positive number.'); return false; }
+        }
+        return true;
+    }
+
     async function createEntry() {
         if (!selectedMember) return;
+        if (!validateEntryForm()) return;
+        const memberId = currentUserRole === 'MEMBER' ? localStorage.getItem('user_id') : selectedMember.id;
         const payload = {
-            member: selectedMember.id,
+            member: memberId,
             date: document.getElementById('entryDate').value,
             weight_kg: document.getElementById('entryWeight').value || null,
             height_cm: document.getElementById('entryHeight').value || null,
@@ -466,15 +509,15 @@
             thigh_cm: document.getElementById('entryThigh').value || null,
             notes: document.getElementById('entryNotes').value,
         };
-        if (!payload.date) { alert('Please select a date'); return; }
         const response = await apiRequest('/progress/entries/', { method: 'POST', body: JSON.stringify(payload) });
         if (response && response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('createEntryModal')).hide();
             loadEntries();
-            alert('Progress entry logged successfully');
+            document.querySelectorAll('#createEntryModal input, #createEntryModal textarea').forEach(el => el.value = '');
         } else {
             const err = await response.json();
-            alert('Failed to log entry: ' + JSON.stringify(err));
+            const msg = Object.entries(err).map(([k,v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('\n');
+            alert('Failed to log entry:\n' + msg);
         }
     }
 
@@ -525,7 +568,8 @@
 
     async function loadPrs() {
         if (!selectedMember) return;
-        const response = await apiRequest(`/progress/personal-records/?member=${selectedMember.id}`);
+        const memberParam = currentUserRole === 'MEMBER' ? '' : `?member=${selectedMember.id}`;
+        const response = await apiRequest(`/progress/personal-records/${memberParam}`);
         if (!response || !response.ok) return;
         const data = await response.json();
         allPrs = data.results;
@@ -554,25 +598,36 @@
         `).join('');
     }
 
+    function validatePrForm() {
+        const exercise = document.getElementById('prExercise').value;
+        if (!exercise) { alert('Please select an exercise.'); return false; }
+        const date = document.getElementById('prDate').value;
+        if (!date) { alert('Date is required.'); return false; }
+        const value = document.getElementById('prValue').value;
+        if (!value || isNaN(value) || parseFloat(value) <= 0) { alert('Value must be a positive number.'); return false; }
+        return true;
+    }
+
     async function createPr() {
         if (!selectedMember) return;
+        if (!validatePrForm()) return;
+        const memberId = currentUserRole === 'MEMBER' ? localStorage.getItem('user_id') : selectedMember.id;
         const payload = {
-            member: selectedMember.id,
+            member: memberId,
             exercise: document.getElementById('prExercise').value,
             date: document.getElementById('prDate').value,
             value: document.getElementById('prValue').value,
             unit: document.getElementById('prUnit').value || 'kg',
             notes: document.getElementById('prNotes').value,
         };
-        if (!payload.exercise || !payload.date || !payload.value) { alert('Please fill in all required fields'); return; }
         const response = await apiRequest('/progress/personal-records/', { method: 'POST', body: JSON.stringify(payload) });
         if (response && response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('createPrModal')).hide();
             loadPrs();
-            alert('Personal record added');
         } else {
             const err = await response.json();
-            alert('Failed to add record: ' + JSON.stringify(err));
+            const msg = Object.entries(err).map(([k,v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('\n');
+            alert('Failed to add record:\n' + msg);
         }
     }
 

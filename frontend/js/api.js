@@ -201,17 +201,29 @@ function applySidebarRoleVisibility() {
 
   document.querySelectorAll('.sidebar a[data-roles]').forEach(link => {
     const allowedRoles = link.dataset.roles.split(',');
-    link.style.display = allowedRoles.includes(role) ? '' : 'none';
+    if (allowedRoles.includes(role)) {
+      link.classList.remove('hidden-role');
+      link.style.display = '';
+    } else {
+      link.classList.add('hidden-role');
+      link.style.display = 'none';
+    }
   });
 
   document.querySelectorAll('.nav-section-label').forEach(label => {
     let sibling = label.nextElementSibling;
     let anyVisible = false;
     while (sibling && sibling.tagName === 'A') {
-      if (sibling.style.display !== 'none') anyVisible = true;
+      if (!sibling.classList.contains('hidden-role') && sibling.style.display !== 'none') anyVisible = true;
       sibling = sibling.nextElementSibling;
     }
-    label.style.display = anyVisible ? '' : 'none';
+    if (anyVisible) {
+      label.classList.remove('hidden-role');
+      label.style.display = '';
+    } else {
+      label.classList.add('hidden-role');
+      label.style.display = 'none';
+    }
   });
 }
 

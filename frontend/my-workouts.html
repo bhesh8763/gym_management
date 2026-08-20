@@ -73,16 +73,37 @@
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+
+      <div class="nav-section-label">Members</div>
+      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
       <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
       <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+
+      <div class="nav-section-label">Staff Management</div>
+      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
 
       <div class="nav-section-label">Workout & Diet</div>
       <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
       <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
 
       <div class="nav-section-label">Payments</div>
+      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <div class="nav-section-label">Membership</div>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
+
+      <div class="nav-section-label">My Activity</div>
       <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
+
+      <div class="nav-section-label">Equipment</div>
+      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+
+      <div class="nav-section-label">Insights</div>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
 
       <div class="nav-section-label">System</div>
       <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
@@ -95,7 +116,7 @@
 
         <div id="loadingState" class="text-center text-muted py-5">
             <div class="spinner-border" role="status"></div>
-            <div class="mt-2">Loading your workouts…</div>
+            <div class="mt-2">Loading your workoutsï¿½</div>
         </div>
 
         <div id="noAssignmentsState" class="alert alert-secondary" style="display:none;">
@@ -196,7 +217,7 @@ async function loadMyWorkouts() {
                 <div class="progress mt-2 mb-3" style="height:8px;">
                     <div class="progress-bar ${assignment.completion_pct >= 70 ? 'bg-success' : assignment.completion_pct >= 40 ? 'bg-warning' : 'bg-danger'}" style="width:${assignment.completion_pct || 0}%"></div>
                 </div>
-                <div id="days-${assignment.id}" class="text-muted small">Loading days…</div>
+                <div id="days-${assignment.id}" class="text-muted small">Loading daysï¿½</div>
             </div>
         `;
         container.appendChild(card);
@@ -214,10 +235,10 @@ async function loadDaysForAssignment(assignment) {
     holder.innerHTML = days.map(d => `
         <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
             <div>
-                <strong>Week ${d.week_number} · Day ${d.day_number}</strong> ${d.day_name ? 'â€“ ' + d.day_name : ''}
+                <strong>Week ${d.week_number} ï¿½ Day ${d.day_number}</strong> ${d.day_name ? 'â€“ ' + d.day_name : ''}
                 <div class="text-muted small">${(d.exercises || []).length} exercise(s)</div>
             </div>
-            <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} · Day ${d.day_number}')">
+            <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} ï¿½ Day ${d.day_number}')">
                 <i class="bi bi-check2-square"></i> Log
             </button>
         </div>

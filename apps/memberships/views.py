@@ -30,7 +30,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
+from apps.accounts.permissions import IsMember, IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
 from apps.memberships.models import Membership, MembershipPlan
 from apps.memberships.serializers import (
     FreezeSerializer,
@@ -119,12 +119,13 @@ class PlanDetailView(generics.RetrieveUpdateDestroyAPIView):
 class MembershipListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/memberships/  — Owner/Staff/Trainer see all, Member sees only their own
-    POST /api/memberships/  — Owner/Staff assign a plan to a member
+    POST /api/memberships/  — Owner/Staff assign a plan to a member,
+                              Member self-purchase (auto-sets member + PENDING status)
     """
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsOwnerOrStaff()]
+            return [IsAuthenticated()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -167,9 +168,21 @@ class MembershipListCreateView(generics.ListCreateAPIView):
         return qs
 
     def create(self, request, *args, **kwargs):
-        serializer = MembershipCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        membership = serializer.save()
+        user = request.user
+        is_self_purchase = user.role == User.Role.MEMBER
+
+        if is_self_purchase:
+            data = request.data.copy()
+            data['member'] = user.id
+            data['status'] = Membership.Status.PENDING
+            serializer = MembershipCreateSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            membership = serializer.save()
+        else:
+            serializer = MembershipCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            membership = serializer.save()
+
         return Response(
             MembershipDetailSerializer(membership).data,
             status=status.HTTP_201_CREATED,
@@ -271,15 +284,27 @@ class MembershipUnfreezeView(APIView):
 
 class MembershipRenewView(APIView):
     """
-    POST /api/memberships/<id>/renew/ — Owner/Staff only.
+    POST /api/memberships/<id>/renew/ — Owner/Staff, or the member themselves
+    for their own expired memberships.
 
     Creates a new Membership row linked via renewed_from, rather than
     mutating the old one, so the renewal history stays intact.
     """
-    permission_classes = [IsOwnerOrStaff]
+    permission_classes = [IsAuthenticated]
+
+    def _can_access(self, request, membership):
+        if request.user.role in (User.Role.OWNER, User.Role.STAFF):
+            return True
+        return membership.member == request.user
 
     def post(self, request, pk):
         old = get_membership_or_404(pk)
+        if not self._can_access(request, old):
+            raise PermissionDenied('You do not have permission to renew this membership.')
+
+        user = request.user
+        is_self_renewal = user.role == User.Role.MEMBER
+
         serializer = RenewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -289,10 +314,12 @@ class MembershipRenewView(APIView):
         end_date = start_date + timedelta(days=old.plan.duration_days)
         price_paid = data.get('price_paid', old.plan.price)
 
+        new_status = Membership.Status.PENDING if is_self_renewal else Membership.Status.ACTIVE
+
         new_membership = Membership.objects.create(
             member=old.member,
             plan=old.plan,
-            status=Membership.Status.ACTIVE,
+            status=new_status,
             start_date=start_date,
             end_date=end_date,
             price_paid=price_paid,

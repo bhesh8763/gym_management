@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Progress - FitCore</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        nav.topbar a.navbar-brand, nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
+        nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
+    </style>
+</head>
+<body>
+
+<nav class="topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+        <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+        <span style="font-size:1.5rem;font-weight:700;">FitCore</span>
+    </a>
+    <div class="topbar-search">
+        <i class="bi bi-search"></i>
+        <input type="text" id="globalSearch" placeholder="Search..." autocomplete="off">
+        <div class="topbar-search-results" id="globalSearchResults"></div>
+    </div>
+    <div class="position-relative">
+        <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+            <i class="bi bi-bell"></i>
+            <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+        </button>
+        <div class="dropdown-panel" id="notifPanel">
+            <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+                <span class="fw-semibold small">Notifications</span>
+                <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+                    <i class="bi bi-check2-all me-1"></i>Mark all as read
+                </button>
+            </div>
+            <div id="notifList"><div class="notif-empty">No notifications</div></div>
+            <div class="border-top text-center py-2">
+                <a href="notifications.html" class="small text-danger spa-link">View all</a>
+            </div>
+        </div>
+    </div>
+    <div class="position-relative">
+        <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+            <span class="profile-avatar" id="profileAvatar">?</span>
+            <span class="profile-meta">
+                <div class="profile-name" id="profileName">-</div>
+                <div class="profile-role" id="profileRole">-</div>
+            </span>
+            <i class="bi bi-chevron-down text-white-50"></i>
+        </button>
+        <div class="dropdown-panel profile-menu" id="profilePanel">
+            <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+            <hr>
+            <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </div>
+    </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+    <div class="sidebar" id="sidebar">
+        <div class="list-group list-group-flush pt-2">
+            <div class="nav-section-label">Main</div>
+            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+            <div class="nav-section-label">Members</div>
+            <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+            <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+            <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+            <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+            <div class="nav-section-label">Staff Management</div>
+            <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+            <div class="nav-section-label">Workout & Diet</div>
+            <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+            <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+            <div class="nav-section-label">Payments</div>
+            <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+            <div class="nav-section-label">Membership</div>
+            <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
+            <div class="nav-section-label">My Activity</div>
+            <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
+            <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+            <a href="my-progress.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
+            <div class="nav-section-label">Equipment</div>
+            <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+            <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+            <div class="nav-section-label">Insights</div>
+            <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+            <div class="nav-section-label">System</div>
+            <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
+        </div>
+    </div>
+
+    <div class="p-4 flex-grow-1">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="mb-1">My Progress</h3>
+                <p class="text-muted mb-0" id="progressSubtitle">Track your fitness journey</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createEntryModal">
+                    <i class="bi bi-plus-circle me-1"></i> Log Entry
+                </button>
+            </div>
+        </div>
+
+        <div id="loadingSpinner" class="text-center py-5">
+            <div class="spinner-border text-danger" role="status"><span class="visually-hidden">Loading...</span></div>
+        </div>
+
+        <div id="progressContent" style="display:none;">
+
+            <!-- SECTION 1: Progress Overview -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card progress-stat-card shadow-sm">
+                        <div class="stat-label">Weight</div>
+                        <div class="stat-value" id="statWeight">--</div>
+                        <div class="stat-delta neutral" id="statWeightDelta"></div>
+                        <i class="bi bi-speedometer stat-bg-icon"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card progress-stat-card shadow-sm">
+                        <div class="stat-label">BMI</div>
+                        <div class="stat-value" id="statBmi">--</div>
+                        <div class="stat-delta neutral" id="statBmiDelta"></div>
+                        <i class="bi bi-heart-pulse stat-bg-icon"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card progress-stat-card shadow-sm">
+                        <div class="stat-label">Body Fat</div>
+                        <div class="stat-value" id="statBf">--</div>
+                        <div class="stat-delta neutral" id="statBfDelta"></div>
+                        <i class="bi bi-droplet stat-bg-icon"></i>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card progress-stat-card shadow-sm">
+                        <div class="stat-label">Muscle Mass</div>
+                        <div class="stat-value" id="statMuscle">--</div>
+                        <div class="stat-delta neutral" id="statMuscleDelta"></div>
+                        <i class="bi bi-person-bounding-box stat-bg-icon"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: Weight Progress Chart -->
+            <div class="card chart-section shadow-sm mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="chart-title mb-0">Weight Progress</div>
+                    <span class="text-muted small" id="weightSummary"></span>
+                </div>
+                <div style="height:280px;"><canvas id="weightChart"></canvas></div>
+            </div>
+
+            <!-- SECTION 3: Goal + Consistency -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card goal-card shadow-sm h-100">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <i class="bi bi-bullseye text-danger"></i>
+                            <span class="fw-bold">Your Goal</span>
+                        </div>
+                        <div id="goalContent">
+                            <div class="text-muted">Set a fitness goal in your profile to track progress here.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card goal-card shadow-sm h-100">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-calendar-check text-success"></i>
+                                <span class="fw-bold">Workout Consistency</span>
+                            </div>
+                            <span class="streak-badge" id="streakBadge" style="display:none;">
+                                <i class="bi bi-fire"></i> <span id="streakCount">0</span> day streak
+                            </span>
+                        </div>
+                        <div class="row text-center mb-3">
+                            <div class="col">
+                                <div class="fw-bold fs-4" id="monthWorkouts">0</div>
+                                <div class="text-muted small">This Month</div>
+                            </div>
+                            <div class="col">
+                                <div class="fw-bold fs-4" id="monthPct">0%</div>
+                                <div class="text-muted small">Completion</div>
+                            </div>
+                        </div>
+                        <div class="mb-2 fw-semibold small text-muted">Last 90 Days</div>
+                        <div class="cal-heatmap" id="calHeatmap"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: Since You Joined -->
+            <div class="card shadow-sm mb-4" style="border:none;border-radius:16px;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-clock-history text-primary"></i>
+                        <span class="fw-bold">Since You Joined</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="compare-table" id="compareTable">
+                            <thead><tr><th>Metric</th><th>Starting</th><th>Current</th><th>Change</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: Body Measurements -->
+            <div class="card shadow-sm mb-4" style="border:none;border-radius:16px;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-rulers text-warning"></i>
+                        <span class="fw-bold">Body Measurements</span>
+                    </div>
+                    <div id="measurementsContent"></div>
+                </div>
+            </div>
+
+            <!-- SECTION 6: Personal Records -->
+            <div class="card shadow-sm mb-4" style="border:none;border-radius:16px;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-trophy text-warning"></i>
+                            <span class="fw-bold">Personal Records</span>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createPrModal">
+                            <i class="bi bi-plus-circle me-1"></i> Add Record
+                        </button>
+                    </div>
+                    <div class="row g-3" id="prCards"></div>
+                </div>
+            </div>
+
+            <!-- SECTION 7: BMI / Body Fat / Muscle Charts -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card chart-section shadow-sm h-100">
+                        <div class="chart-title">BMI Trend</div>
+                        <div style="height:180px;"><canvas id="bmiChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card chart-section shadow-sm h-100">
+                        <div class="chart-title">Body Fat %</div>
+                        <div style="height:180px;"><canvas id="bfChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card chart-section shadow-sm h-100">
+                        <div class="chart-title">Muscle Mass</div>
+                        <div style="height:180px;"><canvas id="muscleChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 8: Body Metrics History Table -->
+            <div class="card shadow-sm mb-4" style="border:none;border-radius:16px;">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="fw-bold">Body Metrics History</div>
+                        <button class="manage-action-btn" onclick="exportCSV()"><i class="bi bi-download me-1"></i> Export CSV</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <thead><tr><th>Date</th><th>Weight</th><th>BMI</th><th>Body Fat</th><th>Muscle</th><th>Actions</th></tr></thead>
+                            <tbody id="entriesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Create Entry Modal -->
+<div class="modal fade" id="createEntryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Log Progress Entry</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-4 mb-3"><label>Date *</label><input type="date" id="entryDate" class="form-control"></div>
+          <div class="col-md-4 mb-3"><label>Weight (kg)</label><input type="number" step="0.01" id="entryWeight" class="form-control" min="20" max="300"></div>
+          <div class="col-md-4 mb-3"><label>Height (cm)</label><input type="number" step="0.01" id="entryHeight" class="form-control" min="50" max="300"></div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3"><label>Body Fat % (2-60)</label><input type="number" step="0.01" id="entryBodyFat" class="form-control" min="2" max="60"></div>
+          <div class="col-md-6 mb-3"><label>Muscle Mass (kg)</label><input type="number" step="0.01" id="entryMuscleMass" class="form-control" min="5" max="150"></div>
+        </div>
+        <div class="row">
+          <div class="col mb-3"><label>Chest (cm)</label><input type="number" step="0.01" id="entryChest" class="form-control"></div>
+          <div class="col mb-3"><label>Waist (cm)</label><input type="number" step="0.01" id="entryWaist" class="form-control"></div>
+          <div class="col mb-3"><label>Hips (cm)</label><input type="number" step="0.01" id="entryHips" class="form-control"></div>
+          <div class="col mb-3"><label>Bicep (cm)</label><input type="number" step="0.01" id="entryBicep" class="form-control"></div>
+          <div class="col mb-3"><label>Thigh (cm)</label><input type="number" step="0.01" id="entryThigh" class="form-control"></div>
+        </div>
+        <div class="mb-3"><label>Notes</label><textarea id="entryNotes" class="form-control" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="createEntry()">Save Entry</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Create PR Modal -->
+<div class="modal fade" id="createPrModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Add Personal Record</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label>Exercise *</label><select id="prExercise" class="form-select"></select></div>
+        <div class="mb-3"><label>Date *</label><input type="date" id="prDate" class="form-control"></div>
+        <div class="row">
+          <div class="col mb-3"><label>Value *</label><input type="number" step="0.01" id="prValue" class="form-control" min="0.1"></div>
+          <div class="col mb-3"><label>Unit</label><input type="text" id="prUnit" class="form-control" value="kg"></div>
+        </div>
+        <div class="mb-3"><label>Notes</label><input type="text" id="prNotes" class="form-control"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="createPr()">Save Record</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+    let statsData = null;
+    let weightChartInst = null, bmiChartInst = null, bfChartInst = null, muscleChartInst = null;
+
+    if (!getAccessToken()) window.location.href = 'index.html';
+
+    const GOAL_LABELS = {
+        'WEIGHT_LOSS': 'Weight Loss',
+        'MUSCLE_GAIN': 'Muscle Gain',
+        'ENDURANCE': 'Endurance',
+        'FLEXIBILITY': 'Flexibility',
+        'GENERAL': 'General Fitness',
+        'REHAB': 'Rehabilitation',
+    };
+
+    const GOAL_METRICS = {
+        'WEIGHT_LOSS': { field: 'weight_kg', label: 'Weight', unit: 'kg', better: 'down' },
+        'MUSCLE_GAIN': { field: 'muscle_mass_kg', label: 'Muscle Mass', unit: 'kg', better: 'up' },
+        'ENDURANCE': { field: null, label: 'Attendance', unit: '%', better: 'up' },
+        'GENERAL': { field: null, label: 'Attendance', unit: '%', better: 'up' },
+        'FLEXIBILITY': { field: 'body_fat_percentage', label: 'Body Fat', unit: '%', better: 'down' },
+        'REHAB': { field: 'body_fat_percentage', label: 'Body Fat', unit: '%', better: 'down' },
+    };
+
+    async function loadStats() {
+        const resp = await apiRequest('/progress/member-stats/');
+        if (!resp || !resp.ok) {
+            document.getElementById('loadingSpinner').innerHTML = '<div class="text-muted">Could not load progress data.</div>';
+            return;
+        }
+        statsData = await resp.json();
+        renderAll();
+        document.getElementById('loadingSpinner').style.display = 'none';
+        document.getElementById('progressContent').style.display = '';
+    }
+
+    function renderAll() {
+        renderOverviewCards();
+        renderWeightChart();
+        renderGoal();
+        renderConsistency();
+        renderCompareTable();
+        renderMeasurements();
+        renderPrCards();
+        renderMiniCharts();
+        renderEntriesTable();
+        loadExercises();
+    }
+
+    function delta(current, previous, unit) {
+        if (current == null || previous == null) return '';
+        const diff = Math.round((current - previous) * 10) / 10;
+        if (diff === 0) return '<span class="neutral">No change</span>';
+        const sign = diff > 0 ? '+' : '';
+        const cls = diff > 0 ? 'positive' : 'negative';
+        return `<span class="${cls}">${diff > 0 ? '\u2191' : '\u2193'} ${sign}${diff}${unit ? ' ' + unit : ''}</span>`;
+    }
+
+    function renderOverviewCards() {
+        const f = statsData.first_entry, l = statsData.latest_entry;
+        if (!l) return;
+
+        document.getElementById('statWeight').textContent = l.weight_kg != null ? l.weight_kg + ' kg' : '--';
+        document.getElementById('statWeightDelta').innerHTML = delta(l.weight_kg, f?.weight_kg, 'kg');
+
+        document.getElementById('statBmi').textContent = l.bmi != null ? l.bmi : '--';
+        document.getElementById('statBmiDelta').innerHTML = delta(l.bmi, f?.bmi, '');
+
+        document.getElementById('statBf').textContent = l.body_fat_percentage != null ? l.body_fat_percentage + '%' : '--';
+        document.getElementById('statBfDelta').innerHTML = delta(l.body_fat_percentage, f?.body_fat_percentage, '%');
+
+        document.getElementById('statMuscle').textContent = l.muscle_mass_kg != null ? l.muscle_mass_kg + ' kg' : '--';
+        document.getElementById('statMuscleDelta').innerHTML = delta(l.muscle_mass_kg, f?.muscle_mass_kg, 'kg');
+    }
+
+    function renderWeightChart() {
+        const canvas = document.getElementById('weightChart');
+        if (!canvas || typeof Chart === 'undefined') return;
+        const entries = statsData.all_entries.filter(e => e.weight_kg != null);
+        if (entries.length < 1) { canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); return; }
+
+        if (weightChartInst) weightChartInst.destroy();
+        const summary = document.getElementById('weightSummary');
+        if (statsData.first_entry?.weight_kg != null && statsData.latest_entry?.weight_kg != null) {
+            const diff = Math.round((statsData.latest_entry.weight_kg - statsData.first_entry.weight_kg) * 10) / 10;
+            const sign = diff > 0 ? '+' : '';
+            summary.textContent = `Since ${statsData.first_entry.date}: ${sign}${diff} kg`;
+        }
+
+        weightChartInst = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: entries.map(e => e.date),
+                datasets: [{
+                    data: entries.map(e => e.weight_kg),
+                    borderColor: '#e63946',
+                    backgroundColor: 'rgba(230,57,70,0.08)',
+                    borderWidth: 2.5,
+                    pointRadius: entries.length < 20 ? 4 : 0,
+                    pointBackgroundColor: '#e63946',
+                    tension: 0.3,
+                    fill: true,
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' kg' } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
+                    y: { grid: { color: '#f3f4f6' }, ticks: { callback: v => v + ' kg', font: { size: 11 } } },
+                },
+            },
+        });
+    }
+
+    function renderGoal() {
+        const goal = statsData.fitness_goal;
+        const container = document.getElementById('goalContent');
+        if (!goal || !GOAL_LABELS[goal]) {
+            container.innerHTML = '<div class="text-muted small">Set a fitness goal in your profile to track progress here.</div>';
+            return;
+        }
+        const metric = GOAL_METRICS[goal] || GOAL_METRICS['GENERAL'];
+        const goalLabel = GOAL_LABELS[goal];
+
+        if (!metric.field) {
+            const pct = statsData.attendance.month_pct;
+            container.innerHTML = `
+                <div class="fw-semibold mb-2">${goalLabel}</div>
+                <div class="d-flex justify-content-between text-muted small mb-1"><span>Monthly attendance</span><span>${statsData.attendance.this_month}/${statsData.attendance.days_in_month} days</span></div>
+                <div class="goal-progress-track"><div class="goal-progress-fill" style="width:${Math.min(pct, 100)}%"></div></div>
+                <div class="text-muted small">${pct}% completion this month</div>`;
+            return;
+        }
+
+        const first = statsData.first_entry?.[metric.field];
+        const latest = statsData.latest_entry?.[metric.field];
+        if (first == null || latest == null) {
+            container.innerHTML = `<div class="fw-semibold mb-2">${goalLabel}</div><div class="text-muted small">Log more entries to see goal progress.</div>`;
+            return;
+        }
+
+        const diff = latest - first;
+        const totalRange = Math.abs(first) || 1;
+        let pct;
+        if (metric.better === 'down') {
+            pct = first > latest ? Math.min(Math.round((1 - latest / first) * 100), 100) : 0;
+        } else {
+            pct = latest > first ? Math.min(Math.round((latest / first - 1) * 100 + 50), 100) : 50;
+        }
+        const sign = diff > 0 ? '+' : '';
+
+        container.innerHTML = `
+            <div class="fw-semibold mb-2">${goalLabel}</div>
+            <div class="d-flex justify-content-between text-muted small mb-1">
+                <span>${metric.label}: ${first} ${metric.unit}</span>
+                <span class="fw-bold">${latest} ${metric.unit}</span>
+            </div>
+            <div class="goal-progress-track"><div class="goal-progress-fill" style="width:${Math.min(pct, 100)}%"></div></div>
+            <div class="d-flex justify-content-between">
+                <span class="small text-muted">${sign}${Math.round(diff * 10) / 10} ${metric.unit} change</span>
+                <span class="small fw-bold">${pct}%</span>
+            </div>`;
+    }
+
+    function renderConsistency() {
+        const att = statsData.attendance;
+        document.getElementById('monthWorkouts').textContent = att.this_month;
+        document.getElementById('monthPct').textContent = att.month_pct + '%';
+        if (att.streak > 0) {
+            document.getElementById('streakBadge').style.display = '';
+            document.getElementById('streakCount').textContent = att.streak;
+        }
+        const cal = document.getElementById('calHeatmap');
+        cal.innerHTML = '';
+        const today = new Date();
+        for (let i = 89; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const ds = d.toISOString().slice(0, 10);
+            const cell = document.createElement('div');
+            cell.className = 'cal-cell' + (att.calendar_90d.includes(ds) ? ' active' : '') + (i === 0 ? ' today' : '');
+            cell.title = ds;
+            cal.appendChild(cell);
+        }
+    }
+
+    function renderCompareTable() {
+        const f = statsData.first_entry, l = statsData.latest_entry;
+        if (!f || !l) {
+            document.querySelector('#compareTable tbody').innerHTML = '<tr><td colspan="4" class="text-muted text-center py-3">Log at least two entries to see your progress.</td></tr>';
+            return;
+        }
+        const rows = [
+            ['Weight', f.weight_kg, l.weight_kg, 'kg'],
+            ['BMI', f.bmi, l.bmi, ''],
+            ['Body Fat', f.body_fat_percentage, l.body_fat_percentage, '%'],
+            ['Muscle Mass', f.muscle_mass_kg, l.muscle_mass_kg, 'kg'],
+            ['Chest', f.chest_cm, l.chest_cm, 'cm'],
+            ['Waist', f.waist_cm, l.waist_cm, 'cm'],
+            ['Hips', f.hips_cm, l.hips_cm, 'cm'],
+            ['Bicep', f.bicep_cm, l.bicep_cm, 'cm'],
+            ['Thigh', f.thigh_cm, l.thigh_cm, 'cm'],
+        ];
+        const tbody = document.querySelector('#compareTable tbody');
+        tbody.innerHTML = rows.map(([name, start, end, unit]) => {
+            if (start == null && end == null) return '';
+            const diff = (end != null && start != null) ? Math.round((end - start) * 10) / 10 : null;
+            const cls = diff != null ? (diff > 0 ? 'delta-up' : diff < 0 ? 'delta-down' : '') : '';
+            const arrow = diff != null ? (diff > 0 ? '\u2191' : diff < 0 ? '\u2193' : '-') : '--';
+            const sign = diff != null && diff > 0 ? '+' : '';
+            return `<tr><td class="fw-semibold">${name}</td><td>${start != null ? start + ' ' + unit : '--'}</td><td>${end != null ? end + ' ' + unit : '--'}</td><td class="${cls}">${diff != null ? arrow + ' ' + sign + diff + ' ' + unit : '--'}</td></tr>`;
+        }).join('');
+    }
+
+    function renderMeasurements() {
+        const f = statsData.first_entry, l = statsData.latest_entry;
+        if (!f || !l) { document.getElementById('measurementsContent').innerHTML = '<div class="text-muted small">No measurement data yet.</div>'; return; }
+        const measures = [
+            ['Chest', f.chest_cm, l.chest_cm],
+            ['Waist', f.waist_cm, l.waist_cm],
+            ['Hips', f.hips_cm, l.hips_cm],
+            ['Bicep', f.bicep_cm, l.bicep_cm],
+            ['Thigh', f.thigh_cm, l.thigh_cm],
+        ];
+        const maxVal = Math.max(...measures.map(([, s, c]) => Math.max(s || 0, c || 0)), 1);
+        document.getElementById('measurementsContent').innerHTML = measures.map(([name, start, current]) => {
+            if (start == null && current == null) return '';
+            const diff = (current != null && start != null) ? Math.round((current - start) * 10) / 10 : 0;
+            const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
+            const arrow = diff > 0 ? '\u2191' : diff < 0 ? '\u2193' : '-';
+            const sign = diff > 0 ? '+' : '';
+            const color = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#9ca3af';
+            return `<div class="measure-bar-row">
+                <div class="measure-bar-label">${name}</div>
+                <div class="measure-bar-track"><div class="measure-bar-fill" style="width:${current ? (current / maxVal * 100) : 0}%;background:${color}"></div></div>
+                <div class="measure-bar-values">${start || '--'} \u2192 ${current || '--'} <span class="arrow ${cls}">${arrow}${sign}${diff}</span></div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderPrCards() {
+        const prs = statsData.personal_records;
+        const container = document.getElementById('prCards');
+        if (!prs || prs.length === 0) { container.innerHTML = '<div class="text-muted small">No personal records yet.</div>'; return; }
+        container.innerHTML = prs.map(pr => {
+            const diff = pr.first && pr.latest ? Math.round((pr.latest.value - pr.first.value) * 10) / 10 : 0;
+            const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
+            const sign = diff > 0 ? '+' : '';
+            return `<div class="col-md-4 col-sm-6"><div class="pr-card">
+                <div class="pr-name">${pr.exercise}</div>
+                <div class="pr-values">${pr.first ? pr.first.value + ' ' + pr.first.unit : '--'} \u2192 ${pr.latest ? pr.latest.value + ' ' + pr.latest.unit : '--'}</div>
+                <div class="pr-delta ${cls}">${diff !== 0 ? sign + diff + ' ' + (pr.latest?.unit || '') : 'No change'}</div>
+            </div></div>`;
+        }).join('');
+    }
+
+    function renderMiniChart(canvasId, label, entries, field, color) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || typeof Chart === 'undefined') return;
+        const data = entries.filter(e => e[field] != null);
+        if (data.length < 1) { canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); return; }
+        const inst = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: data.map(e => e.date),
+                datasets: [{ data: data.map(e => e[field]), borderColor: color, borderWidth: 2, pointRadius: data.length < 15 ? 3 : 0, pointBackgroundColor: color, tension: 0.3, fill: false }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false }, y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 } } } },
+            },
+        });
+        return inst;
+    }
+
+    function renderMiniCharts() {
+        const entries = statsData.all_entries;
+        bmiChartInst = renderMiniChart('bmiChart', 'BMI', entries, 'bmi', '#f59e0b');
+        bfChartInst = renderMiniChart('bfChart', 'Body Fat', entries, 'body_fat_percentage', '#3b82f6');
+        muscleChartInst = renderMiniChart('muscleChart', 'Muscle Mass', entries, 'muscle_mass_kg', '#10b981');
+    }
+
+    function renderEntriesTable() {
+        const entries = statsData.all_entries;
+        const tbody = document.getElementById('entriesTable');
+        if (entries.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No entries yet.</td></tr>'; return; }
+        tbody.innerHTML = entries.map(e => `<tr>
+            <td>${e.date}</td><td>${e.weight_kg ?? '--'}</td><td>${e.bmi ?? '--'}</td>
+            <td>${e.body_fat_percentage ?? '--'}%</td><td>${e.muscle_mass_kg ?? '--'}</td>
+            <td><button class="btn btn-outline-danger btn-sm" onclick="deleteEntry('${e.date}')"><i class="bi bi-trash"></i></button></td>
+        </tr>`).join('');
+    }
+
+    async function loadExercises() {
+        const resp = await apiRequest('/workouts/exercises/');
+        if (!resp || !resp.ok) return;
+        const data = await resp.json();
+        const exercises = data.results || data;
+        document.getElementById('prExercise').innerHTML = exercises.map(ex => `<option value="${ex.id}">${ex.name}</option>`).join('');
+    }
+
+    async function createEntry() {
+        const date = document.getElementById('entryDate').value;
+        if (!date) { alert('Date is required.'); return; }
+        if (new Date(date) > new Date()) { alert('Cannot log future dates.'); return; }
+        const weight = document.getElementById('entryWeight').value;
+        if (weight && (parseFloat(weight) < 20 || parseFloat(weight) > 300)) { alert('Weight must be between 20-300 kg.'); return; }
+        const bf = document.getElementById('entryBodyFat').value;
+        if (bf && (parseFloat(bf) < 2 || parseFloat(bf) > 60)) { alert('Body fat must be between 2-60%.'); return; }
+        const payload = {
+            date,
+            weight_kg: weight || null,
+            height_cm: document.getElementById('entryHeight').value || null,
+            body_fat_percentage: bf || null,
+            muscle_mass_kg: document.getElementById('entryMuscleMass').value || null,
+            chest_cm: document.getElementById('entryChest').value || null,
+            waist_cm: document.getElementById('entryWaist').value || null,
+            hips_cm: document.getElementById('entryHips').value || null,
+            bicep_cm: document.getElementById('entryBicep').value || null,
+            thigh_cm: document.getElementById('entryThigh').value || null,
+            notes: document.getElementById('entryNotes').value,
+        };
+        const resp = await apiRequest('/progress/entries/', { method: 'POST', body: JSON.stringify(payload) });
+        if (resp && resp.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('createEntryModal')).hide();
+            document.querySelectorAll('#createEntryModal input, #createEntryModal textarea').forEach(el => el.value = '');
+            loadStats();
+        } else {
+            const err = await resp.json();
+            const msg = Object.entries(err).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('\n');
+            alert('Failed:\n' + msg);
+        }
+    }
+
+    async function deleteEntry(date) {
+        if (!confirm('Delete entry for ' + date + '?')) return;
+        const resp = await apiRequest(`/progress/entries/?date=${date}`);
+        if (!resp || !resp.ok) return;
+        const data = await resp.json();
+        const entry = (data.results || data).find(e => e.date === date);
+        if (!entry) { alert('Entry not found.'); return; }
+        const del = await apiRequest(`/progress/entries/${entry.id}/`, { method: 'DELETE' });
+        if (del && del.ok) loadStats();
+    }
+
+    async function createPr() {
+        const exercise = document.getElementById('prExercise').value;
+        const date = document.getElementById('prDate').value;
+        const value = document.getElementById('prValue').value;
+        if (!exercise || !date || !value) { alert('Exercise, date, and value are required.'); return; }
+        if (new Date(date) > new Date()) { alert('Cannot log future dates.'); return; }
+        if (parseFloat(value) <= 0) { alert('Value must be positive.'); return; }
+        const payload = {
+            exercise, date, value,
+            unit: document.getElementById('prUnit').value || 'kg',
+            notes: document.getElementById('prNotes').value,
+        };
+        const resp = await apiRequest('/progress/personal-records/', { method: 'POST', body: JSON.stringify(payload) });
+        if (resp && resp.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('createPrModal')).hide();
+            loadStats();
+        } else {
+            const err = await resp.json();
+            const msg = Object.entries(err).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('\n');
+            alert('Failed:\n' + msg);
+        }
+    }
+
+    function exportCSV() {
+        const entries = statsData.all_entries;
+        if (!entries.length) { alert('No data to export.'); return; }
+        const headers = ['Date', 'Weight (kg)', 'BMI', 'Body Fat %', 'Muscle Mass (kg)', 'Chest (cm)', 'Waist (cm)', 'Hips (cm)', 'Bicep (cm)', 'Thigh (cm)'];
+        const rows = entries.map(e => [e.date, e.weight_kg, e.bmi, e.body_fat_percentage, e.muscle_mass_kg, e.chest_cm, e.waist_cm, e.hips_cm, e.bicep_cm, e.thigh_cm]);
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'progress_export.csv';
+        a.click();
+    }
+
+    loadStats();
+    loadTopbarNotifications();
+</script>
+</body>
+</html>

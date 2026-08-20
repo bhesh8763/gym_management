@@ -92,8 +92,13 @@
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
 
+      <div class="nav-section-label">Membership</div>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
+
+      <div class="nav-section-label">My Activity</div>
       <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
 
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
@@ -109,11 +114,14 @@
 
   <div class="p-4 flex-grow-1">
 
+    <!-- ═══ ADMIN / STAFF / TRAINER DASHBOARD ═══════════════════════════════ -->
+    <div id="adminDashboard">
+
     <!-- Greeting header + quick actions -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
       <div>
         <h3 class="mb-0" id="greetingText">Welcome back</h3>
-        <div class="text-muted small" id="todayLabel">�</div>
+        <div class="text-muted small" id="todayLabel"></div>
       </div>
       <div class="d-flex gap-2 flex-wrap">
       
@@ -123,7 +131,7 @@
       </div>
     </div>
 
-    <!-- Stat cards � clickable, each links to its filtered view -->
+    <!-- Stat cards -->
     <div class="row g-3">
       <div class="col-md-3">
         <a href="members.html" class="card stat-card spa-link h-100">
@@ -159,7 +167,7 @@
       </div>
     </div>
 
-    <!-- Needs Attention � the one panel meant to answer "what should I do today" -->
+    <!-- Needs Attention -->
     <div class="row g-3 mt-1">
       <div class="col-12">
         <div class="card attention-panel">
@@ -168,21 +176,7 @@
             <strong>Needs your attention</strong>
           </div>
           <div id="attentionList">
-            <div class="attention-empty">Loading�</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Member Check-in QR Card -->
-    <div class="row g-3 mt-1 d-none" id="memberCheckinSection">
-      <div class="col-12">
-        <div class="card p-4 text-center" style="border:2px dashed #e63946;border-radius:16px;">
-          <h5 class="mb-1"><i class="bi bi-qr-code me-2 text-danger"></i>Your Check-in QR Code</h5>
-          <p class="text-muted small mb-3">Show this to the staff or scan at the entrance to check in/out</p>
-          <div id="checkinQrWrap">
-            <div class="spinner-border text-danger mb-3"></div>
-            <p class="text-muted small">Loading your QR code�</p>
+            <div class="attention-empty">Loading...</div>
           </div>
         </div>
       </div>
@@ -191,7 +185,7 @@
     <div class="row g-3 mt-1">
       <div class="col-md-8">
         <div class="card p-3">
-          <h6 class="mb-3">Attendance � Last 7 days</h6>
+          <h6 class="mb-3">Attendance - Last 7 days</h6>
           <canvas id="attendanceChart" height="90"></canvas>
         </div>
       </div>
@@ -199,11 +193,158 @@
         <div class="card p-3">
           <h6 class="mb-3">Recent activity</h6>
           <ul class="list-group list-group-flush" id="activityList">
-            <li class="list-group-item text-muted">Loading�</li>
+            <li class="list-group-item text-muted">Loading...</li>
           </ul>
         </div>
       </div>
     </div>
+
+    </div><!-- /adminDashboard -->
+
+    <!-- ═══ MEMBER DASHBOARD ════════════════════════════════════════════════ -->
+    <div id="memberDashboard" class="d-none">
+
+    <!-- Greeting -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <h3 class="mb-0" id="memberGreeting">Welcome back</h3>
+        <div class="text-muted small" id="memberDateLabel"></div>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+          <div class="stat-icon icon-active"><i class="bi bi-clock-history"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Days Left</div>
+          <h3 id="mStatDaysLeft">–</h3>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+          <div class="stat-icon icon-total"><i class="bi bi-calendar-check"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">This Month</div>
+          <h3 id="mStatAttendance">–</h3>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+          <div class="stat-icon icon-library"><i class="bi bi-lightning-charge"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Streak</div>
+          <h3 id="mStatStreak">–</h3>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card stat-card h-100">
+          <div class="stat-icon icon-beginner"><i class="bi bi-trophy"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">PRs</div>
+          <h3 id="mStatPRs">–</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row: Membership + Today's Visit -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title fw-bold mb-3"><i class="bi bi-card-checklist me-1 text-danger"></i> Current Membership</h6>
+            <div id="mMembershipInfo">
+              <div class="text-muted small">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title fw-bold mb-3"><i class="bi bi-door-open me-1 text-danger"></i> Today's Visit</h6>
+            <div id="mTodayVisit">
+              <div class="text-muted small">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row: Trainer + Body Metrics -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title fw-bold mb-3"><i class="bi bi-person-badge me-1 text-danger"></i> My Trainer</h6>
+            <div id="mTrainerInfo">
+              <div class="text-muted small">No trainer assigned</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title fw-bold mb-3"><i class="bi bi-rulers me-1 text-danger"></i> Body Metrics</h6>
+            <div id="mBodyMetrics">
+              <div class="text-muted small">No metrics recorded</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workout Progress -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="card-title fw-bold mb-3"><i class="bi bi-heart-pulse me-1 text-danger"></i> Workout Progress</h6>
+        <div id="mWorkoutInfo">
+          <div class="text-muted small">No active workout</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diet Plan -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="card-title fw-bold mb-3"><i class="bi bi-egg-fried me-1 text-danger"></i> Diet Plan</h6>
+        <div id="mDietInfo">
+          <div class="text-muted small">No diet plan assigned</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row: Personal Records + Recent Payments -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title fw-bold mb-3"><i class="bi bi-trophy me-1 text-danger"></i> Personal Records</h6>
+            <div id="mPersonalRecords">
+              <div class="text-muted small">No records yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title fw-bold mb-3"><i class="bi bi-cash-coin me-1 text-danger"></i> Recent Payments</h6>
+            <div id="mRecentPayments">
+              <div class="text-muted small">No payments yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="d-flex gap-2 flex-wrap mb-3">
+      <a href="my-attendance.html" class="quick-action-btn spa-link"><i class="bi bi-fingerprint"></i> My Attendance</a>
+      <a href="my-payments.html" class="quick-action-btn spa-link"><i class="bi bi-cash-coin"></i> My Payments</a>
+      <a href="my-memberships.html" class="quick-action-btn spa-link"><i class="bi bi-card-checklist"></i> My Membership</a>
+      <a href="progress.html" class="quick-action-btn spa-link"><i class="bi bi-graph-up"></i> Progress Report</a>
+    </div>
+
+    </div><!-- /memberDashboard -->
 
   </div>
 </div>
@@ -214,10 +355,20 @@
 <script>
   if (!getAccessToken()) window.location.href = 'index.html';
 
-
+  const userRole = localStorage.getItem('user_role');
 
   function todayStr() {
     return new Date().toISOString().split('T')[0];
+  }
+
+  function formatDate(d) {
+    if (!d) return '–';
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function pillClass(status) {
+    const map = { ACTIVE: 'success', EXPIRED: 'muted', FROZEN: 'info', CANCELLED: 'danger', PENDING: 'warning' };
+    return 'pill-' + (map[status] || 'muted');
   }
 
   // Greeting + date
@@ -225,10 +376,17 @@
     const name = (localStorage.getItem('user_name') || '').split(' ')[0] || 'there';
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    document.getElementById('greetingText').textContent = `${greeting}, ${name}`;
-    document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined, {
+    const dateStr = new Date().toLocaleDateString(undefined, {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
+
+    if (userRole === 'MEMBER') {
+      document.getElementById('memberGreeting').textContent = `${greeting}, ${name}`;
+      document.getElementById('memberDateLabel').textContent = dateStr;
+    } else {
+      document.getElementById('greetingText').textContent = `${greeting}, ${name}`;
+      document.getElementById('todayLabel').textContent = dateStr;
+    }
   })();
 
   async function fetchAllPaginated(path) {
@@ -244,11 +402,20 @@
     return all;
   }
 
-  // Delegates to the shared loadTopbarNotifications() in api.js
   function loadNotifications() {
     return loadTopbarNotifications();
   }
 
+  // ═══ ROLE SWITCHING ═══════════════════════════════════════════════════════
+  if (userRole === 'MEMBER') {
+    document.getElementById('adminDashboard').classList.add('d-none');
+    document.getElementById('memberDashboard').classList.remove('d-none');
+    loadMemberDashboard();
+  } else {
+    loadAdminDashboard();
+  }
+
+  // ═══ ADMIN DASHBOARD ══════════════════════════════════════════════════════
   function setDelta(elId, current, previous) {
     const el = document.getElementById(elId);
     if (previous == null || previous === 0) { el.textContent = ''; return; }
@@ -258,12 +425,12 @@
       el.textContent = 'Same as last month';
       el.className = 'stat-delta flat';
     } else {
-      el.textContent = `${diff > 0 ? '?' : '?'} ${Math.abs(pct)}% vs last month`;
+      el.textContent = `${diff > 0 ? '↑' : '↓'} ${Math.abs(pct)}% vs last month`;
       el.className = 'stat-delta ' + (diff > 0 ? 'up' : 'down');
     }
   }
 
-  async function loadStats() {
+  async function loadAdminDashboard() {
     const [membersRes, expiringRes, paymentsRes] = await Promise.all([
       apiRequest('/members/'),
       apiRequest('/memberships/expiring/'),
@@ -274,7 +441,6 @@
       const data = await membersRes.json();
       const list = data.results || data;
       document.getElementById('statMembers').textContent = data.count ?? list.length;
-    
     }
 
     if (expiringRes && expiringRes.ok) {
@@ -317,9 +483,11 @@
     document.getElementById('activityList').innerHTML = recentPayments.length
       ? recentPayments.join('')
       : '<li class="list-group-item text-muted">No recent activity yet.</li>';
+
+    loadAttentionPanel();
+    loadAttendanceChart();
   }
 
- 
   async function loadAttentionPanel() {
     const [expiringRes, pendingPayRes, maintenanceRes, leaveRes] = await Promise.all([
       apiRequest('/memberships/expiring/?days=3'),
@@ -351,7 +519,7 @@
         const total = list.reduce((s, p) => s + parseFloat(p.amount_paid || p.amount || 0), 0);
         items.push({
           urgency: 'warn', icon: 'bi-cash-stack',
-          title: `${list.length} pending payment${list.length > 1 ? 's' : ''} � NPR ${total.toLocaleString()}`,
+          title: `${list.length} pending payment${list.length > 1 ? 's' : ''} — NPR ${total.toLocaleString()}`,
           sub: 'Follow up or mark as collected',
           href: 'payments.html?status=PENDING',
         });
@@ -389,7 +557,6 @@
       listEl.innerHTML = '<div class="attention-empty"><i class="bi bi-check-circle text-success d-block mb-1" style="font-size:1.4rem;"></i>Nothing needs your attention right now.</div>';
       return;
     }
-    // class="spa-link" added � attention items live outside .sidebar
     listEl.innerHTML = items.map(it => `
       <a href="${it.href}" class="attention-item spa-link">
         <div class="attention-dot ${it.urgency}"><i class="bi ${it.icon}"></i></div>
@@ -400,9 +567,7 @@
       </a>`).join('');
   }
 
-
   let attendanceChartInstance = null;
-
   async function loadAttendanceChart() {
     const labels = [];
     const counts = [];
@@ -414,79 +579,324 @@
       const records = await fetchAllPaginated(`/attendance/records/?date=${dateStr}`);
       counts.push(records.length);
     }
-
-    if (attendanceChartInstance) {
-      attendanceChartInstance.destroy();
-      attendanceChartInstance = null;
-    }
-
+    if (attendanceChartInstance) { attendanceChartInstance.destroy(); attendanceChartInstance = null; }
     attendanceChartInstance = new Chart(document.getElementById('attendanceChart'), {
       type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Check-ins',
-          data: counts,
-          backgroundColor: '#e63946',
-        }],
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-      },
+      data: { labels, datasets: [{ label: 'Check-ins', data: counts, backgroundColor: '#e63946' }] },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
     });
   }
 
-  loadStats();
-  loadAttentionPanel();
-  loadAttendanceChart();
-  loadNotifications();
+  // ═══ MEMBER DASHBOARD ═════════════════════════════════════════════════════
+  async function loadMemberDashboard() {
+    // Step 1: Get member profile to find the profile ID
+    const meRes = await apiRequest('/members/me/');
+    if (!meRes || !meRes.ok) {
+      console.error('Could not load member profile');
+      return;
+    }
+    const meData = await meRes.json();
+    const profileId = meData.id;
 
-  // Show check-in QR only for MEMBER role
-  async function loadMemberCheckinQR() {
-    const role = localStorage.getItem('user_role');
-    if (role !== 'MEMBER') return;
+    // Step 2: Get aggregated profile data
+    const detailRes = await apiRequest(`/members/${profileId}/profile-detail/`);
+    if (!detailRes || !detailRes.ok) {
+      console.error('Could not load profile detail');
+      return;
+    }
+    const d = await detailRes.json();
 
-    document.getElementById('memberCheckinSection').classList.remove('d-none');
+    // Stat cards
+    const membership = d.active_membership;
+    document.getElementById('mStatDaysLeft').textContent = membership ? (membership.days_remaining ?? '–') : '–';
+    document.getElementById('mStatAttendance').textContent = d.attendance_stats ? d.attendance_stats.this_month : '–';
+    document.getElementById('mStatStreak').textContent = d.attendance_stats ? d.attendance_stats.streak + ' days' : '–';
+    document.getElementById('mStatPRs').textContent = d.personal_records ? d.personal_records.length : '0';
 
+    // Membership card
+    renderMemberCard(membership);
+    // Today's visit
+    renderTodayVisit();
+    // Trainer
+    renderTrainer(d.assigned_trainer);
+    // Body metrics
+    renderBodyMetrics(d.latest_progress, meData);
+    // Workout
+    renderWorkout(d.active_workout);
+    // Diet
+    renderDiet(d.active_diet_plan);
+    // Personal records
+    renderPRs(d.personal_records);
+    // Payments
+    renderPayments(d.recent_payments);
+  }
+
+  function renderMemberCard(m) {
+    const el = document.getElementById('mMembershipInfo');
+    if (!m) {
+      el.innerHTML = `
+        <div class="alert alert-warning mb-0 py-2">
+          <i class="bi bi-exclamation-triangle me-1"></i> No active membership.
+          <a href="my-memberships.html" class="spa-link fw-bold">Get a plan</a>
+        </div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <div class="fw-bold fs-5">${m.plan_name}</div>
+          <div class="text-muted small">${formatDate(m.start_date)} → ${formatDate(m.end_date)}</div>
+        </div>
+        <span class="pill ${pillClass(m.status)}">${m.status}</span>
+      </div>
+      <div class="row g-2 mt-2">
+        <div class="col-4">
+          <small class="text-muted d-block">Days Left</small>
+          <strong class="fs-5">${m.days_remaining ?? '–'}</strong>
+        </div>
+        <div class="col-4">
+          <small class="text-muted d-block">Price Paid</small>
+          <strong>NPR ${parseFloat(m.price_paid).toFixed(0)}</strong>
+        </div>
+        <div class="col-4">
+          <small class="text-muted d-block">Plan Price</small>
+          <strong>NPR ${parseFloat(m.plan_price).toFixed(0)}</strong>
+        </div>
+      </div>`;
+  }
+
+  async function renderTodayVisit() {
+    const el = document.getElementById('mTodayVisit');
     const res = await apiRequest('/attendance/qr/my/');
     if (!res || !res.ok) {
-      document.getElementById('checkinQrWrap').innerHTML = `
-        <div class="text-danger small">Could not load QR code. Please refresh.</div>`;
+      el.innerHTML = '<div class="text-muted small">Could not load check-in status</div>';
+      return;
+    }
+    const qr = await res.json();
+
+    // Check today's attendance
+    const attRes = await apiRequest(`/attendance/records/?date=${todayStr()}`);
+    let todayRecord = null;
+    if (attRes && attRes.ok) {
+      const attData = await attRes.json();
+      todayRecord = (attData.results || []).find(r => r.status === 'PRESENT') || null;
+    }
+
+    if (todayRecord && todayRecord.check_in) {
+      const checkOutTime = todayRecord.check_out || null;
+      el.innerHTML = `
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="rounded-circle bg-success d-flex align-items-center justify-content-center" style="width:48px;height:48px;">
+            <i class="bi bi-check-lg text-white fs-4"></i>
+          </div>
+          <div>
+            <div class="fw-bold text-success">Checked In</div>
+            <div class="text-muted small">at ${todayRecord.check_in}</div>
+          </div>
+        </div>
+        ${checkOutTime ? `
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center" style="width:48px;height:48px;">
+              <i class="bi bi-box-arrow-right text-white fs-4"></i>
+            </div>
+            <div>
+              <div class="fw-bold">Checked Out</div>
+              <div class="text-muted small">at ${checkOutTime}</div>
+            </div>
+          </div>` : `
+          <button class="btn btn-outline-danger btn-sm" onclick="doMemberCheckOut()">
+            <i class="bi bi-box-arrow-right me-1"></i> Check Out
+          </button>`}
+        <div class="mt-3 text-center">
+          <div class="border rounded p-2 d-inline-block bg-white mb-2">
+            <img src="${qr.qr_image_base64}" alt="QR" style="width:120px;height:120px;display:block;">
+          </div>
+          <div class="text-muted small">Show this QR at the entrance</div>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div class="text-center py-3">
+          <i class="bi bi-door-open display-4 text-muted"></i>
+          <p class="mt-2 mb-3 text-muted">You haven't checked in today</p>
+          <button class="btn btn-primary" onclick="doMemberCheckIn()">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Check In
+          </button>
+        </div>
+        <div class="mt-3 text-center">
+          <div class="border rounded p-2 d-inline-block bg-white mb-2">
+            <img src="${qr.qr_image_base64}" alt="QR" style="width:100px;height:100px;display:block;">
+          </div>
+          <div class="text-muted small">Or scan QR at entrance</div>
+        </div>`;
+    }
+  }
+
+  async function doMemberCheckIn() {
+    const res = await apiRequest('/attendance/records/check-in/', { method: 'POST', body: JSON.stringify({}) });
+    if (res && res.ok) {
+      renderTodayVisit();
+    } else {
+      const err = await res?.json().catch(() => ({}));
+      alert(typeof formatApiError === 'function' ? formatApiError(err) : 'Check-in failed');
+    }
+  }
+
+  async function doMemberCheckOut() {
+    const res = await apiRequest('/attendance/records/check-out/', { method: 'POST', body: JSON.stringify({}) });
+    if (res && res.ok) {
+      renderTodayVisit();
+    } else {
+      const err = await res?.json().catch(() => ({}));
+      alert(typeof formatApiError === 'function' ? formatApiError(err) : 'Check-out failed');
+    }
+  }
+
+  function renderTrainer(trainer) {
+    const el = document.getElementById('mTrainerInfo');
+    if (!trainer) {
+      el.innerHTML = '<div class="text-muted small"><i class="bi bi-info-circle me-1"></i> No trainer assigned yet</div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-danger d-flex align-items-center justify-content-center text-white fw-bold" style="width:48px;height:48px;font-size:1.2rem;">
+          ${trainer.profile_picture ? `<img src="${trainer.profile_picture}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;">` : trainer.full_name.charAt(0)}
+        </div>
+        <div>
+          <div class="fw-bold">${trainer.full_name}</div>
+          <div class="text-muted small">${trainer.specializations || 'General Training'}</div>
+          ${trainer.experience_years ? `<div class="text-muted small">${trainer.experience_years} years experience</div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function renderBodyMetrics(progress, profile) {
+    const el = document.getElementById('mBodyMetrics');
+    const weight = progress?.weight_kg || profile?.weight_kg;
+    const bmi = progress?.bmi || profile?.bmi;
+    const bodyFat = progress?.body_fat_percentage;
+    const muscle = progress?.muscle_mass_kg;
+
+    if (!weight && !bmi) {
+      el.innerHTML = '<div class="text-muted small"><i class="bi bi-info-circle me-1"></i> No body metrics recorded yet</div>';
       return;
     }
 
-    const data = await res.json();
-    document.getElementById('checkinQrWrap').innerHTML = `
-      <div class="border rounded p-2 d-inline-block bg-white mb-3">
-        <img src="${data.qr_image_base64}" alt="Check-in QR"
-             style="width:200px;height:200px;display:block;" id="memberQrImg">
+    let bmiClass = 'text-success';
+    if (bmi) {
+      if (bmi < 18.5) bmiClass = 'text-info';
+      else if (bmi >= 25) bmiClass = 'text-warning';
+      else if (bmi >= 30) bmiClass = 'text-danger';
+    }
+
+    el.innerHTML = `
+      <div class="row g-3 text-center">
+        <div class="col-3">
+          <div class="fw-bold fs-5">${weight ? parseFloat(weight).toFixed(1) : '–'}</div>
+          <div class="text-muted small">kg</div>
+        </div>
+        <div class="col-3">
+          <div class="fw-bold fs-5 ${bmiClass}">${bmi ? parseFloat(bmi).toFixed(1) : '–'}</div>
+          <div class="text-muted small">BMI</div>
+        </div>
+        <div class="col-3">
+          <div class="fw-bold fs-5">${bodyFat ? parseFloat(bodyFat).toFixed(1) + '%' : '–'}</div>
+          <div class="text-muted small">Body Fat</div>
+        </div>
+        <div class="col-3">
+          <div class="fw-bold fs-5">${muscle ? parseFloat(muscle).toFixed(1) : '–'}</div>
+          <div class="text-muted small">Muscle kg</div>
+        </div>
       </div>
-      <div class="d-flex justify-content-center gap-2 flex-wrap">
-        <button class="btn btn-sm btn-outline-danger" onclick="downloadCheckinQr()">
-          <i class="bi bi-download me-1"></i>Download
-        </button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="loadMemberCheckinQR()">
-          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-        </button>
-      </div>
-      <p class="text-muted small mt-2 mb-0">
-        <i class="bi bi-shield-check me-1"></i>
-        This QR is unique to you � do not share it with others
-      </p>`;
+      ${progress?.date ? `<div class="text-muted small text-center mt-2">Last updated: ${formatDate(progress.date)}</div>` : ''}`;
   }
 
-  function downloadCheckinQr() {
-    const img = document.getElementById('memberQrImg');
-    if (!img) return;
-    const displayId = localStorage.getItem('display_id') || localStorage.getItem('user_id') || 'member';
-    const link = document.createElement('a');
-    link.href = img.src;
-    link.download = `checkin_qr_${displayId}.png`;
-    link.click();
+  function renderWorkout(workout) {
+    const el = document.getElementById('mWorkoutInfo');
+    if (!workout) {
+      el.innerHTML = '<div class="text-muted small"><i class="bi bi-info-circle me-1"></i> No active workout assigned</div>';
+      return;
+    }
+    const pct = workout.completion_pct || 0;
+    el.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <div class="fw-bold">${workout.template_name}</div>
+          <div class="text-muted small">${workout.goal || 'General'} • ${workout.difficulty || 'Intermediate'}</div>
+        </div>
+        <span class="badge bg-danger">${pct}%</span>
+      </div>
+      <div class="progress" style="height:8px;">
+        <div class="progress-bar bg-danger" style="width:${pct}%"></div>
+      </div>
+      <div class="d-flex justify-content-between mt-2">
+        <small class="text-muted">${formatDate(workout.start_date)} → ${formatDate(workout.end_date)}</small>
+        <a href="my-workouts.html" class="small spa-link">View Details →</a>
+      </div>`;
   }
 
-  loadMemberCheckinQR();
+  function renderDiet(diet) {
+    const el = document.getElementById('mDietInfo');
+    if (!diet) {
+      el.innerHTML = '<div class="text-muted small"><i class="bi bi-info-circle me-1"></i> No diet plan assigned</div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <div class="fw-bold">${diet.name}</div>
+          <div class="text-muted small">${diet.goal || 'Maintenance'}</div>
+        </div>
+        <span class="fw-bold">${diet.daily_calories} kcal</span>
+      </div>
+      <div class="d-flex gap-3 flex-wrap">
+        <span class="macro-pill protein"><i class="bi bi-droplet"></i> Protein: ${diet.protein_g}g</span>
+        <span class="macro-pill carbs"><i class="bi bi-lightning"></i> Carbs: ${diet.carbs_g}g</span>
+        <span class="macro-pill fats"><i class="bi bi-drohalf"></i> Fats: ${diet.fats_g}g</span>
+      </div>
+      <div class="mt-2"><a href="diet.html" class="small spa-link">View Meals →</a></div>`;
+  }
+
+  function renderPRs(prs) {
+    const el = document.getElementById('mPersonalRecords');
+    if (!prs || !prs.length) {
+      el.innerHTML = '<div class="text-muted small"><i class="bi bi-info-circle me-1"></i> No personal records yet</div>';
+      return;
+    }
+    el.innerHTML = prs.map(pr => `
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+        <div>
+          <div class="fw-semibold">${pr.exercise_name}</div>
+          <div class="text-muted small">${formatDate(pr.date)}</div>
+        </div>
+        <div class="fw-bold text-danger">${pr.value} ${pr.unit}</div>
+      </div>`).join('');
+  }
+
+  function renderPayments(payments) {
+    const el = document.getElementById('mRecentPayments');
+    if (!payments || !payments.length) {
+      el.innerHTML = '<div class="text-muted small"><i class="bi bi-info-circle me-1"></i> No payment records yet</div>';
+      return;
+    }
+    const statusBadge = (s) => {
+      const cls = { PAID: 'success', PENDING: 'warning', FAILED: 'danger' };
+      return `<span class="badge bg-${cls[s] || 'secondary'}">${s}</span>`;
+    };
+    el.innerHTML = payments.slice(0, 5).map(p => `
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+        <div>
+          <div class="fw-semibold">NPR ${parseFloat(p.amount_paid).toFixed(0)}</div>
+          <div class="text-muted small">${p.payment_for} • ${p.plan_name || ''}</div>
+        </div>
+        <div class="text-end">
+          ${statusBadge(p.status)}
+          <div class="text-muted small mt-1">${p.paid_at ? new Date(p.paid_at).toLocaleDateString() : ''}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  loadNotifications();
 </script>
 </body>
 </html>
