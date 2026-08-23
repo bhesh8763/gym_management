@@ -1,0 +1,15 @@
+{% extends "notifications/base_email.html" %}
+{% block content %}
+  <h2 style="margin:0 0 16px;color:#1a1a1f;font-size:20px;">We miss you! 💪</h2>
+  <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6;">
+    Hi {{ user.get_full_name }},
+  </p>
+  <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6;">
+    {{ message|linebreaksbr }}
+  </p>
+  <div style="text-align:center;margin:24px 0;">
+    <a href="{{ frontend_url }}/dashboard.html" style="display:inline-block;background-color:#e63946;color:#ffffff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+      Back to Dashboard
+    </a>
+  </div>
+{% endblock %}

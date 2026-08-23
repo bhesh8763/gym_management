@@ -12,9 +12,10 @@
 }
 
 body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--soft-bg);
   color: #1a1a1f;
+  overflow-x: hidden;
 }
 
 /* ── Navbar ────────────────────────────────────────────────────────── */
@@ -36,10 +37,6 @@ body {
   gap: 0.35rem;
 }
 
-.lp-brand i {
-  color: var(--brand-red);
-}
-
 .lp-brand:hover {
   color: #fff;
 }
@@ -54,6 +51,7 @@ body {
 
 .min-vh-hero {
   min-height: 70vh;
+  padding: 3rem 0;
 }
 
 .lp-eyebrow {
@@ -119,41 +117,67 @@ body {
   color: #fff;
 }
 
-/* ── Hero Graphic ──────────────────────────────────────────────────── */
-.lp-hero-graphic {
+/* ── Hero Visual ───────────────────────────────────────────────────── */
+.lp-hero-visual {
   position: relative;
   width: 100%;
-  max-width: 480px;
-  height: 480px;
+  max-width: 420px;
+  height: 400px;
+  margin: 0 auto;
+}
+
+.lp-visual-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-red), #ff6b7a);
+  box-shadow: 0 12px 40px rgba(230, 57, 70, 0.4);
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.lp-visual-ring::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.3);
 }
 
 .lp-stat-card {
   position: absolute;
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
   border-radius: 12px;
-  padding: 1rem 1.25rem;
+  padding: 0.9rem 1.1rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  animation: float 3s ease-in-out infinite;
+  gap: 0.7rem;
+  z-index: 2;
+  animation: float 4s ease-in-out infinite;
 }
 
 .lp-stat-card i {
-  font-size: 2rem;
+  font-size: 1.6rem;
   color: var(--brand-red);
 }
 
 .lp-stat-num {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--dark-bg);
   line-height: 1;
 }
 
 .lp-stat-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: #6c6c78;
   text-transform: uppercase;
   font-weight: 600;
@@ -161,52 +185,31 @@ body {
 }
 
 .lp-stat-1 {
-  top: 10%;
-  left: 0;
+  top: 12%;
+  left: 5%;
   animation-delay: 0s;
 }
 
 .lp-stat-2 {
-  top: 45%;
-  right: 5%;
-  animation-delay: 0.5s;
+  top: 42%;
+  right: 0;
+  animation-delay: 0.8s;
 }
 
 .lp-stat-3 {
-  bottom: 15%;
-  left: 8%;
-  animation-delay: 1s;
-}
-
-.lp-hero-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--brand-red), #ff6b7a);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 12px 40px rgba(230, 57, 70, 0.4);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.lp-hero-ring i {
-  font-size: 5rem;
-  color: #fff;
+  bottom: 12%;
+  left: 10%;
+  animation-delay: 1.6s;
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
+  50% { transform: translateY(-10px); }
 }
 
 @keyframes pulse {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(1.05); }
+  50% { transform: translate(-50%, -50%) scale(1.06); }
 }
 
 .lp-hero-wave {
@@ -225,21 +228,33 @@ body {
   height: 100%;
 }
 
-@media (max-width: 991px) {
-  .lp-hero-title {
-    font-size: 2.5rem;
-  }
-  .lp-hero-sub {
-    font-size: 1rem;
-  }
+/* ── Stats Bar ─────────────────────────────────────────────────────── */
+.lp-stats-bar {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 2rem 0;
+  margin-top: -1px;
 }
 
-@media (max-width: 575px) {
-  .lp-hero-title {
-    font-size: 2rem;
-  }
+.lp-stats-item {
+  padding: 0.5rem;
 }
 
+.lp-stats-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--brand-red);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.lp-stats-label {
+  font-size: 0.8rem;
+  color: #6c6c78;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
 
 /* ── Features ──────────────────────────────────────────────────────── */
 .lp-features {
@@ -265,25 +280,27 @@ body {
   border-radius: 12px;
   padding: 2rem 1.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   transition: all 0.3s ease;
   height: 100%;
 }
 
 .lp-feature-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  border-color: rgba(230, 57, 70, 0.15);
 }
 
 .lp-feature-icon {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 10px;
   background: linear-gradient(135deg, var(--brand-red), #ff6b7a);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   margin-bottom: 1rem;
 }
 
@@ -291,6 +308,7 @@ body {
   font-weight: 700;
   color: var(--dark-bg);
   margin-bottom: 0.5rem;
+  font-size: 1.05rem;
 }
 
 .lp-feature-card p {
@@ -312,21 +330,23 @@ body {
   text-align: center;
   transition: all 0.3s ease;
   height: 100%;
+  border: 1px solid transparent;
 }
 
 .lp-role-card:hover {
   background: #fff;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: rgba(230, 57, 70, 0.15);
 }
 
 .lp-role-icon {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   margin: 0 auto;
   color: #fff;
 }
@@ -385,12 +405,18 @@ body {
   gap: 0.35rem;
 }
 
-.lp-brand-sm i {
-  color: var(--brand-red);
-}
-
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media (max-width: 991px) {
+  .min-vh-hero {
+    min-height: auto;
+    padding: 4rem 0 2rem;
+  }
+  .lp-hero-title {
+    font-size: 2.5rem;
+  }
+  .lp-hero-sub {
+    font-size: 1rem;
+  }
   .lp-section-title {
     font-size: 2rem;
   }
@@ -400,6 +426,12 @@ body {
 }
 
 @media (max-width: 575px) {
+  .min-vh-hero {
+    padding: 3rem 0 1rem;
+  }
+  .lp-hero-title {
+    font-size: 2rem;
+  }
   .lp-section-title {
     font-size: 1.75rem;
   }
@@ -408,5 +440,8 @@ body {
   }
   .lp-cta-sub {
     font-size: 1rem;
+  }
+  .lp-stats-value {
+    font-size: 1.5rem;
   }
 }

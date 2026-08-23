@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="LOGO-2.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff – FitCore</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
@@ -55,7 +57,7 @@
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
     <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
-    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
     <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
   </a>
   <div class="topbar-search">
@@ -112,7 +114,7 @@
       <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
       <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
       <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
-      <a href="progress.html" class="list-group-item list-group-item-action"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
 
       <div class="nav-section-label">Staff Management</div>
       <a href="staff.html" class="list-group-item list-group-item-action active" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
@@ -124,10 +126,18 @@
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
 
+      <div class="nav-section-label">Member</div>
+
       <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
       <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
       <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
+      <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
+      <a href="my-diet.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
+      <a href="my-trainer.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-person-video3"></i> <span>My Trainer</span></a>
+
+      <div class="nav-section-label">Trainer</div>
+      <a href="trainer-members.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-people"></i> <span>My Members</span></a>
 
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
@@ -658,7 +668,7 @@
 
 <script src="js/api.js"></script>
 <script>
-  if (!getAccessToken()) window.location.href = 'index.html';
+  if (!getAccessToken()) window.location.href = 'login.html';
 
   restrictPastDates('joinedDate');
 

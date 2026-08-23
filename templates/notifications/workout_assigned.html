@@ -1,0 +1,16 @@
+{% extends "notifications/base_email.html" %}
+{% block content %}
+  <h2 style="margin:0 0 16px;color:#1a1a1f;font-size:20px;">{{ title }}</h2>
+  <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6;">
+    Hi {{ user.get_full_name }},
+  </p>
+  <div style="background-color:#eff6ff;border-left:4px solid #3b82f6;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;">
+    <p style="margin:0;color:#1e40af;font-size:15px;font-weight:600;">💪 New Workout Plan</p>
+    <p style="margin:8px 0 0;color:#1e40af;font-size:14px;">{{ message|linebreaksbr }}</p>
+  </div>
+  <div style="text-align:center;margin:24px 0;">
+    <a href="{{ frontend_url }}/my-workouts.html" style="display:inline-block;background-color:#e63946;color:#ffffff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+      View Workout
+    </a>
+  </div>
+{% endblock %}

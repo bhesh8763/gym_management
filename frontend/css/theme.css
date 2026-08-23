@@ -609,6 +609,13 @@ html{scroll-behavior:smooth}
 [data-theme="dark"] .table-bordered,[data-theme="dark"] .table-bordered>*:not(:first-child){border-color:var(--border-light) !important}
 [data-theme="dark"] .table-bordered>:not(caption)>*>*:not(:first-child){border-color:var(--border-light) !important}
 
+/* ── Diet page: merge toolbar + table cards in dark mode ─────── */
+[data-theme="dark"] .plans-list-card{margin-bottom:0 !important;border-radius:var(--radius-lg) var(--radius-lg) 0 0 !important;border-bottom:none !important}
+[data-theme="dark"] .plans-list-card + .card{border-top-left-radius:0 !important;border-top-right-radius:0 !important}
+[data-theme="dark"] .plans-list-card .card-body{background:var(--bg-card) !important}
+[data-theme="dark"] .plans-list-card + .card .table-responsive{border:none !important;border-radius:0 !important}
+[data-theme="dark"] .plans-list-card + .card .card-body{background:var(--bg-card) !important}
+
 /* ── Paginate / Row count ──────────────────────────────────────── */
 [data-theme="dark"] small.text-muted{color:var(--text-muted) !important}
 [data-theme="dark"] .page-link{color:var(--brand-red)}
@@ -758,6 +765,59 @@ html{scroll-behavior:smooth}
 [data-theme="dark"] .shadow-md{box-shadow:0 4px 16px rgba(0,0,0,0.4) !important}
 
 
+/* ── My Progress page ──────────────────────────────────────────── */
+.progress-stat-card{position:relative;border-radius:var(--radius-lg);padding:20px;min-height:120px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-card);border:1px solid var(--border-card);transition:all var(--transition-base)}
+.progress-stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.progress-stat-card .stat-label{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:4px}
+.progress-stat-card .stat-value{font-size:1.75rem;font-weight:800;letter-spacing:-0.03em;color:var(--text-primary);line-height:1.1}
+.progress-stat-card .stat-delta{font-size:0.72rem;font-weight:600;margin-top:4px}
+.progress-stat-card .stat-delta.neutral{color:var(--text-muted)}
+.progress-stat-card .stat-delta .positive{color:var(--color-success)}
+.progress-stat-card .stat-delta .negative{color:var(--brand-red)}
+.stat-bg-icon{position:absolute;bottom:12px;right:16px;font-size:2rem;color:rgba(0,0,0,0.04);pointer-events:none}
+.chart-section{border-radius:var(--radius-lg);padding:20px;background:var(--bg-card);border:1px solid var(--border-card)}
+.chart-title{font-weight:700;font-size:0.95rem;color:var(--text-primary);margin-bottom:12px}
+.cal-heatmap{display:grid;grid-template-columns:repeat(13,1fr);gap:3px}
+.cal-cell{width:100%;aspect-ratio:1;border-radius:3px;background:var(--bg-hover);transition:background var(--transition-fast)}
+.cal-cell.active{background:var(--brand-red)}
+.cal-cell.active:hover{background:var(--brand-red-light)}
+.cal-cell.today{box-shadow:0 0 0 2px var(--brand-red);z-index:1}
+.goal-card{border-radius:var(--radius-lg);padding:20px;background:var(--bg-card);border:1px solid var(--border-card)}
+.goal-progress-track{width:100%;height:8px;background:var(--bg-hover);border-radius:var(--radius-full);overflow:hidden;margin:8px 0}
+.goal-progress-fill{height:100%;background:linear-gradient(90deg,var(--brand-red),var(--brand-red-light));border-radius:var(--radius-full);transition:width 0.6s cubic-bezier(0.4,0,0.2,1)}
+.streak-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(230,57,70,0.1);color:var(--brand-red);padding:3px 10px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:600}
+.streak-badge i{color:#f59e0b}
+.compare-table{width:100%;border-collapse:separate;border-spacing:0}
+.compare-table th{background:var(--bg-topbar);color:rgba(255,255,255,0.85);font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:10px 14px;border:none}
+.compare-table td{padding:10px 14px;font-size:0.85rem;border-bottom:1px solid var(--border-light);color:var(--text-primary)}
+.compare-table tr:last-child td{border-bottom:none}
+.compare-table .delta-up{color:var(--color-success);font-weight:600}
+.compare-table .delta-down{color:var(--brand-red);font-weight:600}
+.measure-bar-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.measure-bar-row:last-child{margin-bottom:0}
+.measure-bar-label{width:60px;font-size:0.8rem;font-weight:600;color:var(--text-secondary);flex-shrink:0}
+.measure-bar-track{flex:1;height:8px;background:var(--bg-hover);border-radius:var(--radius-full);overflow:hidden}
+.measure-bar-fill{height:100%;border-radius:var(--radius-full);transition:width 0.6s cubic-bezier(0.4,0,0.2,1)}
+.measure-bar-values{width:180px;font-size:0.78rem;color:var(--text-muted);flex-shrink:0;text-align:right}
+.measure-bar-values .arrow{font-weight:600;margin-left:4px}
+.measure-bar-values .arrow.up{color:var(--color-success)}
+.measure-bar-values .arrow.down{color:var(--brand-red)}
+.pr-card{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:16px;transition:all var(--transition-base)}
+.pr-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.pr-card .pr-name{font-weight:700;font-size:0.9rem;color:var(--text-primary);margin-bottom:4px}
+.pr-card .pr-values{font-size:0.8rem;color:var(--text-muted);margin-bottom:4px}
+.pr-card .pr-delta{font-size:0.75rem;font-weight:600}
+.pr-card .pr-delta.up{color:var(--color-success)}
+.pr-card .pr-delta.down{color:var(--brand-red)}
+[data-theme="dark"] .progress-stat-card{background:var(--bg-card) !important;border-color:var(--border-light) !important}
+[data-theme="dark"] .progress-stat-card .stat-value{color:var(--text-primary) !important}
+[data-theme="dark"] .stat-bg-icon{color:rgba(255,255,255,0.04) !important}
+[data-theme="dark"] .chart-section{background:var(--bg-card) !important;border-color:var(--border-light) !important}
+[data-theme="dark"] .goal-card{background:var(--bg-card) !important;border-color:var(--border-light) !important}
+[data-theme="dark"] .cal-cell{background:var(--bg-hover) !important}
+[data-theme="dark"] .compare-table td{border-color:var(--border-light) !important}
+[data-theme="dark"] .pr-card{background:var(--bg-card) !important;border-color:var(--border-light) !important}
+
 @media(max-width:768px){
   .sidebar{flex:0 0 68px;width:68px}
   .sidebar .nav-section-label,.sidebar .list-group-item span{display:none}
@@ -765,4 +825,6 @@ html{scroll-behavior:smooth}
   .stat-card{padding:16px 12px;min-height:120px}
   .stat-card .stat-value,.stat-card h3{font-size:1.4rem}
   .stat-icon{width:48px;height:48px;font-size:1.5rem}
+  .cal-heatmap{grid-template-columns:repeat(9,1fr)}
+  .measure-bar-values{width:140px;font-size:0.7rem}
 }

@@ -53,6 +53,13 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
+        # Send welcome email/notification
+        try:
+            from apps.notifications.services import notify_welcome
+            notify_welcome(user)
+        except Exception:
+            pass  # Don't fail registration if notification fails
+
         # Issue tokens immediately after registration
         refresh = RefreshToken.for_user(user)
         return Response(

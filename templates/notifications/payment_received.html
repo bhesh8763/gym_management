@@ -1,0 +1,14 @@
+{% extends "notifications/base_email.html" %}
+{% block content %}
+  <h2 style="margin:0 0 16px;color:#1a1a1f;font-size:20px;">{{ title }}</h2>
+  <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6;">
+    Hi {{ user.get_full_name }},
+  </p>
+  <div style="background-color:#ecfdf5;border-left:4px solid #10b981;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;">
+    <p style="margin:0;color:#065f46;font-size:15px;font-weight:600;">✅ Payment Confirmed</p>
+    <p style="margin:8px 0 0;color:#065f46;font-size:14px;">{{ message|linebreaksbr }}</p>
+  </div>
+  <p style="margin:16px 0 0;color:#6b7280;font-size:13px;line-height:1.5;">
+    You can view your payment history in the dashboard.
+  </p>
+{% endblock %}

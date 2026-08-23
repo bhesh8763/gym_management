@@ -1,0 +1,18 @@
+{% extends "notifications/base_email.html" %}
+{% block content %}
+  <h2 style="margin:0 0 16px;color:#1a1a1f;font-size:20px;">{{ title }}</h2>
+  <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.6;">
+    Hi {{ user.get_full_name }},
+  </p>
+  <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
+    {{ message|linebreaksbr }}
+  </p>
+  <div style="text-align:center;margin:24px 0;">
+    <a href="{{ frontend_url }}/my-memberships.html" style="display:inline-block;background-color:#e63946;color:#ffffff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+      Renew Now
+    </a>
+  </div>
+  <p style="margin:16px 0 0;color:#6b7280;font-size:13px;line-height:1.5;">
+    If you have any questions, please contact the gym front desk or reply to this email.
+  </p>
+{% endblock %}

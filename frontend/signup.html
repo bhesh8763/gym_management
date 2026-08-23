@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="LOGO-2.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up — FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="css/login.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="login-bg"></div>
+
+<div class="login-container">
+
+  <!-- Left side - Branding -->
+  <div class="login-left">
+    <a href="/" class="login-back-link">
+      <i class="bi bi-arrow-left"></i> Back to Home
+    </a>
+
+    <div class="login-branding">
+      <div class="login-logo">
+        <img src="LOGO-2.png" alt="FitCore" style="height:48px;width:48px;object-fit:contain;">
+      </div>
+      <h1 class="login-brand-name">FitCore</h1>
+      <p class="login-brand-tagline">Join FitCore and start your fitness journey today.</p>
+    </div>
+
+    <div class="login-features">
+      <div class="login-feature-item">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Track your progress & workouts</span>
+      </div>
+      <div class="login-feature-item">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Get personalized diet plans</span>
+      </div>
+      <div class="login-feature-item">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Manage memberships & payments</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right side - Sign Up form -->
+  <div class="login-right">
+    <div class="login-card">
+      <div class="login-card-header">
+        <h2>Create Account</h2>
+        <p>Sign up for a free FitCore account</p>
+      </div>
+
+      <div id="errorBox" class="login-alert login-alert-danger d-none"></div>
+      <div id="successBox" class="login-alert" style="background-color:rgba(16,185,129,0.1);color:#059669;border-left:3px solid #10b981;" class="d-none"></div>
+
+      <form id="signupForm" class="login-form" autocomplete="on">
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="login-form-group">
+              <label class="login-label">First Name</label>
+              <div class="login-input-wrapper">
+                <i class="bi bi-person-fill"></i>
+                <input type="text" class="login-input" id="firstName" name="first_name" placeholder="First name" required autocomplete="given-name">
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="login-form-group">
+              <label class="login-label">Last Name</label>
+              <div class="login-input-wrapper">
+                <i class="bi bi-person-fill"></i>
+                <input type="text" class="login-input" id="lastName" name="last_name" placeholder="Last name" required autocomplete="family-name">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="login-form-group">
+          <label class="login-label">Email Address</label>
+          <div class="login-input-wrapper">
+            <i class="bi bi-envelope-fill"></i>
+            <input type="email" class="login-input" id="email" name="email" placeholder="your@email.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="login-form-group">
+          <label class="login-label">Phone Number</label>
+          <div class="login-input-wrapper">
+            <i class="bi bi-telephone-fill"></i>
+            <input type="tel" class="login-input" id="phone" name="phone" placeholder="e.g. 9841234567" autocomplete="tel">
+          </div>
+        </div>
+
+        <div class="login-form-group">
+          <label class="login-label">Password</label>
+          <div class="login-input-wrapper">
+            <i class="bi bi-lock-fill"></i>
+            <input type="password" class="login-input" id="password" name="password" placeholder="Create a password" required minlength="8" autocomplete="new-password">
+            <button type="button" class="login-toggle-password toggle-password" data-target="password" tabindex="-1">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="login-form-group">
+          <label class="login-label">Confirm Password</label>
+          <div class="login-input-wrapper">
+            <i class="bi bi-lock-fill"></i>
+            <input type="password" class="login-input" id="password2" name="password2" placeholder="Confirm your password" required minlength="8" autocomplete="new-password">
+            <button type="button" class="login-toggle-password toggle-password" data-target="password2" tabindex="-1">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="login-btn-primary">
+          <span>Create Account</span>
+          <i class="bi bi-arrow-right-short"></i>
+        </button>
+      </form>
+
+      <div class="login-divider">
+        <span>or</span>
+      </div>
+
+      <div class="login-register-prompt">
+        Already have an account? <a href="login.html" class="login-register-link">Sign in</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  // Clear fields on load
+  window.addEventListener('load', () => {
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('password2').value = '';
+  });
+
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('errorBox');
+    const successBox = document.getElementById('successBox');
+    errorBox.classList.add('d-none');
+    successBox.classList.add('d-none');
+
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const password = document.getElementById('password').value;
+    const password2 = document.getElementById('password2').value;
+
+    if (password !== password2) {
+      errorBox.textContent = 'Passwords do not match.';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
+    const body = { first_name: firstName, last_name: lastName, email, password, password2 };
+    if (phone) body.phone = phone;
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/register/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        saveTokens(data.tokens.access, data.tokens.refresh);
+        localStorage.setItem('user_id', data.user.id);
+        localStorage.setItem('user_role', data.user.role);
+        localStorage.setItem('user_name', data.user.full_name);
+        localStorage.setItem('user_picture', data.user.profile_picture || '');
+        window.location.href = 'dashboard.html';
+      } else {
+        const msg = typeof data === 'object'
+          ? Object.entries(data).map(([k, v]) => {
+              const msgs = Array.isArray(v) ? v : [v];
+              return msgs.map(m => k === 'non_field_errors' ? m : `${k}: ${m}`).join('\n');
+            }).join('\n')
+          : 'Registration failed.';
+        errorBox.textContent = msg;
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      errorBox.textContent = 'Network error. Please try again.';
+      errorBox.classList.remove('d-none');
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f6;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f6;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a1a1f,#2d2d38);padding:24px 32px;text-align:center;border-bottom:3px solid #e63946;">
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">⚡ FitCore</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              {% block content %}{% endblock %}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;color:#6b7280;font-size:13px;">
+                © 2026 FitCore Gym Management System<br>
+                <a href="{{ frontend_url }}" style="color:#e63946;text-decoration:none;">Open Dashboard</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

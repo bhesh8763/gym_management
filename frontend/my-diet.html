@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="LOGO-2.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Diet - FitCore</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="css/theme.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="MEMBER">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone..." autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">–</div>
+        <div class="profile-role" id="profileRole">–</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+
+      <div class="nav-section-label">Members</div>
+      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+
+      <div class="nav-section-label">Staff Management</div>
+      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+
+      <div class="nav-section-label">Workout &amp; Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+
+      <div class="nav-section-label">Payments</div>
+      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <div class="nav-section-label">Member</div>
+      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
+      <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
+      <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
+      <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
+      <a href="my-diet.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
+      <a href="my-trainer.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-person-video3"></i> <span>My Trainer</span></a>
+
+      <div class="nav-section-label">Trainer</div>
+      <a href="trainer-members.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-people"></i> <span>My Members</span></a>
+
+      <div class="nav-section-label">Equipment</div>
+      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+
+      <div class="nav-section-label">Insights</div>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+
+      <div class="nav-section-label">System</div>
+      <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
+    </div>
+  </div>
+
+  <div class="p-4 flex-grow-1">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h3 class="mb-0">My Diet Plan</h3>
+        <p class="text-muted mb-0">Your nutrition plan assigned by your trainer.</p>
+      </div>
+    </div>
+
+    <div id="loadingState" class="text-center text-muted py-5">
+      <div class="spinner-border" role="status"></div>
+      <div class="mt-2">Loading your diet plan...</div>
+    </div>
+
+    <div id="noPlanState" class="alert alert-secondary" style="display:none;">
+      <i class="bi bi-info-circle me-2"></i>You don't have a diet plan assigned yet. Ask your trainer to create one for you.
+    </div>
+
+    <div id="planContainer" style="display:none;"></div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+const GOAL_LABELS = {
+  WEIGHT_LOSS: 'Weight Loss', MUSCLE_GAIN: 'Muscle Gain', RECOMPOSITION: 'Recomposition',
+  MAINTENANCE: 'Maintenance', ENDURANCE: 'Endurance',
+};
+
+const MEAL_LABELS = {
+  BREAKFAST: '🌅 Breakfast', MID_MORNING: '🍌 Mid-Morning', LUNCH: '🍽️ Lunch',
+  PRE_WORKOUT: '⚡ Pre-Workout', POST_WORKOUT: '💪 Post-Workout',
+  DINNER: '🌙 Dinner', EVENING_SNACK: '🥜 Evening Snack',
+};
+
+async function loadMyDiet() {
+  const loadingEl = document.getElementById('loadingState');
+  const noPlanEl = document.getElementById('noPlanState');
+  const containerEl = document.getElementById('planContainer');
+
+  loadingEl.style.display = '';
+  noPlanEl.style.display = 'none';
+  containerEl.style.display = 'none';
+
+  const res = await apiRequest('/diet/plans/?mine=true');
+  loadingEl.style.display = 'none';
+
+  if (!res || !res.ok) {
+    noPlanEl.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Could not load your diet plan.';
+    noPlanEl.style.display = '';
+    return;
+  }
+
+  const data = await res.json();
+  const plans = data.results || data;
+  const activePlans = plans.filter(p => p.is_active);
+
+  if (!activePlans.length) {
+    noPlanEl.style.display = '';
+    return;
+  }
+
+  containerEl.style.display = '';
+
+  containerEl.innerHTML = activePlans.map(plan => `
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h4 class="mb-1">${escapeHtml(plan.name)}</h4>
+            ${plan.goal ? `<span class="pill pill-info">${GOAL_LABELS[plan.goal] || plan.goal}</span>` : ''}
+          </div>
+          ${plan.is_active ? '<span class="pill pill-success">Active</span>' : '<span class="pill pill-muted">Inactive</span>'}
+        </div>
+
+        <!-- Macros -->
+        <div class="row g-3 mb-4">
+          ${plan.daily_calories ? `
+          <div class="col-6 col-md-3">
+            <div class="text-center p-3 rounded" style="background: var(--brand-red-50);">
+              <div class="fw-bold fs-4" style="color: var(--brand-red);">${plan.daily_calories}</div>
+              <div class="text-muted small">Calories</div>
+            </div>
+          </div>` : ''}
+          ${plan.protein_g ? `
+          <div class="col-6 col-md-3">
+            <div class="text-center p-3 rounded" style="background: var(--color-info-bg);">
+              <div class="fw-bold fs-4" style="color: var(--color-info);">${plan.protein_g}g</div>
+              <div class="text-muted small">Protein</div>
+            </div>
+          </div>` : ''}
+          ${plan.carbs_g ? `
+          <div class="col-6 col-md-3">
+            <div class="text-center p-3 rounded" style="background: var(--color-warning-bg);">
+              <div class="fw-bold fs-4" style="color: var(--color-warning);">${plan.carbs_g}g</div>
+              <div class="text-muted small">Carbs</div>
+            </div>
+          </div>` : ''}
+          ${plan.fats_g ? `
+          <div class="col-6 col-md-3">
+            <div class="text-center p-3 rounded" style="background: var(--color-success-bg);">
+              <div class="fw-bold fs-4" style="color: var(--color-success);">${plan.fats_g}g</div>
+              <div class="text-muted small">Fats</div>
+            </div>
+          </div>` : ''}
+        </div>
+
+        <!-- Meals -->
+        <div id="meals-${plan.id}">
+          <div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm"></div> Loading meals...</div>
+        </div>
+
+        ${plan.notes ? `<div class="mt-3 p-3 rounded" style="background: var(--bg-root);"><strong>Notes:</strong> ${escapeHtml(plan.notes)}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  // Load meals for each plan
+  for (const plan of activePlans) {
+    loadMeals(plan.id);
+  }
+}
+
+async function loadMeals(planId) {
+  const el = document.getElementById(`meals-${planId}`);
+  if (!el) return;
+
+  const res = await apiRequest(`/diet/meals/?diet_plan=${planId}`);
+  if (!res || !res.ok) {
+    el.innerHTML = '<div class="text-muted small">Could not load meals.</div>';
+    return;
+  }
+
+  const data = await res.json();
+  const meals = data.results || data;
+
+  if (!meals.length) {
+    el.innerHTML = '<div class="text-muted small">No meals defined for this plan yet.</div>';
+    return;
+  }
+
+  // Group by meal type
+  const grouped = {};
+  meals.forEach(m => {
+    if (!grouped[m.meal_type]) grouped[m.meal_type] = [];
+    grouped[m.meal_type].push(m);
+  });
+
+  el.innerHTML = Object.entries(grouped).map(([type, items]) => `
+    <div class="mb-3">
+      <h6 class="text-uppercase small fw-bold text-muted mb-2">${MEAL_LABELS[type] || type}</h6>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr><th>Food</th><th>Portion</th><th>Calories</th><th>Time</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            ${items.map(m => `
+              <tr>
+                <td class="fw-semibold">${escapeHtml(m.food_name)}</td>
+                <td>${escapeHtml(m.portion || '—')}</td>
+                <td>${m.calories ? m.calories + ' kcal' : '—'}</td>
+                <td>${m.time_suggestion || '—'}</td>
+                <td class="text-muted small">${escapeHtml(m.notes || '')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `).join('');
+}
+
+
+loadMyDiet();
+</script>
+</body>
+</html>

@@ -82,17 +82,8 @@ body {
 }
 
 .login-logo {
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, var(--brand-red), #ff6b7a);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  color: #fff;
   margin-bottom: 1.5rem;
-  box-shadow: 0 12px 40px rgba(230, 57, 70, 0.4);
+  line-height: 0;
 }
 
 .login-brand-name {
@@ -401,11 +392,9 @@ body {
     padding: 1.5rem;
   }
 
-  .login-logo {
-    width: 60px;
-    height: 60px;
-    font-size: 2rem;
-    margin-bottom: 1rem;
+  .login-logo img {
+    width: 160px !important;
+    height: 160px !important;
   }
 
   .login-brand-name {

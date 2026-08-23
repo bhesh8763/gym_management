@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="LOGO-2.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Trainer - FitCore</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="css/theme.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="MEMBER">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone..." autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">–</div>
+        <div class="profile-role" id="profileRole">–</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+
+      <div class="nav-section-label">Members</div>
+      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+
+      <div class="nav-section-label">Staff Management</div>
+      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+
+      <div class="nav-section-label">Workout &amp; Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+
+      <div class="nav-section-label">Payments</div>
+      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+
+      <div class="nav-section-label">Member</div>
+      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
+      <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
+      <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
+      <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
+      <a href="my-diet.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
+      <a href="my-trainer.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-person-video3"></i> <span>My Trainer</span></a>
+
+      <div class="nav-section-label">Trainer</div>
+      <a href="trainer-members.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-people"></i> <span>My Members</span></a>
+
+      <div class="nav-section-label">Equipment</div>
+      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+
+      <div class="nav-section-label">Insights</div>
+      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+
+      <div class="nav-section-label">System</div>
+      <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
+    </div>
+  </div>
+
+  <div class="p-4 flex-grow-1">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h3 class="mb-0">My Trainer</h3>
+        <p class="text-muted mb-0">Your assigned trainer and their details.</p>
+      </div>
+    </div>
+
+    <div id="loadingState" class="text-center text-muted py-5">
+      <div class="spinner-border" role="status"></div>
+      <div class="mt-2">Loading trainer info...</div>
+    </div>
+
+    <div id="noTrainerState" class="alert alert-secondary" style="display:none;">
+      <i class="bi bi-info-circle me-2"></i>You don't have a trainer assigned yet. Please contact the gym front desk.
+    </div>
+
+    <div id="trainerContainer" style="display:none;"></div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+async function loadMyTrainer() {
+  const loadingEl = document.getElementById('loadingState');
+  const noTrainerEl = document.getElementById('noTrainerState');
+  const containerEl = document.getElementById('trainerContainer');
+
+  loadingEl.style.display = '';
+  noTrainerEl.style.display = 'none';
+  containerEl.style.display = 'none';
+
+  const userId = localStorage.getItem('user_id');
+
+  // Get trainer-member assignments where this user is the member
+  const res = await apiRequest('/trainers/assignments/?member=' + userId);
+  loadingEl.style.display = 'none';
+
+  if (!res || !res.ok) {
+    noTrainerEl.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Could not load trainer information.';
+    noTrainerEl.style.display = '';
+    return;
+  }
+
+  const data = await res.json();
+  const assignments = (data.results || data).filter(a => a.is_active);
+
+  if (!assignments.length) {
+    noTrainerEl.style.display = '';
+    return;
+  }
+
+  // Get trainer profile details
+  const assignment = assignments[0];
+  const trainerRes = await apiRequest('/trainers/' + assignment.trainer + '/');
+
+  containerEl.style.display = '';
+
+  if (!trainerRes || !trainerRes.ok) {
+    containerEl.innerHTML = `
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <div class="member-avatar-lg mx-auto mb-3" style="width:80px;height:80px;font-size:2rem;">${(assignment.trainer_name || '?').charAt(0).toUpperCase()}</div>
+          <h4>${escapeHtml(assignment.trainer_name)}</h4>
+          <p class="text-muted">${escapeHtml(assignment.trainer_display_id || '')}</p>
+          <p class="text-muted small">Assigned on ${assignment.assigned_date || 'N/A'}</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const trainer = await trainerRes.json();
+  const specs = trainer.specializations || [];
+  const certs = trainer.certifications || [];
+
+  containerEl.innerHTML = `
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-md-3 text-center mb-3 mb-md-0">
+            <div class="member-avatar-lg mx-auto mb-2" style="width:100px;height:100px;font-size:2.5rem;">
+              ${(trainer.full_name || '?').charAt(0).toUpperCase()}
+            </div>
+            <h4 class="mb-1">${escapeHtml(trainer.full_name)}</h4>
+            <p class="text-muted mb-0">${escapeHtml(trainer.display_id || '')}</p>
+          </div>
+          <div class="col-md-9">
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center text-muted mb-2">
+                  <i class="bi bi-envelope me-2"></i>${escapeHtml(trainer.email || '—')}
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center text-muted mb-2">
+                  <i class="bi bi-clock-history me-2"></i>${trainer.experience_years || 0} years experience
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center text-muted mb-2">
+                  <i class="bi bi-calendar me-2"></i>Joined: ${trainer.joined_date || '—'}
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="bi bi-circle-fill me-2" style="font-size:0.5rem; color: ${trainer.is_available ? 'var(--color-success)' : 'var(--color-danger)'}"></i>
+                  <span class="text-muted">${trainer.is_available ? 'Available for sessions' : 'Currently unavailable'}</span>
+                </div>
+              </div>
+            </div>
+
+            ${trainer.bio ? `<div class="mt-3 p-3 rounded" style="background: var(--bg-root);"><strong>About:</strong> ${escapeHtml(trainer.bio)}</div>` : ''}
+
+            ${specs.length ? `
+              <div class="mt-3">
+                <strong class="small text-muted text-uppercase">Specializations</strong>
+                <div class="mt-1">${specs.map(s => `<span class="pill pill-info me-1 mb-1">${escapeHtml(s)}</span>`).join('')}</div>
+              </div>
+            ` : ''}
+
+            ${certs.length ? `
+              <div class="mt-3">
+                <strong class="small text-muted text-uppercase">Certifications</strong>
+                <div class="mt-1">${certs.map(c => `
+                  <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-award me-2 text-warning"></i>
+                    <span>${escapeHtml(c.name || c)}${c.issued ? ` (${escapeHtml(c.issued)})` : ''}</span>
+                  </div>
+                `).join('')}</div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h5 class="mb-3"><i class="bi bi-journal-text me-2"></i>Assignment Details</h5>
+        <div class="row g-3">
+          <div class="col-sm-4">
+            <div class="text-muted small">Assigned Date</div>
+            <div class="fw-semibold">${assignment.assigned_date || '—'}</div>
+          </div>
+          <div class="col-sm-4">
+            <div class="text-muted small">Status</div>
+            <div><span class="pill pill-success">Active</span></div>
+          </div>
+          <div class="col-sm-4">
+            <div class="text-muted small">End Date</div>
+            <div class="fw-semibold">${assignment.end_date || 'Ongoing'}</div>
+          </div>
+        </div>
+        ${assignment.notes ? `<div class="mt-3 p-3 rounded" style="background: var(--bg-root);"><strong>Trainer Notes:</strong> ${escapeHtml(assignment.notes)}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+
+loadMyTrainer();
+</script>
+</body>
+</html>
