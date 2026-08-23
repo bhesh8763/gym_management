@@ -119,10 +119,18 @@
     <!-- ═══ ADMIN / STAFF / TRAINER DASHBOARD ═══════════════════════════════ -->
     <div id="adminDashboard">
 
-    <!-- Welcome Banner -->
-    <div class="welcome-banner">
-      <h2 id="greetingText">Welcome back</h2>
-      <p id="todayLabel"></p>
+    <!-- Greeting header + quick actions -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <h3 class="mb-0" id="greetingText">Welcome back</h3>
+        <div class="text-muted small" id="todayLabel"></div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+
+        <a href="members.html?action=add" class="quick-action-btn spa-link"><i class="bi bi-person-plus"></i> Add member</a>
+        <a href="payments.html?action=add" class="quick-action-btn spa-link"><i class="bi bi-cash"></i> Record payment</a>
+        <a href="attendance.html" class="quick-action-btn spa-link"><i class="bi bi-calendar-plus"></i> Mark attendance</a>
+      </div>
     </div>
 
     <!-- Main content + Quick Actions -->
