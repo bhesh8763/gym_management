@@ -92,7 +92,7 @@
 
       <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
-      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
       <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
 
       <div class="nav-section-label">Equipment</div>
@@ -439,7 +439,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-4" id="viewBody">
-        <div class="text-muted">Loading�</div>
+        <div class="text-muted">Loading...</div>
       </div>
       <div class="modal-footer p-3">
         <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
@@ -562,7 +562,7 @@
   async function loadMembers() {
     const tbody = document.getElementById('memberTableBody');
     tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
-      <div class="spinner-border spinner-border-sm me-2"></div> Loading members�
+      <div class="spinner-border spinner-border-sm me-2"></div> Loading members...
     </td></tr>`;
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
@@ -590,7 +590,7 @@
     document.getElementById('statTotal').textContent = allMembers.length;
     document.getElementById('statActive').textContent = activeCount;
     document.getElementById('statExpiring').textContent = expiringCount;
-    
+
     // Kept intact as requested
     document.getElementById('statBmi').textContent = bmiCount ? (bmiSum / bmiCount).toFixed(1) : '--';
 
@@ -663,7 +663,7 @@
   async function viewMember(profileId) {
     const modalEl = document.getElementById('viewMemberModal');
     const modal = new bootstrap.Modal(modalEl);
-    document.getElementById('viewBody').innerHTML = '<div class="text-muted">Loading�</div>';
+    document.getElementById('viewBody').innerHTML = '<div class="text-muted">Loading...</div>';
     modal.show();
 
     const res = await apiRequest(`/members/${profileId}/`);

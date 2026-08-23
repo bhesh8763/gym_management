@@ -151,7 +151,7 @@
           </div>
           <div>
             <div style="font-weight:600;color:#1f2937;font-size:.9rem;">Profile Photo</div>
-            <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">JPG, PNG or WEBP � max 5 MB</div>
+            <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">JPG, PNG or WEBP - max 5 MB</div>
             <button type="button" onclick="document.getElementById('photoInput').click();"
               style="margin-top:.5rem;font-size:.75rem;font-weight:600;color:var(--brand-red);background:none;border:none;cursor:pointer;padding:0;">
               <i class="bi bi-upload me-1"></i>Upload new photo
@@ -312,37 +312,37 @@ async function saveEdit(){
   if(photoFile) {
     // Use FormData when uploading a file
     var fd=new FormData();
-    
+
     var gender = document.getElementById('editGender').value;
     if(gender) fd.append('gender', gender);
-    
+
     var dob = document.getElementById('editDob').value;
     if(dob) fd.append('date_of_birth', dob);
-    
+
     var ht = document.getElementById('editHeight').value;
     if(ht) fd.append('height_cm', ht);
-    
+
     var wt = document.getElementById('editWeight').value;
     if(wt) fd.append('weight_kg', wt);
-    
+
     var goal = document.getElementById('editGoal').value;
     if(goal) fd.append('fitness_goal', goal);
-    
+
     var level = document.getElementById('editLevel').value;
     if(level) fd.append('fitness_level', level);
-    
+
     var address = document.getElementById('editAddress').value;
     if(address) fd.append('address', address);
-    
+
     var emName = document.getElementById('editEmName').value;
     if(emName) fd.append('emergency_contact_name', emName);
-    
+
     var emPhone = document.getElementById('editEmPhone').value;
     if(emPhone) fd.append('emergency_contact_phone', emPhone);
-    
+
     var medical = document.getElementById('editMedical').value;
     if(medical) fd.append('medical_conditions', medical);
-    
+
     var notes = document.getElementById('editNotes').value;
     if(notes) fd.append('notes', notes);
 
@@ -445,7 +445,7 @@ async function loadProfile(){
   if(d.personal_records&&d.personal_records.length){rh+='<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:.5rem;">Personal Records</div><table style="width:100%;font-size:.85rem;"><thead><tr><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;text-align:left;">Exercise</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Value</th><th style="font-size:.7rem;text-transform:uppercase;color:#9ca3af;font-weight:600;border-bottom:1px solid #f3f4f6;padding:.5rem .75rem;">Date</th></tr></thead><tbody>';d.personal_records.forEach(function(pr){rh+='<tr><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:500;">'+pr.exercise_name+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;font-weight:700;">'+pr.value+' '+pr.unit+'</td><td style="padding:.6rem .75rem;border-bottom:1px solid #f9fafb;color:#6b7280;font-size:.8rem;">'+pr.date+'</td></tr>';});rh+='</tbody></table>';}
 
   c.innerHTML=
-    '<div style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:1.5rem 2rem;display:flex;align-items:center;gap:1.5rem;margin-bottom:1.5rem;">'+
+    '<div class="info-card" style="border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:1.5rem 2rem;display:flex;align-items:center;gap:1.5rem;margin-bottom:1.5rem;">'+
     '<a href="members.html" style="background:none;border:2px solid #e5e7eb;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;text-decoration:none;flex-shrink:0;"><i class="bi bi-arrow-left"></i></a>'+
     '<div style="width:72px;height:72px;border-radius:14px;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,var(--brand-red),#ff6b6b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem;font-weight:700;">'+av+'</div>'+
     '<div style="flex:1;"><h2 style="margin:0;font-weight:700;font-size:1.4rem;color:#1a1a2e;">'+u.full_name+'</h2><div style="display:flex;align-items:center;gap:1rem;margin-top:.3rem;flex-wrap:wrap;"><span style="background:#f3f4f6;padding:2px 10px;border-radius:6px;font-weight:600;color:#374151;font-size:.8rem;">'+(u.display_id||'MEM-'+u.id)+'</span><span style="font-size:.85rem;color:#6b7280;">'+u.email+'</span><span style="font-size:.85rem;color:#6b7280;">Joined '+jd+'</span>'+st+'</div></div>'+

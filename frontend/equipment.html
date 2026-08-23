@@ -142,37 +142,37 @@
   </div>
 
   <div class="p-4 flex-grow-1">
-    <h3>Equipment Inventory</h3>
+    <h3 class="mb-3 fw-bold">Equipment Inventory</h3>
 
     <!-- -- Equipment stat cards ------------------------------------------- -->
-    <div class="row mb-4">
+    <div class="row g-3 mb-4">
       <div class="col-md-3">
-        <div class="card text-center border-primary"><div class="card-body">
-          <i class="bi bi-boxes text-primary fs-4"></i>
-          <div class="text-muted small">Total Items</div>
-          <h3 id="statTotalItems" class="text-primary">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-total"><i class="bi bi-boxes"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total Items</div>
+          <h3 id="statTotalItems">-</h3>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-danger"><div class="card-body">
-          <i class="bi bi-x-octagon text-danger fs-4"></i>
-          <div class="text-muted small">Out of Service</div>
-          <h3 id="statOutOfService" class="text-danger">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-advanced"><i class="bi bi-x-octagon"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Out of Service</div>
+          <h3 id="statOutOfService">-</h3>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-warning"><div class="card-body">
-          <i class="bi bi-exclamation-triangle text-warning fs-4"></i>
-          <div class="text-muted small" id="lowStockLabel">Low Stock</div>
-          <h3 id="statLowStock" class="text-warning">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-beginner"><i class="bi bi-exclamation-triangle"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold" id="lowStockLabel">Low Stock</div>
+          <h3 id="statLowStock">-</h3>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-success"><div class="card-body">
-          <i class="bi bi-cash-stack text-success fs-4"></i>
-          <div class="text-muted small">Inventory Value</div>
-          <h3 id="statInventoryValue" class="text-success">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-active"><i class="bi bi-cash-stack"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Inventory Value</div>
+          <h3 id="statInventoryValue">-</h3>
+        </div>
       </div>
     </div>
 
@@ -300,11 +300,11 @@
           </tr>
         </thead>
         <tbody id="equipTableBody">
-          <tr><td colspan="9" class="text-center text-muted py-4">Loading equipment�</td></tr>
+          <tr><td colspan="9" class="text-center text-muted py-4">Loading equipment...</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="d-flex justify-content-between align-items-center mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
       <small class="text-muted" id="equipPageInfo">Showing 0 of 0</small>
       <div>
         <button class="btn btn-sm btn-outline-secondary" id="prevEquipPageBtn" onclick="renderEquipmentPage(currentEquipPage - 1)">Previous</button>
@@ -366,23 +366,23 @@
 
     <hr />
 
-    <h3>Maintenance Records</h3>
+    <h3 class="mb-3 fw-bold">Maintenance Records</h3>
 
     <!-- -- Maintenance stat cards ----------------------------------------- -->
-    <div class="row mb-3">
+    <div class="row g-3 mb-4">
       <div class="col-md-3">
-        <div class="card text-center border-danger"><div class="card-body">
-          <i class="bi bi-clock-history text-danger fs-4"></i>
-          <div class="text-muted small">Overdue</div>
-          <h3 id="statOverdue" class="text-danger">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-advanced"><i class="bi bi-clock-history"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Overdue</div>
+          <h3 id="statOverdue">-</h3>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-secondary"><div class="card-body">
-          <i class="bi bi-wallet2 text-secondary fs-4"></i>
-          <div class="text-muted small">Total Maintenance Spend</div>
-          <h3 id="statMaintSpend" class="text-secondary">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-library"><i class="bi bi-wallet2"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total Maintenance Spend</div>
+          <h3 id="statMaintSpend">-</h3>
+        </div>
       </div>
     </div>
 
@@ -391,7 +391,7 @@
       <div class="col-auto">
         <label class="form-label">Equipment</label>
         <select id="maintEquipId" class="form-select" required style="min-width: 200px;">
-          <option value="">Loading equipment�</option>
+          <option value="">Loading equipment...</option>
         </select>
       </div>
       <div class="col-auto">
@@ -465,7 +465,7 @@
           </tr>
         </thead>
         <tbody id="maintTableBody">
-          <tr><td colspan="8" class="text-center text-muted py-4">Loading maintenance records�</td></tr>
+          <tr><td colspan="8" class="text-center text-muted py-4">Loading maintenance records...</td></tr>
         </tbody>
       </table>
     </div>
@@ -818,7 +818,7 @@
     const select = document.getElementById("maintEquipId");
     const current = select.value;
     select.innerHTML = equipmentCache.length
-      ? '<option value="">Select equipment�</option>' +
+      ? '<option value="">Select equipment...</option>' +
         equipmentCache.map(e => `<option value="${e.id}">${e.name} (${e.category || "-"})</option>`).join("")
       : '<option value="">No equipment found</option>';
     if (current) select.value = current;

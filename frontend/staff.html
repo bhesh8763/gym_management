@@ -126,7 +126,7 @@
 
       <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
-      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
       <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
 
       <div class="nav-section-label">Equipment</div>
@@ -143,7 +143,7 @@
 
   <div class="p-4 flex-grow-1">
     <div data-roles="OWNER" id="staffProfilesSection">
-      <h3>Staff Profiles</h3>
+      <h3 class="mb-3 fw-bold">Staff Profiles</h3>
 
       <!-- Staff stat cards -->
       <div class="row mb-4 g-3">
@@ -311,11 +311,11 @@
             <tr><th>Staff ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th class="text-end">Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
           </thead>
           <tbody id="profileTableBody">
-            <tr><td colspan="9" class="text-center text-muted py-4">Loading staff�</td></tr>
+            <tr><td colspan="9" class="text-center text-muted py-4">Loading staff...</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="d-flex justify-content-between align-items-center mb-5">
+      <div class="d-flex justify-content-between align-items-center mb-3">
         <small class="text-muted" id="staffPageInfo">Showing 0 of 0</small>
         <div>
           <button class="btn btn-sm btn-outline-secondary" id="prevStaffPageBtn" onclick="renderStaffPage(currentStaffPage - 1)">Previous</button>
@@ -385,35 +385,31 @@
       <!-- Quick-stats cards (staff sees own counts, owner sees all) -->
       <div class="row g-3 mb-4" id="leaveStatsRow">
         <div class="col-6 col-md-3">
-          <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-warning" id="statPending">–</div>
-              <div class="small text-muted">Pending</div>
-            </div>
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-beginner"><i class="bi bi-hourglass-split"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Pending</div>
+            <h3 id="statPending"></h3>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-success" id="statApproved">–</div>
-              <div class="small text-muted">Approved</div>
-            </div>
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-active"><i class="bi bi-check-circle"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Approved</div>
+            <h3 id="statApproved"></h3>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-danger" id="statRejected">–</div>
-              <div class="small text-muted">Rejected</div>
-            </div>
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-advanced"><i class="bi bi-x-circle"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Rejected</div>
+            <h3 id="statRejected"></h3>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card text-center border-0 shadow-sm">
-            <div class="card-body py-3">
-              <div class="fs-3 fw-bold text-secondary" id="statCancelled">–</div>
-              <div class="small text-muted">Cancelled</div>
-            </div>
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-total"><i class="bi bi-slash-circle"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Cancelled</div>
+            <h3 id="statCancelled"></h3>
           </div>
         </div>
       </div>
@@ -478,7 +474,7 @@
             </tr>
           </thead>
           <tbody id="leaveTableBody">
-            <tr><td colspan="10" class="text-center text-muted py-4">Loading�</td></tr>
+            <tr><td colspan="10" class="text-center text-muted py-4">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -574,7 +570,7 @@
             <div class="mb-3">
               <label class="form-label fw-semibold">Reason</label>
               <textarea id="reason" class="form-control" rows="3"
-                        placeholder="Briefly describe your reason for leave�" required></textarea>
+                        placeholder="Briefly describe your reason for leave..." required></textarea>
             </div>
 
             <div id="leaveError" class="alert alert-danger d-none"></div>
@@ -649,7 +645,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Review Note <span class="text-muted fw-normal">(optional)</span></label>
-            <textarea id="reviewNote" class="form-control" rows="2" placeholder="Add a note for the staff member�"></textarea>
+            <textarea id="reviewNote" class="form-control" rows="2" placeholder="Add a note for the staff member..."></textarea>
           </div>
           <div id="reviewError" class="alert alert-danger d-none"></div>
         </div>

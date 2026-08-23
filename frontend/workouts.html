@@ -30,7 +30,7 @@
   </a>
   <div class="topbar-search">
     <i class="bi bi-search"></i>
-    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone�" autocomplete="off">
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone..." autocomplete="off">
     <div class="topbar-search-results" id="globalSearchResults"></div>
   </div>
 
@@ -110,12 +110,9 @@
             <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
         </div>
     </div>
-
     <div class="p-4 flex-grow-1">
-        <h3>Workouts</h3>
-        <p class="text-muted">Build reusable training programs, then assign them to members.</p>
-
-        <div class="row mt-3 g-3">
+        <h3 class="mb-3 fw-bold">Workouts</h3>
+        <div class="row g-3 mb-4">
             <div class="col-md-3">
                 <div class="card stat-card h-100 shadow-sm">
                     <div class="stat-icon icon-total"><i class="bi bi-clipboard-data"></i></div>
@@ -146,7 +143,7 @@
             </div>
         </div>
 
-       
+
         <ul class="nav nav-pills mt-3 mb-3" id="moduleTabs">
             <li class="nav-item"><button class="nav-link active" data-module="templates" onclick="switchModule('templates')">Templates</button></li>
             <li class="nav-item"><button class="nav-link" data-module="assignments" onclick="switchModule('assignments')">Assignments</button></li>
@@ -171,7 +168,7 @@
                         </select>
                         <div class="input-group input-group-sm" style="width:220px;">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" id="searchTemplate" class="form-control" placeholder="Search templates�" onkeyup="debouncedTemplateSearch()">
+                            <input type="text" id="searchTemplate" class="form-control" placeholder="Search templates..." onkeyup="debouncedTemplateSearch()">
                         </div>
                         <button class="btn btn-primary btn-sm text-nowrap" data-bs-toggle="modal" data-bs-target="#createTemplateModal">
                             <i class="bi bi-plus-circle"></i> Create Template
@@ -278,7 +275,7 @@
         <div class="alert alert-warning py-2 small" id="assignApprovalWarning" style="display:none;">
           This template isn't Approved yet – submit it for review and get it approved before assigning.
         </div>
-        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members�</option></select></div>
+        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members...</option></select></div>
         <div class="mb-3"><label>Start date</label><input type="date" id="assignStartDate" class="form-control"></div>
         <div class="mb-3"><label>Goal note (optional)</label><input type="text" id="assignGoalNote" class="form-control" placeholder="e.g. prep for tournament"></div>
       </div>

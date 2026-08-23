@@ -7,6 +7,10 @@
   <link href="css/theme.css" rel="stylesheet">
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    .diet-toolbar{flex-wrap:nowrap}
+    @media(max-width:768px){.diet-toolbar{flex-wrap:wrap}}
+  </style>
 </head>
 <body>
 
@@ -19,7 +23,7 @@
   </a>
   <div class="topbar-search">
     <i class="bi bi-search"></i>
-    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone�" autocomplete="off">
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone..." autocomplete="off">
     <div class="topbar-search-results" id="globalSearchResults"></div>
   </div>
 
@@ -63,7 +67,6 @@
 <div id="page-content">
 <div class="d-flex">
 
-  <div class="d-flex">
   <div class="sidebar" id="sidebar">
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
@@ -85,12 +88,9 @@
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
 
-      <div class="nav-section-label">Membership</div>
-      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
-
-      <div class="nav-section-label">My Activity</div>
       <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
       <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
 
       <div class="nav-section-label">Equipment</div>
@@ -108,37 +108,35 @@
   <!-- -- Main content ------------------------------------------------------ -->
   <div class="p-4 flex-grow-1">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h3 class="mb-0"><i class="bi bi-egg-fried me-2 text-danger"></i>Diet Plans</h3>
-    </div>
+    <h3 class="mb-3 fw-bold"><i class="bi bi-egg-fried me-2 text-danger"></i>Diet Plans</h3>
 
     <!-- Stat cards -->
     <div class="row g-3 mb-4">
       <div class="col-6 col-md-3">
-        <div class="card stat-card stat-accent stat-info">
-          <div class="stat-icon"><i class="bi bi-journal-text"></i></div>
-          <div class="text-uppercase text-muted small fw-semibold">Total Plans</div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-total"><i class="bi bi-journal-text"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total Plans</div>
           <h3 id="statTotal">–</h3>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="card stat-card stat-accent stat-success">
-          <div class="stat-icon"><i class="bi bi-check-circle"></i></div>
-          <div class="text-uppercase text-muted small fw-semibold">Active Plans</div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-active"><i class="bi bi-check-circle"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Active Plans</div>
           <h3 id="statActive">–</h3>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="card stat-card stat-accent stat-warning">
-          <div class="stat-icon"><i class="bi bi-arrow-down-circle"></i></div>
-          <div class="text-uppercase text-muted small fw-semibold">Weight Loss</div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-beginner"><i class="bi bi-arrow-down-circle"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Weight Loss</div>
           <h3 id="statWeightLoss">–</h3>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="card stat-card stat-accent stat-danger">
-          <div class="stat-icon"><i class="bi bi-arrow-up-circle"></i></div>
-          <div class="text-uppercase text-muted small fw-semibold">Muscle Gain</div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-library"><i class="bi bi-arrow-up-circle"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Muscle Gain</div>
           <h3 id="statMuscleGain">–</h3>
         </div>
       </div>
@@ -146,13 +144,13 @@
 
 
     <!-- Toolbar: search + goal filter + create button -->
-    <div class="card mb-3">
-      <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="card mb-3 plans-list-card">
+      <div class="card-body d-flex justify-content-between align-items-center gap-2 flex-wrap diet-toolbar">
         <div class="d-flex align-items-center gap-3">
           <h4 class="mb-0">Plans List</h4>
           <span class="badge bg-secondary" id="planCountBadge">0</span>
         </div>
-        <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end flex-wrap" style="max-width:560px;">
+        <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end">
           <!-- Goal filter -->
           <select id="goalFilter" class="form-select" style="max-width:160px;" onchange="applyFilters()">
             <option value="">All Goals</option>
@@ -165,7 +163,7 @@
           <!-- Search -->
           <div class="input-group" style="max-width:220px;">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="searchPlan" class="form-control" placeholder="Search plans�" oninput="applyFilters()">
+            <input type="text" id="searchPlan" class="form-control" placeholder="Search plans..." oninput="applyFilters()">
           </div>
           <!-- Create button (hidden for MEMBER role) -->
           <button class="btn btn-primary text-nowrap staff-only"
@@ -193,7 +191,7 @@
               </tr>
             </thead>
             <tbody id="plansTable">
-              <tr><td colspan="7" class="text-center text-muted py-4">Loading�</td></tr>
+              <tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -217,7 +215,7 @@
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label fw-semibold">Member <span class="text-danger">*</span></label>
-            <select id="createMember" class="form-select"><option value="">Loading members�</option></select>
+            <select id="createMember" class="form-select"><option value="">Loading members...</option></select>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold">Plan Name <span class="text-danger">*</span></label>
@@ -379,7 +377,7 @@
         <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Diet Plan Details</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body" id="viewPlanBody">Loading�</div>
+      <div class="modal-body" id="viewPlanBody">Loading...</div>
     </div>
   </div>
 </div>

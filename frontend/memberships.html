@@ -84,7 +84,7 @@
 
       <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
-      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Membership</span></a>
+      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
       <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
 
       <div class="nav-section-label">Equipment</div>
@@ -100,33 +100,32 @@
   </div>
 
   <div class="p-4 flex-grow-1">
-    <h3>Memberships</h3>
-
-    <div class="row mb-4">
+    <h3 class="mb-3 fw-bold">Memberships</h3>
+    <div class="row g-3 mb-4">
       <div class="col-md-3">
-        <div class="card stat-card stat-accent stat-success">
-          <div class="stat-icon"><i class="bi bi-person-check"></i></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-active"><i class="bi bi-person-check"></i></div>
           <div class="text-muted small text-uppercase fw-semibold">Active</div>
           <h3 id="statActive" class="text-success">-</h3>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card stat-card stat-accent stat-warning">
-          <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-beginner"><i class="bi bi-clock-history"></i></div>
           <div class="text-muted small text-uppercase fw-semibold">Expiring (7 days)</div>
           <h3 id="statExpiring" class="text-warning">-</h3>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card stat-card stat-accent stat-info">
-          <div class="stat-icon"><i class="bi bi-pause-circle"></i></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-library"><i class="bi bi-pause-circle"></i></div>
           <div class="text-muted small text-uppercase fw-semibold">Frozen</div>
           <h3 id="statFrozen" class="text-info">-</h3>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card stat-card stat-accent stat-danger">
-          <div class="stat-icon"><i class="bi bi-x-circle"></i></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-advanced"><i class="bi bi-x-circle"></i></div>
           <div class="text-muted small text-uppercase fw-semibold">Expired</div>
           <h3 id="statExpired" class="text-secondary">-</h3>
         </div>
@@ -414,7 +413,7 @@
               <i class="bi bi-eye me-1"></i> Toggle Full Details
             </button>
           </div>
-          
+
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
               <strong class="fs-5" id="membershipManagePlan">–</strong>
@@ -612,7 +611,7 @@
         <div class="notif-item" role="button" style="cursor:pointer"
              onclick="selectMember(${m.user_id}, '${(m.full_name + ' – ' + m.email).replace(/'/g, "\\'")}')">
           <strong>${m.full_name}</strong><br>
-          <span class="text-muted small">${m.email}${m.phone ? ' � ' + m.phone : ''}</span>
+          <span class="text-muted small">${m.email}${m.phone ? ' | ' + m.phone : ''}</span>
         </div>`).join('');
     }
     box.classList.add('show');
@@ -706,17 +705,17 @@
     document.getElementById('editPlanPrice').value = p.price;
     document.getElementById('editPlanDescription').value = p.description || '';
     document.getElementById('editPlanStatus').value = p.is_active ? 'true' : 'false';
-    
+
     // Set up duration field state based on billing cycle
     toggleDurationField();
-    
+
     new bootstrap.Modal(document.getElementById('editPlanModal')).show();
   }
 
   function toggleDurationField() {
     const cycle = document.getElementById('editPlanCycle').value;
     const durationField = document.getElementById('editPlanDuration');
-    
+
     if (cycle === 'CUSTOM') {
       durationField.disabled = false;
       durationField.style.backgroundColor = '';
@@ -742,7 +741,7 @@
     const cycle = document.getElementById('planCycle').value;
     const durationField = document.getElementById('planDuration');
     const hint = document.getElementById('durationHint');
-    
+
     if (cycle === 'CUSTOM') {
       durationField.disabled = false;
       durationField.style.backgroundColor = '';

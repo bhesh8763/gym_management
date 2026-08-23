@@ -142,37 +142,37 @@
   </div>
 
   <div class="p-4 flex-grow-1">
-    <h3>Lockers</h3>
+    <h3 class="mb-3 fw-bold">Lockers</h3>
 
     <!-- -- Locker stat cards ---------------------------------------------- -->
-    <div class="row mb-4">
+    <div class="row g-3 mb-4">
       <div class="col-md-3">
-        <div class="card text-center border-primary"><div class="card-body">
-          <i class="bi bi-grid-3x3-gap text-primary fs-4"></i>
-          <div class="text-muted small">Total Lockers</div>
-          <h3 id="statTotalLockers" class="text-primary">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-total"><i class="bi bi-grid-3x3-gap"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total Lockers</div>
+          <h3 id="statTotalLockers">-</h3>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-warning"><div class="card-body">
-          <i class="bi bi-lock-fill text-warning fs-4"></i>
-          <div class="text-muted small">Occupied</div>
-          <h3 id="statOccupied" class="text-warning">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-beginner"><i class="bi bi-lock-fill"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Occupied</div>
+          <h3 id="statOccupied">-</h3>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-success"><div class="card-body">
-          <i class="bi bi-unlock text-success fs-4"></i>
-          <div class="text-muted small">Available</div>
-          <h3 id="statAvailable" class="text-success">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-active"><i class="bi bi-unlock"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Available</div>
+          <h3 id="statAvailable">-</h3>
+        </div>
       </div>
       <div class="col-md-3">
-        <div class="card text-center border-secondary"><div class="card-body">
-          <i class="bi bi-cash-stack text-secondary fs-4"></i>
-          <div class="text-muted small">Monthly Revenue</div>
-          <h3 id="statRevenue" class="text-secondary">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-library"><i class="bi bi-cash-stack"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Monthly Revenue</div>
+          <h3 id="statRevenue">-</h3>
+        </div>
       </div>
     </div>
 
@@ -254,11 +254,11 @@
           <tr><th>ID</th><th>Number</th><th>Location</th><th>Status</th><th>Fee</th><th data-no-export>Actions</th></tr>
         </thead>
         <tbody id="lockerTableBody">
-          <tr><td colspan="6" class="text-center text-muted py-4">Loading lockers�</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-4">Loading lockers...</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="d-flex justify-content-between align-items-center mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
       <small class="text-muted" id="lockerPageInfo">Showing 0 of 0</small>
       <div>
         <button class="btn btn-sm btn-outline-secondary" id="prevLockerPageBtn" onclick="renderLockerPage(currentLockerPage - 1)">Previous</button>
@@ -318,7 +318,7 @@
       <div class="col-auto">
         <label class="form-label">Locker</label>
         <select id="assignLockerId" class="form-select" required style="min-width: 160px;">
-          <option value="">Loading lockers�</option>
+          <option value="">Loading lockers...</option>
         </select>
       </div>
       <div class="col-auto position-relative">
@@ -375,7 +375,7 @@
           <tr><th>ID</th><th>Locker #</th><th>Member</th><th>Start</th><th>End</th><th>Active</th><th data-no-export>Actions</th></tr>
         </thead>
         <tbody id="assignTableBody">
-          <tr><td colspan="7" class="text-center text-muted py-4">Loading assignments�</td></tr>
+          <tr><td colspan="7" class="text-center text-muted py-4">Loading assignments...</td></tr>
         </tbody>
       </table>
     </div>
@@ -512,7 +512,7 @@
     const select = document.getElementById('assignLockerId');
     const available = lockerCache.filter(l => l.status === 'AVAILABLE');
     select.innerHTML = available.length
-      ? '<option value="">Select a locker�</option>' +
+      ? '<option value="">Select a locker...</option>' +
         available.map(l => `<option value="${l.id}">${l.locker_number} (${l.location || '-'})</option>`).join('')
       : '<option value="">No available lockers</option>';
   }
@@ -647,7 +647,7 @@
         <div class="notif-item" role="button" style="cursor:pointer"
              onclick="selectAssignMember(${m.user_id}, '${(m.full_name + ' – ' + m.email).replace(/'/g, "\\'")}')">
           <strong>${m.full_name}</strong><br>
-          <span class="text-muted small">${m.email}${m.phone ? ' � ' + m.phone : ''}</span>
+          <span class="text-muted small">${m.email}${m.phone ? ' | ' + m.phone : ''}</span>
         </div>`).join('');
     }
     box.classList.add('show');

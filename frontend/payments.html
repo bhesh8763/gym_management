@@ -100,27 +100,30 @@
   </div>
 
   <div class="p-4 flex-grow-1">
-    <h3>Payments</h3>
+    <h3 class="mb-3 fw-bold">Payments</h3>
     <div id="filterBanner" class="alert alert-info d-none"></div>
 
-    <div class="row mb-4">
+    <div class="row g-3 mb-4">
       <div class="col-md-4">
-        <div class="card text-center border-success"><div class="card-body">
-          <div class="text-muted small">Total Collected</div>
-          <h3 id="statCollected" class="text-success">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-active"><i class="bi bi-cash-stack"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total Collected</div>
+          <h3 id="statCollected">-</h3>
+        </div>
       </div>
       <div class="col-md-4">
-        <div class="card text-center border-warning"><div class="card-body">
-          <div class="text-muted small">Pending</div>
-          <h3 id="statPending" class="text-warning">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-beginner"><i class="bi bi-hourglass-split"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Pending</div>
+          <h3 id="statPending">-</h3>
+        </div>
       </div>
       <div class="col-md-4">
-        <div class="card text-center border-secondary"><div class="card-body">
-          <div class="text-muted small">Total Transactions</div>
-          <h3 id="statCount" class="text-secondary">-</h3>
-        </div></div>
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-total"><i class="bi bi-receipt"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total Transactions</div>
+          <h3 id="statCount">-</h3>
+        </div>
       </div>
     </div>
 
@@ -142,7 +145,7 @@
             <div class="modal-body">
               <div class="mb-2">
                 <label class="form-label">Member</label>
-                <select id="member" class="form-select" required><option value="">Loading members�</option></select>
+                <select id="member" class="form-select" required><option value="">Loading members...</option></select>
               </div>
               <div class="mb-2">
                 <label class="form-label">For</label>

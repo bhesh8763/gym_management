@@ -27,7 +27,7 @@
   </a>
   <div class="topbar-search">
     <i class="bi bi-search"></i>
-    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone�" autocomplete="off">
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone..." autocomplete="off">
     <div class="topbar-search-results" id="globalSearchResults"></div>
   </div>
 
@@ -105,7 +105,7 @@
 
         <div id="loadingState" class="text-center text-muted py-5">
             <div class="spinner-border" role="status"></div>
-            <div class="mt-2">Loading your workouts�</div>
+            <div class="mt-2">Loading your workouts...</div>
         </div>
 
         <div id="noAssignmentsState" class="alert alert-secondary" style="display:none;">
@@ -206,7 +206,7 @@ async function loadMyWorkouts() {
                 <div class="progress mt-2 mb-3" style="height:8px;">
                     <div class="progress-bar ${assignment.completion_pct >= 70 ? 'bg-success' : assignment.completion_pct >= 40 ? 'bg-warning' : 'bg-danger'}" style="width:${assignment.completion_pct || 0}%"></div>
                 </div>
-                <div id="days-${assignment.id}" class="text-muted small">Loading days�</div>
+                <div id="days-${assignment.id}" class="text-muted small">Loading days...</div>
             </div>
         `;
         container.appendChild(card);
@@ -224,10 +224,10 @@ async function loadDaysForAssignment(assignment) {
     holder.innerHTML = days.map(d => `
         <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
             <div>
-                <strong>Week ${d.week_number} � Day ${d.day_number}</strong> ${d.day_name ? '– ' + d.day_name : ''}
+                <strong>Week ${d.week_number} - Day ${d.day_number}</strong> ${d.day_name ? '– ' + d.day_name : ''}
                 <div class="text-muted small">${(d.exercises || []).length} exercise(s)</div>
             </div>
-            <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} � Day ${d.day_number}')">
+            <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} - Day ${d.day_number}')">
                 <i class="bi bi-check2-square"></i> Log
             </button>
         </div>

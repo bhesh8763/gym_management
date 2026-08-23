@@ -102,7 +102,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                     <div>
-                        <h3 class="mb-1" id="tName">Loading�</h3>
+                        <h3 class="mb-1" id="tName">Loading...</h3>
                         <span id="tDifficulty"></span> <span id="tStatus"></span>
                     </div>
                     <div class="d-flex gap-2 flex-wrap" id="tActions"></div>
@@ -158,12 +158,12 @@
         <input type="hidden" id="exTargetDayId">
         <input type="hidden" id="exEditId">
         <div id="exStep1">
-          <div class="text-muted small text-uppercase fw-bold mb-2">Step 1 � Search Library</div>
-          <input type="text" id="exSearchInput" class="form-control mb-2" placeholder="Search exercises�" onkeyup="renderExSearchList()">
+          <div class="text-muted small text-uppercase fw-bold mb-2">Step 1 - Search Library</div>
+          <input type="text" id="exSearchInput" class="form-control mb-2" placeholder="Search exercises..." onkeyup="renderExSearchList()">
           <div id="exSearchList" style="max-height:240px; overflow:auto;"></div>
         </div>
         <div id="exStep2" style="display:none;">
-          <div class="text-muted small text-uppercase fw-bold mb-2">Step 2 � Configure – <span id="exChosenName" class="text-dark"></span></div>
+          <div class="text-muted small text-uppercase fw-bold mb-2">Step 2 - Configure – <span id="exChosenName" class="text-dark"></span></div>
           <input type="hidden" id="exChosenId">
           <div class="row">
             <div class="col-4 mb-2"><label class="small">Sets</label><input type="number" id="exSets" class="form-control" value="3"></div>
@@ -190,7 +190,7 @@
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Assign Template</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members�</option></select></div>
+        <div class="mb-3"><label>Member</label><select id="assignMember" class="form-select"><option value="">Loading members...</option></select></div>
         <div class="mb-3"><label>Start date</label><input type="date" id="assignStartDate" class="form-control"></div>
         <div class="mb-3"><label>Goal note (optional)</label><input type="text" id="assignGoalNote" class="form-control"></div>
       </div>
@@ -297,7 +297,7 @@ function renderDays() {
         <div class="card mb-2">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#day-${d.id}">
-                    <strong>Week ${d.week_number} � Day ${d.day_number}</strong> ${d.day_name ? '– ' + d.day_name : ''} <span class="text-muted small">(${(d.exercises||[]).length} exercises)</span>
+                    <strong>Week ${d.week_number} - Day ${d.day_number}</strong> ${d.day_name ? '– ' + d.day_name : ''} <span class="text-muted small">(${(d.exercises||[]).length} exercises)</span>
                 </div>
                 <div class="d-flex align-items-center gap-1">
                     <button class="btn btn-sm btn-outline-secondary" title="Move up" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation(); moveDay(${d.id}, 'up')"><i class="bi bi-arrow-up"></i></button>
@@ -320,7 +320,7 @@ function renderDays() {
                                         </div>
                                     </div>
                                     <div class="text-muted small mb-1">${ex.muscle_group || ''}</div>
-                                    <div class="small">${ex.sets || '-'} sets � ${ex.reps || '-'} reps � ${ex.rest_seconds || 0}s rest${ex.rpe ? ' � RPE ' + ex.rpe : ''}</div>
+                                    <div class="small">${ex.sets || '-'} sets - ${ex.reps || '-'} reps - ${ex.rest_seconds || 0}s rest${ex.rpe ? ' - RPE ' + ex.rpe : ''}</div>
                                     ${ex.notes ? `<div class="fst-italic small text-muted mt-1">"${ex.notes}"</div>` : ''}
                                 </div>
                             </div>
@@ -488,7 +488,7 @@ async function loadHistoryTab() {
         <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
             <div>
                 <strong>${reasonLabel[v.reason] || v.reason}</strong>
-                <div class="text-muted small">${new Date(v.created_at).toLocaleString()} ${v.created_by_name ? '� ' + v.created_by_name : ''} � ${v.snapshot.days.length} day(s)</div>
+                <div class="text-muted small">${new Date(v.created_at).toLocaleString()} ${v.created_by_name ? '- ' + v.created_by_name : ''} - ${v.snapshot.days.length} day(s)</div>
             </div>
             <button class="btn btn-sm btn-outline-warning" onclick="restoreVersion(${v.id})"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
         </div>
@@ -509,7 +509,7 @@ async function loadMembersTab() {
     const assignments = data.results || data;
     document.getElementById('membersContainer').innerHTML = assignments.map(a => `
         <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
-            <div><strong>${a.member_name}</strong> <span class="text-muted small">� ${a.completion_pct}% complete</span></div>
+            <div><strong>${a.member_name}</strong> <span class="text-muted small">- ${a.completion_pct}% complete</span></div>
             <span class="badge bg-${a.status === 'ACTIVE' ? 'success' : a.status === 'PAUSED' ? 'warning' : 'secondary'}">${a.status}</span>
         </div>
     `).join('') || '<div class="alert alert-secondary">No members assigned yet.</div>';

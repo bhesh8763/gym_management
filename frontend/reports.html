@@ -100,33 +100,36 @@
   </div>
 
   <div class="p-4 flex-grow-1">
-    <h3>Reports & Analytics</h3>
-
+    <h3 class="mb-3 fw-bold">Reports & Analytics</h3>
     <!-- KPI cards -->
-    <div class="row mb-4" id="kpiRow">
-      <div class="col-md-3 mb-2">
-        <div class="card text-center border-success"><div class="card-body">
-          <div class="text-muted small">Revenue This Month</div>
-          <h4 id="kpiRevenue" class="text-success mb-0">-</h4>
-        </div></div>
+    <div class="row g-3 mb-4" id="kpiRow">
+      <div class="col-md-3">
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-active"><i class="bi bi-cash-stack"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Revenue This Month</div>
+          <h3 id="kpiRevenue">-</h3>
+        </div>
       </div>
-      <div class="col-md-3 mb-2">
-        <div class="card text-center border-primary"><div class="card-body">
-          <div class="text-muted small">Active Memberships</div>
-          <h4 id="kpiMemberships" class="text-primary mb-0">-</h4>
-        </div></div>
+      <div class="col-md-3">
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-total"><i class="bi bi-people"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Active Memberships</div>
+          <h3 id="kpiMemberships">-</h3>
+        </div>
       </div>
-      <div class="col-md-3 mb-2">
-        <div class="card text-center border-info"><div class="card-body">
-          <div class="text-muted small">Locker Occupancy</div>
-          <h4 id="kpiLockers" class="text-info mb-0">-</h4>
-        </div></div>
+      <div class="col-md-3">
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-library"><i class="bi bi-lock"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Locker Occupancy</div>
+          <h3 id="kpiLockers">-</h3>
+        </div>
       </div>
-      <div class="col-md-3 mb-2">
-        <div class="card text-center border-warning"><div class="card-body">
-          <div class="text-muted small">Check-ins Today</div>
-          <h4 id="kpiAttendance" class="text-warning mb-0">-</h4>
-        </div></div>
+      <div class="col-md-3">
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-beginner"><i class="bi bi-calendar-check"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Check-ins Today</div>
+            <h3 id="kpiAttendance">-</h3>
+          </div>
       </div>
     </div>
 
