@@ -151,11 +151,6 @@
     <img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
     <span style="font-size:1.5rem;font-weight:700;">FitCore</span>
   </a>
-  <div class="topbar-search">
-    <i class="bi bi-search"></i>
-    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
-    <div class="topbar-search-results" id="globalSearchResults"></div>
-  </div>
   <div class="position-relative">
     <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
       <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
@@ -190,6 +185,128 @@
 </nav>
 
 <div id="page-content">
+<style>
+  .plan-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+  }
+  .plan-card:hover {
+    border-color: var(--brand-red);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(230, 57, 70, 0.15);
+  }
+  .plan-card.popular {
+    border-color: var(--brand-red);
+  }
+  .plan-card.popular::before {
+    content: 'POPULAR';
+    position: absolute;
+    top: 12px;
+    right: -30px;
+    background: var(--brand-red);
+    color: #fff;
+    padding: 4px 36px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    transform: rotate(45deg);
+    letter-spacing: 1px;
+  }
+  .plan-price {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  .plan-price small {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .plan-cycle {
+    display: inline-block;
+    background: #f3f4f6;
+    color: var(--text-secondary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 0.75rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+    text-align: left;
+  }
+  .plan-features li {
+    padding: 6px 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .plan-features li i {
+    color: #10b981;
+    font-size: 0.85rem;
+  }
+  .plan-duration {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+  .status-card {
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .status-card.active {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 1px solid #a7f3d0;
+  }
+  .status-card.expired {
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    border: 1px solid #fecaca;
+  }
+  .status-card.frozen {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border: 1px solid #bfdbfe;
+  }
+  .status-card.pending {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 1px solid #fde68a;
+  }
+  .status-card .status-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+  .status-card.active .status-icon { background: #10b981; color: #fff; }
+  .status-card.expired .status-icon { background: #ef4444; color: #fff; }
+  .status-card.frozen .status-icon { background: #3b82f6; color: #fff; }
+  .status-card.pending .status-icon { background: #f59e0b; color: #fff; }
+  .history-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+    transition: background 0.2s;
+  }
+  .history-item:hover { background: #f9fafb; }
+</style>
 <div class="d-flex">
   <div class="sidebar" id="sidebar">
     <div class="list-group list-group-flush pt-2">
@@ -206,8 +323,8 @@
       <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
 
       <div class="nav-section-label">Workout & Diet</div>
-      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
-      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+      <a href="workouts.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
 
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>

@@ -324,7 +324,7 @@ syncSidebarCollapsedState();
 
     let doc;
     try {
-      const res = await fetch(url, { credentials: 'same-origin' });
+      const res = await fetch(url, { credentials: 'same-origin', cache: 'no-cache' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       doc = new DOMParser().parseFromString(await res.text(), 'text/html');
     } catch (err) {

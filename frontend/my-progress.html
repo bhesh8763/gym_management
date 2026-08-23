@@ -18,11 +18,6 @@
         <img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
         <span style="font-size:1.5rem;font-weight:700;">FitCore</span>
     </a>
-    <div class="topbar-search">
-        <i class="bi bi-search"></i>
-        <input type="text" id="globalSearch" placeholder="Search..." autocomplete="off">
-        <div class="topbar-search-results" id="globalSearchResults"></div>
-    </div>
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
             <i class="bi bi-bell"></i>
@@ -59,6 +54,47 @@
 </nav>
 
 <div id="page-content">
+<style>
+  .progress-stat-card { border:none;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;position:relative;overflow:hidden;background:var(--bg-card);border:1px solid var(--border-card); }
+  .progress-stat-card .stat-label { font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px; }
+  .progress-stat-card .stat-value { font-size:1.75rem;font-weight:800;line-height:1.1;color:var(--text-primary); }
+  .progress-stat-card .stat-delta { font-size:0.72rem;font-weight:600;margin-top:2px; }
+  .progress-stat-card .stat-delta.neutral { color:var(--text-muted); }
+  .progress-stat-card .stat-delta .positive { color:var(--color-success); }
+  .progress-stat-card .stat-delta .negative { color:var(--brand-red); }
+  .progress-stat-card .stat-bg-icon { position:absolute;top:12px;right:14px;font-size:2.5rem;color:var(--border-light);opacity:0.4; }
+  .chart-section { border:none;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;background:var(--bg-card);border:1px solid var(--border-card); }
+  .chart-title { font-weight:700;font-size:0.95rem;color:var(--text-primary);margin-bottom:12px; }
+  .goal-card { border:none;border-radius:var(--radius-lg);padding:1.25rem 1.5rem;background:var(--bg-card);border:1px solid var(--border-card); }
+  .goal-progress-track { width:100%;height:8px;background:var(--border-light);border-radius:var(--radius-full);overflow:hidden;margin-bottom:8px; }
+  .goal-progress-fill { height:100%;background:linear-gradient(90deg,var(--brand-red),var(--brand-red-light));border-radius:var(--radius-full);transition:width 0.5s ease; }
+  .streak-badge { display:inline-flex;align-items:center;gap:4px;background:var(--color-warning-bg);color:#d97706;padding:4px 10px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:600; }
+  .cal-heatmap { display:grid;grid-template-columns:repeat(auto-fill,10px);gap:3px; }
+  .cal-cell { width:10px;height:10px;border-radius:2px;background:var(--border-light);transition:background var(--transition-fast); }
+  .cal-cell.active { background:var(--brand-red); }
+  .cal-cell.today { outline:2px solid var(--brand-red);outline-offset:1px; }
+  .compare-table { width:100%;border-collapse:collapse; }
+  .compare-table th { font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:10px 14px;border-bottom:2px solid var(--border-light); }
+  .compare-table td { padding:10px 14px;font-size:0.85rem;border-bottom:1px solid var(--border-light);color:var(--text-primary); }
+  .compare-table tr:last-child td { border-bottom:none; }
+  .delta-up { color:var(--color-success);font-weight:600; }
+  .delta-down { color:var(--brand-red);font-weight:600; }
+  .measure-bar-row { display:flex;align-items:center;gap:12px;margin-bottom:10px; }
+  .measure-bar-label { min-width:60px;font-size:0.8rem;font-weight:600;color:var(--text-secondary); }
+  .measure-bar-track { flex:1;height:8px;background:var(--border-light);border-radius:var(--radius-full);overflow:hidden; }
+  .measure-bar-fill { height:100%;border-radius:var(--radius-full);transition:width 0.5s ease; }
+  .measure-bar-values { min-width:140px;font-size:0.78rem;color:var(--text-secondary);text-align:right; }
+  .measure-bar-values .arrow { font-weight:700;margin-left:4px; }
+  .measure-bar-values .arrow.up { color:var(--color-success); }
+  .measure-bar-values .arrow.down { color:var(--brand-red); }
+  .pr-card { border:1px solid var(--border-card);border-radius:var(--radius-md);padding:1rem 1.25rem;background:var(--bg-card);transition:box-shadow var(--transition-fast); }
+  .pr-card:hover { box-shadow:var(--shadow-md); }
+  .pr-name { font-weight:700;font-size:0.85rem;color:var(--text-primary);margin-bottom:6px; }
+  .pr-values { font-size:0.78rem;color:var(--text-secondary);margin-bottom:4px; }
+  .pr-delta { font-size:0.72rem;font-weight:600; }
+  .pr-delta.up { color:var(--color-success); }
+  .pr-delta.down { color:var(--brand-red); }
+</style>
 <div class="d-flex">
     <div class="sidebar" id="sidebar">
         <div class="list-group list-group-flush pt-2">
@@ -72,8 +108,8 @@
             <div class="nav-section-label">Staff Management</div>
             <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
             <div class="nav-section-label">Workout & Diet</div>
-            <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
-            <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+            <a href="workouts.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+            <a href="diet.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
             <div class="nav-section-label">Payments</div>
             <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
 
