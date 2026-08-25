@@ -63,6 +63,7 @@
 <div id="page-content">
 
 <div class="d-flex">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
   <div class="sidebar" id="sidebar">
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
@@ -220,7 +221,10 @@
 <script>
   if (!getAccessToken()) window.location.href = 'login.html';
 
-
+  // Chart.js dark mode defaults
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  Chart.defaults.color = isDark ? '#94a3b8' : '#6b7280';
+  Chart.defaults.borderColor = isDark ? '#1e293b' : '#e5e7eb';
 
   // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
 

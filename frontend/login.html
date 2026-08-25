@@ -105,15 +105,6 @@
 
 <script src="js/api.js"></script>
 <script>
-  // Clear fields on load — prevents browser from silently pre-filling
-  // a saved/generated password before the user interacts with the form.
-  // The autocomplete attributes are kept so the browser still *offers*
-  // its credential picker when the user clicks into the field.
-  window.addEventListener('load', () => {
-    document.getElementById('email').value = '';
-    document.getElementById('password').value = '';
-  });
-
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value;

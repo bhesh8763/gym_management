@@ -379,9 +379,10 @@ syncSidebarCollapsedState();
     enforcePageRoleAccess();
     syncSidebarCollapsedState();
 
-    // Update sidebar active state after content swap
+    // Update sidebar active state after content swap (ignore query params)
+    const currentPage = url.split('?')[0];
     document.querySelectorAll('.sidebar a.list-group-item').forEach(a => {
-      a.classList.toggle('active', a.getAttribute('href') === url);
+      a.classList.toggle('active', a.getAttribute('href') === currentPage);
     });
 
     doc.querySelectorAll('script:not([src])').forEach(scriptEl => {
@@ -390,6 +391,17 @@ syncSidebarCollapsedState();
 
     if (push) history.pushState({ spaUrl: url }, '', url);
     window.scrollTo(0, 0);
+
+    // Auto-open modals via ?action=add on any page
+    const actionParam = new URLSearchParams(window.location.search).get('action');
+    if (actionParam === 'add') {
+      setTimeout(() => {
+        const addMemberModal = document.getElementById('addMemberModal');
+        const addPaymentModal = document.getElementById('paymentAddModal');
+        if (addMemberModal) new bootstrap.Modal(addMemberModal).show();
+        else if (addPaymentModal) new bootstrap.Modal(addPaymentModal).show();
+      }, 500);
+    }
   }
 
   // FIX #4: previously only `.sidebar a[href]` clicks were intercepted, so
@@ -404,6 +416,14 @@ syncSidebarCollapsedState();
     if (!link) return;
     const href = link.getAttribute('href');
     if (!href || /^https?:\/\//.test(href) || href.startsWith('#')) return;
+
+    // Close mobile sidebar on sidebar nav click
+    if (window.innerWidth <= 768 && link.closest('.sidebar')) {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (sidebar) sidebar.classList.remove('mobile-open');
+      if (overlay) overlay.classList.remove('mobile-open');
+    }
 
     e.preventDefault();
     const current = window.location.pathname.split('/').pop() || 'dashboard.html';
@@ -478,6 +498,8 @@ function toggleSidebar() {
   if (!sidebar) return;
   if (window.innerWidth <= 768) {
     sidebar.classList.toggle('mobile-open');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (overlay) overlay.classList.toggle('mobile-open');
   } else {
     sidebar.classList.toggle('collapsed');
   }
@@ -1014,6 +1036,19 @@ function injectDarkModeToggle() {
 // Apply saved theme immediately so there's no flash of wrong theme
 applyTheme();
 injectDarkModeToggle();
+
+// Auto-open modals via ?action=add on initial page load
+window.addEventListener('load', () => {
+  const actionParam = new URLSearchParams(window.location.search).get('action');
+  if (actionParam === 'add') {
+    setTimeout(() => {
+      const addMemberModal = document.getElementById('addMemberModal');
+      const addPaymentModal = document.getElementById('paymentAddModal');
+      if (addMemberModal) new bootstrap.Modal(addMemberModal).show();
+      else if (addPaymentModal) new bootstrap.Modal(addPaymentModal).show();
+    }, 500);
+  }
+});
 
 // ── Custom Confirm Modal ───────────────────────────────────────────
 // Replaces the browser's native confirm() with a styled modal that
