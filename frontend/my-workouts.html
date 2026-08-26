@@ -2,29 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Workouts - FitCore</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <style>
-        body { display:flex;flex-direction:column;height:100vh;min-height:100vh;overflow:hidden;margin:0;background:#f5f6f8;font-family:'Inter',system-ui,-apple-system,sans-serif;color:#111827; }
-        .topbar { flex:0 0 auto;background:#0f1015;padding:0 1.25rem;height:56px;display:flex;align-items:center;gap:0.75rem;z-index:100;position:relative; }
-        .topbar .sidebar-toggle { background:none;border:none;color:#9ca3af;font-size:1.25rem;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
-        .topbar .sidebar-toggle:hover { color:#fff;background:rgba(255,255,255,0.08); }
-        .topbar .navbar-brand,.topbar a.navbar-brand { color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;display:flex;align-items:center; }
-        .topbar .navbar-brand span { color:#fff !important;text-decoration:none !important; }
-        #page-content { display:flex;flex:1 1 auto;min-height:0; }
-        #page-content > .d-flex { flex:1 1 auto;min-height:0; }
-        #page-content .flex-grow-1 { height:100%;min-height:0;overflow-y:auto; }
-        .sidebar { background:#111218;flex:0 0 240px;width:240px;min-height:0;max-height:none;align-self:stretch;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.04); }
-        .sidebar .list-group-item { background-color:transparent;color:#9ca3af;border:none;padding:9px 16px;margin:2px 8px;font-weight:500;font-size:0.85rem;border-radius:10px;display:flex;align-items:center;gap:10px;text-decoration:none; }
-        .sidebar .list-group-item:hover { background-color:rgba(255,255,255,0.06);color:#fff !important; }
-        .sidebar .list-group-item.active { background:linear-gradient(135deg,#e63946,#c62f3b);color:#fff !important; }
-        .nav-section-label { color:rgba(255,255,255,0.3);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:18px 16px 6px; }
-        nav.topbar a.navbar-brand, nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
-        nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
-    </style>
 </head>
 <body data-allowed-roles="MEMBER">
 
@@ -116,16 +99,22 @@
   </div>
 
     <div class="p-4 flex-grow-1">
-        <h3>My Workouts</h3>
-        <p class="text-muted">Your assigned training programs – log a session whenever you finish one.</p>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+          <div>
+            <h3 class="mb-1 fw-800" style="font-size:1.5rem;">My Workouts</h3>
+            <div class="text-muted" style="font-size:0.85rem;">Your assigned training programs — log a session whenever you finish one.</div>
+          </div>
+        </div>
 
         <div id="loadingState" class="text-center text-muted py-5">
             <div class="spinner-border" role="status"></div>
             <div class="mt-2">Loading your workouts...</div>
         </div>
 
-        <div id="noAssignmentsState" class="alert alert-secondary" style="display:none;">
-            You don't have a workout plan assigned yet – ask your trainer to assign one.
+        <div id="noAssignmentsState" class="empty-state" style="display:none;">
+          <i class="bi bi-heart-pulse"></i>
+          <h5>No Workout Plan Yet</h5>
+          <p>You don't have a workout plan assigned yet — ask your trainer to assign one.</p>
         </div>
 
         <div id="assignmentsContainer" style="display:none;"></div>
@@ -188,8 +177,6 @@ function statusBadge(status) {
 }
 
 async function loadMyWorkouts() {
-    // The assignments endpoint already scopes to "my own" for a MEMBER –
-    // enforced server-side (see _visible_assignments), not just hidden in the UI.
     const r = await apiRequest('/workouts/assignments/');
     document.getElementById('loadingState').style.display = 'none';
     if (!r || !r.ok) { showToast('Could not load your workouts', 'error'); return; }
@@ -197,7 +184,7 @@ async function loadMyWorkouts() {
     myAssignments = (data.results || data).filter(a => a.status === 'ACTIVE' || a.status === 'PAUSED');
 
     if (!myAssignments.length) {
-        document.getElementById('noAssignmentsState').style.display = 'block';
+        document.getElementById('noAssignmentsState').style.display = 'flex';
         return;
     }
 
@@ -205,25 +192,26 @@ async function loadMyWorkouts() {
     container.style.display = 'block';
 
     for (const assignment of myAssignments) {
+        const pct = assignment.completion_pct || 0;
+        const pctColor = pct >= 70 ? 'var(--color-progress)' : pct >= 40 ? '#f59e0b' : '#ef4444';
+
         const card = document.createElement('div');
-        card.className = 'card mb-3';
+        card.className = 'fitness-card mb-4';
         card.innerHTML = `
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                    <div>
-                        <h5 class="mb-1">${assignment.template_name}</h5>
-                        <div class="text-muted small">Started ${assignment.start_date} ${statusBadge(assignment.status)}</div>
-                    </div>
-                    <div class="text-end">
-                        <div class="fw-bold fs-4">${assignment.completion_pct || 0}%</div>
-                        <div class="text-muted small">complete</div>
-                    </div>
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h5 class="mb-1 fw-bold">${assignment.template_name}</h5>
+                    <div class="text-muted" style="font-size:0.8rem;">Started ${new Date(assignment.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} &nbsp;${statusBadge(assignment.status)}</div>
                 </div>
-                <div class="progress mt-2 mb-3" style="height:8px;">
-                    <div class="progress-bar ${assignment.completion_pct >= 70 ? 'bg-success' : assignment.completion_pct >= 40 ? 'bg-warning' : 'bg-danger'}" style="width:${assignment.completion_pct || 0}%"></div>
+                <div class="text-end">
+                    <div class="streak-badge" style="background:${pctColor};color:#fff;">${pct}%</div>
+                    <div class="text-muted mt-1" style="font-size:0.75rem;">complete</div>
                 </div>
-                <div id="days-${assignment.id}" class="text-muted small">Loading days...</div>
             </div>
+            <div class="progress-fitness mb-3">
+                <div class="fill" style="width:${pct}%;background:${pctColor};"></div>
+            </div>
+            <div id="days-${assignment.id}" class="text-muted small">Loading days...</div>
         `;
         container.appendChild(card);
         loadDaysForAssignment(assignment);
@@ -237,17 +225,41 @@ async function loadDaysForAssignment(assignment) {
     const template = await r.json();
     const days = template.days || [];
 
-    holder.innerHTML = days.map(d => `
-        <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
-            <div>
-                <strong>Week ${d.week_number} - Day ${d.day_number}</strong> ${d.day_name ? '– ' + d.day_name : ''}
-                <div class="text-muted small">${(d.exercises || []).length} exercise(s)</div>
-            </div>
-            <button class="btn btn-sm btn-outline-primary" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${d.week_number} - Day ${d.day_number}')">
-                <i class="bi bi-check2-square"></i> Log
-            </button>
-        </div>
-    `).join('') || '<div class="text-muted small">No days in this plan yet.</div>';
+    if (!days.length) {
+        holder.innerHTML = '<div class="text-muted" style="font-size:0.8rem;">No days in this plan yet.</div>';
+        return;
+    }
+
+    // Build weekly grid: group by week_number
+    const weekMap = {};
+    days.forEach(d => {
+        const wk = d.week_number || 1;
+        if (!weekMap[wk]) weekMap[wk] = [];
+        weekMap[wk].push(d);
+    });
+
+    let html = '<div class="mb-2 fw-semibold" style="font-size:0.9rem;color:var(--text-secondary);">Schedule</div>';
+
+    for (const [week, weekDays] of Object.entries(weekMap)) {
+        html += `<div class="mb-2" style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Week ${week}</div>`;
+        html += '<div class="d-flex flex-wrap gap-2 mb-3">';
+        for (const d of weekDays) {
+            const exCount = (d.exercises || []).length;
+            const dayLabel = d.day_name || `Day ${d.day_number}`;
+            html += `
+                <div class="workout-card" style="min-width:120px;flex:1 1 120px;max-width:160px;">
+                    <div class="fw-semibold" style="font-size:0.85rem;">${dayLabel}</div>
+                    <div class="text-muted" style="font-size:0.72rem;">${exCount} exercise${exCount !== 1 ? 's' : ''}</div>
+                    <button class="btn btn-sm w-100 mt-2" style="background:var(--brand-red);color:#fff;border:none;border-radius:6px;font-size:0.75rem;font-weight:600;" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${week} - ${dayLabel}')">
+                        <i class="bi bi-check2-square me-1"></i>Log
+                    </button>
+                </div>
+            `;
+        }
+        html += '</div>';
+    }
+
+    holder.innerHTML = html;
 }
 
 function openLogModal(assignmentId, dayId, dayLabel) {
@@ -295,5 +307,6 @@ loadMyWorkouts();
 
   loadTopbarNotifications();
 </script>
+<script src="js/bottom-tabs.js"></script>
 </body>
 </html>

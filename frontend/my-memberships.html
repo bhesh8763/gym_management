@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Membership – FitCore</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
@@ -242,8 +243,12 @@
   </div>
 
   <div class="p-4 flex-grow-1">
-    <h3 class="mb-1">My Membership</h3>
-    <p class="text-muted mb-4">Manage your membership, browse plans, and renew when needed.</p>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+      <div>
+        <h3 class="mb-1 fw-800" style="font-size:1.5rem;">My Membership</h3>
+        <div class="text-muted" style="font-size:0.85rem;">Manage your membership and browse plans.</div>
+      </div>
+    </div>
 
     <div id="loadingState" class="text-center text-muted py-5">
       <div class="spinner-border" role="status"></div>
@@ -252,12 +257,16 @@
 
     <div id="pageBody" style="display:none;">
 
-      <!-- Current Membership Status -->
+      <!-- Current Membership — Digital Card -->
       <div id="currentSection" class="mb-4">
-        <h5 class="mb-3"><i class="bi bi-person-check me-1"></i> Current Membership</h5>
         <div id="currentMembershipCard"></div>
-        <div id="noMembershipState" class="alert alert-info d-none">
-          <i class="bi bi-info-circle"></i> You don't have an active membership yet. Choose a plan below to get started!
+        <div id="noMembershipState" class="fitness-card text-center py-5 d-none">
+          <div style="width:64px;height:64px;border-radius:16px;background:var(--color-membership-bg);display:flex;align-items:center;justify-content:center;margin:0 auto var(--sp-3);">
+            <i class="bi bi-card-checklist" style="font-size:1.8rem;color:var(--color-membership);"></i>
+          </div>
+          <div class="fw-bold" style="font-size:1.1rem;">No Active Membership</div>
+          <div class="text-muted" style="font-size:0.9rem;margin-bottom:var(--sp-4);">Choose a plan below to get started!</div>
+          <a href="#plansSection" class="btn btn-primary">Browse Plans</a>
         </div>
       </div>
 
@@ -581,53 +590,41 @@ function renderCurrentMembership() {
   noState.classList.add('d-none');
 
   const statusClass = current.status.toLowerCase();
-  const iconMap = { ACTIVE: 'bi-check-circle', FROZEN: 'bi-snow', PENDING: 'bi-hourglass-split' };
-  const labelMap = { ACTIVE: 'Active Membership', FROZEN: 'Frozen Membership', PENDING: 'Pending Payment' };
+  const statusLabel = { ACTIVE: 'Active', FROZEN: 'Frozen', PENDING: 'Pending', EXPIRED: 'Expired', CANCELLED: 'Cancelled' };
+  const memberName = localStorage.getItem('user_name') || 'Member';
+  const daysText = current.days_remaining != null ? `${current.days_remaining} days remaining` : '';
 
   card.innerHTML = `
-    <div class="status-card ${statusClass}">
-      <div class="d-flex align-items-start gap-3">
-        <div class="status-icon"><i class="bi ${iconMap[current.status] || 'bi-card-checklist'}"></i></div>
-        <div class="flex-grow-1">
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <h5 class="fw-bold mb-1">${current.plan_name}</h5>
-              <div class="text-muted small">${labelMap[current.status]}</div>
-            </div>
-            ${statusBadge(current.status)}
-          </div>
-          <div class="row g-3 mt-2">
-            <div class="col-6 col-md-3">
-              <small class="text-muted d-block">Start Date</small>
-              <strong>${formatDate(current.start_date)}</strong>
-            </div>
-            <div class="col-6 col-md-3">
-              <small class="text-muted d-block">End Date</small>
-              <strong>${formatDate(current.end_date)}</strong>
-            </div>
-            <div class="col-6 col-md-3">
-              <small class="text-muted d-block">Days Remaining</small>
-              <strong>${current.days_remaining ?? '–'}</strong>
-            </div>
-            <div class="col-6 col-md-3">
-              <small class="text-muted d-block">Amount Paid</small>
-              <strong>NPR ${parseFloat(current.price_paid).toFixed(2)}</strong>
-            </div>
-          </div>
-          ${current.status === 'PENDING' ? `
-            <div class="mt-3">
-              <button class="btn btn-primary btn-sm" onclick="openDuePayModal(${current.id})">
-                <i class="bi bi-phone me-1"></i> Complete Payment
-              </button>
-            </div>` : ''}
-          ${current.status === 'ACTIVE' ? `
-            <div class="mt-3">
-              <button class="btn btn-outline-info btn-sm" onclick="openFreezeModal(${current.id})">
-                <i class="bi bi-snow me-1"></i> Request Freeze
-              </button>
-            </div>` : ''}
-        </div>
+    <div class="membership-card" style="margin-bottom:var(--sp-4);">
+      <div class="mc-brand">FitCore</div>
+      <div class="mc-name">${escapeHtml(memberName)}</div>
+      <div class="mc-plan">${escapeHtml(current.plan_name || 'Plan')}</div>
+      <div class="mc-expiry">Valid Until</div>
+      <div class="mc-date">${formatDate(current.end_date)}</div>
+      <div class="mc-status ${statusClass}"><span>●</span> ${statusLabel[current.status] || current.status}</div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mb-3" style="padding:0 var(--sp-2);">
+      <div>
+        <div class="text-muted" style="font-size:0.8rem;">${daysText}</div>
+        <div class="text-muted" style="font-size:0.75rem;">Started ${formatDate(current.start_date)}</div>
       </div>
+      <div class="text-end">
+        <div class="fw-bold" style="font-size:0.95rem;">NPR ${parseFloat(current.price_paid).toFixed(0)}</div>
+        <div class="text-muted" style="font-size:0.75rem;">amount paid</div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      ${current.status === 'ACTIVE' ? `
+        <a href="#" class="quick-action-btn" onclick="openFreezeModal(${current.id});return false;" style="border-color:var(--color-info);color:var(--color-info);">
+          <i class="bi bi-snow"></i> Freeze
+        </a>` : ''}
+      ${current.status === 'PENDING' ? `
+        <button class="quick-action-btn" onclick="openDuePayModal(${current.id})" style="border-color:var(--color-warning);color:var(--color-warning);">
+          <i class="bi bi-phone"></i> Complete Payment
+        </button>` : ''}
+      <a href="#plansSection" class="quick-action-btn" style="border-color:var(--color-progress);color:var(--color-progress);">
+        <i class="bi bi-arrow-up"></i> Upgrade
+      </a>
     </div>`;
 }
 
@@ -1105,5 +1102,6 @@ async function verifyEsewaIfReturning() {
   }
 })();
 </script>
+<script src="js/bottom-tabs.js"></script>
 </body>
 </html>

@@ -2,28 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Diet - FitCore</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
-        body { display:flex;flex-direction:column;height:100vh;min-height:100vh;overflow:hidden;margin:0;background:var(--bg-root);font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text-primary); }
-        .topbar { flex:0 0 auto;background:var(--bg-topbar);padding:0 1.25rem;height:56px;display:flex;align-items:center;gap:0.75rem;z-index:100;position:relative; }
-        .topbar .sidebar-toggle { background:none;border:none;color:var(--text-sidebar);font-size:1.25rem;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
-        .topbar .sidebar-toggle:hover { color:#fff;background:rgba(255,255,255,0.08); }
-        .topbar .navbar-brand,.topbar a.navbar-brand { color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;display:flex;align-items:center; }
-        .topbar .navbar-brand span { color:#fff !important;text-decoration:none !important; }
-        #page-content { display:flex;flex:1 1 auto;min-height:0; }
-        #page-content > .d-flex { flex:1 1 auto;min-height:0; }
-        #page-content .flex-grow-1 { height:100%;min-height:0;overflow-y:auto; }
-        .sidebar { background:var(--bg-sidebar);flex:0 0 240px;width:240px;min-height:0;max-height:none;align-self:stretch;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.04); }
-        .sidebar .list-group-item { background-color:transparent;color:var(--text-sidebar);border:none;padding:9px 16px;margin:2px 8px;font-weight:500;font-size:0.85rem;border-radius:10px;display:flex;align-items:center;gap:10px;text-decoration:none; }
-        .sidebar .list-group-item:hover { background-color:rgba(255,255,255,0.06);color:#fff !important; }
-        .sidebar .list-group-item.active { background:linear-gradient(135deg,var(--brand-red),var(--brand-red-dark));color:#fff !important; }
-        .nav-section-label { color:rgba(255,255,255,0.3);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:18px 16px 6px; }
-        nav.topbar a.navbar-brand, nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
-        nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
-
         .macro-ring { width:80px;height:80px;position:relative;flex-shrink:0; }
         .macro-ring svg { transform:rotate(-90deg); }
         .macro-ring .ring-label { position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center; }
@@ -138,16 +122,14 @@
     </div>
 
     <div class="p-4 flex-grow-1">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="mb-1">My Diet</h3>
-                <p class="text-muted mb-0" id="dietSubtitle">Your nutrition plan and daily intake</p>
-            </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#logMealModal">
-                    <i class="bi bi-plus-circle me-1"></i> Log Meal
-                </button>
-            </div>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+          <div>
+            <h3 class="mb-1 fw-800" style="font-size:1.5rem;">My Diet</h3>
+            <div class="text-muted" style="font-size:0.85rem;">Your nutrition plan and daily intake — stay on track with your macros.</div>
+          </div>
+          <button class="btn btn-sm d-flex align-items-center gap-1" style="background:var(--brand-red);color:#fff;border:none;border-radius:8px;font-weight:600;" data-bs-toggle="modal" data-bs-target="#logMealModal">
+            <i class="bi bi-plus-circle"></i> Log Meal
+          </button>
         </div>
 
         <div id="loadingState" class="text-center text-muted py-5">
@@ -155,8 +137,10 @@
             <div class="mt-2">Loading your diet plan...</div>
         </div>
 
-        <div id="noPlanState" class="alert alert-secondary" style="display:none;">
-            <i class="bi bi-info-circle me-1"></i> You don't have a diet plan assigned yet. Ask your trainer to create one for you.
+        <div id="noPlanState" class="empty-state" style="display:none;">
+          <i class="bi bi-egg-fried"></i>
+          <h5>No Diet Plan Yet</h5>
+          <p>You don't have a diet plan assigned yet. Ask your trainer to create one for you.</p>
         </div>
 
         <div id="dietContent" style="display:none;">
@@ -170,87 +154,82 @@
             <!-- Today's Summary -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                    <div class="card plan-card shadow-sm h-100">
-                        <div class="plan-card-body text-center">
-                            <div class="text-muted small mb-1">Calories Today</div>
-                            <div class="fw-bold fs-3" id="todayCalories">0</div>
-                            <div class="text-muted small">of <span id="todayCalGoal">--</span> kcal goal</div>
-                        </div>
+                    <div class="fitness-card h-100 text-center">
+                        <div class="text-muted fw-semibold" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;">Calories Today</div>
+                        <h3 class="mt-1 mb-0" style="color:var(--color-nutrition);" id="todayCalories">0</h3>
+                        <div class="text-muted" style="font-size:0.75rem;">of <span id="todayCalGoal">--</span> kcal goal</div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card plan-card shadow-sm h-100">
-                        <div class="plan-card-body text-center">
-                            <div class="text-muted small mb-1">Calories Remaining</div>
-                            <div class="fw-bold fs-3" id="todayRemaining">--</div>
-                            <div class="text-muted small" id="todayBalanceLabel"></div>
-                        </div>
+                    <div class="fitness-card h-100 text-center">
+                        <div class="text-muted fw-semibold" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;">Calories Remaining</div>
+                        <h3 class="mt-1 mb-0" style="color:var(--color-progress);" id="todayRemaining">--</h3>
+                        <div class="text-muted" style="font-size:0.75rem;" id="todayBalanceLabel"></div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card plan-card shadow-sm h-100">
-                        <div class="plan-card-body text-center">
-                            <div class="text-muted small mb-1">Meals Logged</div>
-                            <div class="fw-bold fs-3" id="todayMealCount">0</div>
-                            <div class="text-muted small">items today</div>
-                        </div>
+                    <div class="fitness-card h-100 text-center">
+                        <div class="text-muted fw-semibold" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;">Meals Logged</div>
+                        <h3 class="mt-1 mb-0" style="color:var(--color-workout);" id="todayMealCount">0</h3>
+                        <div class="text-muted" style="font-size:0.75rem;">items today</div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card plan-card shadow-sm h-100">
-                        <div class="plan-card-body text-center">
-                            <div class="text-muted small mb-1">Goal Progress</div>
-                            <div class="fw-bold fs-3" id="todayProgressPct">0%</div>
-                            <div class="calorie-progress-track mt-2">
-                                <div class="calorie-progress-fill on-track" id="todayProgressBar" style="width:0%"></div>
-                            </div>
+                    <div class="fitness-card h-100 text-center">
+                        <div class="text-muted fw-semibold" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;">Goal Progress</div>
+                        <h3 class="mt-1 mb-0" id="todayProgressPct">0%</h3>
+                        <div class="calorie-progress-track mt-2">
+                            <div class="calorie-progress-fill on-track" id="todayProgressBar" style="width:0%"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Macro Breakdown -->
-            <div class="card plan-card shadow-sm mb-4" id="macroSection" style="display:none;">
-                <div class="plan-card-header">
-                    <div class="fw-bold"><i class="bi bi-pie-chart me-2 text-danger"></i>Macro Breakdown</div>
+            <div class="fitness-card mb-4" id="macroSection" style="display:none;">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div style="width:32px;height:32px;border-radius:8px;background:var(--color-nutrition-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-pie-chart" style="color:var(--color-nutrition);"></i></div>
+                    <span class="fw-bold" style="font-size:0.95rem;">Macro Breakdown</span>
                 </div>
-                <div class="plan-card-body">
-                    <div class="row text-center" id="macroRings"></div>
-                </div>
+                <div class="row text-center" id="macroRings"></div>
             </div>
 
             <!-- Active Plan -->
-            <div class="card plan-card shadow-sm mb-4" id="activePlanCard">
-                <div class="plan-card-header">
+            <div class="fitness-card mb-4" id="activePlanCard">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <div class="fw-bold" id="planName">--</div>
-                        <div class="text-muted small" id="planGoal"></div>
+                        <div class="fw-bold" style="font-size:0.95rem;" id="planName">--</div>
+                        <div class="text-muted" style="font-size:0.8rem;" id="planGoal"></div>
                     </div>
-                    <span class="badge bg-success" id="planStatus">Active</span>
+                    <span class="pill pill-success" id="planStatus">Active</span>
                 </div>
-                <div class="plan-card-body" id="planMealsContainer">
-                    <div class="text-muted small">Loading meals...</div>
+                <div id="planMealsContainer">
+                    <div class="text-muted" style="font-size:0.85rem;">Loading meals...</div>
                 </div>
             </div>
 
             <!-- Today's Meal Log -->
-            <div class="card plan-card shadow-sm mb-4">
-                <div class="plan-card-header">
-                    <div class="fw-bold"><i class="bi bi-journal-check me-2 text-primary"></i>Today's Intake</div>
-                    <div class="text-muted small" id="todayDate"></div>
+            <div class="fitness-card mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="width:32px;height:32px;border-radius:8px;background:var(--color-attendance-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-journal-check" style="color:var(--color-attendance);"></i></div>
+                        <span class="fw-bold" style="font-size:0.95rem;">Today's Intake</span>
+                    </div>
+                    <div class="text-muted" style="font-size:0.8rem;" id="todayDate"></div>
                 </div>
-                <div class="plan-card-body" id="todayLogContainer">
-                    <div class="text-muted small">No meals logged today. Click "Log Meal" to add one.</div>
+                <div id="todayLogContainer">
+                    <div class="text-muted" style="font-size:0.85rem;">No meals logged today. Click "Log Meal" to add one.</div>
                 </div>
             </div>
 
             <!-- Recent Logs -->
-            <div class="card plan-card shadow-sm mb-4">
-                <div class="plan-card-header">
-                    <div class="fw-bold"><i class="bi bi-clock-history me-2 text-secondary"></i>Recent Meal Logs</div>
+            <div class="fitness-card mb-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div style="width:32px;height:32px;border-radius:8px;background:var(--color-progress-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-clock-history" style="color:var(--color-progress);"></i></div>
+                    <span class="fw-bold" style="font-size:0.95rem;">Recent Meal Logs</span>
                 </div>
-                <div class="plan-card-body" id="recentLogsContainer">
-                    <div class="text-muted small">No recent logs.</div>
+                <div id="recentLogsContainer">
+                    <div class="text-muted" style="font-size:0.85rem;">No recent logs.</div>
                 </div>
             </div>
 
@@ -657,5 +636,6 @@ function clearLogForm() {
 loadDietData();
 loadTopbarNotifications();
 </script>
+<script src="js/bottom-tabs.js"></script>
 </body>
 </html>

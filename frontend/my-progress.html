@@ -2,28 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Progress - FitCore</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <style>
-        body { display:flex;flex-direction:column;height:100vh;min-height:100vh;overflow:hidden;margin:0;background:var(--bg-root);font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text-primary); }
-        .topbar { flex:0 0 auto;background:var(--bg-topbar);padding:0 1.25rem;height:56px;display:flex;align-items:center;gap:0.75rem;z-index:100;position:relative; }
-        .topbar .sidebar-toggle { background:none;border:none;color:var(--text-sidebar);font-size:1.25rem;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
-        .topbar .sidebar-toggle:hover { color:#fff;background:rgba(255,255,255,0.08); }
-        .topbar .navbar-brand,.topbar a.navbar-brand { color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;display:flex;align-items:center; }
-        .topbar .navbar-brand span { color:#fff !important;text-decoration:none !important; }
-        #page-content { display:flex;flex:1 1 auto;min-height:0; }
-        #page-content > .d-flex { flex:1 1 auto;min-height:0; }
-        #page-content .flex-grow-1 { height:100%;min-height:0;overflow-y:auto; }
-        .sidebar { background:var(--bg-sidebar);flex:0 0 240px;width:240px;min-height:0;max-height:none;align-self:stretch;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.04); }
-        .sidebar .list-group-item { background-color:transparent;color:var(--text-sidebar);border:none;padding:9px 16px;margin:2px 8px;font-weight:500;font-size:0.85rem;border-radius:10px;display:flex;align-items:center;gap:10px;text-decoration:none; }
-        .sidebar .list-group-item:hover { background-color:rgba(255,255,255,0.06);color:#fff !important; }
-        .sidebar .list-group-item.active { background:linear-gradient(135deg,var(--brand-red),var(--brand-red-dark));color:#fff !important; }
-        .nav-section-label { color:rgba(255,255,255,0.3);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:18px 16px 6px; }
-        nav.topbar a.navbar-brand, nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
-        nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
-    </style>
 </head>
 <body>
 
@@ -145,16 +128,16 @@
     </div>
 
     <div class="p-4 flex-grow-1">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="mb-1">My Progress</h3>
-                <p class="text-muted mb-0" id="progressSubtitle">Track your fitness journey</p>
-            </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createEntryModal">
-                    <i class="bi bi-plus-circle me-1"></i> Log Entry
-                </button>
-            </div>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+          <div>
+            <h3 class="mb-1 fw-800" style="font-size:1.5rem;">My Progress</h3>
+            <div class="text-muted" style="font-size:0.85rem;">Track your fitness journey — body metrics, goals, and personal records.</div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm d-flex align-items-center gap-1" style="background:var(--brand-red);color:#fff;border:none;border-radius:8px;font-weight:600;" data-bs-toggle="modal" data-bs-target="#createEntryModal">
+              <i class="bi bi-plus-circle"></i> Log Entry
+            </button>
+          </div>
         </div>
 
         <div id="loadingSpinner" class="text-center py-5">
@@ -166,44 +149,40 @@
             <!-- SECTION 1: Progress Overview -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                    <div class="card progress-stat-card shadow-sm">
+                    <div class="card progress-stat-card" style="border-left:3px solid var(--color-workout);">
                         <div class="stat-label">Weight</div>
-                        <div class="stat-value" id="statWeight">--</div>
+                        <div class="stat-value" id="statWeight" style="color:var(--color-workout);">--</div>
                         <div class="stat-delta neutral" id="statWeightDelta"></div>
-                        <i class="bi bi-speedometer stat-bg-icon"></i>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card progress-stat-card shadow-sm">
+                    <div class="card progress-stat-card" style="border-left:3px solid var(--color-attendance);">
                         <div class="stat-label">BMI</div>
-                        <div class="stat-value" id="statBmi">--</div>
+                        <div class="stat-value" id="statBmi" style="color:var(--color-attendance);">--</div>
                         <div class="stat-delta neutral" id="statBmiDelta"></div>
-                        <i class="bi bi-heart-pulse stat-bg-icon"></i>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card progress-stat-card shadow-sm">
+                    <div class="card progress-stat-card" style="border-left:3px solid var(--color-streak);">
                         <div class="stat-label">Body Fat</div>
-                        <div class="stat-value" id="statBf">--</div>
+                        <div class="stat-value" id="statBf" style="color:var(--color-streak);">--</div>
                         <div class="stat-delta neutral" id="statBfDelta"></div>
-                        <i class="bi bi-droplet stat-bg-icon"></i>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card progress-stat-card shadow-sm">
+                    <div class="card progress-stat-card" style="border-left:3px solid var(--color-progress);">
                         <div class="stat-label">Muscle Mass</div>
-                        <div class="stat-value" id="statMuscle">--</div>
+                        <div class="stat-value" id="statMuscle" style="color:var(--color-progress);">--</div>
                         <div class="stat-delta neutral" id="statMuscleDelta"></div>
-                        <i class="bi bi-person-bounding-box stat-bg-icon"></i>
                     </div>
                 </div>
             </div>
 
             <!-- SECTION 2: Weight Progress Chart -->
-            <div class="card chart-section shadow-sm mb-4">
+            <div class="fitness-card mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="chart-title mb-0">Weight Progress</div>
-                    <span class="text-muted small" id="weightSummary"></span>
+                    <div class="fw-bold" style="font-size:0.95rem;">Weight Progress</div>
+                    <span class="text-muted" style="font-size:0.8rem;" id="weightSummary"></span>
                 </div>
                 <div style="height:280px;"><canvas id="weightChart"></canvas></div>
             </div>
@@ -211,22 +190,22 @@
             <!-- SECTION 3: Goal + Consistency -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                    <div class="card goal-card shadow-sm h-100">
+                    <div class="fitness-card h-100">
                         <div class="d-flex align-items-center gap-2 mb-3">
-                            <i class="bi bi-bullseye text-danger"></i>
-                            <span class="fw-bold">Your Goal</span>
+                            <div style="width:32px;height:32px;border-radius:8px;background:var(--color-progress-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-bullseye" style="color:var(--color-progress);"></i></div>
+                            <span class="fw-bold" style="font-size:0.95rem;">Your Goal</span>
                         </div>
                         <div id="goalContent">
-                            <div class="text-muted">Set a fitness goal in your profile to track progress here.</div>
+                            <div class="text-muted" style="font-size:0.85rem;">Set a fitness goal in your profile to track progress here.</div>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card goal-card shadow-sm h-100">
+                    <div class="fitness-card h-100">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div class="d-flex align-items-center gap-2">
-                                <i class="bi bi-calendar-check text-success"></i>
-                                <span class="fw-bold">Workout Consistency</span>
+                                <div style="width:32px;height:32px;border-radius:8px;background:var(--color-attendance-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-calendar-check" style="color:var(--color-attendance);"></i></div>
+                                <span class="fw-bold" style="font-size:0.95rem;">Workout Consistency</span>
                             </div>
                             <span class="streak-badge" id="streakBadge" style="display:none;">
                                 <i class="bi bi-fire"></i> <span id="streakCount">0</span> day streak
@@ -234,98 +213,90 @@
                         </div>
                         <div class="row text-center mb-3">
                             <div class="col">
-                                <div class="fw-bold fs-4" id="monthWorkouts">0</div>
-                                <div class="text-muted small">This Month</div>
+                                <div class="fw-bold" style="font-size:1.5rem;color:var(--color-attendance);" id="monthWorkouts">0</div>
+                                <div class="text-muted" style="font-size:0.75rem;">This Month</div>
                             </div>
                             <div class="col">
-                                <div class="fw-bold fs-4" id="monthPct">0%</div>
-                                <div class="text-muted small">Completion</div>
+                                <div class="fw-bold" style="font-size:1.5rem;color:var(--color-progress);" id="monthPct">0%</div>
+                                <div class="text-muted" style="font-size:0.75rem;">Completion</div>
                             </div>
                         </div>
-                        <div class="mb-2 fw-semibold small text-muted">Last 90 Days</div>
+                        <div class="mb-2 fw-semibold" style="font-size:0.8rem;color:var(--text-muted);">Last 90 Days</div>
                         <div class="cal-heatmap" id="calHeatmap"></div>
                     </div>
                 </div>
             </div>
 
             <!-- SECTION 4: Since You Joined -->
-            <div class="card shadow-sm mb-4" style="border:none;border-radius:16px;">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <i class="bi bi-clock-history text-primary"></i>
-                        <span class="fw-bold">Since You Joined</span>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="compare-table" id="compareTable">
-                            <thead><tr><th>Metric</th><th>Starting</th><th>Current</th><th>Change</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+            <div class="fitness-card mb-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div style="width:32px;height:32px;border-radius:8px;background:var(--color-info-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-clock-history" style="color:var(--color-info);"></i></div>
+                    <span class="fw-bold" style="font-size:0.95rem;">Since You Joined</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="compare-table" id="compareTable">
+                        <thead><tr><th>Metric</th><th>Starting</th><th>Current</th><th>Change</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
 
             <!-- SECTION 5: Body Measurements -->
-            <div class="card shadow-sm mb-4" style="border:none;border-radius:16px;">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <i class="bi bi-rulers text-warning"></i>
-                        <span class="fw-bold">Body Measurements</span>
-                    </div>
-                    <div id="measurementsContent"></div>
+            <div class="fitness-card mb-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div style="width:32px;height:32px;border-radius:8px;background:var(--color-nutrition-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-rulers" style="color:var(--color-nutrition);"></i></div>
+                    <span class="fw-bold" style="font-size:0.95rem;">Body Measurements</span>
                 </div>
+                <div id="measurementsContent"></div>
             </div>
 
             <!-- SECTION 6: Personal Records -->
-            <div class="card shadow-sm mb-4" style="border:none;border-radius:16px;">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-trophy text-warning"></i>
-                            <span class="fw-bold">Personal Records</span>
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createPrModal">
-                            <i class="bi bi-plus-circle me-1"></i> Add Record
-                        </button>
+            <div class="fitness-card mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="width:32px;height:32px;border-radius:8px;background:var(--color-streak-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-trophy" style="color:var(--color-streak);"></i></div>
+                        <span class="fw-bold" style="font-size:0.95rem;">Personal Records</span>
                     </div>
-                    <div class="row g-3" id="prCards"></div>
+                    <button class="btn btn-sm d-flex align-items-center gap-1" style="background:var(--brand-red);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:0.8rem;" data-bs-toggle="modal" data-bs-target="#createPrModal">
+                        <i class="bi bi-plus-circle"></i> Add Record
+                    </button>
                 </div>
+                <div class="row g-3" id="prCards"></div>
             </div>
 
             <!-- SECTION 7: BMI / Body Fat / Muscle Charts -->
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <div class="card chart-section shadow-sm h-100">
-                        <div class="chart-title">BMI Trend</div>
+                    <div class="fitness-card h-100">
+                        <div class="fw-bold mb-2" style="font-size:0.9rem;">BMI Trend</div>
                         <div style="height:180px;"><canvas id="bmiChart"></canvas></div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card chart-section shadow-sm h-100">
-                        <div class="chart-title">Body Fat %</div>
+                    <div class="fitness-card h-100">
+                        <div class="fw-bold mb-2" style="font-size:0.9rem;">Body Fat %</div>
                         <div style="height:180px;"><canvas id="bfChart"></canvas></div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card chart-section shadow-sm h-100">
-                        <div class="chart-title">Muscle Mass</div>
+                    <div class="fitness-card h-100">
+                        <div class="fw-bold mb-2" style="font-size:0.9rem;">Muscle Mass</div>
                         <div style="height:180px;"><canvas id="muscleChart"></canvas></div>
                     </div>
                 </div>
             </div>
 
             <!-- SECTION 8: Body Metrics History Table -->
-            <div class="card shadow-sm mb-4" style="border:none;border-radius:16px;">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="fw-bold">Body Metrics History</div>
-                        <button class="manage-action-btn" onclick="exportCSV()"><i class="bi bi-download me-1"></i> Export CSV</button>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table mb-0">
-                            <thead><tr><th>Date</th><th>Weight</th><th>BMI</th><th>Body Fat</th><th>Muscle</th><th>Actions</th></tr></thead>
-                            <tbody id="entriesTable"></tbody>
-                        </table>
-                    </div>
+            <div class="fitness-card mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="fw-bold" style="font-size:0.95rem;">Body Metrics History</div>
+                    <button class="manage-action-btn" onclick="exportCSV()"><i class="bi bi-download me-1"></i> Export CSV</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead><tr><th>Date</th><th>Weight</th><th>BMI</th><th>Body Fat</th><th>Muscle</th><th>Actions</th></tr></thead>
+                        <tbody id="entriesTable"></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -771,5 +742,6 @@
     loadStats();
     loadTopbarNotifications();
 </script>
+<script src="js/bottom-tabs.js"></script>
 </body>
 </html>

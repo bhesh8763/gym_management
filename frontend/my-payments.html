@@ -2,29 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Payments - FitCore</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <style>
-        body { display:flex;flex-direction:column;height:100vh;min-height:100vh;overflow:hidden;margin:0;background:#f5f6f8;font-family:'Inter',system-ui,-apple-system,sans-serif;color:#111827; }
-        .topbar { flex:0 0 auto;background:#0f1015;padding:0 1.25rem;height:56px;display:flex;align-items:center;gap:0.75rem;z-index:100;position:relative; }
-        .topbar .sidebar-toggle { background:none;border:none;color:#9ca3af;font-size:1.25rem;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
-        .topbar .sidebar-toggle:hover { color:#fff;background:rgba(255,255,255,0.08); }
-        .topbar .navbar-brand,.topbar a.navbar-brand { color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;display:flex;align-items:center; }
-        .topbar .navbar-brand span { color:#fff !important;text-decoration:none !important; }
-        #page-content { display:flex;flex:1 1 auto;min-height:0; }
-        #page-content > .d-flex { flex:1 1 auto;min-height:0; }
-        #page-content .flex-grow-1 { height:100%;min-height:0;overflow-y:auto; }
-        .sidebar { background:#111218;flex:0 0 240px;width:240px;min-height:0;max-height:none;align-self:stretch;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.04); }
-        .sidebar .list-group-item { background-color:transparent;color:#9ca3af;border:none;padding:9px 16px;margin:2px 8px;font-weight:500;font-size:0.85rem;border-radius:10px;display:flex;align-items:center;gap:10px;text-decoration:none; }
-        .sidebar .list-group-item:hover { background-color:rgba(255,255,255,0.06);color:#fff !important; }
-        .sidebar .list-group-item.active { background:linear-gradient(135deg,#e63946,#c62f3b);color:#fff !important; }
-        .nav-section-label { color:rgba(255,255,255,0.3);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:18px 16px 6px; }
-        nav.topbar a.navbar-brand, nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
-        nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
-    </style>
 <body data-allowed-roles="MEMBER">
 
 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
@@ -109,8 +92,12 @@
   </div>
 
     <div class="p-4 flex-grow-1">
-        <h3>My Payments</h3>
-        <p class="text-muted">Pay what you owe and review your payment history.</p>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+          <div>
+            <h3 class="mb-1 fw-800" style="font-size:1.5rem;">My Payments</h3>
+            <div class="text-muted" style="font-size:0.85rem;">Pay what you owe and review your payment history.</div>
+          </div>
+        </div>
 
         <div id="loadingState" class="text-center text-muted py-5">
             <div class="spinner-border" role="status"></div>
@@ -120,20 +107,32 @@
         <div id="pageBody" style="display:none;">
 
           <!-- Outstanding dues -->
-          <h5 class="mb-3">Outstanding Dues</h5>
-          <div id="noDuesState" class="alert alert-success d-none">
-            <i class="bi bi-check-circle"></i> You're all caught up — nothing due right now.
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:32px;height:32px;border-radius:8px;background:var(--color-danger-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-exclamation-triangle" style="color:var(--color-danger);"></i></div>
+            <span class="fw-bold" style="font-size:0.95rem;">Outstanding Dues</span>
+          </div>
+          <div id="noDuesState" class="fitness-card mb-4 d-none" style="border-left:3px solid var(--color-success);">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-check-circle" style="color:var(--color-success);font-size:1.2rem;"></i>
+              <span style="font-size:0.9rem;">You're all caught up — nothing due right now.</span>
+            </div>
           </div>
           <div id="duesContainer" class="row g-3 mb-4"></div>
 
           <!-- Pending online payments -->
           <div id="pendingSection" class="d-none mb-4">
-            <h5 class="mb-3"><i class="bi bi-hourglass-split text-warning"></i> Pending Online Payments</h5>
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <div style="width:32px;height:32px;border-radius:8px;background:var(--color-warning-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-hourglass-split" style="color:var(--color-warning);"></i></div>
+              <span class="fw-bold" style="font-size:0.95rem;">Pending Online Payments</span>
+            </div>
             <div id="pendingContainer" class="row g-3"></div>
           </div>
 
           <!-- Payment history -->
-          <h5 class="mb-3">Payment History</h5>
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:32px;height:32px;border-radius:8px;background:var(--color-info-bg);display:flex;align-items:center;justify-content:center;"><i class="bi bi-clock-history" style="color:var(--color-info);"></i></div>
+            <span class="fw-bold" style="font-size:0.95rem;">Payment History</span>
+          </div>
           <div class="table-responsive">
             <table class="table align-middle">
               <thead>
@@ -578,5 +577,6 @@ async function loadHistory() {
     }
 })();
 </script>
+<script src="js/bottom-tabs.js"></script>
 </body>
 </html>
