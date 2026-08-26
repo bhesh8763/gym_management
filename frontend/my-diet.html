@@ -1,286 +1,661 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-  <link rel="icon" type="image/png" href="LOGO-2.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Diet - FitCore</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="css/theme.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <meta charset="UTF-8">
+    <title>My Diet - FitCore</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        body { display:flex;flex-direction:column;height:100vh;min-height:100vh;overflow:hidden;margin:0;background:var(--bg-root);font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text-primary); }
+        .topbar { flex:0 0 auto;background:var(--bg-topbar);padding:0 1.25rem;height:56px;display:flex;align-items:center;gap:0.75rem;z-index:100;position:relative; }
+        .topbar .sidebar-toggle { background:none;border:none;color:var(--text-sidebar);font-size:1.25rem;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
+        .topbar .sidebar-toggle:hover { color:#fff;background:rgba(255,255,255,0.08); }
+        .topbar .navbar-brand,.topbar a.navbar-brand { color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;display:flex;align-items:center; }
+        .topbar .navbar-brand span { color:#fff !important;text-decoration:none !important; }
+        #page-content { display:flex;flex:1 1 auto;min-height:0; }
+        #page-content > .d-flex { flex:1 1 auto;min-height:0; }
+        #page-content .flex-grow-1 { height:100%;min-height:0;overflow-y:auto; }
+        .sidebar { background:var(--bg-sidebar);flex:0 0 240px;width:240px;min-height:0;max-height:none;align-self:stretch;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.04); }
+        .sidebar .list-group-item { background-color:transparent;color:var(--text-sidebar);border:none;padding:9px 16px;margin:2px 8px;font-weight:500;font-size:0.85rem;border-radius:10px;display:flex;align-items:center;gap:10px;text-decoration:none; }
+        .sidebar .list-group-item:hover { background-color:rgba(255,255,255,0.06);color:#fff !important; }
+        .sidebar .list-group-item.active { background:linear-gradient(135deg,var(--brand-red),var(--brand-red-dark));color:#fff !important; }
+        .nav-section-label { color:rgba(255,255,255,0.3);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:18px 16px 6px; }
+        nav.topbar a.navbar-brand, nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
+        nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
+
+        .macro-ring { width:80px;height:80px;position:relative;flex-shrink:0; }
+        .macro-ring svg { transform:rotate(-90deg); }
+        .macro-ring .ring-label { position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center; }
+        .macro-ring .ring-value { font-size:1rem;font-weight:800;line-height:1; }
+        .macro-ring .ring-unit { font-size:0.6rem;color:var(--text-muted); }
+        .meal-type-section { border-left:3px solid var(--brand-red);padding-left:12px;margin-bottom:1.25rem; }
+        .meal-type-header { font-weight:700;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-bottom:6px; }
+        .food-item { display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:0.88rem; }
+        .food-item:last-child { border-bottom:none; }
+        .food-name { font-weight:600;color:var(--text-primary); }
+        .food-meta { font-size:0.78rem;color:var(--text-muted); }
+        .food-cal { font-weight:700;color:var(--brand-red);white-space:nowrap; }
+        .log-entry-card { background:var(--bg-card);border:1px solid var(--border-card);border-radius:var(--radius-md);padding:0.75rem 1rem;margin-bottom:0.5rem; }
+        .log-food-row { display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;padding:4px 0; }
+        .calorie-progress-track { width:100%;height:12px;background:var(--border-light);border-radius:var(--radius-full);overflow:hidden;position:relative; }
+        .calorie-progress-fill { height:100%;border-radius:var(--radius-full);transition:width 0.5s ease; }
+        .calorie-progress-fill.deficit { background:linear-gradient(90deg,#f59e0b,#10b981); }
+        .calorie-progress-fill.surplus { background:linear-gradient(90deg,#f59e0b,#ef4444); }
+        .calorie-progress-fill.on-track { background:var(--border-light); }
+        .plan-card { background:var(--bg-card);border:1px solid var(--border-card);border-radius:var(--radius-lg);overflow:hidden; }
+        .plan-card-header { padding:1rem 1.25rem;border-bottom:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center; }
+        .plan-card-body { padding:1.25rem; }
+        .disclaimer-banner { background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius-md);padding:0.75rem 1rem;font-size:0.8rem;color:#92400e;display:flex;gap:8px;align-items:flex-start; }
+        .disclaimer-banner i { font-size:1rem;flex-shrink:0;margin-top:1px; }
+    </style>
 </head>
 <body data-allowed-roles="MEMBER">
 
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
 <nav class="topbar">
-  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-  <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
-    <img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
-    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
-  </a>
-  <div class="topbar-search">
-    <i class="bi bi-search"></i>
-    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone..." autocomplete="off">
-    <div class="topbar-search-results" id="globalSearchResults"></div>
-  </div>
-  <div class="position-relative">
-    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
-      <i class="bi bi-bell"></i>
-      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
-    </button>
-    <div class="dropdown-panel" id="notifPanel">
-      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
-        <span class="fw-semibold small">Notifications</span>
-        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
-          <i class="bi bi-check2-all me-1"></i>Mark all as read
+    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+        <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+        <span style="font-size:1.5rem;font-weight:700;">FitCore</span>
+    </a>
+    <div class="position-relative">
+        <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+            <i class="bi bi-bell"></i>
+            <span class="notif-badge" id="notifCount" style="display:none;">0</span>
         </button>
-      </div>
-      <div id="notifList"><div class="notif-empty">No notifications</div></div>
-      <div class="border-top text-center py-2">
-        <a href="notifications.html" class="small text-danger spa-link">View all</a>
-      </div>
+        <div class="dropdown-panel" id="notifPanel">
+            <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+                <span class="fw-semibold small">Notifications</span>
+                <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+                    <i class="bi bi-check2-all me-1"></i>Mark all as read
+                </button>
+            </div>
+            <div id="notifList"><div class="notif-empty">No notifications</div></div>
+            <div class="border-top text-center py-2">
+                <a href="notifications.html" class="small text-danger spa-link">View all</a>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="position-relative">
-    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
-      <span class="profile-avatar" id="profileAvatar">?</span>
-      <span class="profile-meta">
-        <div class="profile-name" id="profileName">–</div>
-        <div class="profile-role" id="profileRole">–</div>
-      </span>
-      <i class="bi bi-chevron-down text-white-50"></i>
-    </button>
-    <div class="dropdown-panel profile-menu" id="profilePanel">
-      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
-      <hr>
-      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    <div class="position-relative">
+        <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+            <span class="profile-avatar" id="profileAvatar">?</span>
+            <span class="profile-meta">
+                <div class="profile-name" id="profileName">-</div>
+                <div class="profile-role" id="profileRole">-</div>
+            </span>
+            <i class="bi bi-chevron-down text-white-50"></i>
+        </button>
+        <div class="dropdown-panel profile-menu" id="profilePanel">
+            <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+            <hr>
+            <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </div>
     </div>
-  </div>
 </nav>
 
 <div id="page-content">
 <div class="d-flex">
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-  <div class="sidebar" id="sidebar">
-    <div class="list-group list-group-flush pt-2">
-      <div class="nav-section-label">Main</div>
-      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
-
-      <div class="nav-section-label">Members</div>
-      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
-      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
-      <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
-      <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
-
-      <div class="nav-section-label">Staff Management</div>
-      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
-
-      <div class="nav-section-label">Workout &amp; Diet</div>
-      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
-      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
-
-      <div class="nav-section-label">Payments</div>
-      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
-
-      <div class="nav-section-label">Member</div>
-      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
-      <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
-      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
-      <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
-      <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
-      <a href="my-diet.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
-      <a href="my-trainer.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-person-video3"></i> <span>My Trainer</span></a>
-
-      <div class="nav-section-label">Trainer</div>
-      <a href="trainer-members.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-people"></i> <span>My Members</span></a>
-
-      <div class="nav-section-label">Equipment</div>
-      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
-      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
-
-      <div class="nav-section-label">Insights</div>
-      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
-
-      <div class="nav-section-label">System</div>
-      <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
+    <div class="sidebar" id="sidebar">
+        <div class="list-group list-group-flush pt-2">
+            <div class="nav-section-label">Main</div>
+            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+            <div class="nav-section-label">Members</div>
+            <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+            <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+            <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+            <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+            <div class="nav-section-label">Staff Management</div>
+            <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+            <div class="nav-section-label">Workout & Diet</div>
+            <a href="workouts.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+            <a href="diet.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+            <div class="nav-section-label">Payments</div>
+            <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+            <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
+            <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+            <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
+            <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
+            <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
+            <a href="my-diet.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
+            <a href="my-locker.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-lock"></i> <span>My Locker</span></a>
+            <div class="nav-section-label">Equipment</div>
+            <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+            <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+            <div class="nav-section-label">Insights</div>
+            <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+            <div class="nav-section-label">System</div>
+            <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
+        </div>
     </div>
-  </div>
 
-  <div class="p-4 flex-grow-1">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <h3 class="mb-0">My Diet Plan</h3>
-        <p class="text-muted mb-0">Your nutrition plan assigned by your trainer.</p>
+    <div class="p-4 flex-grow-1">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="mb-1">My Diet</h3>
+                <p class="text-muted mb-0" id="dietSubtitle">Your nutrition plan and daily intake</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#logMealModal">
+                    <i class="bi bi-plus-circle me-1"></i> Log Meal
+                </button>
+            </div>
+        </div>
+
+        <div id="loadingState" class="text-center text-muted py-5">
+            <div class="spinner-border text-danger" role="status"></div>
+            <div class="mt-2">Loading your diet plan...</div>
+        </div>
+
+        <div id="noPlanState" class="alert alert-secondary" style="display:none;">
+            <i class="bi bi-info-circle me-1"></i> You don't have a diet plan assigned yet. Ask your trainer to create one for you.
+        </div>
+
+        <div id="dietContent" style="display:none;">
+
+            <!-- Disclaimer -->
+            <div id="disclaimerBanner" class="disclaimer-banner mb-4" style="display:none;">
+                <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                <span id="disclaimerText"></span>
+            </div>
+
+            <!-- Today's Summary -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card plan-card shadow-sm h-100">
+                        <div class="plan-card-body text-center">
+                            <div class="text-muted small mb-1">Calories Today</div>
+                            <div class="fw-bold fs-3" id="todayCalories">0</div>
+                            <div class="text-muted small">of <span id="todayCalGoal">--</span> kcal goal</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card plan-card shadow-sm h-100">
+                        <div class="plan-card-body text-center">
+                            <div class="text-muted small mb-1">Calories Remaining</div>
+                            <div class="fw-bold fs-3" id="todayRemaining">--</div>
+                            <div class="text-muted small" id="todayBalanceLabel"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card plan-card shadow-sm h-100">
+                        <div class="plan-card-body text-center">
+                            <div class="text-muted small mb-1">Meals Logged</div>
+                            <div class="fw-bold fs-3" id="todayMealCount">0</div>
+                            <div class="text-muted small">items today</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card plan-card shadow-sm h-100">
+                        <div class="plan-card-body text-center">
+                            <div class="text-muted small mb-1">Goal Progress</div>
+                            <div class="fw-bold fs-3" id="todayProgressPct">0%</div>
+                            <div class="calorie-progress-track mt-2">
+                                <div class="calorie-progress-fill on-track" id="todayProgressBar" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Macro Breakdown -->
+            <div class="card plan-card shadow-sm mb-4" id="macroSection" style="display:none;">
+                <div class="plan-card-header">
+                    <div class="fw-bold"><i class="bi bi-pie-chart me-2 text-danger"></i>Macro Breakdown</div>
+                </div>
+                <div class="plan-card-body">
+                    <div class="row text-center" id="macroRings"></div>
+                </div>
+            </div>
+
+            <!-- Active Plan -->
+            <div class="card plan-card shadow-sm mb-4" id="activePlanCard">
+                <div class="plan-card-header">
+                    <div>
+                        <div class="fw-bold" id="planName">--</div>
+                        <div class="text-muted small" id="planGoal"></div>
+                    </div>
+                    <span class="badge bg-success" id="planStatus">Active</span>
+                </div>
+                <div class="plan-card-body" id="planMealsContainer">
+                    <div class="text-muted small">Loading meals...</div>
+                </div>
+            </div>
+
+            <!-- Today's Meal Log -->
+            <div class="card plan-card shadow-sm mb-4">
+                <div class="plan-card-header">
+                    <div class="fw-bold"><i class="bi bi-journal-check me-2 text-primary"></i>Today's Intake</div>
+                    <div class="text-muted small" id="todayDate"></div>
+                </div>
+                <div class="plan-card-body" id="todayLogContainer">
+                    <div class="text-muted small">No meals logged today. Click "Log Meal" to add one.</div>
+                </div>
+            </div>
+
+            <!-- Recent Logs -->
+            <div class="card plan-card shadow-sm mb-4">
+                <div class="plan-card-header">
+                    <div class="fw-bold"><i class="bi bi-clock-history me-2 text-secondary"></i>Recent Meal Logs</div>
+                </div>
+                <div class="plan-card-body" id="recentLogsContainer">
+                    <div class="text-muted small">No recent logs.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Log Meal Modal -->
+<div class="modal fade" id="logMealModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Log a Meal</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label>Food Name *</label>
+            <input type="text" id="logFoodName" class="form-control" placeholder="e.g. Chicken Breast, Rice Bowl" required>
+        </div>
+        <div class="row">
+            <div class="col-6 mb-3"><label>Amount / Portion</label><input type="text" id="logPortion" class="form-control" placeholder="e.g. 150g, 1 cup"></div>
+            <div class="col-6 mb-3"><label>Calories (kcal)</label><input type="number" id="logCalories" class="form-control" min="0" placeholder="e.g. 250"></div>
+        </div>
+        <div class="row">
+            <div class="col-4 mb-3"><label>Protein (g)</label><input type="number" id="logProtein" class="form-control" min="0" step="0.1" placeholder="0"></div>
+            <div class="col-4 mb-3"><label>Carbs (g)</label><input type="number" id="logCarbs" class="form-control" min="0" step="0.1" placeholder="0"></div>
+            <div class="col-4 mb-3"><label>Fat (g)</label><input type="number" id="logFat" class="form-control" min="0" step="0.1" placeholder="0"></div>
+        </div>
+        <div class="mb-3">
+            <label>Notes (optional)</label>
+            <textarea id="logMealNotes" class="form-control" rows="2" placeholder="Any extra details..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="submitMealLog()"><i class="bi bi-check-lg me-1"></i>Save Meal</button>
       </div>
     </div>
-
-    <div id="loadingState" class="text-center text-muted py-5">
-      <div class="spinner-border" role="status"></div>
-      <div class="mt-2">Loading your diet plan...</div>
-    </div>
-
-    <div id="noPlanState" class="alert alert-secondary" style="display:none;">
-      <i class="bi bi-info-circle me-2"></i>You don't have a diet plan assigned yet. Ask your trainer to create one for you.
-    </div>
-
-    <div id="planContainer" style="display:none;"></div>
   </div>
-</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
-const GOAL_LABELS = {
-  WEIGHT_LOSS: 'Weight Loss', MUSCLE_GAIN: 'Muscle Gain', RECOMPOSITION: 'Recomposition',
-  MAINTENANCE: 'Maintenance', ENDURANCE: 'Endurance',
-};
+if (!getAccessToken()) window.location.href = 'index.html';
 
-const MEAL_LABELS = {
-  BREAKFAST: '🌅 Breakfast', MID_MORNING: '🍌 Mid-Morning', LUNCH: '🍽️ Lunch',
-  PRE_WORKOUT: '⚡ Pre-Workout', POST_WORKOUT: '💪 Post-Workout',
-  DINNER: '🌙 Dinner', EVENING_SNACK: '🥜 Evening Snack',
-};
+let activePlan = null;
+let todaySummary = null;
+let recentLogs = [];
 
-async function loadMyDiet() {
-  const loadingEl = document.getElementById('loadingState');
-  const noPlanEl = document.getElementById('noPlanState');
-  const containerEl = document.getElementById('planContainer');
-
-  loadingEl.style.display = '';
-  noPlanEl.style.display = 'none';
-  containerEl.style.display = 'none';
-
-  const res = await apiRequest('/diet/plans/?mine=true');
-  loadingEl.style.display = 'none';
-
-  if (!res || !res.ok) {
-    noPlanEl.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Could not load your diet plan.';
-    noPlanEl.style.display = '';
-    return;
-  }
-
-  const data = await res.json();
-  const plans = data.results || data;
-  const activePlans = plans.filter(p => p.is_active);
-
-  if (!activePlans.length) {
-    noPlanEl.style.display = '';
-    return;
-  }
-
-  containerEl.style.display = '';
-
-  containerEl.innerHTML = activePlans.map(plan => `
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div>
-            <h4 class="mb-1">${escapeHtml(plan.name)}</h4>
-            ${plan.goal ? `<span class="pill pill-info">${GOAL_LABELS[plan.goal] || plan.goal}</span>` : ''}
-          </div>
-          ${plan.is_active ? '<span class="pill pill-success">Active</span>' : '<span class="pill pill-muted">Inactive</span>'}
-        </div>
-
-        <!-- Macros -->
-        <div class="row g-3 mb-4">
-          ${plan.daily_calories ? `
-          <div class="col-6 col-md-3">
-            <div class="text-center p-3 rounded" style="background: var(--brand-red-50);">
-              <div class="fw-bold fs-4" style="color: var(--brand-red);">${plan.daily_calories}</div>
-              <div class="text-muted small">Calories</div>
-            </div>
-          </div>` : ''}
-          ${plan.protein_g ? `
-          <div class="col-6 col-md-3">
-            <div class="text-center p-3 rounded" style="background: var(--color-info-bg);">
-              <div class="fw-bold fs-4" style="color: var(--color-info);">${plan.protein_g}g</div>
-              <div class="text-muted small">Protein</div>
-            </div>
-          </div>` : ''}
-          ${plan.carbs_g ? `
-          <div class="col-6 col-md-3">
-            <div class="text-center p-3 rounded" style="background: var(--color-warning-bg);">
-              <div class="fw-bold fs-4" style="color: var(--color-warning);">${plan.carbs_g}g</div>
-              <div class="text-muted small">Carbs</div>
-            </div>
-          </div>` : ''}
-          ${plan.fats_g ? `
-          <div class="col-6 col-md-3">
-            <div class="text-center p-3 rounded" style="background: var(--color-success-bg);">
-              <div class="fw-bold fs-4" style="color: var(--color-success);">${plan.fats_g}g</div>
-              <div class="text-muted small">Fats</div>
-            </div>
-          </div>` : ''}
-        </div>
-
-        <!-- Meals -->
-        <div id="meals-${plan.id}">
-          <div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm"></div> Loading meals...</div>
-        </div>
-
-        ${plan.notes ? `<div class="mt-3 p-3 rounded" style="background: var(--bg-root);"><strong>Notes:</strong> ${escapeHtml(plan.notes)}</div>` : ''}
-      </div>
-    </div>
-  `).join('');
-
-  // Load meals for each plan
-  for (const plan of activePlans) {
-    loadMeals(plan.id);
-  }
+function showToast(msg, variant) {
+    const t = document.getElementById('appToast');
+    const b = document.getElementById('appToastBody');
+    if (!t || !b) return;
+    t.classList.remove('bg-success', 'bg-danger');
+    t.classList.add(variant === 'error' ? 'bg-danger' : 'bg-success');
+    b.textContent = msg;
+    bootstrap.Toast.getOrCreateInstance(t, { delay: 2800 }).show();
 }
 
-async function loadMeals(planId) {
-  const el = document.getElementById(`meals-${planId}`);
-  if (!el) return;
-
-  const res = await apiRequest(`/diet/meals/?diet_plan=${planId}`);
-  if (!res || !res.ok) {
-    el.innerHTML = '<div class="text-muted small">Could not load meals.</div>';
-    return;
-  }
-
-  const data = await res.json();
-  const meals = data.results || data;
-
-  if (!meals.length) {
-    el.innerHTML = '<div class="text-muted small">No meals defined for this plan yet.</div>';
-    return;
-  }
-
-  // Group by meal type
-  const grouped = {};
-  meals.forEach(m => {
-    if (!grouped[m.meal_type]) grouped[m.meal_type] = [];
-    grouped[m.meal_type].push(m);
-  });
-
-  el.innerHTML = Object.entries(grouped).map(([type, items]) => `
-    <div class="mb-3">
-      <h6 class="text-uppercase small fw-bold text-muted mb-2">${MEAL_LABELS[type] || type}</h6>
-      <div class="table-responsive">
-        <table class="table table-sm mb-0">
-          <thead>
-            <tr><th>Food</th><th>Portion</th><th>Calories</th><th>Time</th><th>Notes</th></tr>
-          </thead>
-          <tbody>
-            ${items.map(m => `
-              <tr>
-                <td class="fw-semibold">${escapeHtml(m.food_name)}</td>
-                <td>${escapeHtml(m.portion || '—')}</td>
-                <td>${m.calories ? m.calories + ' kcal' : '—'}</td>
-                <td>${m.time_suggestion || '—'}</td>
-                <td class="text-muted small">${escapeHtml(m.notes || '')}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `).join('');
+function goalLabel(g) {
+    const map = { WEIGHT_LOSS: 'Weight Loss', MUSCLE_GAIN: 'Muscle Gain', RECOMPOSITION: 'Recomposition', MAINTENANCE: 'Maintenance', ENDURANCE: 'Endurance' };
+    return map[g] || g || 'General';
 }
 
+function mealTypeIcon(t) {
+    const map = { BREAKFAST: 'bi-sunrise', MID_MORNING: 'bi-cup-hot', LUNCH: 'bi-cloud-sun', PRE_WORKOUT: 'bi-lightning', POST_WORKOUT: 'bi-trophy', DINNER: 'bi-moon-stars', EVENING_SNACK: 'bi-cookie' };
+    return map[t] || 'bi-egg-fried';
+}
 
-loadMyDiet();
+function renderMacroRing(label, consumed, goal, unit, color) {
+    const pct = goal ? Math.min(Math.round((consumed / goal) * 100), 100) : 0;
+    const r = 34, c = 2 * Math.PI * r;
+    const offset = c - (pct / 100) * c;
+    return `
+        <div class="col-md-3 col-6 mb-3">
+            <div class="d-flex flex-column align-items-center">
+                <div class="macro-ring mb-2">
+                    <svg width="80" height="80" viewBox="0 0 80 80">
+                        <circle cx="40" cy="40" r="${r}" fill="none" stroke="var(--border-light)" stroke-width="8"/>
+                        <circle cx="40" cy="40" r="${r}" fill="none" stroke="${color}" stroke-width="8"
+                            stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+                    </svg>
+                    <div class="ring-label">
+                        <div class="ring-value">${consumed || 0}</div>
+                        <div class="ring-unit">${unit}</div>
+                    </div>
+                </div>
+                <div class="fw-semibold small">${label}</div>
+                <div class="text-muted" style="font-size:0.72rem;">of ${goal || '--'} ${unit}</div>
+            </div>
+        </div>`;
+}
+
+async function loadDietData() {
+    document.getElementById('loadingState').style.display = '';
+    document.getElementById('dietContent').style.display = 'none';
+    document.getElementById('noPlanState').style.display = 'none';
+
+    const [plansRes, summaryRes, logsRes] = await Promise.all([
+        apiRequest('/diet/diet-plans/'),
+        apiRequest('/diet/meal-logs/daily-summary/'),
+        apiRequest('/diet/meal-logs/?date=' + new Date().toISOString().slice(0, 10)),
+    ]);
+
+    document.getElementById('loadingState').style.display = 'none';
+
+    // Plans
+    if (plansRes && plansRes.ok) {
+        const plansData = await plansRes.json();
+        const plans = (plansData.results || plansData).filter(p => p.is_active);
+        if (plans.length === 0) {
+            document.getElementById('noPlanState').style.display = '';
+            return;
+        }
+        activePlan = plans[0];
+        renderActivePlan();
+    } else {
+        document.getElementById('noPlanState').style.display = '';
+        return;
+    }
+
+    // Daily summary
+    if (summaryRes && summaryRes.ok) {
+        todaySummary = await summaryRes.json();
+        renderTodaySummary();
+    }
+
+    // Today's logs
+    if (logsRes && logsRes.ok) {
+        const logsData = await logsRes.json();
+        renderTodayLogs(logsData.results || logsData);
+    }
+
+    // Recent logs (last 7 days)
+    loadRecentLogs();
+}
+
+function renderActivePlan() {
+    document.getElementById('dietContent').style.display = '';
+    const p = activePlan;
+
+    document.getElementById('planName').textContent = p.name;
+    document.getElementById('planGoal').textContent = goalLabel(p.goal) + (p.start_date ? ' \u00b7 Started ' + p.start_date : '');
+    document.getElementById('planStatus').textContent = p.status || 'Active';
+    document.getElementById('planStatus').className = 'badge ' + (p.is_active ? 'bg-success' : 'bg-secondary');
+
+    // Disclaimer
+    if (p.disclaimer) {
+        document.getElementById('disclaimerBanner').style.display = 'flex';
+        document.getElementById('disclaimerText').textContent = p.disclaimer;
+    }
+
+    // Macros
+    if (p.daily_calories || p.protein_g || p.carbs_g || p.fats_g) {
+        document.getElementById('macroSection').style.display = '';
+        const consumed = todaySummary?.summary || {};
+        const macrosHtml =
+            renderMacroRing('Calories', consumed.total_calories_consumed || 0, p.daily_calories, 'kcal', '#e63946') +
+            renderMacroRing('Protein', consumed.macros?.protein_g || 0, p.protein_g, 'g', '#3b82f6') +
+            renderMacroRing('Carbs', consumed.macros?.carbs_g || 0, p.carbs_g, 'g', '#10b981') +
+            renderMacroRing('Fat', consumed.macros?.fat_g || 0, p.fats_g, 'g', '#f59e0b');
+        document.getElementById('macroRings').innerHTML = macrosHtml;
+    }
+
+    // Meals by type
+    const meals = p.meals || [];
+    if (meals.length === 0) {
+        document.getElementById('planMealsContainer').innerHTML = '<div class="text-muted small">No meals in this plan yet.</div>';
+        return;
+    }
+
+    const grouped = {};
+    meals.forEach(m => {
+        if (!grouped[m.meal_type]) grouped[m.meal_type] = [];
+        grouped[m.meal_type].push(m);
+    });
+
+    const typeOrder = ['BREAKFAST', 'MID_MORNING', 'LUNCH', 'PRE_WORKOUT', 'POST_WORKOUT', 'DINNER', 'EVENING_SNACK'];
+    const typeLabels = { BREAKFAST: 'Breakfast', MID_MORNING: 'Mid-Morning', LUNCH: 'Lunch', PRE_WORKOUT: 'Pre-Workout', POST_WORKOUT: 'Post-Workout', DINNER: 'Dinner', EVENING_SNACK: 'Evening Snack' };
+
+    let html = '';
+    typeOrder.forEach(type => {
+        const items = grouped[type];
+        if (!items) return;
+        html += `<div class="meal-type-section">
+            <div class="meal-type-header"><i class="bi ${mealTypeIcon(type)} me-1"></i>${typeLabels[type] || type}</div>`;
+        items.forEach(m => {
+            html += `<div class="food-item">
+                <div>
+                    <div class="food-name">${m.food_name}</div>
+                    <div class="food-meta">${m.portion || ''} ${m.time_suggestion ? '\u00b7 ' + m.time_suggestion.substring(0, 5) : ''} ${m.notes ? '\u00b7 ' + m.notes : ''}</div>
+                </div>
+                <div class="food-cal">${m.calories ? m.calories + ' kcal' : '--'}</div>
+            </div>`;
+        });
+        html += '</div>';
+    });
+    document.getElementById('planMealsContainer').innerHTML = html;
+}
+
+function renderTodaySummary() {
+    if (!todaySummary) return;
+    const s = todaySummary.summary;
+    const goal = s.calorie_goal;
+    const consumed = s.total_calories_consumed || 0;
+    const remaining = goal ? goal - consumed : null;
+
+    document.getElementById('todayCalories').textContent = consumed;
+    document.getElementById('todayCalGoal').textContent = goal || '--';
+
+    if (remaining != null) {
+        document.getElementById('todayRemaining').textContent = Math.abs(remaining);
+        document.getElementById('todayBalanceLabel').textContent = remaining >= 0 ? 'left to eat' : 'over goal!';
+        document.getElementById('todayRemaining').className = 'fw-bold fs-3 ' + (remaining >= 0 ? '' : 'text-danger');
+    } else {
+        document.getElementById('todayRemaining').textContent = '--';
+        document.getElementById('todayBalanceLabel').textContent = 'no calorie goal set';
+    }
+
+    const pct = s.progress_percent || 0;
+    document.getElementById('todayProgressPct').textContent = Math.round(pct) + '%';
+    const bar = document.getElementById('todayProgressBar');
+    bar.style.width = Math.min(pct, 100) + '%';
+    bar.className = 'calorie-progress-fill ' + (pct > 100 ? 'surplus' : pct > 80 ? 'deficit' : 'on-track');
+
+    // Update date
+    const d = todaySummary.date;
+    document.getElementById('todayDate').textContent = d;
+
+    // Update macros if plan is loaded
+    if (activePlan && (activePlan.daily_calories || activePlan.protein_g || activePlan.carbs_g || activePlan.fats_g)) {
+        document.getElementById('macroSection').style.display = '';
+        const macrosHtml =
+            renderMacroRing('Calories', consumed, activePlan.daily_calories, 'kcal', '#e63946') +
+            renderMacroRing('Protein', s.macros?.protein_g || 0, activePlan.protein_g, 'g', '#3b82f6') +
+            renderMacroRing('Carbs', s.macros?.carbs_g || 0, activePlan.carbs_g, 'g', '#10b981') +
+            renderMacroRing('Fat', s.macros?.fat_g || 0, activePlan.fats_g, 'g', '#f59e0b');
+        document.getElementById('macroRings').innerHTML = macrosHtml;
+    }
+}
+
+function renderTodayLogs(logs) {
+    const container = document.getElementById('todayLogContainer');
+    if (!logs || logs.length === 0) {
+        container.innerHTML = '<div class="text-muted small">No meals logged today. Click "Log Meal" to add one.</div>';
+        return;
+    }
+
+    let totalItems = 0;
+    let html = '';
+    logs.forEach(log => {
+        const items = log.food_items || [];
+        totalItems += items.length;
+        html += `<div class="log-entry-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="fw-semibold small text-muted">${log.notes || 'Meal entry'}</div>
+                <div class="fw-bold text-danger small">${log.total_calories} kcal</div>
+            </div>`;
+        items.forEach(item => {
+            html += `<div class="log-food-row">
+                <span>${item.name || item.food_name || '--'} ${item.amount ? '(' + item.amount + ')' : ''}</span>
+                <span class="text-muted small">${item.calories || 0} kcal</span>
+            </div>`;
+        });
+        html += '</div>';
+    });
+    document.getElementById('todayMealCount').textContent = totalItems;
+    container.innerHTML = html;
+}
+
+async function loadRecentLogs() {
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const dateFrom = weekAgo.toISOString().slice(0, 10);
+
+    // Fetch logs without date filter (API returns all for member, ordered by -date)
+    const res = await apiRequest('/diet/meal-logs/');
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    recentLogs = (data.results || data).slice(0, 20);
+    renderRecentLogs();
+}
+
+function renderRecentLogs() {
+    const container = document.getElementById('recentLogsContainer');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const older = recentLogs.filter(l => l.date !== todayStr);
+
+    if (older.length === 0) {
+        container.innerHTML = '<div class="text-muted small">No recent logs outside today.</div>';
+        return;
+    }
+
+    // Group by date
+    const grouped = {};
+    older.forEach(log => {
+        if (!grouped[log.date]) grouped[log.date] = [];
+        grouped[log.date].push(log);
+    });
+
+    let html = '';
+    Object.keys(grouped).sort().reverse().forEach(date => {
+        const dayLogs = grouped[date];
+        const dayTotal = dayLogs.reduce((sum, l) => sum + (l.total_calories || 0), 0);
+        html += `<div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="fw-semibold small">${date}</div>
+                <div class="text-danger fw-bold small">${dayTotal} kcal</div>
+            </div>`;
+        dayLogs.forEach(log => {
+            const items = log.food_items || [];
+            items.forEach(item => {
+                html += `<div class="log-food-row">
+                    <span class="small">${item.name || item.food_name || '--'} ${item.amount ? '(' + item.amount + ')' : ''}</span>
+                    <span class="text-muted" style="font-size:0.78rem;">${item.calories || 0} kcal</span>
+                </div>`;
+            });
+        });
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+async function submitMealLog() {
+    const foodName = document.getElementById('logFoodName').value.trim();
+    if (!foodName) { showToast('Food name is required.', 'error'); return; }
+
+    const calories = parseInt(document.getElementById('logCalories').value) || 0;
+    const protein = parseFloat(document.getElementById('logProtein').value) || 0;
+    const carbs = parseFloat(document.getElementById('logCarbs').value) || 0;
+    const fat = parseFloat(document.getElementById('logFat').value) || 0;
+
+    const foodItem = {
+        name: foodName,
+        amount: document.getElementById('logPortion').value.trim(),
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
+    };
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const notes = document.getElementById('logMealNotes').value.trim();
+
+    // Check if there's already a log for today — if so, append to it
+    const existingRes = await apiRequest('/diet/meal-logs/?date=' + todayStr);
+    if (existingRes && existingRes.ok) {
+        const existingData = await existingRes.json();
+        const existing = (existingData.results || existingData);
+
+        if (existing.length > 0) {
+            // Update existing log by appending food item
+            const logId = existing[0].id;
+            const currentItems = existing[0].food_items || [];
+            const updatedItems = [...currentItems, foodItem];
+            const patchRes = await apiRequest(`/diet/meal-logs/${logId}/`, {
+                method: 'PATCH',
+                body: JSON.stringify({ food_items: updatedItems }),
+            });
+            if (patchRes && patchRes.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('logMealModal')).hide();
+                clearLogForm();
+                showToast('Meal added to today\'s log');
+                loadDietData();
+                return;
+            } else {
+                const err = patchRes ? await patchRes.json() : {};
+                showToast(formatApiError(err) || 'Could not update log', 'error');
+                return;
+            }
+        }
+    }
+
+    // Create new log
+    const payload = {
+        date: todayStr,
+        food_items: [foodItem],
+        notes: notes,
+    };
+
+    const res = await apiRequest('/diet/meal-logs/', { method: 'POST', body: JSON.stringify(payload) });
+    if (res && res.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('logMealModal')).hide();
+        clearLogForm();
+        showToast('Meal logged successfully');
+        loadDietData();
+    } else {
+        const err = res ? await res.json() : {};
+        showToast(formatApiError(err) || 'Could not save meal log', 'error');
+    }
+}
+
+function clearLogForm() {
+    document.getElementById('logFoodName').value = '';
+    document.getElementById('logPortion').value = '';
+    document.getElementById('logCalories').value = '';
+    document.getElementById('logProtein').value = '';
+    document.getElementById('logCarbs').value = '';
+    document.getElementById('logFat').value = '';
+    document.getElementById('logMealNotes').value = '';
+}
+
+loadDietData();
+loadTopbarNotifications();
 </script>
 </body>
 </html>

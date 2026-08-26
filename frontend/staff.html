@@ -2,8 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/png" href="LOGO-2.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff – FitCore</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="css/theme.css" rel="stylesheet">
@@ -33,7 +31,7 @@
     }
     #profileTable tr, #leaveTable tr {
       margin-bottom: 0.75rem;
-      border: 1px solid var(--border-light, #dee2e6);
+      border: 1px solid #dee2e6;
       border-radius: 0.375rem;
       padding: 0.5rem 0.75rem;
     }
@@ -49,7 +47,7 @@
       font-size: 0.72rem;
       font-weight: 600;
       text-transform: uppercase;
-      color: var(--text-muted, #6c757d);
+      color: #6c757d;
     }
   }
 </style>
@@ -57,7 +55,7 @@
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
     <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
-    <img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
     <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
   </a>
   <div class="topbar-search">
@@ -105,7 +103,6 @@
 <div id="page-content">
 
 <div class="d-flex">
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
   <div class="sidebar" id="sidebar">
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
@@ -121,13 +118,11 @@
       <a href="staff.html" class="list-group-item list-group-item-action active" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
 
       <div class="nav-section-label">Workout & Diet</div>
-      <a href="workouts.html" class="list-group-item list-group-item-action"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
-      <a href="diet.html" class="list-group-item list-group-item-action"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+      <a href="workouts.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
 
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
-
-      <div class="nav-section-label">Member</div>
 
       <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
@@ -135,10 +130,7 @@
       <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
       <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
       <a href="my-diet.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
-      <a href="my-trainer.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-person-video3"></i> <span>My Trainer</span></a>
-
-      <div class="nav-section-label">Trainer</div>
-      <a href="trainer-members.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-people"></i> <span>My Members</span></a>
+      <a href="my-locker.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-lock"></i> <span>My Locker</span></a>
 
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
@@ -669,7 +661,7 @@
 
 <script src="js/api.js"></script>
 <script>
-  if (!getAccessToken()) window.location.href = 'login.html';
+  if (!getAccessToken()) window.location.href = 'index.html';
 
   restrictPastDates('joinedDate');
 

@@ -1,6 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
-from apps.accounts.permissions import IsOwnerOrStaff
+from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrMemberReadOnly
 from .models import Locker, LockerAssignment
 from .serializers import LockerSerializer, LockerAssignmentSerializer
 
@@ -20,17 +20,22 @@ class LockerViewSet(viewsets.ModelViewSet):
 
 
 class LockerAssignmentViewSet(viewsets.ModelViewSet):
-    """Owner/Staff assign lockers to members."""
+    """Owner/Staff assign lockers to members. Members can view their own assignments."""
     serializer_class = LockerAssignmentSerializer
-    permission_classes = [IsOwnerOrStaff]
+    permission_classes = [IsOwnerOrStaffOrMemberReadOnly]
 
     def get_queryset(self):
         self._release_expired_assignments()
 
-        qs = LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').all()
+        user = self.request.user
+        if user.role in ('OWNER', 'STAFF'):
+            qs = LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').all()
+        else:
+            qs = LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').filter(member=user)
+
         member_id = self.request.query_params.get('member')
         active_only = self.request.query_params.get('active')
-        if member_id:
+        if member_id and user.role in ('OWNER', 'STAFF'):
             qs = qs.filter(member_id=member_id)
         if active_only == 'true':
             qs = qs.filter(is_active=True)

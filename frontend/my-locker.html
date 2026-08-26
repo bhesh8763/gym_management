@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Locker - FitCore</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        body { display:flex;flex-direction:column;height:100vh;min-height:100vh;overflow:hidden;margin:0;background:var(--bg-root);font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text-primary); }
+        .topbar { flex:0 0 auto;background:var(--bg-topbar);padding:0 1.25rem;height:56px;display:flex;align-items:center;gap:0.75rem;z-index:100;position:relative; }
+        .topbar .sidebar-toggle { background:none;border:none;color:var(--text-sidebar);font-size:1.25rem;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
+        .topbar .sidebar-toggle:hover { color:#fff;background:rgba(255,255,255,0.08); }
+        .topbar .navbar-brand,.topbar a.navbar-brand { color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;display:flex;align-items:center; }
+        .topbar .navbar-brand span { color:#fff !important;text-decoration:none !important; }
+        #page-content { display:flex;flex:1 1 auto;min-height:0; }
+        #page-content > .d-flex { flex:1 1 auto;min-height:0; }
+        #page-content .flex-grow-1 { height:100%;min-height:0;overflow-y:auto; }
+        .sidebar { background:var(--bg-sidebar);flex:0 0 240px;width:240px;min-height:0;max-height:none;align-self:stretch;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.04); }
+        .sidebar .list-group-item { background-color:transparent;color:var(--text-sidebar);border:none;padding:9px 16px;margin:2px 8px;font-weight:500;font-size:0.85rem;border-radius:10px;display:flex;align-items:center;gap:10px;text-decoration:none; }
+        .sidebar .list-group-item:hover { background-color:rgba(255,255,255,0.06);color:#fff !important; }
+        .sidebar .list-group-item.active { background:linear-gradient(135deg,var(--brand-red),var(--brand-red-dark));color:#fff !important; }
+        .nav-section-label { color:rgba(255,255,255,0.3);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:18px 16px 6px; }
+        nav.topbar a.navbar-brand, nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
+        nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
+
+        .locker-hero { background:linear-gradient(135deg,#0ea5e9,#2563eb);border-radius:var(--radius-lg);padding:2rem;color:#fff;position:relative;overflow:hidden; }
+        .locker-hero::after { content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;background:rgba(255,255,255,0.1);border-radius:50%; }
+        .locker-hero .locker-icon { font-size:3rem;opacity:0.9; }
+        .locker-info-row { display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border-light);font-size:0.88rem; }
+        .locker-info-row:last-child { border-bottom:none; }
+        .locker-info-label { color:var(--text-muted); }
+        .locker-info-value { font-weight:600;color:var(--text-primary); }
+        .status-badge { display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:0.75rem;font-weight:600; }
+        .status-active { background:rgba(16,185,129,0.1);color:#059669; }
+        .status-expired { background:rgba(239,68,68,0.1);color:#dc2626; }
+        .status-released { background:rgba(107,114,128,0.1);color:#6b7280; }
+    </style>
+</head>
+<body data-allowed-roles="MEMBER">
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<nav class="topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+        <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+        <span style="font-size:1.5rem;font-weight:700;">FitCore</span>
+    </a>
+    <div class="position-relative">
+        <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+            <i class="bi bi-bell"></i>
+            <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+        </button>
+        <div class="dropdown-panel" id="notifPanel">
+            <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+                <span class="fw-semibold small">Notifications</span>
+                <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+                    <i class="bi bi-check2-all me-1"></i>Mark all as read
+                </button>
+            </div>
+            <div id="notifList"><div class="notif-empty">No notifications</div></div>
+            <div class="border-top text-center py-2">
+                <a href="notifications.html" class="small text-danger spa-link">View all</a>
+            </div>
+        </div>
+    </div>
+    <div class="position-relative">
+        <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+            <span class="profile-avatar" id="profileAvatar">?</span>
+            <span class="profile-meta">
+                <div class="profile-name" id="profileName">-</div>
+                <div class="profile-role" id="profileRole">-</div>
+            </span>
+            <i class="bi bi-chevron-down text-white-50"></i>
+        </button>
+        <div class="dropdown-panel profile-menu" id="profilePanel">
+            <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+            <hr>
+            <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </div>
+    </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+    <div class="sidebar" id="sidebar">
+        <div class="list-group list-group-flush pt-2">
+            <div class="nav-section-label">Main</div>
+            <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+            <div class="nav-section-label">Members</div>
+            <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
+            <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
+            <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+            <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+            <div class="nav-section-label">Staff Management</div>
+            <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
+            <div class="nav-section-label">Workout & Diet</div>
+            <a href="workouts.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+            <a href="diet.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
+            <div class="nav-section-label">Payments</div>
+            <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
+            <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
+            <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
+            <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
+            <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
+            <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
+            <a href="my-diet.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
+            <a href="my-locker.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-lock"></i> <span>My Locker</span></a>
+            <div class="nav-section-label">Equipment</div>
+            <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
+            <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
+            <div class="nav-section-label">Insights</div>
+            <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
+            <div class="nav-section-label">System</div>
+            <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
+        </div>
+    </div>
+
+    <div class="p-4 flex-grow-1">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="mb-1">My Locker</h3>
+                <p class="text-muted mb-0">Your locker assignment details</p>
+            </div>
+        </div>
+
+        <div id="loadingState" class="text-center text-muted py-5">
+            <div class="spinner-border text-danger" role="status"></div>
+            <div class="mt-2">Loading locker info...</div>
+        </div>
+
+        <div id="noAssignmentState" class="alert alert-secondary" style="display:none;">
+            <i class="bi bi-info-circle me-1"></i> You don't have a locker assigned yet. Ask staff at the front desk to assign one for you.
+        </div>
+
+        <div id="lockerContent" style="display:none;">
+
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <!-- Active Locker Hero Card -->
+                    <div id="activeLockerCard" class="locker-hero mb-4" style="display:none;">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="locker-icon"><i class="bi bi-lock-fill"></i></div>
+                            <div>
+                                <h4 class="mb-1">Locker <span id="lockerNumber">-</span></h4>
+                                <div class="opacity-75 mb-2" id="lockerLocation">-</div>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <span class="status-badge status-active"><i class="bi bi-check-circle-fill"></i> Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Locker Details -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white fw-semibold">
+                            <i class="bi bi-info-circle me-1 text-primary"></i> Assignment Details
+                        </div>
+                        <div class="card-body">
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Locker Number</span>
+                                <span class="locker-info-value" id="detailLockerNumber">-</span>
+                            </div>
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Location</span>
+                                <span class="locker-info-value" id="detailLockerLocation">-</span>
+                            </div>
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Status</span>
+                                <span class="locker-info-value" id="detailLockerStatus">-</span>
+                            </div>
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Monthly Fee</span>
+                                <span class="locker-info-value" id="detailLockerFee">-</span>
+                            </div>
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Assigned On</span>
+                                <span class="locker-info-value" id="detailAssignedDate">-</span>
+                            </div>
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Valid Until</span>
+                                <span class="locker-info-value" id="detailValidUntil">-</span>
+                            </div>
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Assigned By</span>
+                                <span class="locker-info-value" id="detailAssignedBy">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Quick Info Card -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white fw-semibold">
+                            <i class="bi bi-lightning me-1 text-warning"></i> Quick Info
+                        </div>
+                        <div class="card-body">
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Days Remaining</span>
+                                <span class="locker-info-value fw-bold" id="daysRemaining">-</span>
+                            </div>
+                            <div class="locker-info-row">
+                                <span class="locker-info-label">Locker Status</span>
+                                <span class="locker-info-value" id="lockerStatusBadge">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Need Help -->
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-headset text-muted" style="font-size:2rem;"></i>
+                            <h6 class="mt-2 mb-1">Need Help?</h6>
+                            <p class="text-muted small mb-3">Contact staff for locker-related queries</p>
+                            <a href="notifications.html" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-envelope me-1"></i> Message Staff
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Locker History -->
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-header bg-white fw-semibold">
+                    <i class="bi bi-clock-history me-1 text-primary"></i> Locker History
+                </div>
+                <div class="card-body">
+                    <div id="lockerHistory"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+    let currentUser = null;
+
+    async function init() {
+        currentUser = await loadProfile();
+        if (!currentUser) { window.location.href = 'login.html'; return; }
+        applyRoleGating();
+        loadTopbarNotifications();
+        await loadMyLocker();
+    }
+
+    async function loadMyLocker() {
+        document.getElementById('loadingState').style.display = '';
+        document.getElementById('noAssignmentState').style.display = 'none';
+        document.getElementById('lockerContent').style.display = 'none';
+
+        const res = await apiRequest('/lockers/assignments/?active=true');
+        if (!res || !res.ok) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('noAssignmentState').style.display = '';
+            return;
+        }
+
+        const data = await res.json();
+        const assignments = data.results || data;
+
+        document.getElementById('loadingState').style.display = 'none';
+
+        if (!assignments.length) {
+            document.getElementById('noAssignmentState').style.display = '';
+            return;
+        }
+
+        document.getElementById('lockerContent').style.display = '';
+        const a = assignments[0];
+        const locker = a.locker_number || '-';
+        const location = a.locker ? (a.locker.location || '-') : '-';
+        const fee = a.locker ? (a.locker.monthly_fee || '0') : '0';
+
+        document.getElementById('lockerNumber').textContent = locker;
+        document.getElementById('lockerLocation').textContent = location;
+
+        document.getElementById('detailLockerNumber').textContent = locker;
+        document.getElementById('detailLockerLocation').textContent = location;
+        document.getElementById('detailLockerStatus').textContent = 'Occupied';
+        document.getElementById('detailLockerFee').textContent = `Rs. ${parseFloat(fee).toFixed(0)}/mo`;
+        document.getElementById('detailAssignedDate').textContent = a.start_date || '-';
+        document.getElementById('detailValidUntil').textContent = a.end_date || 'No expiry';
+        document.getElementById('detailAssignedBy').textContent = a.assigned_by_name || '-';
+
+        if (a.end_date) {
+            const end = new Date(a.end_date);
+            const now = new Date();
+            const diffDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+            document.getElementById('daysRemaining').textContent = diffDays > 0 ? `${diffDays} days` : 'Expired';
+            document.getElementById('daysRemaining').className = diffDays > 7 ? 'locker-info-value fw-bold text-success' : 'locker-info-value fw-bold text-warning';
+        } else {
+            document.getElementById('daysRemaining').textContent = 'Ongoing';
+        }
+
+        document.getElementById('lockerStatusBadge').innerHTML = '<span class="status-badge status-active"><i class="bi bi-check-circle-fill"></i> Active</span>';
+
+        // Load all assignments (including expired) for history
+        loadLockerHistory();
+    }
+
+    async function loadLockerHistory() {
+        const res = await apiRequest('/lockers/assignments/');
+        if (!res || !res.ok) return;
+
+        const data = await res.json();
+        const all = data.results || data;
+
+        const container = document.getElementById('lockerHistory');
+        if (!all.length) {
+            container.innerHTML = '<div class="text-muted small text-center py-3">No locker history found.</div>';
+            return;
+        }
+
+        container.innerHTML = all.map(a => {
+            const isActive = a.is_active;
+            const statusClass = isActive ? 'status-active' : 'status-expired';
+            const statusText = isActive ? 'Active' : 'Released';
+            return `
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <div>
+                        <div class="fw-semibold">Locker ${a.locker_number}</div>
+                        <div class="text-muted small">${a.start_date} → ${a.end_date || 'Ongoing'}</div>
+                    </div>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    init();
+</script>
+</body>
+</html>
