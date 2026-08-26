@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.memberships.models import Membership, MembershipPlan
+from apps.memberships.models import FreezeRequest, Membership, MembershipPlan
 
 User = get_user_model()
 
@@ -170,3 +170,59 @@ class FreezeSerializer(serializers.Serializer):
 class RenewSerializer(serializers.Serializer):
     start_date = serializers.DateField(required=False)
     price_paid = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+
+
+# ─── Freeze Requests ──────────────────────────────────────────────────────────
+
+class FreezeRequestCreateSerializer(serializers.ModelSerializer):
+    """Used by members to submit a freeze request."""
+
+    class Meta:
+        model = FreezeRequest
+        fields = ['id', 'membership', 'freeze_start', 'freeze_end', 'reason']
+        read_only_fields = ['id']
+
+    def validate_membership(self, value):
+        if value.status != Membership.Status.ACTIVE:
+            raise serializers.ValidationError('Only active memberships can be frozen.')
+        if value.member != self.context['request'].user:
+            raise serializers.ValidationError('You can only request a freeze for your own membership.')
+        return value
+
+    def validate(self, data):
+        if data['freeze_end'] < data['freeze_start']:
+            raise serializers.ValidationError('freeze_end must be on or after freeze_start.')
+        today = timezone.now().date()
+        if data['freeze_start'] < today:
+            raise serializers.ValidationError('freeze_start cannot be in the past.')
+        # Check for pending request on same membership
+        if FreezeRequest.objects.filter(
+            membership=data['membership'],
+            status=FreezeRequest.Status.PENDING,
+        ).exists():
+            raise serializers.ValidationError('You already have a pending freeze request for this membership.')
+        return data
+
+
+class FreezeRequestListSerializer(serializers.ModelSerializer):
+    """Read serializer for freeze requests (staff view + member history)."""
+    member_name = serializers.CharField(source='requested_by.get_full_name', read_only=True)
+    member_email = serializers.EmailField(source='requested_by.email', read_only=True)
+    plan_name = serializers.CharField(source='membership.plan.name', read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = FreezeRequest
+        fields = [
+            'id', 'membership', 'member_name', 'member_email', 'plan_name',
+            'freeze_start', 'freeze_end', 'reason',
+            'status', 'status_display',
+            'reviewed_by', 'reviewed_by_name', 'reviewed_at', 'rejection_reason',
+            'created_at',
+        ]
+
+    def get_reviewed_by_name(self, obj):
+        if obj.reviewed_by:
+            return obj.reviewed_by.get_full_name()
+        return None

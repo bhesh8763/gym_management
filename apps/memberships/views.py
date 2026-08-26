@@ -24,15 +24,19 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.utils import timezone
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsMember, IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
-from apps.memberships.models import Membership, MembershipPlan
+from apps.notifications.models import Notification
+from apps.memberships.models import FreezeRequest, Membership, MembershipPlan
 from apps.memberships.serializers import (
+    FreezeRequestCreateSerializer,
+    FreezeRequestListSerializer,
     FreezeSerializer,
     MembershipCreateSerializer,
     MembershipDetailSerializer,
@@ -361,3 +365,147 @@ class ExpiringMembershipsView(generics.ListAPIView):
             end_date__gte=today,
             end_date__lte=today + timedelta(days=days),
         ).order_by('end_date')
+
+
+# ─── Freeze Requests ──────────────────────────────────────────────────────────
+
+class FreezeRequestViewSet(viewsets.ModelViewSet):
+    """
+    GET/POST  /api/memberships/freeze-requests/
+    GET       /api/memberships/freeze-requests/<id>/
+    POST      /api/memberships/freeze-requests/<id>/approve/
+    POST      /api/memberships/freeze-requests/<id>/reject/
+
+    Members create requests; Owner/Staff list all and approve/reject.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return FreezeRequestCreateSerializer
+        return FreezeRequestListSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in (User.Role.OWNER, User.Role.STAFF):
+            qs = FreezeRequest.objects.select_related(
+                'membership', 'membership__plan', 'requested_by', 'reviewed_by',
+            ).all()
+        else:
+            qs = FreezeRequest.objects.select_related(
+                'membership', 'membership__plan', 'requested_by', 'reviewed_by',
+            ).filter(requested_by=user)
+
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(requested_by=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        freeze_request = serializer.instance
+
+        # Notify all owner/staff about new freeze request
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        staff_users = User.objects.filter(
+            role__in=[User.Role.OWNER, User.Role.STAFF], is_active=True
+        )
+        for staff_user in staff_users:
+            Notification.objects.create(
+                recipient=staff_user,
+                notification_type=Notification.NotificationType.GENERAL,
+                title='New freeze request',
+                message=(
+                    f'{request.user.get_full_name()} requested to freeze their '
+                    f'"{freeze_request.membership.plan.name}" membership from '
+                    f'{freeze_request.freeze_start} to {freeze_request.freeze_end}.'
+                ),
+                related_membership_id=freeze_request.membership_id,
+            )
+
+        return Response(
+            FreezeRequestListSerializer(freeze_request).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """Approve a freeze request — freezes the membership."""
+        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+            raise PermissionDenied('Only Owner/Staff can approve freeze requests.')
+
+        freeze_request = self.get_object()
+        if freeze_request.status != FreezeRequest.Status.PENDING:
+            raise ValidationError('This request has already been reviewed.')
+
+        membership = freeze_request.membership
+        if membership.status != Membership.Status.ACTIVE:
+            raise ValidationError('The membership is no longer active.')
+
+        # Apply freeze to membership
+        membership.status = Membership.Status.FROZEN
+        membership.freeze_start = freeze_request.freeze_start
+        membership.freeze_end = freeze_request.freeze_end
+        membership.freeze_reason = freeze_request.reason
+        membership.save()
+
+        # Mark request as approved
+        freeze_request.status = FreezeRequest.Status.APPROVED
+        freeze_request.reviewed_by = request.user
+        freeze_request.reviewed_at = timezone.now()
+        freeze_request.save()
+
+        # Notify the member
+        Notification.objects.create(
+            recipient=freeze_request.requested_by,
+            notification_type=Notification.NotificationType.GENERAL,
+            title='Freeze request approved',
+            message=(
+                f'Your request to freeze "{membership.plan.name}" from '
+                f'{freeze_request.freeze_start} to {freeze_request.freeze_end} '
+                f'has been approved by {request.user.get_full_name()}.'
+            ),
+            related_membership_id=membership.id,
+        )
+
+        return Response(FreezeRequestListSerializer(freeze_request).data)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject(self, request, pk=None):
+        """Reject a freeze request."""
+        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+            raise PermissionDenied('Only Owner/Staff can reject freeze requests.')
+
+        freeze_request = self.get_object()
+        if freeze_request.status != FreezeRequest.Status.PENDING:
+            raise ValidationError('This request has already been reviewed.')
+
+        rejection_reason = request.data.get('reason', '')
+
+        freeze_request.status = FreezeRequest.Status.REJECTED
+        freeze_request.reviewed_by = request.user
+        freeze_request.reviewed_at = timezone.now()
+        freeze_request.rejection_reason = rejection_reason
+        freeze_request.save()
+
+        # Notify the member
+        Notification.objects.create(
+            recipient=freeze_request.requested_by,
+            notification_type=Notification.NotificationType.GENERAL,
+            title='Freeze request rejected',
+            message=(
+                f'Your request to freeze "{freeze_request.membership.plan.name}" '
+                f'has been rejected.'
+                + (f' Reason: {rejection_reason}' if rejection_reason else '')
+            ),
+            related_membership_id=freeze_request.membership_id,
+        )
+
+        return Response(FreezeRequestListSerializer(freeze_request).data)

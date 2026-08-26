@@ -118,3 +118,50 @@ class Membership(models.Model):
             delta = self.end_date - timezone.now().date()
             return max(delta.days, 0)
         return 0
+
+
+class FreezeRequest(models.Model):
+    """
+    A member-submitted request to freeze their membership.
+    Staff/Owner reviews and approves or rejects it.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        APPROVED = 'APPROVED', 'Approved'
+        REJECTED = 'REJECTED', 'Rejected'
+
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.CASCADE,
+        related_name='freeze_requests',
+    )
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='freeze_requests',
+    )
+    freeze_start = models.DateField()
+    freeze_end = models.DateField()
+    reason = models.TextField()
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='freeze_requests_reviewed',
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'freeze_requests'
+        verbose_name = 'Freeze Request'
+        verbose_name_plural = 'Freeze Requests'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Freeze request by {self.requested_by.get_full_name()} — {self.status}'

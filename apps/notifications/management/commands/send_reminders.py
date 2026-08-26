@@ -55,21 +55,61 @@ WORKOUT_REMINDER_DAYS = 3       # remind a member if they haven't logged a worko
 class Command(BaseCommand):
     help = (
         'Generate membership renewal, payment due, inactivity, and '
-        'workout-reminder notifications.'
+        'workout-reminder notifications. Also auto-unfreeses memberships '
+        'whose freeze period has ended.'
     )
 
     def handle(self, *args, **options):
         today = timezone.now().date()
 
+        auto_unfreeze_count = self._auto_unfreeze(today)
         renewal_count = self._send_membership_renewal_reminders(today)
         payment_count = self._send_payment_due_reminders(today)
         inactivity_count = self._send_inactivity_alerts(today)
         workout_count = self._send_workout_reminders(today)
 
         self.stdout.write(self.style.SUCCESS(
-            f'Done. Created {renewal_count} renewal, {payment_count} payment-due, '
-            f'{inactivity_count} inactivity, {workout_count} workout-reminder notifications.'
+            f'Done. {auto_unfreeze_count} auto-unfrozen, {renewal_count} renewal, '
+            f'{payment_count} payment-due, {inactivity_count} inactivity, '
+            f'{workout_count} workout-reminder notifications.'
         ))
+
+    # ── Auto-unfreeze ───────────────────────────────────────────────────────
+    def _auto_unfreeze(self, today):
+        """Unfreeze memberships whose freeze_end has passed."""
+        from datetime import timedelta as td
+        stale = Membership.objects.filter(
+            status=Membership.Status.FROZEN,
+            freeze_end__lt=today,
+        )
+        count = 0
+        for membership in stale:
+            if membership.freeze_start and membership.freeze_end:
+                frozen_days = (membership.freeze_end - membership.freeze_start).days
+                membership.end_date += td(days=max(frozen_days, 0))
+
+            membership.status = Membership.Status.ACTIVE
+            membership.freeze_start = None
+            membership.freeze_end = None
+            membership.freeze_reason = ''
+            membership.save()
+
+            if not self._already_sent_today(
+                membership.member_id, Notification.NotificationType.GENERAL,
+                related_membership_id=membership.id,
+            ):
+                Notification.objects.create(
+                    recipient_id=membership.member_id,
+                    notification_type=Notification.NotificationType.GENERAL,
+                    title='Membership unfrozen',
+                    message=(
+                        f'Your "{membership.plan.name}" membership has been '
+                        f'automatically unfrozen and is now active again.'
+                    ),
+                    related_membership_id=membership.id,
+                )
+            count += 1
+        return count
 
     # ── Membership renewal / expiry ─────────────────────────────────────────
     def _send_membership_renewal_reminders(self, today):

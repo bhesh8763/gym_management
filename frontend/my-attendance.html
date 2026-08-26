@@ -2,13 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-  <link rel="icon" type="image/png" href="LOGO-2.png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Attendance - FitCore</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-</head>
+    <style>
+        body { display:flex;flex-direction:column;height:100vh;min-height:100vh;overflow:hidden;margin:0;background:#f5f6f8;font-family:'Inter',system-ui,-apple-system,sans-serif;color:#111827; }
+        .topbar { flex:0 0 auto;background:#0f1015;padding:0 1.25rem;height:56px;display:flex;align-items:center;gap:0.75rem;z-index:100;position:relative; }
+        .topbar .sidebar-toggle { background:none;border:none;color:#9ca3af;font-size:1.25rem;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
+        .topbar .sidebar-toggle:hover { color:#fff;background:rgba(255,255,255,0.08); }
+        .topbar .navbar-brand,.topbar a.navbar-brand { color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;display:flex;align-items:center; }
+        .topbar .navbar-brand span { color:#fff !important;text-decoration:none !important; }
+        #page-content { display:flex;flex:1 1 auto;min-height:0; }
+        #page-content > .d-flex { flex:1 1 auto;min-height:0; }
+        #page-content .flex-grow-1 { height:100%;min-height:0;overflow-y:auto; }
+        .sidebar { background:#111218;flex:0 0 240px;width:240px;min-height:0;max-height:none;align-self:stretch;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.04); }
+        .sidebar .list-group-item { background-color:transparent;color:#9ca3af;border:none;padding:9px 16px;margin:2px 8px;font-weight:500;font-size:0.85rem;border-radius:10px;display:flex;align-items:center;gap:10px;text-decoration:none; }
+        .sidebar .list-group-item:hover { background-color:rgba(255,255,255,0.06);color:#fff !important; }
+        .sidebar .list-group-item.active { background:linear-gradient(135deg,#e63946,#c62f3b);color:#fff !important; }
+        .nav-section-label { color:rgba(255,255,255,0.3);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:18px 16px 6px; }
+        nav.topbar a.navbar-brand, nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
+        nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
+    </style>
 <body data-allowed-roles="MEMBER">
 
 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
@@ -22,7 +37,7 @@
 
 <nav class="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none"><span style="font-size: 1.5rem; font-weight: 700;"><img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none"><span style="font-size: 1.5rem; font-weight: 700;"><img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">FitCore</span></a>
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
             <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
@@ -47,7 +62,6 @@
 
 <div id="page-content">
 <div class="d-flex">
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
   <div class="sidebar" id="sidebar">
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
@@ -69,19 +83,13 @@
       <div class="nav-section-label">Payments</div>
       <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
 
-      <div class="nav-section-label">Member</div>
-
       <a href="my-attendance.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
       <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
       <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
       <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
       <a href="my-diet.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
-      <a href="my-trainer.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-person-video3"></i> <span>My Trainer</span></a>
       <a href="my-locker.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-lock"></i> <span>My Locker</span></a>
-
-      <div class="nav-section-label">Trainer</div>
-      <a href="trainer-members.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-people"></i> <span>My Members</span></a>
 
       <div class="nav-section-label">Equipment</div>
       <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
@@ -182,6 +190,10 @@
               </tbody>
             </table>
           </div>
+          <div id="paginationControls" class="d-flex justify-content-between align-items-center mt-3">
+            <small class="text-muted" id="paginationInfo"></small>
+            <nav><ul class="pagination pagination-sm mb-0" id="paginationBtns"></ul></nav>
+          </div>
 
         </div>
     </div>
@@ -193,6 +205,8 @@
 
 let recordsCache = [];
 let todayRecord = null;
+let historyPage = 1;
+const PAGE_SIZE = 10;
 
 function showToast(message, variant) {
     const toastEl = document.getElementById("appToast");
@@ -336,12 +350,21 @@ function renderStatsAndHistory() {
     }
     document.getElementById('statStreak').textContent = streak;
 
+    renderHistoryPage();
+}
+
+function renderHistoryPage() {
     const tbody = document.getElementById('historyTableBody');
     if (!recordsCache.length) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No attendance records yet — check in above to get started.</td></tr>';
+        document.getElementById('paginationControls').style.display = 'none';
         return;
     }
-    tbody.innerHTML = recordsCache.map(r => `
+    const totalPages = Math.ceil(recordsCache.length / PAGE_SIZE);
+    if (historyPage > totalPages) historyPage = totalPages;
+    const start = (historyPage - 1) * PAGE_SIZE;
+    const slice = recordsCache.slice(start, start + PAGE_SIZE);
+    tbody.innerHTML = slice.map(r => `
         <tr>
           <td>${new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
           <td>${formatTime(r.check_in)}</td>
@@ -349,6 +372,25 @@ function renderStatsAndHistory() {
           <td>${formatDuration(r.duration_minutes)}</td>
           <td>${statusBadge(r.status)}</td>
         </tr>`).join('');
+
+    const controls = document.getElementById('paginationControls');
+    const info = document.getElementById('paginationInfo');
+    const btns = document.getElementById('paginationBtns');
+    controls.style.display = 'flex';
+    info.textContent = `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, recordsCache.length)} of ${recordsCache.length}`;
+
+    let html = `<li class="page-item${historyPage <= 1 ? ' disabled' : ''}"><a class="page-link" href="#" onclick="goPage(${historyPage - 1});return false;"><i class="bi bi-chevron-left"></i></a></li>`;
+    for (let p = 1; p <= totalPages; p++) {
+        html += `<li class="page-item${p === historyPage ? ' active' : ''}"><a class="page-link" href="#" onclick="goPage(${p});return false;">${p}</a></li>`;
+    }
+    html += `<li class="page-item${historyPage >= totalPages ? ' disabled' : ''}"><a class="page-link" href="#" onclick="goPage(${historyPage + 1});return false;"><i class="bi bi-chevron-right"></i></a></li>`;
+    btns.innerHTML = html;
+}
+
+function goPage(p) {
+    historyPage = p;
+    renderHistoryPage();
+    document.getElementById('historyTableBody').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function loadHistory() {
@@ -362,6 +404,7 @@ async function loadHistory() {
         path = data.next ? data.next.replace(API_BASE, '') : null;
     }
     recordsCache = all.sort((a, b) => b.date.localeCompare(a.date));
+    historyPage = 1;
     todayRecord = recordsCache.find(r => r.date === todayISO()) || null;
     renderTodayCard();
     renderStatsAndHistory();

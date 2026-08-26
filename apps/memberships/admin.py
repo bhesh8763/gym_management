@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import MembershipPlan, Membership
+from .models import FreezeRequest, MembershipPlan, Membership
 
 
 @admin.register(MembershipPlan)
@@ -15,3 +15,10 @@ class MembershipAdmin(admin.ModelAdmin):
     list_filter = ('status', 'plan')
     search_fields = ('member__email', 'member__first_name', 'member__last_name')
     readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(FreezeRequest)
+class FreezeRequestAdmin(admin.ModelAdmin):
+    list_display = ('requested_by', 'membership', 'status', 'freeze_start', 'freeze_end', 'created_at')
+    list_filter = ('status',)
+    search_fields = ('requested_by__email', 'requested_by__first_name', 'requested_by__last_name')

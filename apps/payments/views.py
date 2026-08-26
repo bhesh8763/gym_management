@@ -84,19 +84,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        payment = serializer.save(collected_by=self.request.user)
-        # Send payment received notification
-        if payment.status == Payment.PaymentStatus.PAID:
-            try:
-                from apps.notifications.services import notify_payment_received
-                notify_payment_received(
-                    recipient=payment.member,
-                    amount=float(payment.amount_paid),
-                    payment_for=payment.get_payment_for_display(),
-                    receipt_number=payment.receipt_number,
-                )
-            except Exception:
-                pass  # Don't fail payment creation if notification fails
+        serializer.save(collected_by=self.request.user)
 
     @staticmethod
     def _generate_receipt_number():
