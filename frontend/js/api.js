@@ -123,7 +123,7 @@ async function apiRequest(path, options = {}) {
       // Refresh failed, or the retry itself still came back unauthorized —
       // either way, this is a real logout.
       clearTokens();
-      window.location.href = 'index.html';
+      window.location.href = 'login.html';
       return null;
     }
   }
@@ -493,7 +493,7 @@ function toggleDropdown(id) {
 
 function logout() {
   clearTokens();
-  window.location.href = 'index.html';
+  window.location.href = 'login.html';
 }
 
 // Populates the topbar profile chip (name, role, avatar initial) from

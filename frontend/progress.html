@@ -304,7 +304,7 @@
     let weightTrendChartInstance = null;
     const currentUserRole = localStorage.getItem('user_role') || '';
 
-    if (!getAccessToken()) window.location.href = 'index.html';
+    if (!getAccessToken()) window.location.href = 'login.html';
 
     async function loadMemberDropdown() {
         if (currentUserRole === 'MEMBER') {

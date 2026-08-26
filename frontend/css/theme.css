@@ -189,13 +189,13 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .notif-badge{position:absolute;top:0;right:0;background:var(--brand-red);color:#fff;font-size:0.6rem;font-weight:700;min-width:16px;height:16px;padding:0 4px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-topbar);line-height:1}
 
 /* Dropdown Panels */
-.dropdown-panel{position:absolute;top:calc(100% + 8px);right:0;background:var(--bg-card);border-radius:var(--radius-lg);box-shadow:var(--shadow-xl);border:1px solid var(--border-light);min-width:300px;z-index:var(--z-dropdown);display:none;overflow:hidden}
+.dropdown-panel{position:absolute;top:calc(100% + 8px);right:0;background:var(--bg-card);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);border:1px solid var(--border-light);min-width:170px;width:fit-content;max-height:360px;overflow-y:auto;z-index:var(--z-dropdown);display:none;overflow-x:hidden}
 .dropdown-panel.show{display:block;animation:slideDown 0.2s ease}
-.dropdown-panel .dropdown-header{padding:14px 16px;font-weight:600;border-bottom:1px solid var(--border-light);color:var(--text-primary);font-size:var(--text-sm)}
-.notif-item{padding:10px 16px;border-bottom:1px solid var(--border-light);font-size:var(--text-sm);color:var(--text-primary);transition:background var(--transition-fast)}
+.dropdown-panel .dropdown-header{padding:8px 12px;font-weight:600;border-bottom:1px solid var(--border-light);color:var(--text-primary);font-size:0.8rem}
+.notif-item{padding:6px 12px;border-bottom:1px solid var(--border-light);font-size:0.78rem;color:var(--text-primary);transition:background var(--transition-fast)}
 .notif-item:hover{background:var(--bg-hover)}
 .notif-item:last-child{border-bottom:none}
-.notif-empty{padding:24px 16px;text-align:center;color:var(--text-muted);font-size:var(--text-sm)}
+.notif-empty{padding:12px;text-align:center;color:var(--text-muted);font-size:0.78rem}
 
 /* Profile Menu */
 .profile-trigger{display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;color:#fff;position:relative;padding:4px 8px 4px 4px;border-radius:var(--radius-md);transition:background var(--transition-fast)}
@@ -204,9 +204,10 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .profile-trigger .profile-meta{text-align:left;line-height:1.2}
 .profile-trigger .profile-name{font-size:var(--text-sm);font-weight:600;color:#fff}
 .profile-trigger .profile-role{font-size:0.65rem;color:rgba(255,255,255,0.5);text-transform:capitalize}
-.profile-menu a,.profile-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:10px 16px;background:none;border:none;color:var(--text-primary);text-decoration:none;font-size:var(--text-sm);cursor:pointer;transition:background var(--transition-fast)}
+.profile-menu{min-width:160px;width:100%}
+.profile-menu a,.profile-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 12px;background:none;border:none;color:var(--text-primary);text-decoration:none;font-size:0.8rem;cursor:pointer;transition:background var(--transition-fast)}
 .profile-menu a:hover,.profile-menu button:hover{background:var(--bg-hover)}
-.profile-menu hr{margin:4px 0;border-color:var(--border-light)}
+.profile-menu hr{margin:2px 0;border-color:var(--border-light)}
 .profile-menu .text-danger{color:var(--brand-red) !important}
 
 /* ── Layout ───────────────────────────────────────────────────────────────── */
