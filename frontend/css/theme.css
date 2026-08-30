@@ -127,6 +127,16 @@
   /* Dark mode neutral (used by some buttons) */
   --dark-neutral: #374151;
   --dark-neutral-hover: #1f2937;
+
+  /* Typography roles */
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Brand gradient (single source of truth — was duplicated inline in several places) */
+  --brand-gradient: linear-gradient(135deg, var(--brand-red), var(--brand-red-dark));
+
+  /* Motion — entrance timings for staggered card/list reveals */
+  --stagger-step: 45ms;
 }
 
 /* ── Reset & Base ─────────────────────────────────────────────────────────── */
@@ -136,15 +146,15 @@ html,body{height:100%}
 body{
   margin:0;display:flex;flex-direction:column;height:100vh;min-height:100vh;
   overflow:hidden;background-color:var(--bg-root);
-  font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  font-family:var(--font-body);
   color:var(--text-primary);
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   transition:background-color var(--duration-base) var(--ease-in-out),color var(--duration-base) var(--ease-in-out);
 }
 html{scroll-behavior:smooth}
-:focus-visible{outline:2px solid var(--brand-red);outline-offset:2px}
+:focus-visible{outline:2px solid var(--brand-red);outline-offset:2px;transition:outline-offset var(--duration-fast) var(--ease-out)}
 
-h1,h2,h3,h4,h5,h6{font-weight:700;color:var(--text-primary);letter-spacing:-0.01em;transition:color var(--duration-base) var(--ease-in-out)}
+h1,h2,h3,h4,h5,h6{font-family:var(--font-display);font-weight:700;color:var(--text-primary);letter-spacing:-0.01em;transition:color var(--duration-base) var(--ease-in-out)}
 
 a{color:var(--brand-red);text-decoration:none;transition:color var(--duration-fast) var(--ease-in-out)}
 a:hover{color:var(--brand-red-dark)}
@@ -162,7 +172,7 @@ a:hover{color:var(--brand-red-dark)}
 .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--brand-red),transparent);opacity:0.5}
 .topbar .sidebar-toggle{background:none;border:none;color:var(--text-sidebar);font-size:1.25rem;cursor:pointer;padding:6px;border-radius:var(--radius-sm);transition:color var(--transition-fast),background var(--transition-fast);display:flex;align-items:center;justify-content:center}
 .topbar .sidebar-toggle:hover{color:#fff;background:rgba(255,255,255,0.08)}
-.topbar .navbar-brand,.topbar a.navbar-brand{color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;min-width:0;letter-spacing:-0.02em}
+.topbar .navbar-brand,.topbar a.navbar-brand{color:#fff !important;text-decoration:none !important;font-family:var(--font-display);font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;min-width:0;letter-spacing:-0.02em}
 .topbar .navbar-brand span{color:#fff !important;text-decoration:none !important;flex-shrink:0}
 .topbar .navbar-brand img{border-radius:8px}
 nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !important;text-decoration:none !important;-webkit-text-fill-color:#fff !important}
@@ -283,11 +293,13 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
   text-decoration:none;color:inherit;
   border:1px solid var(--border-card);border-radius:var(--radius-lg);
   background:var(--bg-card);padding:var(--sp-5) var(--sp-4);min-height:140px;
-  transition:all var(--transition-base);text-align:center;
+  transition:transform var(--transition-base),box-shadow var(--transition-base),background-color var(--duration-base) var(--ease-in-out),border-color var(--duration-base) var(--ease-in-out);
+  text-align:center;
 }
-.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);color:inherit}
+.stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg) !important;color:inherit}
+.stat-card:active{transform:translateY(-1px)}
 .stat-card .card-body{padding:0 !important;display:flex;flex-direction:column;align-items:center}
-.stat-card .stat-value,.stat-card h3{font-size:var(--text-2xl);font-weight:800;line-height:1.1;letter-spacing:-0.03em;color:var(--text-primary);margin-bottom:0}
+.stat-card .stat-value,.stat-card h3{font-family:var(--font-display);font-size:var(--text-2xl);font-weight:800;line-height:1.1;letter-spacing:-0.03em;color:var(--text-primary);margin-bottom:0}
 .stat-card .text-muted{margin-bottom:2px}
 .stat-icon{width:56px;height:56px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin:0 auto var(--sp-2);flex-shrink:0}
 .stat-icon.icon-total{background:#eef1ff;color:#4a5cf5}
@@ -354,7 +366,9 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
   color:#fff;text-align:center;
   background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
   box-shadow:0 8px 32px rgba(15,52,96,0.3);
+  transition:transform var(--transition-smooth),box-shadow var(--transition-smooth);
 }
+.membership-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(15,52,96,0.45),0 0 0 1px rgba(230,57,70,0.15)}
 .membership-card::before{
   content:'';position:absolute;top:-50%;right:-50%;width:100%;height:100%;
   background:radial-gradient(circle,rgba(230,57,70,0.15) 0%,transparent 70%);
@@ -371,6 +385,36 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 
 /* Calendar Heatmap */
 .calendar-heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+
+/* ── Component Cards ──────────────────────────────────────────────────────
+   trainer-card, pr-card, profile-card, bmi-card, log-entry-card, info-card,
+   card-wrap previously had zero custom CSS — they rode bare on Bootstrap's
+   .card with no consistent padding/radius/hover, so they felt flat next to
+   stat-card and workout-card on the same page. Brought up to the same bar.
+   ========================================================================== */
+.trainer-card,.pr-card,.profile-card,.bmi-card,.log-entry-card,.info-card{
+  border:1px solid var(--border-card);border-radius:var(--radius-lg);
+  background:var(--bg-card);box-shadow:var(--shadow-card);
+  padding:var(--sp-5);
+  transition:transform var(--transition-base),box-shadow var(--transition-base);
+}
+.trainer-card:hover,.pr-card:hover,.bmi-card:hover,.log-entry-card:hover{
+  transform:translateY(-2px);box-shadow:var(--shadow-md);
+}
+.card-wrap{border-radius:var(--radius-lg);overflow:hidden;transition:box-shadow var(--transition-base)}
+[data-theme="dark"] .trainer-card,[data-theme="dark"] .pr-card,[data-theme="dark"] .profile-card,[data-theme="dark"] .bmi-card,[data-theme="dark"] .log-entry-card,[data-theme="dark"] .info-card{
+  background:var(--bg-card) !important;border-color:var(--border-light) !important;
+}
+
+/* Base .card — a light, universal hover so every panel in the app feels
+   responsive to the cursor, not just the named components above. Shadow
+   only (no lift) so it reads fine on both small cards and full-width
+   settings/table panels. Excludes cards that already define their own
+   (stronger) hover above, so this can never fight them regardless of
+   source order. */
+.card:not(.stat-card):not(.workout-card):not(.trainer-card):not(.pr-card):not(.bmi-card):not(.log-entry-card):not(.info-card):not(.fitness-card):hover{
+  box-shadow:var(--shadow-md);
+}
 .calendar-heatmap .day-label{font-size:var(--text-xs);color:var(--text-muted);text-align:center;font-weight:600;padding:4px 0}
 .calendar-heatmap .day-cell{
   aspect-ratio:1;border-radius:var(--radius-xs);
@@ -459,9 +503,11 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .quick-action-btn i{font-size:0.95rem}
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
-.btn{font-weight:600;font-size:var(--text-sm);border-radius:var(--radius-md);transition:all var(--transition-fast);font-family:inherit;letter-spacing:0}
-.btn-primary{background:linear-gradient(135deg,var(--brand-red),var(--brand-red-dark));border:none;color:#fff;box-shadow:0 2px 8px rgba(230,57,70,0.25)}
+.btn{font-weight:600;font-size:var(--text-sm);border-radius:var(--radius-md);transition:transform var(--transition-fast),box-shadow var(--transition-fast),background var(--transition-fast),border-color var(--transition-fast),color var(--transition-fast);font-family:inherit;letter-spacing:0}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--brand-gradient);border:none;color:#fff;box-shadow:0 2px 8px rgba(230,57,70,0.25)}
 .btn-primary:hover{background:linear-gradient(135deg,var(--brand-red-light),var(--brand-red));box-shadow:0 4px 16px rgba(230,57,70,0.35);transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0) scale(0.97)}
 .btn-secondary{background:var(--bg-hover);border:1px solid var(--border-light);color:var(--text-primary)}
 .btn-secondary:hover{background:#e5e7eb}
 .btn-outline-secondary{border-color:var(--border-light);color:var(--text-secondary)}
@@ -543,6 +589,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 
 /* ── Forms ────────────────────────────────────────────────────────────────── */
 .form-control,.form-select{border:1.5px solid var(--border-light);border-radius:var(--radius-md);padding:8px 12px;font-size:var(--text-sm);font-family:inherit;color:var(--text-primary);background-color:var(--bg-card);transition:all var(--transition-fast)}
+.form-control:hover:not(:focus):not(:disabled),.form-select:hover:not(:focus):not(:disabled){border-color:var(--text-muted)}
 .form-select{padding-right:2.25rem;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 0.75rem center;background-size:16px 12px}
 .form-control:focus,.form-select:focus{border-color:var(--brand-red);box-shadow:0 0 0 3px rgba(230,57,70,0.1);outline:none}
 .form-control::placeholder{color:var(--text-muted)}
@@ -938,6 +985,15 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 [data-theme="dark"] .shadow-lg{box-shadow:0 8px 24px rgba(0,0,0,0.5) !important}
 [data-theme="dark"] .shadow-md{box-shadow:0 4px 16px rgba(0,0,0,0.4) !important}
 
+/* Re-assert stat-card hover above the dark-mode shadow-utility overrides.
+   Needed because pages that pair "stat-card" with Bootstrap's shadow-sm /
+   shadow-md classes (equipment, lockers, workouts, diet, members,
+   memberships, attendance, progress, staff) otherwise had their hover
+   shadow silently locked by Bootstrap's !important utility in dark mode. */
+.stat-card.shadow-sm:hover,.stat-card.shadow:hover,.stat-card.shadow-md:hover,.stat-card.shadow-lg:hover{
+  box-shadow:var(--shadow-lg) !important;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media(max-width:768px){
   .sidebar .nav-section-label,.sidebar .list-group-item span{display:none}
@@ -949,4 +1005,73 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
   .fitness-card{padding:var(--sp-4)}
   .bottom-tab-bar{display:block}
   #page-content .flex-grow-1{padding-bottom:calc(var(--sp-4) + 60px)}
+}
+
+/* ── Entrance Motion ──────────────────────────────────────────────────────
+   Subtle, professional page-load reveal. Pure CSS — no JS changes needed
+   on any page. Applies to the first row of stat-cards/cards so the page
+   feels alive without cards popping in every time you scroll.
+   ========================================================================== */
+@keyframes fadeInUp{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+#page-content .row:first-of-type > [class*="col"] > .stat-card,
+#page-content .row:first-of-type > [class*="col"] > .card,
+#page-content .row:nth-of-type(2) > [class*="col"] > .workout-card,
+#page-content .row:nth-of-type(2) > [class*="col"] > .trainer-card,
+#page-content .row:nth-of-type(2) > [class*="col"] > .pr-card,
+#page-content > .fitness-card:first-child,
+#page-content > .membership-card:first-child{
+  animation:fadeInUp var(--duration-smooth) var(--ease-out) both;
+}
+#page-content .row:first-of-type > [class*="col"]:nth-child(1) > .stat-card,
+#page-content .row:first-of-type > [class*="col"]:nth-child(1) > .card{animation-delay:calc(var(--stagger-step) * 1)}
+#page-content .row:first-of-type > [class*="col"]:nth-child(2) > .stat-card,
+#page-content .row:first-of-type > [class*="col"]:nth-child(2) > .card{animation-delay:calc(var(--stagger-step) * 2)}
+#page-content .row:first-of-type > [class*="col"]:nth-child(3) > .stat-card,
+#page-content .row:first-of-type > [class*="col"]:nth-child(3) > .card{animation-delay:calc(var(--stagger-step) * 3)}
+#page-content .row:first-of-type > [class*="col"]:nth-child(4) > .stat-card,
+#page-content .row:first-of-type > [class*="col"]:nth-child(4) > .card{animation-delay:calc(var(--stagger-step) * 4)}
+#page-content .row:first-of-type > [class*="col"]:nth-child(5) > .stat-card,
+#page-content .row:first-of-type > [class*="col"]:nth-child(5) > .card{animation-delay:calc(var(--stagger-step) * 5)}
+#page-content .row:first-of-type > [class*="col"]:nth-child(6) > .stat-card,
+#page-content .row:first-of-type > [class*="col"]:nth-child(6) > .card{animation-delay:calc(var(--stagger-step) * 6)}
+
+/* Skeleton loader — use instead of/alongside spinners while data loads.
+   Markup: <div class="skeleton" style="height:20px;width:60%"></div> */
+.skeleton{
+  border-radius:var(--radius-sm);
+  background:linear-gradient(90deg,var(--bg-hover) 25%,var(--border-light) 37%,var(--bg-hover) 63%);
+  background-size:400% 100%;
+  animation:skeletonShimmer 1.4s ease infinite;
+}
+@keyframes skeletonShimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+[data-theme="dark"] .skeleton{background:linear-gradient(90deg,var(--bg-hover) 25%,rgba(255,255,255,0.08) 37%,var(--bg-hover) 63%);background-size:400% 100%}
+
+/* Table row hover — small polish so dense tables (members, payments,
+   attendance) feel responsive to the cursor, not static grids. */
+.table > tbody > tr{transition:background-color var(--transition-fast)}
+.table > tbody > tr:hover{background-color:var(--bg-hover)}
+
+/* Loading-button utility — one consistent pattern for async save/submit
+   actions instead of ad-hoc spinners per page.
+   Markup: <button class="btn btn-primary btn-loading"><span class="spinner-border spinner-border-sm"></span> Saving...</button> */
+.btn-loading{position:relative;pointer-events:none;opacity:0.75}
+.btn-loading .spinner-border{width:0.85em;height:0.85em;border-width:2px;margin-right:6px;vertical-align:-0.15em}
+
+/* Toast / modal entrance — reuses the existing slideDown, adds a scale-in
+   for modal-style confirm dialogs so they don't just snap into place. */
+.confirm-modal,.modal-content{animation:modalIn var(--transition-smooth) var(--ease-out) both}
+@keyframes modalIn{from{opacity:0;transform:scale(0.97) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+/* Accessibility floor — respect the user's OS-level motion preference.
+   This must stay last so it wins the cascade. */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
 }

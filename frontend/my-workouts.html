@@ -6,12 +6,167 @@
     <title>My Workouts - FitCore</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  .mw-two-col{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
+  @media(max-width:1100px){.mw-two-col{grid-template-columns:1fr;}}
+
+  /* ── Stat Cards ── */
+  .mw-stat-card{border:1px solid var(--border-card);border-radius:var(--radius-lg);padding:1.1rem 1.25rem;background:var(--bg-card);display:flex;align-items:center;gap:14px;min-height:96px;transition:box-shadow var(--transition-base)}
+  .mw-stat-card:hover{box-shadow:var(--shadow-md)}
+  .mw-stat-icon{width:48px;height:48px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+  .mw-stat-icon.red{background:var(--brand-red-50);color:var(--brand-red)}
+  .mw-stat-icon.green{background:var(--color-success-bg);color:var(--color-success)}
+  .mw-stat-icon.orange{background:var(--color-warning-bg);color:var(--color-warning)}
+  .mw-stat-icon.blue{background:var(--color-info-bg);color:var(--color-info)}
+  .mw-stat-value{font-size:1.7rem;font-weight:800;line-height:1.1;color:var(--text-primary)}
+  .mw-stat-label{font-size:0.72rem;color:var(--text-muted);font-weight:500}
+  .mw-stat-sub{font-size:0.72rem;color:var(--text-muted);margin-top:2px}
+  .mw-stat-sub.green-text{color:var(--color-success)}
+  .mw-stat-link{font-size:0.75rem;color:var(--brand-red);font-weight:600;text-decoration:none;margin-top:4px;display:inline-block}
+  .mw-stat-link:hover{text-decoration:underline}
+
+  /* ── Circular Progress Ring ── */
+  .progress-ring{position:relative;display:inline-flex;align-items:center;justify-content:center}
+  .progress-ring svg{transform:rotate(-90deg)}
+  .progress-ring .ring-text{position:absolute;font-weight:800;font-size:1.1rem;color:var(--text-primary);line-height:1}
+  .progress-ring .ring-label{position:absolute;font-size:0.6rem;font-weight:600;color:var(--text-muted);bottom:-2px}
+  .progress-ring-sm .ring-text{font-size:0.85rem}
+  .progress-ring-sm svg{width:52px !important;height:52px !important}
+
+  /* ── Program Card ── */
+  .program-card{border:1px solid var(--border-card);border-radius:var(--radius-xl);background:var(--bg-card);overflow:hidden;transition:box-shadow var(--transition-base),transform var(--transition-base)}
+  .program-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+  .program-card-inner{display:flex;gap:0}
+  .program-card-img{width:220px;min-height:180px;background:linear-gradient(135deg,#1a1a2e,#16213e);position:relative;flex-shrink:0;overflow:hidden;display:flex;align-items:flex-end;padding:16px}
+  .program-card-img .pci-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.7) 0%,transparent 60%)}
+  .program-card-img .pci-content{position:relative;z-index:1;color:#fff;width:100%}
+  .program-card-img .pci-title{font-size:1rem;font-weight:700;margin-bottom:4px}
+  .program-card-img .pci-sub{font-size:0.72rem;opacity:0.7}
+  .program-card-body{flex:1;padding:20px 24px;display:flex;flex-direction:column;justify-content:space-between}
+  .program-card-body .pc-week-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--radius-full);background:var(--brand-red-50);color:var(--brand-red);font-size:0.7rem;font-weight:700;width:fit-content;margin-bottom:8px}
+  .program-card-body .pc-title{font-size:1.05rem;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+  .program-card-body .pc-desc{font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .program-card-body .pc-meta{display:flex;flex-wrap:wrap;gap:14px;font-size:0.78rem;color:var(--text-secondary);margin-bottom:14px}
+  .program-card-body .pc-meta span{display:flex;align-items:center;gap:5px}
+  .program-card-body .pc-meta i{color:var(--text-muted);font-size:0.85rem}
+  .program-card-actions{display:flex;align-items:center;gap:10px}
+  .program-card-actions .btn-view{background:var(--brand-red);color:#fff;border:none;padding:8px 20px;border-radius:var(--radius-full);font-size:0.8rem;font-weight:600;transition:all var(--transition-fast)}
+  .program-card-actions .btn-view:hover{background:var(--brand-red-dark);transform:translateY(-1px)}
+  .program-card-actions .btn-menu{background:none;border:none;color:var(--text-muted);font-size:1.2rem;padding:4px 8px;cursor:pointer}
+  .program-card-actions .btn-menu:hover{color:var(--text-primary)}
+  .program-card-progress{display:flex;align-items:center;gap:12px}
+
+  @media(max-width:900px){
+    .program-card-inner{flex-direction:column}
+    .program-card-img{width:100%;min-height:140px}
+  }
+
+  /* ── Tabs ── */
+  .mw-tabs{display:flex;gap:0;border-bottom:2px solid var(--border-light);margin-bottom:20px}
+  .mw-tab{padding:10px 20px;font-size:0.85rem;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all var(--transition-fast);background:none;border-top:none;border-left:none;border-right:none}
+  .mw-tab:hover{color:var(--text-primary)}
+  .mw-tab.active{color:var(--brand-red);border-bottom-color:var(--brand-red)}
+  .mw-tab .tab-count{font-size:0.72rem;background:var(--bg-hover);padding:2px 7px;border-radius:var(--radius-full);margin-left:4px;font-weight:700}
+
+  /* ── Right Sidebar ── */
+  .mw-sidebar-card{border:1px solid var(--border-card);border-radius:var(--radius-lg);background:var(--bg-card);overflow:hidden;margin-bottom:20px}
+  .mw-sidebar-head{padding:16px 18px 12px;font-weight:700;font-size:0.9rem;color:var(--text-primary);border-bottom:1px solid var(--border-light)}
+
+  /* Week Day Circles */
+  .week-circles{display:flex;justify-content:space-between;padding:16px 18px}
+  .week-circle{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .week-circle .wc-label{font-size:0.65rem;font-weight:600;color:var(--text-muted);text-transform:uppercase}
+  .week-circle .wc-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:600;transition:all var(--transition-fast)}
+  .wc-dot.done{background:var(--color-success);color:#fff}
+  .wc-dot.today{background:var(--brand-red-50);color:var(--brand-red);border:2px solid var(--brand-red)}
+  .wc-dot.pending{background:var(--bg-hover);color:var(--text-muted)}
+  .wc-dot.future{background:var(--bg-hover);color:var(--text-muted);opacity:0.5}
+
+  .week-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px 16px}
+  .week-stat-item{text-align:center}
+  .week-stat-item .ws-value{font-size:1.3rem;font-weight:800;color:var(--text-primary)}
+  .week-stat-item .ws-label{font-size:0.7rem;color:var(--text-muted)}
+
+  /* Upcoming Workouts */
+  .upcoming-item{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border-light);transition:background var(--transition-fast)}
+  .upcoming-item:last-child{border-bottom:none}
+  .upcoming-item:hover{background:var(--bg-hover)}
+  .upcoming-icon{width:40px;height:40px;border-radius:var(--radius-md);background:var(--brand-red-50);color:var(--brand-red);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+  .upcoming-info{flex:1;min-width:0}
+  .upcoming-info .ui-name{font-weight:600;font-size:0.82rem;color:var(--text-primary)}
+  .upcoming-info .ui-sub{font-size:0.72rem;color:var(--text-muted)}
+  .upcoming-item .btn-start-sm{padding:5px 14px;border-radius:var(--radius-full);border:1.5px solid var(--brand-red);background:none;color:var(--brand-red);font-size:0.72rem;font-weight:600;transition:all var(--transition-fast);white-space:nowrap}
+  .upcoming-item .btn-start-sm:hover{background:var(--brand-red);color:#fff}
+
+  /* Progress Insights */
+  .insight-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 18px}
+  .insight-item{text-align:center}
+  .insight-item .ig-value{font-size:1.2rem;font-weight:800;color:var(--text-primary)}
+  .insight-item .ig-label{font-size:0.65rem;color:var(--text-muted)}
+  .insight-item i{font-size:1rem;margin-bottom:4px;display:block}
+  .insight-item i.ig-red{color:var(--brand-red)}
+  .insight-item i.ig-blue{color:var(--color-info)}
+  .insight-item i.ig-orange{color:var(--color-streak)}
+  .insight-desc{padding:0 18px 14px;font-size:0.78rem;color:var(--text-secondary);line-height:1.4}
+
+  /* Need Help Card */
+  .need-help-card{border-radius:var(--radius-lg);overflow:hidden;position:relative}
+  .need-help-bg{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:20px 18px;color:#fff}
+  .need-help-bg .nh-title{font-weight:700;font-size:0.95rem;margin-bottom:4px}
+  .need-help-bg .nh-sub{font-size:0.78rem;opacity:0.7;margin-bottom:12px;line-height:1.4}
+  .need-help-bg .nh-sub strong{opacity:1}
+  .need-help-bg .btn-msg{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.15);color:#fff;padding:9px 16px;border-radius:var(--radius-md);font-size:0.8rem;font-weight:600;cursor:pointer;transition:all var(--transition-fast);width:100%}
+  .need-help-bg .btn-msg:hover{background:rgba(255,255,255,0.2)}
+
+  /* Recent Activity */
+  .activity-item{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border-light)}
+  .activity-item:last-child{border-bottom:none}
+  .activity-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;flex-shrink:0}
+  .activity-dot.completed{background:var(--color-success-bg);color:var(--color-success)}
+  .activity-dot.partial{background:var(--color-info-bg);color:var(--color-info)}
+  .activity-dot.skipped{background:var(--color-warning-bg);color:var(--color-warning)}
+  .activity-info{flex:1;min-width:0}
+  .activity-info .ai-name{font-weight:600;font-size:0.85rem;color:var(--text-primary)}
+  .activity-info .ai-sub{font-size:0.72rem;color:var(--text-muted)}
+  .activity-stats{display:flex;gap:20px}
+  .activity-stats .as-item{text-align:right}
+  .activity-stats .as-value{font-weight:700;font-size:0.85rem;color:var(--text-primary)}
+  .activity-stats .as-label{font-size:0.65rem;color:var(--text-muted)}
+  .activity-item .btn-details{padding:6px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-light);background:var(--bg-card);font-size:0.75rem;font-weight:600;color:var(--text-primary);transition:all var(--transition-fast);white-space:nowrap}
+  .activity-item .btn-details:hover{border-color:var(--brand-red);color:var(--brand-red)}
+
+  /* View Full Schedule link */
+  .view-schedule-link{display:block;text-align:center;padding:10px;font-size:0.8rem;font-weight:600;color:var(--brand-red);text-decoration:none;border-top:1px solid var(--border-light);transition:background var(--transition-fast)}
+  .view-schedule-link:hover{background:var(--brand-red-50);text-decoration:none}
+
+  /* Log Workout Header Button */
+  .btn-log-workout{display:inline-flex;align-items:center;gap:6px;background:var(--brand-red);color:#fff;border:none;padding:10px 22px;border-radius:var(--radius-full);font-size:0.85rem;font-weight:700;transition:all var(--transition-fast);box-shadow:0 2px 8px rgba(230,57,70,0.25)}
+  .btn-log-workout:hover{background:var(--brand-red-dark);transform:translateY(-1px);box-shadow:0 4px 16px rgba(230,57,70,0.35)}
+
+  /* ── Log Modal Enhanced ── */
+  .log-status-btn{border:1.5px solid var(--border-light);background:var(--bg-card);color:var(--text-secondary);font-weight:600;font-size:0.8rem;padding:10px 8px;border-radius:var(--radius-md);transition:all var(--transition-fast);cursor:pointer;text-align:center}
+  .log-status-btn:hover{border-color:var(--brand-red);color:var(--text-primary)}
+  .log-status-btn.active{border-color:var(--brand-red);background:var(--brand-red-50);color:var(--brand-red)}
+  .form-range::-webkit-slider-thumb{background:var(--brand-red)}
+  .form-range::-moz-range-thumb{background:var(--brand-red)}
+
+  /* ── Day Detail Modal ── */
+  .exercise-detail-card{border:1px solid var(--border-card);border-radius:var(--radius-lg);padding:1rem 1.25rem;background:var(--bg-card);margin-bottom:10px;transition:box-shadow var(--transition-fast)}
+  .exercise-detail-card:hover{box-shadow:var(--shadow-sm)}
+  .exercise-detail-card .ed-header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .exercise-detail-card .ed-icon{width:40px;height:40px;border-radius:var(--radius-md);background:var(--color-workout-bg);color:var(--color-workout);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+  .exercise-detail-card .ed-name{font-weight:700;font-size:0.9rem;color:var(--text-primary)}
+  .exercise-detail-card .ed-muscle{font-size:0.72rem;color:var(--text-muted)}
+  .exercise-detail-card .ed-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .exercise-detail-card .ed-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--radius-full);background:var(--bg-hover);font-size:0.72rem;font-weight:500;color:var(--text-secondary)}
+  .exercise-detail-card .ed-chip i{font-size:0.7rem}
+  .exercise-detail-card .ed-instructions{font-size:0.8rem;color:var(--text-secondary);line-height:1.5;padding:10px 12px;background:var(--bg-root);border-radius:var(--radius-md)}
+</style>
 </head>
 <body data-allowed-roles="MEMBER">
 
-<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1080;">
   <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
     <div class="d-flex">
       <div class="toast-body" id="appToastBody">Saved.</div>
@@ -24,9 +179,8 @@
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
     <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
     <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
-    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+    <span style="font-size:1.5rem;font-weight:700;">FitCore</span>
   </a>
-
     <div class="position-relative">
         <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
             <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
@@ -47,7 +201,7 @@
     <div class="position-relative">
         <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
             <span class="profile-avatar" id="profileAvatar">?</span>
-            <span class="profile-meta"><div class="profile-name" id="profileName">–</div><div class="profile-role" id="profileRole">–</div></span>
+            <span class="profile-meta"><div class="profile-name" id="profileName">-</div><div class="profile-role" id="profileRole">-</div></span>
             <i class="bi bi-chevron-down text-white-50"></i>
         </button>
         <div class="dropdown-panel profile-menu" id="profilePanel">
@@ -63,47 +217,29 @@
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
-
-      <div class="nav-section-label">Members</div>
-      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
-      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
-      <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
-      <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
-
-      <div class="nav-section-label">Staff Management</div>
-      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
-
-      <div class="nav-section-label" data-roles="OWNER,STAFF,TRAINER">Workout & Diet</div>
-      <a href="workouts.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
-      <a href="diet.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
-
-      <div class="nav-section-label">Payments</div>
-      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
+      <div class="nav-section-label">Member</div>
+      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
       <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
       <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
       <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
       <a href="my-workouts.html" class="list-group-item list-group-item-action active" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
       <a href="my-diet.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
       <a href="my-locker.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-lock"></i> <span>My Locker</span></a>
-
-      <div class="nav-section-label">Equipment</div>
-      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
-      <a href="equipment.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
-
-      <div class="nav-section-label">Insights</div>
-      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
-
       <div class="nav-section-label">System</div>
       <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
     </div>
   </div>
 
     <div class="p-4 flex-grow-1">
+        <!-- Header -->
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
           <div>
             <h3 class="mb-1 fw-800" style="font-size:1.5rem;">My Workouts</h3>
             <div class="text-muted" style="font-size:0.85rem;">Your assigned training programs — log a session whenever you finish one.</div>
           </div>
+          <button class="btn-log-workout" onclick="openLogWorkoutPicker()">
+            <i class="bi bi-plus-lg"></i> Log Workout
+          </button>
         </div>
 
         <div id="loadingState" class="text-center text-muted py-5">
@@ -113,42 +249,221 @@
 
         <div id="noAssignmentsState" class="empty-state" style="display:none;">
           <i class="bi bi-heart-pulse"></i>
-          <h5>No Workout Plan Yet</h5>
-          <p>You don't have a workout plan assigned yet — ask your trainer to assign one.</p>
+          <h5 class="es-title">No Workout Plan Yet</h5>
+          <p class="es-desc">You don't have a workout plan assigned yet — ask your trainer to assign one.</p>
         </div>
 
-        <div id="assignmentsContainer" style="display:none;"></div>
+        <!-- Main Content -->
+        <div id="mainContent" style="display:none;">
+
+          <!-- Stats Row -->
+          <div class="row g-3 mb-4" id="statsRow">
+            <div class="col-6 col-lg-3">
+              <div class="mw-stat-card">
+                <div class="mw-stat-icon red"><i class="bi bi-clipboard2-pulse"></i></div>
+                <div>
+                  <div class="mw-stat-value" id="statActive">0</div>
+                  <div class="mw-stat-label">Active Programs</div>
+                  <div class="mw-stat-link" onclick="filterTab('active')">View all programs &rarr;</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-lg-3">
+              <div class="mw-stat-card">
+                <div class="mw-stat-icon green"><i class="bi bi-check-circle"></i></div>
+                <div>
+                  <div class="mw-stat-value" id="statWeek">0</div>
+                  <div class="mw-stat-label">Completed This Week</div>
+                  <div class="mw-stat-sub green-text" id="statWeekMsg">—</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-lg-3">
+              <div class="mw-stat-card">
+                <div class="mw-stat-icon orange"><i class="bi bi-fire"></i></div>
+                <div>
+                  <div class="mw-stat-value" id="statStreak">0</div>
+                  <div class="mw-stat-label">Day Streak</div>
+                  <div class="mw-stat-sub" id="statStreakMsg">Keep it up!</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-lg-3">
+              <div class="mw-stat-card">
+                <div class="mw-stat-icon blue"><i class="bi bi-trophy"></i></div>
+                <div>
+                  <div class="mw-stat-value" id="statComp">0%</div>
+                  <div class="mw-stat-label">Overall Progress</div>
+                  <div class="mw-stat-sub" id="statCompMsg">Keep pushing forward!</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two Column Layout -->
+          <div class="mw-two-col">
+            <!-- Left Column -->
+            <div>
+              <!-- Tabs -->
+              <div class="mw-tabs">
+                <button class="mw-tab active" onclick="filterTab('active')">Active <span class="tab-count" id="activeTabCount">0</span></button>
+                <button class="mw-tab" onclick="filterTab('completed')">Completed <span class="tab-count" id="completedTabCount">0</span></button>
+              </div>
+
+              <!-- Program Cards -->
+              <div id="programsWrap"></div>
+
+              <!-- Recent Activity -->
+              <div class="mt-4">
+                <h5 class="fw-700 mb-3" style="font-size:1rem;">Recent Activity</h5>
+                <div class="fitness-card" style="padding:0 18px;">
+                  <div id="activityLoading" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm"></div></div>
+                  <div id="activityEmpty" class="text-center py-4 text-muted" style="display:none;font-size:0.82rem;">No recent activity.</div>
+                  <div id="activityList"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <div>
+              <!-- This Week Overview -->
+              <div class="mw-sidebar-card">
+                <div class="mw-sidebar-head"><i class="bi bi-calendar-week me-2" style="color:var(--brand-red);"></i>This Week Overview</div>
+                <div class="week-circles" id="weekCircles"></div>
+                <div class="week-stats">
+                  <div class="week-stat-item">
+                    <div class="ws-value" id="weekDone">0 / 0</div>
+                    <div class="ws-label">Workouts Completed</div>
+                  </div>
+                  <div class="week-stat-item">
+                    <div class="ws-value" id="weekGoal">0%</div>
+                    <div class="ws-label">Weekly Goal</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Upcoming Workouts -->
+              <div class="mw-sidebar-card">
+                <div class="mw-sidebar-head"><i class="bi bi-clock-history me-2" style="color:var(--brand-red);"></i>Upcoming Workouts</div>
+                <div id="upcomingList"></div>
+                <a href="javascript:void(0)" class="view-schedule-link" onclick="document.querySelector('.mw-tab.active')?.click()">View Full Schedule &rarr;</a>
+              </div>
+
+              <!-- Progress Insights -->
+              <div class="mw-sidebar-card">
+                <div class="mw-sidebar-head"><i class="bi bi-graph-up-arrow me-2" style="color:var(--brand-red);"></i>Progress Insights</div>
+                <div class="insight-desc" id="insightDesc"></div>
+                <div class="insight-grid" id="insightGrid"></div>
+              </div>
+
+              <!-- Need Help -->
+              <div class="mw-sidebar-card need-help-card">
+                <div class="need-help-bg">
+                  <div class="nh-title">Need Help?</div>
+                  <div class="nh-sub"><strong>Ask your trainer</strong><br>We're here to help you stay on track.</div>
+                  <button class="btn-msg"><i class="bi bi-chat-dots"></i> Message Trainer</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
     </div>
 </div>
+</div>
+
+<!-- Day Detail Modal -->
+<div class="modal fade" id="dayDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-700" id="dayDetailTitle">Day Details</h5>
+          <div class="text-muted" style="font-size:0.8rem;" id="dayDetailSub"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="dayDetailBody"></div>
+      <div class="modal-footer d-flex justify-content-between">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-primary" id="dayDetailLogBtn" onclick="openLogFromDetail()">
+          <i class="bi bi-check2-square me-1"></i>Log This Day
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Log Workout Modal -->
 <div class="modal fade" id="logModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Log This Workout</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-700">Log Workout</h5>
+          <div class="text-muted" style="font-size:0.8rem;" id="logDayLabel"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <input type="hidden" id="logAssignmentId">
         <input type="hidden" id="logDayId">
-        <div class="mb-3"><label>Day</label><input type="text" id="logDayLabel" class="form-control" disabled></div>
-        <div class="mb-3"><label>How did it go?</label>
-          <select id="logStatus" class="form-select">
-            <option value="COMPLETED">Completed – did the whole thing</option>
-            <option value="PARTIAL">Partial – did some of it</option>
-            <option value="SKIPPED">Skipped today</option>
-          </select>
+        <div class="mb-3">
+          <label class="form-label">How did it go?</label>
+          <div class="d-flex gap-2">
+            <button type="button" class="log-status-btn active" data-status="COMPLETED" onclick="selectLogStatus(this)">
+              <i class="bi bi-check-circle-fill me-1" style="color:var(--color-success);"></i>Completed
+            </button>
+            <button type="button" class="log-status-btn" data-status="PARTIAL" onclick="selectLogStatus(this)">
+              <i class="bi bi-half pull me-1" style="color:var(--color-info);"></i>Partial
+            </button>
+            <button type="button" class="log-status-btn" data-status="SKIPPED" onclick="selectLogStatus(this)">
+              <i class="bi bi-skip-forward me-1" style="color:var(--color-warning);"></i>Skipped
+            </button>
+          </div>
         </div>
         <div class="row">
-          <div class="col-6 mb-3"><label>Duration (min)</label><input type="number" id="logDuration" class="form-control"></div>
-          <div class="col-6 mb-3"><label>Calories (optional)</label><input type="number" id="logCalories" class="form-control"></div>
+          <div class="col-6 mb-3"><label class="form-label">Duration (min)</label><input type="number" id="logDuration" class="form-control" placeholder="e.g. 45"></div>
+          <div class="col-6 mb-3"><label class="form-label">Calories</label><input type="number" id="logCalories" class="form-control" placeholder="optional"></div>
         </div>
         <div class="row">
-          <div class="col-6 mb-3"><label>Perceived difficulty (1-10)</label><input type="number" id="logDifficulty" class="form-control" min="1" max="10"></div>
-          <div class="col-6 mb-3"><label>Pain level (0-10)</label><input type="number" id="logPain" class="form-control" min="0" max="10"></div>
+          <div class="col-6 mb-3">
+            <label class="form-label">Difficulty <span class="text-muted" id="logDiffVal">(5/10)</span></label>
+            <input type="range" id="logDifficulty" class="form-range" min="1" max="10" value="5" oninput="document.getElementById('logDiffVal').textContent='(' + this.value + '/10)'">
+          </div>
+          <div class="col-6 mb-3">
+            <label class="form-label">Pain Level <span class="text-muted" id="logPainVal">(0/10)</span></label>
+            <input type="range" id="logPain" class="form-range" min="0" max="10" value="0" oninput="document.getElementById('logPainVal').textContent='(' + this.value + '/10)'">
+          </div>
         </div>
-        <div class="mb-3"><label>Notes (optional)</label><textarea id="logNotes" class="form-control" rows="2"></textarea></div>
+        <div class="mb-3">
+          <label class="form-label">Notes <span class="text-muted fw-normal">(optional)</span></label>
+          <textarea id="logNotes" class="form-control" rows="2" placeholder="How did you feel? Any PRs?"></textarea>
+        </div>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="submitLog()">Save Log</button></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="submitLog()"><i class="bi bi-check2 me-1"></i>Save Log</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Log Workout Picker Modal -->
+<div class="modal fade" id="logPickerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-700">Log Workout</h5>
+          <div class="text-muted" style="font-size:0.8rem;">Select a program and day to log</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="logPickerBody">
+        <div id="logPickerLoading" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>
+        <div id="logPickerEmpty" style="display:none;" class="text-center py-4 text-muted">No active programs to log.</div>
+        <div id="logPickerContent" style="display:none;"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -158,154 +473,544 @@
 <script>
 if (!getAccessToken()) window.location.href = 'login.html';
 
-let myAssignments = [];
-let currentUserId = null;
+const PROGRAM_IMAGES = [
+  'linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)',
+  'linear-gradient(135deg,#0d1117 0%,#161b22 50%,#21262d 100%)',
+  'linear-gradient(135deg,#2d1b69 0%,#11998e 100%)',
+  'linear-gradient(135deg,#b91c1c 0%,#7c3aed 100%)',
+  'linear-gradient(135deg,#1e3a5f 0%,#4a90d9 100%)',
+];
+const PROGRAM_ICONS = ['bi-lightning-charge', 'bi-trophy', 'bi-fire', 'bi-rocket', 'bi-gem'];
 
-function showToast(message, variant) {
-    const toastEl = document.getElementById("appToast");
-    const bodyEl = document.getElementById("appToastBody");
-    if (!toastEl || !bodyEl) return;
-    toastEl.classList.remove("bg-success", "bg-danger");
-    toastEl.classList.add(variant === "error" ? "bg-danger" : "bg-success");
-    bodyEl.textContent = message;
-    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2800 }).show();
+let allAssignments = [];
+let allTemplates = {};
+let allLogs = [];
+let currentTab = 'active';
+let selectedWeek = {};
+let detailContext = {};
+
+function showToast(msg, variant) {
+    const t = document.getElementById('appToast');
+    const b = document.getElementById('appToastBody');
+    if (!t || !b) return;
+    t.classList.remove('bg-success', 'bg-danger');
+    t.classList.add(variant === 'error' ? 'bg-danger' : 'bg-success');
+    b.textContent = msg;
+    bootstrap.Toast.getOrCreateInstance(t, { delay: 2800 }).show();
 }
 
 function statusBadge(status) {
-    const map = { ACTIVE: 'success', PAUSED: 'warning', COMPLETED: 'primary', CANCELLED: 'secondary' };
-    return `<span class="badge bg-${map[status] || 'secondary'}">${status}</span>`;
+    const m = { ACTIVE: 'success', PAUSED: 'warning', COMPLETED: 'primary', CANCELLED: 'secondary' };
+    return `<span class="badge bg-${m[status] || 'secondary'}" style="font-size:0.68rem;">${status}</span>`;
 }
 
-async function loadMyWorkouts() {
-    const r = await apiRequest('/workouts/assignments/');
-    document.getElementById('loadingState').style.display = 'none';
-    if (!r || !r.ok) { showToast('Could not load your workouts', 'error'); return; }
-    const data = await r.json();
-    myAssignments = (data.results || data).filter(a => a.status === 'ACTIVE' || a.status === 'PAUSED');
-
-    if (!myAssignments.length) {
-        document.getElementById('noAssignmentsState').style.display = 'flex';
-        return;
-    }
-
-    const container = document.getElementById('assignmentsContainer');
-    container.style.display = 'block';
-
-    for (const assignment of myAssignments) {
-        const pct = assignment.completion_pct || 0;
-        const pctColor = pct >= 70 ? 'var(--color-progress)' : pct >= 40 ? '#f59e0b' : '#ef4444';
-
-        const card = document.createElement('div');
-        card.className = 'fitness-card mb-4';
-        card.innerHTML = `
-            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                <div>
-                    <h5 class="mb-1 fw-bold">${assignment.template_name}</h5>
-                    <div class="text-muted" style="font-size:0.8rem;">Started ${new Date(assignment.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} &nbsp;${statusBadge(assignment.status)}</div>
-                </div>
-                <div class="text-end">
-                    <div class="streak-badge" style="background:${pctColor};color:#fff;">${pct}%</div>
-                    <div class="text-muted mt-1" style="font-size:0.75rem;">complete</div>
-                </div>
-            </div>
-            <div class="progress-fitness mb-3">
-                <div class="fill" style="width:${pct}%;background:${pctColor};"></div>
-            </div>
-            <div id="days-${assignment.id}" class="text-muted small">Loading days...</div>
-        `;
-        container.appendChild(card);
-        loadDaysForAssignment(assignment);
-    }
+function diffBadge(d) {
+    const m = { BEGINNER: 'badge-beginner', INTERMEDIATE: 'badge-intermediate', ADVANCED: 'badge-advanced' };
+    return `<span class="badge-difficulty ${m[d] || ''}">${d || ''}</span>`;
 }
 
-async function loadDaysForAssignment(assignment) {
-    const r = await apiRequest(`/workouts/templates/${assignment.template}/`);
-    const holder = document.getElementById(`days-${assignment.id}`);
-    if (!r || !r.ok) { holder.textContent = 'Could not load days.'; return; }
-    const template = await r.json();
-    const days = template.days || [];
+function muscleIcon(mg) {
+    const map = { CHEST: 'bi-heart-pulse', BACK: 'bi-arrows-expand', SHOULDERS: 'bi-person-arms-up', ARMS: 'bi-clipboard2-pulse', LEGS: 'bi-person-walking', CORE: 'bi-badge-ad', FULL_BODY: 'bi-person-standing', CARDIO: 'bi-activity' };
+    return map[mg] || 'bi-lightning';
+}
 
-    if (!days.length) {
-        holder.innerHTML = '<div class="text-muted" style="font-size:0.8rem;">No days in this plan yet.</div>';
-        return;
+function progImg(i) { return PROGRAM_IMAGES[i % PROGRAM_IMAGES.length]; }
+function progIcon(i) { return PROGRAM_ICONS[i % PROGRAM_ICONS.length]; }
+
+function progressRingSVG(pct, size, stroke, color) {
+    const r = (size - stroke) / 2;
+    const circ = 2 * Math.PI * r;
+    const offset = circ - (pct / 100) * circ;
+    return `<svg width="${size}" height="${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round" style="transition:stroke-dashoffset 0.6s ease"/>
+    </svg>`;
+}
+
+function getLoggedDaysForAssignment(assignmentId) {
+    const map = {};
+    allLogs.filter(l => l.assignment === assignmentId).forEach(l => { map[l.workout_day] = l.status; });
+    return map;
+}
+
+function computeStats() {
+    const active = allAssignments.filter(a => a.status === 'ACTIVE');
+    const completed = allAssignments.filter(a => a.status === 'COMPLETED');
+    document.getElementById('statActive').textContent = active.length;
+    document.getElementById('activeTabCount').textContent = active.length;
+    document.getElementById('completedTabCount').textContent = completed.length;
+
+    const totalComp = active.length ? Math.round(active.reduce((s, a) => s + (a.completion_pct || 0), 0) / active.length) : 0;
+    document.getElementById('statComp').textContent = totalComp + '%';
+    const msgs = ['Keep pushing forward!', 'Good progress!', 'Almost there!', 'Great work!'];
+    document.getElementById('statCompMsg').textContent = msgs[Math.min(Math.floor(totalComp / 25), 3)];
+
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const thisWeekLogs = allLogs.filter(l => new Date(l.date) >= weekStart);
+    document.getElementById('statWeek').textContent = thisWeekLogs.length;
+    const weekMsgs = thisWeekLogs.length >= 3 ? 'Great consistency!' : thisWeekLogs.length > 0 ? 'Keep it up!' : 'Start strong today!';
+    document.getElementById('statWeekMsg').textContent = weekMsgs;
+
+    let streak = 0;
+    const d = new Date();
+    for (let i = 0; i < 365; i++) {
+        const ds = d.toISOString().slice(0, 10);
+        if (allLogs.some(l => l.date === ds)) { streak++; d.setDate(d.getDate() - 1); } else break;
     }
+    document.getElementById('statStreak').textContent = streak;
+    document.getElementById('statStreakMsg').textContent = streak > 0 ? 'Keep it up!' : 'Start building your streak!';
+}
 
-    // Build weekly grid: group by week_number
-    const weekMap = {};
-    days.forEach(d => {
-        const wk = d.week_number || 1;
-        if (!weekMap[wk]) weekMap[wk] = [];
-        weekMap[wk].push(d);
+function renderWeekOverview() {
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const now = new Date();
+    const todayIdx = (now.getDay() + 6) % 7;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - todayIdx);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const loggedDays = new Set();
+    allLogs.forEach(l => {
+        const ld = new Date(l.date);
+        if (ld >= weekStart && ld < new Date(weekStart.getTime() + 7 * 86400000)) {
+            const idx = (ld.getDay() + 6) % 7;
+            loggedDays.add(idx);
+        }
     });
 
-    let html = '<div class="mb-2 fw-semibold" style="font-size:0.9rem;color:var(--text-secondary);">Schedule</div>';
+    const weekTotal = allAssignments.filter(a => a.status === 'ACTIVE').reduce((s, a) => {
+        const tpl = allTemplates[a.template];
+        return s + (tpl ? (tpl.days || []).length : 0);
+    }, 0);
+    const weekCompleted = loggedDays.size;
+    const weekGoal = weekTotal ? Math.round((weekCompleted / Math.min(weekTotal, 7)) * 100) : 0;
 
-    for (const [week, weekDays] of Object.entries(weekMap)) {
-        html += `<div class="mb-2" style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Week ${week}</div>`;
-        html += '<div class="d-flex flex-wrap gap-2 mb-3">';
-        for (const d of weekDays) {
-            const exCount = (d.exercises || []).length;
-            const dayLabel = d.day_name || `Day ${d.day_number}`;
-            html += `
-                <div class="workout-card" style="min-width:120px;flex:1 1 120px;max-width:160px;">
-                    <div class="fw-semibold" style="font-size:0.85rem;">${dayLabel}</div>
-                    <div class="text-muted" style="font-size:0.72rem;">${exCount} exercise${exCount !== 1 ? 's' : ''}</div>
-                    <button class="btn btn-sm w-100 mt-2" style="background:var(--brand-red);color:#fff;border:none;border-radius:6px;font-size:0.75rem;font-weight:600;" onclick="openLogModal(${assignment.id}, ${d.id}, 'Week ${week} - ${dayLabel}')">
-                        <i class="bi bi-check2-square me-1"></i>Log
-                    </button>
-                </div>
-            `;
+    document.getElementById('weekCircles').innerHTML = days.map((d, i) => {
+        let cls = 'pending';
+        if (loggedDays.has(i)) cls = 'done';
+        else if (i === todayIdx) cls = 'today';
+        else if (i > todayIdx) cls = 'future';
+        return `<div class="week-circle"><div class="wc-label">${d}</div><div class="wc-dot ${cls}"><i class="bi bi-${cls === 'done' ? 'check-lg' : cls === 'today' ? 'dot' : ''}"></i></div></div>`;
+    }).join('');
+
+    document.getElementById('weekDone').textContent = `${weekCompleted} / ${Math.min(weekTotal || 3, 7)}`;
+    document.getElementById('weekGoal').textContent = weekGoal + '%';
+}
+
+function renderUpcoming() {
+    const wrap = document.getElementById('upcomingList');
+    const now = new Date();
+    const upcoming = [];
+
+    for (const assignment of allAssignments.filter(a => a.status === 'ACTIVE')) {
+        const tpl = allTemplates[assignment.template];
+        if (!tpl) continue;
+        const days = tpl.days || [];
+        const maxWeek = days.length ? Math.max(...days.map(d => d.week_number)) : 1;
+        const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+        const weekInCycle = ((Math.floor((now - new Date(assignment.start_date)) / 604800000)) % maxWeek) + 1;
+        const logged = getLoggedDaysForAssignment(assignment.id);
+
+        for (let offset = 0; offset < 7; offset++) {
+            const targetDate = new Date(now);
+            targetDate.setDate(now.getDate() + offset);
+            const targetDayNum = targetDate.getDay() === 0 ? 7 : targetDate.getDay();
+            const targetWeek = targetDayNum < dayOfWeek ? weekInCycle + 1 : weekInCycle;
+            const targetWeekAdj = targetWeek > maxWeek ? 1 : targetWeek;
+            const day = days.find(d => d.week_number === targetWeekAdj && d.day_number === targetDayNum);
+            if (day && !logged[day.id]) {
+                const dayLabel = offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : targetDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                upcoming.push({
+                    name: day.day_name || 'Day ' + day.day_number,
+                    program: assignment.template_name,
+                    date: dayLabel,
+                    assignmentId: assignment.id,
+                    dayId: day.id,
+                    sortDate: targetDate,
+                });
+                break;
+            }
         }
-        html += '</div>';
     }
 
-    holder.innerHTML = html;
+    upcoming.sort((a, b) => a.sortDate - b.sortDate);
+    const shown = upcoming.slice(0, 3);
+
+    if (!shown.length) {
+        wrap.innerHTML = '<div class="text-center py-4 text-muted" style="font-size:0.82rem;">All caught up!</div>';
+        return;
+    }
+
+    wrap.innerHTML = shown.map((u, i) => `
+      <div class="upcoming-item">
+        <div class="upcoming-icon"><i class="bi ${progIcon(i)}"></i></div>
+        <div class="upcoming-info">
+          <div class="ui-name">${u.name}</div>
+          <div class="ui-sub">${u.date} &bull; ${u.program}</div>
+        </div>
+        <button class="btn-start-sm" onclick="openLogModal(${u.assignmentId}, ${u.dayId}, '${u.name}')">Start</button>
+      </div>`).join('');
+}
+
+function renderInsights() {
+    const totalWorkouts = allLogs.length;
+    const totalMins = allLogs.reduce((s, l) => s + (l.duration_minutes || 0), 0);
+    const totalHrs = (totalMins / 60).toFixed(1);
+    const totalCal = allLogs.reduce((s, l) => s + (l.calories || 0), 0);
+    const avgDiff = allLogs.length ? (allLogs.reduce((s, l) => s + (l.perceived_difficulty || 0), 0) / allLogs.length).toFixed(1) : '—';
+
+    const active = allAssignments.filter(a => a.status === 'ACTIVE');
+    const avgComp = active.length ? Math.round(active.reduce((s, a) => s + (a.completion_pct || 0), 0) / active.length) : 0;
+
+    document.getElementById('insightDesc').textContent = `You've completed ${avgComp}% of your workouts this month. ${avgComp >= 60 ? "You're doing great!" : 'Keep pushing!'}`;
+    document.getElementById('insightGrid').innerHTML = `
+      <div class="insight-item"><i class="bi bi-clipboard2-pulse ig-red"></i><div class="ig-value">${totalWorkouts}</div><div class="ig-label">Total Workouts</div></div>
+      <div class="insight-item"><i class="bi bi-clock ig-blue"></i><div class="ig-value">${totalHrs} hrs</div><div class="ig-label">Total Duration</div></div>
+      <div class="insight-item"><i class="bi bi-fire ig-orange"></i><div class="ig-value">${totalCal.toLocaleString()}</div><div class="ig-label">Total Calories</div></div>`;
+}
+
+function renderPrograms() {
+    const wrap = document.getElementById('programsWrap');
+    wrap.innerHTML = '';
+    const filtered = allAssignments.filter(a => currentTab === 'active' ? a.status === 'ACTIVE' : a.status === 'COMPLETED');
+
+    if (!filtered.length) {
+        wrap.innerHTML = `<div class="empty-state py-4"><i class="bi bi-clipboard2-pulse"></i><h5 class="es-title">No ${currentTab} programs</h5><p class="es-desc">${currentTab === 'active' ? 'Ask your trainer to assign a program.' : 'Complete a program to see it here.'}</p></div>`;
+        return;
+    }
+
+    filtered.forEach((assignment, idx) => {
+        const tpl = allTemplates[assignment.template];
+        const pct = assignment.completion_pct || 0;
+        const pctColor = pct >= 70 ? 'var(--color-success)' : pct >= 40 ? 'var(--color-warning)' : 'var(--brand-red)';
+        const days = tpl ? (tpl.days || []) : [];
+        const totalWorkouts = days.length;
+        const maxWeek = days.length ? Math.max(...days.map(d => d.week_number)) : (tpl?.duration_weeks || 4);
+        const weekInCycle = Math.min(((Math.floor((new Date() - new Date(assignment.start_date)) / 604800000)) % maxWeek) + 1, maxWeek);
+
+        const card = document.createElement('div');
+        card.className = 'program-card mb-3';
+        card.innerHTML = `
+          <div class="program-card-inner">
+            <div class="program-card-img" style="background:${progImg(idx)}">
+              <div class="pci-overlay"></div>
+              <div class="pci-content">
+                <div class="pci-title">${assignment.template_name}</div>
+                <div class="pci-sub">${tpl ? totalWorkouts + ' workouts &bull; ' + (tpl.duration_weeks || maxWeek) + ' weeks program' : 'Program details loading...'}</div>
+              </div>
+            </div>
+            <div class="program-card-body">
+              <div>
+                <div class="pc-week-badge"><i class="bi bi-calendar-week"></i> Week ${weekInCycle} of ${maxWeek}</div>
+                <div class="pc-title">${assignment.template_name}</div>
+                <div class="pc-desc">${tpl ? (tpl.description || tpl.goal || 'A structured training program designed to help you reach your goals.') : 'Program details are being loaded. If this persists, contact your trainer.'}</div>
+                <div class="pc-meta">
+                  ${totalWorkouts ? `<span><i class="bi bi-clipboard2-pulse"></i> ${totalWorkouts} Workouts</span>` : ''}
+                  <span><i class="bi bi-clock"></i> ${tpl?.duration_weeks || maxWeek} week${(tpl?.duration_weeks || maxWeek) > 1 ? 's' : ''}</span>
+                  ${tpl ? `<span>${diffBadge(tpl.difficulty)}</span>` : ''}
+                </div>
+              </div>
+              <div class="program-card-actions">
+                <div class="program-card-progress">
+                  <div class="progress-ring">
+                    ${progressRingSVG(pct, 64, 5, pctColor)}
+                    <div class="ring-text" style="font-size:0.95rem;">${pct}%</div>
+                  </div>
+                </div>
+                <button class="btn-view" onclick="viewProgramDays(${assignment.id})">View Program</button>
+                <button class="btn-menu" onclick="event.stopPropagation();toggleProgramMenu(${assignment.id})"><i class="bi bi-three-dots-vertical"></i></button>
+              </div>
+            </div>
+          </div>`;
+        wrap.appendChild(card);
+    });
+}
+
+function filterTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.mw-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.mw-tab[onclick="filterTab('${tab}')"]`).classList.add('active');
+    renderPrograms();
+}
+
+function toggleProgramMenu(assignmentId) {
+    // Placeholder for future context menu
+}
+
+function viewProgramDays(assignmentId) {
+    const assignment = allAssignments.find(a => a.id === assignmentId);
+    if (!assignment) return;
+    const tpl = allTemplates[assignment.template];
+    if (!tpl) return;
+
+    detailContext = { assignmentId, dayId: null, dayName: tpl.name };
+    document.getElementById('dayDetailTitle').textContent = tpl.name;
+    document.getElementById('dayDetailSub').textContent = tpl.goal || tpl.difficulty || '';
+    document.getElementById('dayDetailLogBtn').style.display = 'none';
+
+    const days = tpl.days || [];
+    const logged = getLoggedDaysForAssignment(assignmentId);
+    const body = document.getElementById('dayDetailBody');
+
+    if (!days.length) {
+        body.innerHTML = '<div class="text-center text-muted py-4">No days configured yet.</div>';
+    } else {
+        let html = '';
+        const weekMap = {};
+        days.forEach(d => { const w = d.week_number || 1; if (!weekMap[w]) weekMap[w] = []; weekMap[w].push(d); });
+
+        for (const [week, weekDays] of Object.entries(weekMap)) {
+            html += `<div class="mb-3"><div class="fw-bold mb-2" style="font-size:0.85rem;color:var(--text-secondary);">Week ${week}</div>`;
+            for (const d of weekDays) {
+                const exs = d.exercises || [];
+                const logStatus = logged[d.id];
+                html += `<div class="exercise-detail-card" style="cursor:pointer;" onclick="event.stopPropagation();viewDayDetail(${assignmentId}, ${d.id})">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="ed-icon"><i class="bi bi-${logStatus ? (logStatus === 'COMPLETED' ? 'check-circle-fill' : logStatus === 'SKIPPED' ? 'skip-forward-fill' : 'half') : 'calendar-check'}"></i></div>
+                      <div>
+                        <div class="ed-name">${d.day_name || 'Day ' + d.day_number}</div>
+                        <div class="ed-muscle">${exs.length} exercise${exs.length !== 1 ? 's' : ''}</div>
+                      </div>
+                    </div>
+                    <div>
+                      ${logStatus ? `<span class="badge bg-${logStatus === 'COMPLETED' ? 'success' : logStatus === 'SKIPPED' ? 'warning' : 'info'}" style="font-size:0.68rem;">${logStatus}</span>` :
+                        assignment.status === 'ACTIVE' ? `<button class="btn btn-sm btn-primary" style="font-size:0.72rem;" onclick="event.stopPropagation();openLogModal(${assignmentId}, ${d.id}, '${d.day_name || 'Day ' + d.day_number}')"><i class="bi bi-check2-square me-1"></i>Log</button>` : ''}
+                    </div>
+                  </div>
+                </div>`;
+            }
+            html += '</div>';
+        }
+        body.innerHTML = html;
+    }
+    new bootstrap.Modal(document.getElementById('dayDetailModal')).show();
+}
+
+function viewDayDetail(assignmentId, dayId) {
+    const assignment = allAssignments.find(a => a.id === assignmentId);
+    if (!assignment) return;
+    const tpl = allTemplates[assignment.template];
+    if (!tpl) return;
+    const day = (tpl.days || []).find(d => d.id === dayId);
+    if (!day) return;
+
+    detailContext = { assignmentId, dayId, dayName: day.day_name || 'Day ' + day.day_number };
+    document.getElementById('dayDetailTitle').textContent = day.day_name || 'Day ' + day.day_number;
+    document.getElementById('dayDetailSub').textContent = assignment.template_name + ' · Week ' + day.week_number;
+
+    const logged = getLoggedDaysForAssignment(assignmentId);
+    const logBtn = document.getElementById('dayDetailLogBtn');
+    logBtn.style.display = (logged[dayId] || assignment.status !== 'ACTIVE') ? 'none' : '';
+
+    const exercises = day.exercises || [];
+    const body = document.getElementById('dayDetailBody');
+    if (!exercises.length) {
+        body.innerHTML = '<div class="text-center text-muted py-4">No exercises configured for this day yet.</div>';
+    } else {
+        body.innerHTML = exercises.map((ex, i) => `
+          <div class="exercise-detail-card">
+            <div class="ed-header">
+              <div class="ed-icon"><i class="bi ${muscleIcon(ex.muscle_group)}"></i></div>
+              <div>
+                <div class="ed-name">${i + 1}. ${ex.exercise_name || 'Exercise'}</div>
+                <div class="ed-muscle">${ex.muscle_group || ''}</div>
+              </div>
+            </div>
+            <div class="ed-meta">
+              <span class="ed-chip"><i class="bi bi-grid-3x3-gap"></i> ${ex.sets || '—'} sets</span>
+              <span class="ed-chip"><i class="bi bi-arrow-repeat"></i> ${ex.reps || (ex.duration_seconds ? ex.duration_seconds + 's' : '—')}</span>
+              ${ex.rest_seconds ? `<span class="ed-chip"><i class="bi bi-hourglass-split"></i> ${ex.rest_seconds}s rest</span>` : ''}
+              ${ex.tempo ? `<span class="ed-chip"><i class="bi bi-speedometer"></i> ${ex.tempo}</span>` : ''}
+              ${ex.rpe ? `<span class="ed-chip"><i class="bi bi-fire"></i> RPE ${ex.rpe}</span>` : ''}
+              ${ex.weight_kg ? `<span class="ed-chip"><i class="bi bi-box"></i> ${ex.weight_kg} kg</span>` : ''}
+            </div>
+            ${ex.notes ? `<div class="ed-instructions">${ex.notes}</div>` : ''}
+          </div>`).join('');
+    }
+    bootstrap.Modal.getInstance(document.getElementById('dayDetailModal'))?.hide();
+    setTimeout(() => new bootstrap.Modal(document.getElementById('dayDetailModal')).show(), 200);
+}
+
+function openLogFromDetail() {
+    bootstrap.Modal.getInstance(document.getElementById('dayDetailModal'))?.hide();
+    setTimeout(() => openLogModal(detailContext.assignmentId, detailContext.dayId, detailContext.dayName), 300);
+}
+
+function openLogWorkoutPicker() {
+    const body = document.getElementById('logPickerBody');
+    const loading = document.getElementById('logPickerLoading');
+    const empty = document.getElementById('logPickerEmpty');
+    const content = document.getElementById('logPickerContent');
+    loading.style.display = 'block'; empty.style.display = 'none'; content.style.display = 'none';
+
+    const active = allAssignments.filter(a => a.status === 'ACTIVE');
+    if (!active.length) {
+        loading.style.display = 'none'; empty.style.display = 'block';
+        new bootstrap.Modal(document.getElementById('logPickerModal')).show();
+        return;
+    }
+
+    let html = '';
+    active.forEach((assignment, idx) => {
+        const tpl = allTemplates[assignment.template];
+        if (!tpl) return;
+        const days = tpl.days || [];
+        const logged = getLoggedDaysForAssignment(assignment.id);
+        html += `<div class="mb-3"><div class="fw-bold mb-2" style="font-size:0.9rem;">${assignment.template_name}</div>`;
+        for (const d of days) {
+            const logStatus = logged[d.id];
+            html += `<div class="exercise-detail-card" style="cursor:pointer;" onclick="${logStatus ? '' : `bootstrap.Modal.getInstance(document.getElementById('logPickerModal')).hide();setTimeout(()=>openLogModal(${assignment.id},${d.id},'${d.day_name || 'Day ' + d.day_number}'),300)`}">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="ed-name">${d.day_name || 'Day ' + d.day_number}</div>
+                  <div class="ed-muscle">${(d.exercises || []).length} exercises</div>
+                </div>
+                ${logStatus ? `<span class="badge bg-${logStatus === 'COMPLETED' ? 'success' : logStatus === 'SKIPPED' ? 'warning' : 'info'}" style="font-size:0.68rem;">${logStatus}</span>` :
+                  `<span class="badge bg-primary" style="font-size:0.68rem;">Log</span>`}
+              </div>
+            </div>`;
+        }
+        html += '</div>';
+    });
+    content.innerHTML = html;
+    loading.style.display = 'none'; content.style.display = 'block';
+    new bootstrap.Modal(document.getElementById('logPickerModal')).show();
 }
 
 function openLogModal(assignmentId, dayId, dayLabel) {
     document.getElementById('logAssignmentId').value = assignmentId;
     document.getElementById('logDayId').value = dayId;
-    document.getElementById('logDayLabel').value = dayLabel;
-    document.getElementById('logStatus').value = 'COMPLETED';
+    document.getElementById('logDayLabel').textContent = dayLabel;
     document.getElementById('logDuration').value = '';
     document.getElementById('logCalories').value = '';
-    document.getElementById('logDifficulty').value = '';
-    document.getElementById('logPain').value = '';
+    document.getElementById('logDifficulty').value = 5;
+    document.getElementById('logPain').value = 0;
     document.getElementById('logNotes').value = '';
+    document.getElementById('logDiffVal').textContent = '(5/10)';
+    document.getElementById('logPainVal').textContent = '(0/10)';
+    document.querySelectorAll('.log-status-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.log-status-btn[data-status="COMPLETED"]').classList.add('active');
     new bootstrap.Modal(document.getElementById('logModal')).show();
 }
 
+function selectLogStatus(btn) {
+    document.querySelectorAll('.log-status-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
 async function submitLog() {
+    const status = document.querySelector('.log-status-btn.active')?.dataset.status || 'COMPLETED';
     const payload = {
         assignment: parseInt(document.getElementById('logAssignmentId').value),
         workout_day: parseInt(document.getElementById('logDayId').value),
         date: new Date().toISOString().slice(0, 10),
-        status: document.getElementById('logStatus').value,
+        status,
         duration_minutes: document.getElementById('logDuration').value || null,
         calories: document.getElementById('logCalories').value || null,
-        perceived_difficulty: document.getElementById('logDifficulty').value || null,
-        pain_level: document.getElementById('logPain').value || null,
+        perceived_difficulty: parseInt(document.getElementById('logDifficulty').value) || null,
+        pain_level: parseInt(document.getElementById('logPain').value) || null,
         notes: document.getElementById('logNotes').value,
     };
     const r = await apiRequest('/workouts/completion-logs/', { method: 'POST', body: JSON.stringify(payload) });
     if (r && r.ok) {
-        bootstrap.Modal.getInstance(document.getElementById('logModal')).hide();
-        showToast('Logged – nice work');
-        loadMyWorkouts();
-        document.getElementById('assignmentsContainer').innerHTML = '';
+        bootstrap.Modal.getInstance(document.getElementById('logModal'))?.hide();
+        showToast('Workout logged — nice work!', 'success');
+        await loadAll();
     } else if (r) {
         const err = await r.json();
-        // Already-logged-today is the most likely rejection (unique_together on
-        // assignment+day+date) – the backend's own message covers it plainly.
         showToast(formatApiError(err), 'error');
     } else {
         showToast('Could not save log', 'error');
     }
 }
 
-loadMyWorkouts();
+function renderActivity() {
+    const wrap = document.getElementById('activityList');
+    const loading = document.getElementById('activityLoading');
+    const empty = document.getElementById('activityEmpty');
 
-  loadTopbarNotifications();
+    if (!allLogs.length) {
+        loading.style.display = 'none'; empty.style.display = 'block'; wrap.innerHTML = '';
+        return;
+    }
+    loading.style.display = 'none'; empty.style.display = 'none';
+
+    const sorted = [...allLogs].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    wrap.innerHTML = sorted.map(l => {
+        const assignment = allAssignments.find(a => a.id === l.assignment);
+        const tpl = allTemplates[assignment?.template];
+        let dayName = '';
+        if (tpl) {
+            const day = (tpl.days || []).find(d => d.id === l.workout_day);
+            dayName = day ? (day.day_name || 'Day ' + day.day_number) : '';
+        }
+        return `<div class="activity-item">
+          <div class="activity-dot ${l.status.toLowerCase()}"><i class="bi bi-${l.status === 'COMPLETED' ? 'check-lg' : l.status === 'SKIPPED' ? 'skip-forward' : 'half'}"></i></div>
+          <div class="activity-info">
+            <div class="ai-name">${dayName || assignment?.template_name || 'Workout'}</div>
+            <div class="ai-sub">${new Date(l.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} &bull; ${l.status}</div>
+          </div>
+          <div class="activity-stats">
+            <div class="as-item"><div class="as-value">${l.duration_minutes ? l.duration_minutes + ':' + '00'.padStart(2, '0') : '—'}</div><div class="as-label">Duration</div></div>
+            <div class="as-item"><div class="as-value">${l.calories ? l.calories + ' kcal' : '—'}</div><div class="as-label">Calories</div></div>
+          </div>
+          <button class="btn-details" onclick="viewDayDetail(${l.assignment}, ${l.workout_day})">View Details</button>
+        </div>`;
+    }).join('');
+}
+
+async function loadAll() {
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('noAssignmentsState').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'none';
+
+    const [assignRes, logRes] = await Promise.all([
+        apiRequest('/workouts/assignments/'),
+        apiRequest('/workouts/completion-logs/')
+    ]);
+
+    document.getElementById('loadingState').style.display = 'none';
+
+    if (!assignRes || !assignRes.ok) {
+        showToast('Could not load your workouts', 'error');
+        return;
+    }
+
+    const assignData = await assignRes.json();
+    allAssignments = (assignData.results || assignData).filter(a => a.status === 'ACTIVE' || a.status === 'COMPLETED' || a.status === 'PAUSED');
+
+    if (logRes && logRes.ok) {
+        const logData = await logRes.json();
+        allLogs = logData.results || logData;
+    }
+
+    if (!allAssignments.length) {
+        document.getElementById('noAssignmentsState').style.display = 'flex';
+        return;
+    }
+
+    const templateIds = [...new Set(allAssignments.map(a => a.template))];
+    await Promise.all(templateIds.map(async id => {
+        if (allTemplates[id]) return;
+        const r = await apiRequest(`/workouts/templates/${id}/`);
+        if (r && r.ok) allTemplates[id] = await r.json();
+    }));
+
+    document.getElementById('mainContent').style.display = 'block';
+    computeStats();
+    renderWeekOverview();
+    renderUpcoming();
+    renderInsights();
+    renderPrograms();
+    renderActivity();
+}
+
+loadAll();
+loadTopbarNotifications();
 </script>
 <script src="js/bottom-tabs.js"></script>
 </body>

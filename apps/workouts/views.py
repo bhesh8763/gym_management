@@ -103,7 +103,12 @@ class WorkoutTemplateListCreateView(generics.ListCreateAPIView):
 
 class WorkoutTemplateDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = WorkoutTemplateSerializer
-    permission_classes = [IsOwnerOrStaffOrTrainer]
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH', 'DELETE'):
+            return [IsOwnerOrStaffOrTrainer()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         return _visible_templates(self.request.user).annotate(
@@ -316,7 +321,12 @@ class WorkoutAssignmentListCreateView(generics.ListCreateAPIView):
 
 class WorkoutAssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = WorkoutAssignmentSerializer
-    permission_classes = [IsOwnerOrStaffOrTrainer]
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH', 'DELETE'):
+            return [IsOwnerOrStaffOrTrainer()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         return _visible_assignments(self.request.user)
