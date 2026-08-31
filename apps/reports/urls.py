@@ -16,4 +16,9 @@ urlpatterns = [
     path('export/memberships/', views.export_memberships, name='export-memberships'),
     path('export/revenue/', views.export_revenue, name='export-revenue'),
     path('export/members/', views.export_members, name='export-members'),
+    path('export/equipment/', views.export_equipment, name='export-equipment'),
+    path('export/maintenance/', views.export_maintenance, name='export-maintenance'),
+    path('export/diet/', views.export_diet, name='export-diet'),
+    path('export/progress/', views.export_progress, name='export-progress'),
+    path('export/staff/', views.export_staff, name='export-staff'),
 ]

@@ -205,6 +205,7 @@
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <a href="trainer-dashboard.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-speedometer2"></i> <span>Trainer Dashboard</span></a>
 
       <div class="nav-section-label">Members</div>
       <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
@@ -250,9 +251,13 @@
       </div>
     </div>
 
-    <div id="loadingState" class="text-center text-muted py-5">
-      <div class="spinner-border" role="status"></div>
-      <div class="mt-2">Loading your membership…</div>
+    <div id="loadingState" class="py-4">
+      <div class="skeleton-card mb-3"><div class="skeleton-title" style="width:30%;"></div><div class="skeleton-text"></div><div class="skeleton-text" style="width:70%;"></div><div class="skeleton-text" style="width:50%;"></div></div>
+      <div class="skeleton-stat-grid mb-3">
+        <div class="skeleton-stat"><div class="skeleton-text" style="width:50%;height:10px;"></div><div class="skeleton-text" style="width:40%;height:24px;margin-bottom:0;"></div></div>
+        <div class="skeleton-stat"><div class="skeleton-text" style="width:50%;height:10px;"></div><div class="skeleton-text" style="width:40%;height:24px;margin-bottom:0;"></div></div>
+        <div class="skeleton-stat"><div class="skeleton-text" style="width:50%;height:10px;"></div><div class="skeleton-text" style="width:40%;height:24px;margin-bottom:0;"></div></div>
+      </div>
     </div>
 
     <div id="pageBody" style="display:none;">

@@ -1,5 +1,80 @@
 const API_BASE = window.FITCORE_API_BASE || 'http://127.0.0.1:8000/api';
 
+// ── Skeleton loading helpers ──────────────────────────────────────────────
+// Reusable functions that return HTML strings for skeleton placeholders.
+// Call these to replace spinner-border / "Loading..." text while data loads.
+const Skeleton = {
+  /** N skeleton text lines (default 3) */
+  text(lines = 3) {
+    return Array.from({ length: lines }, (_, i) =>
+      `<div class="skeleton-text" style="width:${i === lines - 1 ? '60%' : '100%'}"></div>`
+    ).join('');
+  },
+
+  /** Stat card placeholder */
+  stat() {
+    return `<div class="skeleton-stat">
+      <div class="skeleton-text" style="width:50%;height:10px;"></div>
+      <div class="skeleton-text" style="width:35%;height:28px;margin-bottom:0;"></div>
+      <div class="skeleton-text" style="width:60%;height:10px;"></div>
+    </div>`;
+  },
+
+  /** Grid of N stat cards */
+  statGrid(count = 4) {
+    return `<div class="skeleton-stat-grid">${Array(count).fill(this.stat()).join('')}</div>`;
+  },
+
+  /** Single list row with avatar + two text lines */
+  row() {
+    return `<div class="skeleton-row">
+      <div class="skeleton-avatar"></div>
+      <div class="skeleton-content">
+        <div class="skeleton-text" style="width:55%;margin-bottom:0;"></div>
+        <div class="skeleton-text" style="width:35%;margin-bottom:0;"></div>
+      </div>
+    </div>`;
+  },
+
+  /** N list rows */
+  rows(count = 4) {
+    return Array(count).fill(null).map(() => this.row()).join('');
+  },
+
+  /** Table rows with columns */
+  tableRow(cols = 5) {
+    return `<div class="skeleton-table-row">${Array(cols).fill(null).map((_, i) =>
+      `<div><div class="skeleton-text" style="width:${60 + Math.random() * 30}%;"></div></div>`
+    ).join('')}</div>`;
+  },
+
+  /** N table rows */
+  tableRows(count = 5, cols = 5) {
+    return Array(count).fill(null).map(() => this.tableRow(cols)).join('');
+  },
+
+  /** Card skeleton with title + text lines */
+  card(lines = 3) {
+    return `<div class="skeleton-card">
+      <div class="skeleton-title"></div>
+      ${this.text(lines)}
+    </div>`;
+  },
+
+  /** Chart placeholder */
+  chart() {
+    return `<div class="skeleton-chart"></div>`;
+  },
+
+  /** Full-page centered loader */
+  centered() {
+    return `<div class="text-center py-5">
+      <div class="skeleton-avatar lg mx-auto mb-3"></div>
+      ${this.text(2)}
+    </div>`;
+  },
+};
+
 function getAccessToken() {
   return localStorage.getItem('access_token');
 }

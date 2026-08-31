@@ -64,6 +64,7 @@
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <a href="trainer-dashboard.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-speedometer2"></i> <span>Trainer Dashboard</span></a>
 
       <div class="nav-section-label">Members</div>
       <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
@@ -90,8 +91,11 @@
     </div>
 
     <div id="loadingState" class="text-center text-muted py-5">
-      <div class="spinner-border" role="status"></div>
-      <div class="mt-2">Loading your members...</div>
+      <div class="skeleton-stat-grid">
+        <div class="skeleton-card"><div class="skeleton-avatar mx-auto mb-2"></div><div class="skeleton-text mx-auto" style="width:60%;"></div><div class="skeleton-text mx-auto" style="width:40%;"></div></div>
+        <div class="skeleton-card"><div class="skeleton-avatar mx-auto mb-2"></div><div class="skeleton-text mx-auto" style="width:55%;"></div><div class="skeleton-text mx-auto" style="width:45%;"></div></div>
+        <div class="skeleton-card"><div class="skeleton-avatar mx-auto mb-2"></div><div class="skeleton-text mx-auto" style="width:65%;"></div><div class="skeleton-text mx-auto" style="width:35%;"></div></div>
+      </div>
     </div>
 
     <div id="noMembersState" class="alert alert-secondary" style="display:none;">

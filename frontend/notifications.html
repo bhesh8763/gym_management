@@ -61,6 +61,7 @@
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <a href="trainer-dashboard.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-speedometer2"></i> <span>Trainer Dashboard</span></a>
 
       <div class="nav-section-label">Members</div>
       <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
@@ -137,8 +138,9 @@
     <div class="card p-0 overflow-hidden">
       <div id="notifPageList">
         <div class="text-center py-5 text-muted">
-          <div class="spinner-border text-danger mb-3"></div>
-          <div>Loading notifications…</div>
+          <div class="skeleton-avatar lg mx-auto mb-3"></div>
+          <div class="skeleton-text mx-auto" style="width:120px;margin-bottom:4px;"></div>
+          <div class="skeleton-text mx-auto" style="width:80px;"></div>
         </div>
       </div>
 
@@ -320,8 +322,9 @@
   async function loadNotifications() {
     document.getElementById('notifPageList').innerHTML = `
       <div class="text-center py-5 text-muted">
-        <div class="spinner-border text-danger mb-3"></div>
-        <div>Loading…</div>
+        <div class="skeleton-avatar lg mx-auto mb-3"></div>
+        <div class="skeleton-text mx-auto" style="width:120px;margin-bottom:4px;"></div>
+        <div class="skeleton-text mx-auto" style="width:80px;"></div>
       </div>`;
 
     let url = '/notifications/?';

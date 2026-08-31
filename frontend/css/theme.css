@@ -1007,71 +1007,110 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
   #page-content .flex-grow-1{padding-bottom:calc(var(--sp-4) + 60px)}
 }
 
-/* ── Entrance Motion ──────────────────────────────────────────────────────
-   Subtle, professional page-load reveal. Pure CSS — no JS changes needed
-   on any page. Applies to the first row of stat-cards/cards so the page
-   feels alive without cards popping in every time you scroll.
-   ========================================================================== */
-@keyframes fadeInUp{
-  from{opacity:0;transform:translateY(8px)}
-  to{opacity:1;transform:translateY(0)}
+/* ── Skeleton Loading Animations ───────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
-#page-content .row:first-of-type > [class*="col"] > .stat-card,
-#page-content .row:first-of-type > [class*="col"] > .card,
-#page-content .row:nth-of-type(2) > [class*="col"] > .workout-card,
-#page-content .row:nth-of-type(2) > [class*="col"] > .trainer-card,
-#page-content .row:nth-of-type(2) > [class*="col"] > .pr-card,
-#page-content > .fitness-card:first-child,
-#page-content > .membership-card:first-child{
-  animation:fadeInUp var(--duration-smooth) var(--ease-out) both;
+
+.skeleton,
+.skeleton-text,
+.skeleton-title,
+.skeleton-avatar,
+.skeleton-card,
+.skeleton-row,
+.skeleton-stat,
+.skeleton-btn,
+.skeleton-badge {
+  background: linear-gradient(90deg, var(--bg-hover) 25%, rgba(0,0,0,0.04) 50%, var(--bg-hover) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
 }
-#page-content .row:first-of-type > [class*="col"]:nth-child(1) > .stat-card,
-#page-content .row:first-of-type > [class*="col"]:nth-child(1) > .card{animation-delay:calc(var(--stagger-step) * 1)}
-#page-content .row:first-of-type > [class*="col"]:nth-child(2) > .stat-card,
-#page-content .row:first-of-type > [class*="col"]:nth-child(2) > .card{animation-delay:calc(var(--stagger-step) * 2)}
-#page-content .row:first-of-type > [class*="col"]:nth-child(3) > .stat-card,
-#page-content .row:first-of-type > [class*="col"]:nth-child(3) > .card{animation-delay:calc(var(--stagger-step) * 3)}
-#page-content .row:first-of-type > [class*="col"]:nth-child(4) > .stat-card,
-#page-content .row:first-of-type > [class*="col"]:nth-child(4) > .card{animation-delay:calc(var(--stagger-step) * 4)}
-#page-content .row:first-of-type > [class*="col"]:nth-child(5) > .stat-card,
-#page-content .row:first-of-type > [class*="col"]:nth-child(5) > .card{animation-delay:calc(var(--stagger-step) * 5)}
-#page-content .row:first-of-type > [class*="col"]:nth-child(6) > .stat-card,
-#page-content .row:first-of-type > [class*="col"]:nth-child(6) > .card{animation-delay:calc(var(--stagger-step) * 6)}
 
-/* Skeleton loader — use instead of/alongside spinners while data loads.
-   Markup: <div class="skeleton" style="height:20px;width:60%"></div> */
-.skeleton{
-  border-radius:var(--radius-sm);
-  background:linear-gradient(90deg,var(--bg-hover) 25%,var(--border-light) 37%,var(--bg-hover) 63%);
-  background-size:400% 100%;
-  animation:skeletonShimmer 1.4s ease infinite;
+[data-theme='dark'] .skeleton,
+[data-theme='dark'] .skeleton-text,
+[data-theme='dark'] .skeleton-title,
+[data-theme='dark'] .skeleton-avatar,
+[data-theme='dark'] .skeleton-card,
+[data-theme='dark'] .skeleton-row,
+[data-theme='dark'] .skeleton-stat,
+[data-theme='dark'] .skeleton-btn,
+[data-theme='dark'] .skeleton-badge {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%;
 }
-@keyframes skeletonShimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
-[data-theme="dark"] .skeleton{background:linear-gradient(90deg,var(--bg-hover) 25%,rgba(255,255,255,0.08) 37%,var(--bg-hover) 63%);background-size:400% 100%}
 
-/* Table row hover — small polish so dense tables (members, payments,
-   attendance) feel responsive to the cursor, not static grids. */
-.table > tbody > tr{transition:background-color var(--transition-fast)}
-.table > tbody > tr:hover{background-color:var(--bg-hover)}
+/* Shapes */
+.skeleton-text { height: 12px; margin-bottom: 8px; width: 100%; }
+.skeleton-text:last-child { width: 60%; }
+.skeleton-title { height: 20px; margin-bottom: 12px; width: 40%; }
+.skeleton-avatar { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
+.skeleton-avatar.lg { width: 64px; height: 64px; }
+.skeleton-btn { height: 32px; width: 100px; border-radius: var(--radius-md); }
+.skeleton-badge { height: 22px; width: 70px; border-radius: var(--radius-full); }
 
-/* Loading-button utility — one consistent pattern for async save/submit
-   actions instead of ad-hoc spinners per page.
-   Markup: <button class="btn btn-primary btn-loading"><span class="spinner-border spinner-border-sm"></span> Saving...</button> */
-.btn-loading{position:relative;pointer-events:none;opacity:0.75}
-.btn-loading .spinner-border{width:0.85em;height:0.85em;border-width:2px;margin-right:6px;vertical-align:-0.15em}
+/* Card skeleton */
+.skeleton-card {
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-card);
+}
 
-/* Toast / modal entrance — reuses the existing slideDown, adds a scale-in
-   for modal-style confirm dialogs so they don't just snap into place. */
-.confirm-modal,.modal-content{animation:modalIn var(--transition-smooth) var(--ease-out) both}
-@keyframes modalIn{from{opacity:0;transform:scale(0.97) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+/* Stat card skeleton */
+.skeleton-stat {
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-card);
+}
 
-/* Accessibility floor — respect the user's OS-level motion preference.
-   This must stay last so it wins the cascade. */
-@media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{
-    animation-duration:0.01ms !important;
-    animation-iteration-count:1 !important;
-    transition-duration:0.01ms !important;
-    scroll-behavior:auto !important;
-  }
+/* Row / list item skeleton */
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.skeleton-row:last-child { border-bottom: none; }
+.skeleton-row .skeleton-content { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+/* Table row skeleton */
+.skeleton-table-row {
+  display: flex;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.skeleton-table-row > div { flex: 1; }
+.skeleton-table-row > div:first-child { flex: 2; }
+
+/* Stat cards grid skeleton */
+.skeleton-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+/* Chart skeleton */
+.skeleton-chart {
+  width: 100%;
+  height: 180px;
+  border-radius: var(--radius-md);
+}
+
+/* Fade-in after skeleton */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.skeleton-fade-in {
+  animation: fadeIn 0.3s ease-out;
 }

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="LOGO-2.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trainer Dashboard - FitCore</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="css/theme.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body data-allowed-roles="TRAINER">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <a href="trainer-dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="LOGO-2.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone..." autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">–</div>
+        <div class="profile-role" id="profileRole">–</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="list-group list-group-flush pt-2">
+      <div class="nav-section-label">Main</div>
+      <a href="trainer-dashboard.html" class="list-group-item list-group-item-action active"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+
+      <div class="nav-section-label">Training</div>
+      <a href="trainer-members.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-people"></i> <span>My Members</span></a>
+      <a href="attendance.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
+      <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
+
+      <div class="nav-section-label" data-roles="OWNER,STAFF,TRAINER">Workout &amp; Diet</div>
+      <a href="workouts.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
+      <a href="diet.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-egg-fried"></i> <span>Diet Plans</span></a>
+
+      <div class="nav-section-label">System</div>
+      <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
+    </div>
+  </div>
+
+  <div class="p-4 flex-grow-1">
+
+    <!-- Greeting + quick actions -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <h3 class="mb-0" id="greetingText">Welcome back</h3>
+        <div class="text-muted small" id="todayLabel"></div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="workouts.html?action=add" class="quick-action-btn spa-link"><i class="bi bi-plus-circle"></i> New Workout</a>
+        <a href="diet.html?action=add" class="quick-action-btn spa-link" style="border-color:var(--color-nutrition);color:var(--color-nutrition);"><i class="bi bi-plus-circle"></i> New Diet Plan</a>
+        <a href="progress.html" class="quick-action-btn spa-link" style="border-color:var(--color-progress);color:var(--color-progress);"><i class="bi bi-graph-up"></i> View Progress</a>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-3 col-6">
+        <a href="trainer-members.html" class="card stat-card spa-link h-100">
+          <div class="stat-icon" style="background:var(--color-workout-bg);color:var(--color-workout);"><i class="bi bi-people"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">My Members</div>
+          <h3 id="statMembers">–</h3>
+          <div class="text-muted" style="font-size:0.7rem;">assigned to you</div>
+        </a>
+      </div>
+      <div class="col-md-3 col-6">
+        <a href="workouts.html" class="card stat-card spa-link h-100">
+          <div class="stat-icon" style="background:var(--color-progress-bg);color:var(--color-progress);"><i class="bi bi-heart-pulse"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Workout Plans</div>
+          <h3 id="statWorkouts">–</h3>
+          <div class="text-muted" style="font-size:0.7rem;">active templates</div>
+        </a>
+      </div>
+      <div class="col-md-3 col-6">
+        <a href="diet.html" class="card stat-card spa-link h-100">
+          <div class="stat-icon" style="background:var(--color-nutrition-bg);color:var(--color-nutrition);"><i class="bi bi-egg-fried"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Diet Plans</div>
+          <h3 id="statDiets">–</h3>
+          <div class="text-muted" style="font-size:0.7rem;">active plans</div>
+        </a>
+      </div>
+      <div class="col-md-3 col-6">
+        <a href="attendance.html" class="card stat-card spa-link h-100">
+          <div class="stat-icon" style="background:var(--color-attendance-bg);color:var(--color-attendance);"><i class="bi bi-calendar-check"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Members Today</div>
+          <h3 id="statAttendance">–</h3>
+          <div class="text-muted" style="font-size:0.7rem;">checked in</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Main content row -->
+    <div class="row g-3">
+
+      <!-- Assigned Members -->
+      <div class="col-lg-7">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0 fw-bold">Assigned Members</h6>
+              <a href="trainer-members.html" class="text-muted spa-link" style="font-size:0.8rem;">View all</a>
+            </div>
+            <div id="membersList">
+              <div class="skeleton-row"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-text" style="width:55%;margin-bottom:0;"></div><div class="skeleton-text" style="width:30%;margin-bottom:0;"></div></div><div style="text-align:right;"><div class="skeleton-text" style="width:50px;margin-bottom:0;"></div></div></div>
+              <div class="skeleton-row"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-text" style="width:60%;margin-bottom:0;"></div><div class="skeleton-text" style="width:25%;margin-bottom:0;"></div></div><div style="text-align:right;"><div class="skeleton-text" style="width:50px;margin-bottom:0;"></div></div></div>
+              <div class="skeleton-row"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-text" style="width:45%;margin-bottom:0;"></div><div class="skeleton-text" style="width:35%;margin-bottom:0;"></div></div><div style="text-align:right;"><div class="skeleton-text" style="width:50px;margin-bottom:0;"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: Today's Overview + Quick Stats -->
+      <div class="col-lg-5">
+        <!-- Today's Attendance -->
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="mb-3 fw-bold">Today's Attendance</h6>
+            <div id="todayAttendance">
+              <div class="d-flex gap-3 mb-2">
+                <div class="flex-fill skeleton" style="height:60px;border-radius:var(--radius-md);"></div>
+                <div class="flex-fill skeleton" style="height:60px;border-radius:var(--radius-md);"></div>
+              </div>
+              <div class="skeleton" style="height:6px;border-radius:3px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+          <div class="card-body">
+            <h6 class="mb-3 fw-bold">Recent Activity</h6>
+            <div id="recentActivity">
+              <div class="skeleton-row"><div class="skeleton-avatar" style="width:28px;height:28px;"></div><div class="skeleton-content"><div class="skeleton-text" style="width:80%;margin-bottom:0;"></div><div class="skeleton-text" style="width:30%;margin-bottom:0;"></div></div></div>
+              <div class="skeleton-row"><div class="skeleton-avatar" style="width:28px;height:28px;"></div><div class="skeleton-content"><div class="skeleton-text" style="width:65%;margin-bottom:0;"></div><div class="skeleton-text" style="width:25%;margin-bottom:0;"></div></div></div>
+              <div class="skeleton-row"><div class="skeleton-avatar" style="width:28px;height:28px;"></div><div class="skeleton-content"><div class="skeleton-text" style="width:70%;margin-bottom:0;"></div><div class="skeleton-text" style="width:20%;margin-bottom:0;"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workout Completion Chart -->
+    <div class="row g-3 mt-1">
+      <div class="col-md-8">
+        <div class="card p-3">
+          <h6 class="mb-3 fw-bold">Member Attendance — Last 7 Days</h6>
+          <canvas id="attendanceChart" height="100"></canvas>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card p-3 h-100">
+          <h6 class="mb-3 fw-bold">Workout Status</h6>
+          <canvas id="workoutStatusChart" height="160"></canvas>
+          <div id="workoutStatusLegend" class="mt-2" style="font-size:0.8rem;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+  if (!getAccessToken()) window.location.href = 'login.html';
+
+  // ── Greeting ─────────────────────────────────────────────────────────────
+  (function initGreeting() {
+    const name = (localStorage.getItem('user_name') || '').split(' ')[0] || 'Trainer';
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const dateStr = new Date().toLocaleDateString(undefined, {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    document.getElementById('greetingText').textContent = `${greeting}, ${name}`;
+    document.getElementById('todayLabel').textContent = dateStr;
+  })();
+
+  function todayStr() {
+    return new Date().toISOString().split('20')[0];
+  }
+
+  function formatDate(d) {
+    if (!d) return '–';
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function loadNotifications() {
+    return loadTopbarNotifications();
+  }
+
+  async function fetchAllPaginated(path) {
+    let all = [];
+    while (path) {
+      const res = await apiRequest(path);
+      if (!res || !res.ok) return all;
+      const data = await res.json();
+      const results = data.results || data;
+      all = all.concat(results);
+      path = data.next ? data.next.replace(API_BASE, '') : null;
+    }
+    return all;
+  }
+
+  // ── Main data loader ─────────────────────────────────────────────────────
+  async function loadDashboard() {
+    const [members, templates, diets, assignments] = await Promise.all([
+      apiRequest('/trainers/my-members/'),
+      fetchAllPaginated('/workouts/templates/?trainer=me'),
+      fetchAllPaginated('/diet/diet-plans/'),
+      fetchAllPaginated('/trainers/assignments/?is_active=true'),
+    ]);
+
+    // ── Stat cards ───────────────────────────────────────────────────────
+    const memberList = (members && members.ok) ? await members.json() : [];
+    document.getElementById('statMembers').textContent = memberList.length || '0';
+
+    // Workout templates created by this trainer
+    const myTemplates = templates.filter(t =>
+      t.status === 'APPROVED' || t.status === 'DRAFT' || t.status === 'IN_REVIEW'
+    );
+    document.getElementById('statWorkouts').textContent = myTemplates.length || '0';
+
+    // Active diet plans created by this trainer
+    const myDiets = diets.filter(d => d.is_active);
+    document.getElementById('statDiets').textContent = myDiets.length || '0';
+
+    // Today's attendance for assigned members
+    const memberIds = new Set(memberList.map(m => m.member_id));
+    const todayRecords = await fetchAllPaginated(`/attendance/records/?date=${todayStr()}`);
+    const membersCheckedIn = todayRecords.filter(r => memberIds.has(r.user || r.user_id));
+    document.getElementById('statAttendance').textContent = membersCheckedIn.length || '0';
+
+    // ── Assigned members list ────────────────────────────────────────────
+    renderMembersList(memberList);
+
+    // ── Today's attendance detail ────────────────────────────────────────
+    renderTodayAttendance(memberList, todayRecords);
+
+    // ── Recent activity ──────────────────────────────────────────────────
+    renderRecentActivity(myTemplates, myDiets, memberList);
+
+    // ── Charts ───────────────────────────────────────────────────────────
+    loadAttendanceChart(memberIds);
+    loadWorkoutStatusChart(assignments);
+  }
+
+  // ── Members list ──────────────────────────────────────────────────────────
+  function renderMembersList(members) {
+    const el = document.getElementById('membersList');
+    if (!members.length) {
+      el.innerHTML = `
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-people d-block mb-2" style="font-size:1.5rem;"></i>
+          No members assigned yet
+        </div>`;
+      return;
+    }
+    el.innerHTML = members.slice(0, 6).map(m => `
+      <div class="d-flex align-items-center justify-content-between py-2 border-bottom" style="border-color:var(--border-light) !important;">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand-red),var(--brand-red-light));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0;">
+            ${(m.member_name || '?').charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div class="fw-semibold" style="font-size:0.85rem;">${escapeHtml(m.member_name)}</div>
+            <div class="text-muted" style="font-size:0.75rem;">${escapeHtml(m.member_display_id || '')}</div>
+          </div>
+        </div>
+        <div class="text-end">
+          <div class="text-muted" style="font-size:0.7rem;">Assigned</div>
+          <div style="font-size:0.78rem;">${m.assigned_date ? formatDate(m.assigned_date) : '–'}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Today's attendance ────────────────────────────────────────────────────
+  function renderTodayAttendance(members, records) {
+    const el = document.getElementById('todayAttendance');
+    const memberIds = new Set(members.map(m => m.member_id));
+    const todayRecords = records.filter(r => memberIds.has(r.user || r.user_id));
+
+    if (!todayRecords.length) {
+      el.innerHTML = `
+        <div class="text-center text-muted py-3" style="font-size:0.85rem;">
+          <i class="bi bi-calendar-x d-block mb-1" style="font-size:1.2rem;"></i>
+          No members checked in today
+        </div>`;
+      return;
+    }
+
+    // Group by status
+    const present = todayRecords.filter(r => r.status === 'PRESENT');
+    const absent = todayRecords.filter(r => r.status === 'ABSENT');
+
+    el.innerHTML = `
+      <div class="d-flex gap-3 mb-2">
+        <div class="flex-fill text-center p-2 rounded" style="background:var(--color-success-bg);">
+          <div class="fw-bold" style="color:var(--color-success);font-size:1.1rem;">${present.length}</div>
+          <div class="text-muted" style="font-size:0.7rem;">Present</div>
+        </div>
+        <div class="flex-fill text-center p-2 rounded" style="background:var(--color-danger-bg);">
+          <div class="fw-bold" style="color:var(--color-danger);font-size:1.1rem;">${members.length - present.length}</div>
+          <div class="text-muted" style="font-size:0.7rem;">Not yet</div>
+        </div>
+      </div>
+      <div class="progress-fitness" style="height:6px;">
+        <div class="progress-bar bg-success" style="width:${members.length ? Math.round(present.length / members.length * 100) : 0}%"></div>
+      </div>
+      <div class="text-muted text-center mt-1" style="font-size:0.7rem;">${members.length ? Math.round(present.length / members.length * 100) : 0}% of your members</div>
+    `;
+  }
+
+  // ── Recent activity ───────────────────────────────────────────────────────
+  function renderRecentActivity(templates, diets, members) {
+    const el = document.getElementById('recentActivity');
+    const items = [];
+
+    templates.slice(0, 3).forEach(t => {
+      items.push({
+        icon: 'bi-heart-pulse',
+        iconColor: 'var(--color-workout)',
+        text: `Created workout "${t.name}"`,
+        date: t.created_at ? t.created_at.split('T')[0] : '',
+      });
+    });
+
+    diets.slice(0, 3).forEach(d => {
+      items.push({
+        icon: 'bi-egg-fried',
+        iconColor: 'var(--color-nutrition)',
+        text: `Created diet plan "${d.name}"`,
+        date: d.created_at ? d.created_at.split('T')[0] : '',
+      });
+    });
+
+    items.sort((a, b) => (b.date > a.date ? 1 : -1));
+
+    if (!items.length) {
+      el.innerHTML = `
+        <div class="text-center text-muted py-3" style="font-size:0.85rem;">
+          <i class="bi bi-clock-history d-block mb-1" style="font-size:1.2rem;"></i>
+          No recent activity yet
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = items.slice(0, 5).map(it => `
+      <div class="d-flex align-items-start gap-2 py-2 border-bottom" style="border-color:var(--border-light) !important;">
+        <i class="bi ${it.icon} mt-1" style="font-size:0.9rem;color:${it.iconColor};"></i>
+        <div class="flex-grow-1">
+          <div style="font-size:0.82rem;">${escapeHtml(it.text)}</div>
+          <div class="text-muted" style="font-size:0.7rem;">${it.date ? formatDate(it.date) : ''}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Attendance chart (last 7 days) ───────────────────────────────────────
+  let attendanceChartInstance = null;
+  async function loadAttendanceChart(memberIds) {
+    const labels = [];
+    const counts = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      labels.push(dateStr.slice(5));
+      const records = await fetchAllPaginated(`/attendance/records/?date=${dateStr}`);
+      const myMembers = records.filter(r => memberIds.has(r.user || r.user_id));
+      counts.push(myMembers.length);
+    }
+    if (attendanceChartInstance) attendanceChartInstance.destroy();
+    attendanceChartInstance = new Chart(document.getElementById('attendanceChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Members checked in',
+          data: counts,
+          backgroundColor: 'rgba(59,130,246,0.7)',
+          borderColor: '#3b82f6',
+          borderWidth: 1,
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+  }
+
+  // ── Workout status doughnut ───────────────────────────────────────────────
+  let workoutChartInstance = null;
+  async function loadWorkoutStatusChart(assignments) {
+    const statusCounts = { ACTIVE: 0, PAUSED: 0, COMPLETED: 0, CANCELLED: 0 };
+    assignments.forEach(a => {
+      if (statusCounts[a.status] !== undefined) statusCounts[a.status]++;
+    });
+
+    const labels = ['Active', 'Paused', 'Completed', 'Cancelled'];
+    const data = [statusCounts.ACTIVE, statusCounts.PAUSED, statusCounts.COMPLETED, statusCounts.CANCELLED];
+    const colors = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444'];
+
+    if (workoutChartInstance) workoutChartInstance.destroy();
+
+    const total = data.reduce((s, v) => s + v, 0);
+    if (total === 0) {
+      document.getElementById('workoutStatusChart').style.display = 'none';
+      document.getElementById('workoutStatusLegend').innerHTML = '<div class="text-muted text-center" style="font-size:0.85rem;">No assignments yet</div>';
+      return;
+    }
+
+    workoutChartInstance = new Chart(document.getElementById('workoutStatusChart'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors,
+          borderWidth: 0,
+          hoverOffset: 4,
+        }],
+      },
+      options: {
+        cutout: '65%',
+        plugins: {
+          legend: { display: false },
+        },
+      },
+    });
+
+    document.getElementById('workoutStatusLegend').innerHTML = labels.map((l, i) => `
+      <div class="d-flex align-items-center justify-content-between mb-1">
+        <div class="d-flex align-items-center gap-2">
+          <span style="width:10px;height:10px;border-radius:50%;background:${colors[i]};display:inline-block;"></span>
+          <span>${l}</span>
+        </div>
+        <span class="fw-semibold">${data[i]}</span>
+      </div>
+    `).join('');
+  }
+
+  loadDashboard();
+  loadNotifications();
+</script>
+<script src="js/bottom-tabs.js"></script>
+</body>
+</html>

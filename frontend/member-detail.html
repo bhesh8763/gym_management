@@ -98,6 +98,7 @@
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <a href="trainer-dashboard.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-speedometer2"></i> <span>Trainer Dashboard</span></a>
       <div class="nav-section-label">Members</div>
       <a href="members.html" class="list-group-item list-group-item-action active" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
       <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
@@ -132,7 +133,9 @@
 
   <div class="flex-grow-1" style="padding:1.5rem;max-width:1400px;overflow-y:auto;">
     <div id="profileLoading" style="display:flex;align-items:center;justify-content:center;min-height:60vh;color:#9ca3af;gap:.75rem;">
-      <div class="spinner-border text-danger"></div><span>Loading member profile&hellip;</span>
+      <div class="skeleton-avatar lg mx-auto mb-3"></div>
+      <div class="skeleton-text mx-auto" style="width:180px;margin-bottom:6px;"></div>
+      <div class="skeleton-text mx-auto" style="width:120px;"></div>
     </div>
     <div id="profileContent" style="display:none;"></div>
   </div>

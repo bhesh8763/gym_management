@@ -70,6 +70,7 @@
     <div class="list-group list-group-flush pt-2">
       <div class="nav-section-label">Main</div>
       <a href="dashboard.html" class="list-group-item list-group-item-action active"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <a href="trainer-dashboard.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-speedometer2"></i> <span>Trainer Dashboard</span></a>
 
       <div class="nav-section-label">Members</div>
       <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
@@ -171,7 +172,8 @@
             <strong>Needs your attention</strong>
           </div>
           <div id="attentionList">
-            <div class="attention-empty">Loading...</div>
+            <div class="skeleton-row"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-text" style="width:70%;margin-bottom:0;"></div><div class="skeleton-text" style="width:40%;margin-bottom:0;"></div></div></div>
+            <div class="skeleton-row"><div class="skeleton-avatar"></div><div class="skeleton-content"><div class="skeleton-text" style="width:60%;margin-bottom:0;"></div><div class="skeleton-text" style="width:35%;margin-bottom:0;"></div></div></div>
           </div>
         </div>
       </div>
@@ -188,7 +190,9 @@
         <div class="card p-3">
           <h6 class="mb-3">Recent activity</h6>
           <ul class="list-group list-group-flush" id="activityList">
-            <li class="list-group-item text-muted">Loading...</li>
+            <li class="list-group-item"><div class="skeleton-row" style="border:none;padding:8px 0;"><div class="skeleton-avatar" style="width:32px;height:32px;"></div><div class="skeleton-content"><div class="skeleton-text" style="width:80%;margin-bottom:0;"></div></div></div></li>
+            <li class="list-group-item"><div class="skeleton-row" style="border:none;padding:8px 0;"><div class="skeleton-avatar" style="width:32px;height:32px;"></div><div class="skeleton-content"><div class="skeleton-text" style="width:65%;margin-bottom:0;"></div></div></div></li>
+            <li class="list-group-item"><div class="skeleton-row" style="border:none;padding:8px 0;"><div class="skeleton-avatar" style="width:32px;height:32px;"></div><div class="skeleton-content"><div class="skeleton-text" style="width:75%;margin-bottom:0;"></div></div></div></li>
           </ul>
         </div>
       </div>
@@ -324,7 +328,7 @@
           <div class="membership-card">
             <div class="mc-brand">FitCore</div>
             <div class="mc-name" id="mMemberName">Member</div>
-            <div class="mc-plan" id="mPlanName">Loading...</div>
+            <div class="mc-plan" id="mPlanName"><div class="skeleton-text" style="width:80px;height:14px;display:inline-block;vertical-align:middle;"></div></div>
             <div class="mc-expiry">Valid Until</div>
             <div class="mc-date" id="mExpiryDate">–</div>
             <div class="mc-status active" id="mStatusBadge"><span>●</span> Active</div>
@@ -390,6 +394,11 @@
   if (!getAccessToken()) window.location.href = 'login.html';
 
   const userRole = localStorage.getItem('user_role');
+
+  // Redirect trainers to their dedicated dashboard
+  if (userRole === 'TRAINER') {
+    window.location.href = 'trainer-dashboard.html';
+  }
 
   function todayStr() {
     return new Date().toISOString().split('T')[0];

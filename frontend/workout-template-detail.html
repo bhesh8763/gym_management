@@ -67,6 +67,7 @@
         <div class="list-group list-group-flush pt-2">
             <div class="nav-section-label">Main</div>
             <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
+      <a href="trainer-dashboard.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-speedometer2"></i> <span>Trainer Dashboard</span></a>
             <div class="nav-section-label">Members</div>
             <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
             <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
@@ -106,7 +107,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                     <div>
-                        <h3 class="mb-1" id="tName">Loading...</h3>
+                        <h3 class="mb-1" id="tName"><div class="skeleton-title" style="width:200px;height:24px;display:inline-block;"></div></h3>
                         <span id="tDifficulty"></span> <span id="tStatus"></span>
                     </div>
                     <div class="d-flex gap-2 flex-wrap" id="tActions"></div>
