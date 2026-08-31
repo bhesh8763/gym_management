@@ -24,6 +24,10 @@ class ExerciseSerializer(serializers.ModelSerializer):
 class WorkoutDayExerciseSerializer(serializers.ModelSerializer):
     exercise_name = serializers.CharField(source="exercise.name", read_only=True)
     muscle_group = serializers.CharField(source="exercise.muscle_group", read_only=True)
+    video_url = serializers.CharField(source="exercise.video_url", read_only=True)
+    exercise_image = serializers.ImageField(source="exercise.image", read_only=True)
+    equipment = serializers.CharField(source="exercise.equipment", read_only=True)
+    exercise_instructions = serializers.CharField(source="exercise.instructions", read_only=True)
 
     class Meta:
         model = WorkoutDayExercise

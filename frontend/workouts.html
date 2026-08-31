@@ -315,6 +315,7 @@
         </div>
         <div class="mb-3"><label>Equipment</label><input type="text" id="exEquipment" class="form-control" placeholder="e.g. Barbell, Dumbbell, Bodyweight"></div>
         <div class="mb-3"><label>Instructions</label><textarea id="exInstructions" class="form-control" rows="2"></textarea></div>
+        <div class="mb-3"><label>Video URL <span class="text-muted fw-normal">(optional)</span></label><input type="url" id="exVideoUrl" class="form-control" placeholder="e.g. https://www.youtube.com/watch?v=..."></div>
       </div>
       <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="saveExercise()">Save Exercise</button></div>
     </div>
@@ -564,6 +565,7 @@ function openNewExerciseModal() {
     document.getElementById('exType').value = 'STRENGTH';
     document.getElementById('exEquipment').value = '';
     document.getElementById('exInstructions').value = '';
+    document.getElementById('exVideoUrl').value = '';
 }
 function openEditExerciseModal(ex) {
     document.getElementById('exerciseModalTitle').textContent = 'Edit Exercise';
@@ -573,6 +575,7 @@ function openEditExerciseModal(ex) {
     document.getElementById('exType').value = ex.exercise_type;
     document.getElementById('exEquipment').value = ex.equipment || '';
     document.getElementById('exInstructions').value = ex.instructions || '';
+    document.getElementById('exVideoUrl').value = ex.video_url || '';
     new bootstrap.Modal(document.getElementById('createExerciseModal')).show();
 }
 async function saveExercise() {
@@ -583,6 +586,7 @@ async function saveExercise() {
         exercise_type: document.getElementById('exType').value,
         equipment: document.getElementById('exEquipment').value,
         instructions: document.getElementById('exInstructions').value,
+        video_url: document.getElementById('exVideoUrl').value || '',
     };
     if (!payload.name) { showToast('Exercise name is required', 'error'); return; }
     const url = id ? `/workouts/exercises/${id}/` : '/workouts/exercises/';

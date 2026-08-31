@@ -6,6 +6,9 @@ from rest_framework.views import APIView
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
+from django.http import HttpResponse
+import csv
+from datetime import date
 
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
 
@@ -29,6 +32,7 @@ from .serializers import (
     WorkoutCompletionLogSerializer,
     WorkoutTemplateVersionSerializer,
 )
+from apps.progress.models import PersonalRecord
 
 
 # ─── Exercise Library ───────────────────────────────────────────────────────
@@ -349,4 +353,172 @@ class WorkoutCompletionLogListCreateView(generics.ListCreateAPIView):
         assignment = serializer.validated_data['assignment']
         if self.request.user.is_member and assignment.member_id != self.request.user.id:
             raise PermissionDenied('Members can only log their own workouts.')
-        serializer.save()
+        log = serializer.save()
+
+        # Auto-detect Personal Records — only for exercises that have weight in set_logs
+        if log.set_logs and self.request.user.is_member:
+            workout_day = log.workout_day
+            exercises = workout_day.exercises.select_related('exercise').all()
+            # Only check exercises that are configured as weighted (have weight_kg set)
+            weighted_exercises = [wde for wde in exercises if wde.weight_kg is not None]
+            for wde in weighted_exercises:
+                exercise = wde.exercise
+                # Find the best weight logged for this exercise from set_logs
+                best_weight = None
+                best_reps = None
+                for s in log.set_logs:
+                    if 'weight' in s and s['weight'] is not None:
+                        w = float(s['weight'])
+                        if w > 0 and (best_weight is None or w > float(best_weight)):
+                            best_weight = s['weight']
+                            best_reps = s.get('reps')
+                if best_weight is None:
+                    continue
+                pr, created = PersonalRecord.objects.get_or_create(
+                    member=self.request.user,
+                    exercise=exercise,
+                    defaults={
+                        'value': best_weight,
+                        'unit': 'kg',
+                        'date': log.date,
+                        'best_weight_kg': best_weight,
+                        'best_reps': best_reps,
+                        'assignment': assignment,
+                        'log': log,
+                    },
+                )
+                if not created:
+                    if best_weight is not None and (pr.best_weight_kg is None or float(best_weight) > float(pr.best_weight_kg)):
+                        pr.best_weight_kg = best_weight
+                        pr.best_reps = best_reps
+                        pr.value = best_weight
+                        pr.date = log.date
+                        pr.assignment = assignment
+                        pr.log = log
+                        pr.save()
+
+
+# ─── Member self-service actions (pause / resume / cancel) ──────────────────
+
+class AssignmentPauseView(APIView):
+    """Member pauses their own active assignment."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        assignment = WorkoutAssignment.objects.filter(pk=pk, member=request.user).first()
+        if not assignment:
+            return Response({'detail': 'Assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if assignment.status != WorkoutAssignment.Status.ACTIVE:
+            return Response({'detail': 'Only active assignments can be paused.'}, status=status.HTTP_400_BAD_REQUEST)
+        assignment.status = WorkoutAssignment.Status.PAUSED
+        assignment.save(update_fields=['status', 'updated_at'])
+        return Response(WorkoutAssignmentSerializer(assignment).data)
+
+
+class AssignmentResumeView(APIView):
+    """Member resumes their own paused assignment."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        assignment = WorkoutAssignment.objects.filter(pk=pk, member=request.user).first()
+        if not assignment:
+            return Response({'detail': 'Assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if assignment.status != WorkoutAssignment.Status.PAUSED:
+            return Response({'detail': 'Only paused assignments can be resumed.'}, status=status.HTTP_400_BAD_REQUEST)
+        assignment.status = WorkoutAssignment.Status.ACTIVE
+        assignment.save(update_fields=['status', 'updated_at'])
+        return Response(WorkoutAssignmentSerializer(assignment).data)
+
+
+class AssignmentCancelView(APIView):
+    """Member cancels their own active or paused assignment."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        assignment = WorkoutAssignment.objects.filter(pk=pk, member=request.user).first()
+        if not assignment:
+            return Response({'detail': 'Assignment not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if assignment.status not in (WorkoutAssignment.Status.ACTIVE, WorkoutAssignment.Status.PAUSED):
+            return Response({'detail': 'Only active or paused assignments can be cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
+        assignment.status = WorkoutAssignment.Status.CANCELLED
+        assignment.save(update_fields=['status', 'updated_at'])
+        return Response(WorkoutAssignmentSerializer(assignment).data)
+
+
+# ─── Trainer messaging (via notifications) ──────────────────────────────────
+
+class TrainerMessageView(APIView):
+    """Member sends a message to their trainer via the notification system."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_member:
+            return Response({'detail': 'Only members can message trainers.'}, status=status.HTTP_403_FORBIDDEN)
+
+        message = request.data.get('message', '').strip()
+        if not message:
+            return Response({'detail': 'Message cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Find the trainer from the member's most recent active assignment
+        assignment = WorkoutAssignment.objects.filter(
+            member=request.user,
+            status__in=[WorkoutAssignment.Status.ACTIVE, WorkoutAssignment.Status.PAUSED],
+        ).select_related('template', 'template__trainer').order_by('-created_at').first()
+
+        if not assignment or not assignment.template or not assignment.template.trainer:
+            return Response({'detail': 'No trainer assigned to you yet.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        trainer = assignment.template.trainer
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            recipient=trainer,
+            notification_type='GENERAL',
+            title=f'Message from {request.user.get_full_name() or request.user.email}',
+            message=message[:500],
+        )
+        return Response({'detail': 'Message sent to your trainer.'}, status=status.HTTP_201_CREATED)
+
+
+# ─── CSV Export ─────────────────────────────────────────────────────────────
+
+class WorkoutCompletionLogExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        logs = WorkoutCompletionLog.objects.filter(
+            assignment__in=_visible_assignments(request.user)
+        ).select_related('assignment', 'assignment__template', 'workout_day')
+
+        # Apply same filters as the list view
+        assignment_id = request.query_params.get('assignment')
+        if assignment_id:
+            logs = logs.filter(assignment_id=assignment_id)
+
+        response = HttpResponse(content_type='text/csv')
+        today = date.today().isoformat()
+        response['Content-Disposition'] = f'attachment; filename="fitcore-workouts-{today}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Date', 'Program', 'Day', 'Status', 'Duration (min)', 'Calories', 'Difficulty', 'Pain', 'Notes'])
+
+        for log in logs:
+            day_name = ''
+            tpl_name = ''
+            if log.workout_day:
+                day_name = log.workout_day.day_name or f'Day {log.workout_day.day_number}'
+            if log.assignment and log.assignment.template:
+                tpl_name = log.assignment.template.name
+
+            writer.writerow([
+                log.date,
+                tpl_name,
+                day_name,
+                log.status,
+                log.duration_minutes or '',
+                log.calories or '',
+                log.perceived_difficulty or '',
+                log.pain_level or '',
+                log.notes or '',
+            ])
+
+        return response
