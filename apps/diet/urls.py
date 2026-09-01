@@ -9,8 +9,8 @@ router.register('meals',      MealViewSet,     basename='meal')
 router.register('meal-logs',  MealLogViewSet,  basename='meal-log')
 
 urlpatterns = [
-    path('', include(router.urls)),
-    # Daily summary sits outside the router to avoid conflicting with the
-    # meal-logs/{id}/ detail route.
+    # Daily summary must come BEFORE the router so its path isn't swallowed
+    # by the router's meal-logs/<pk>/ detail route.
     path('meal-logs/daily-summary/', MealLogDailySummaryView.as_view(), name='meal-log-daily-summary'),
+    path('', include(router.urls)),
 ]

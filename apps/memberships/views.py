@@ -28,6 +28,7 @@ from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -237,9 +238,16 @@ class MembershipDetailView(APIView):
 
 # ─── Freeze / Unfreeze (hold) ──────────────────────────────────────────────────
 
+class MembershipWriteThrottle(UserRateThrottle):
+    """Throttle for membership write operations (freeze, unfreeze, renew)."""
+    rate = '30/min'
+    scope = 'membership-write'
+
+
 class MembershipFreezeView(APIView):
     """POST /api/memberships/<id>/freeze/ — Owner/Staff only."""
     permission_classes = [IsOwnerOrStaff]
+    throttle_classes = [MembershipWriteThrottle]
 
     def post(self, request, pk):
         membership = get_membership_or_404(pk)
@@ -266,6 +274,7 @@ class MembershipUnfreezeView(APIView):
     the days they paid for while on hold.
     """
     permission_classes = [IsOwnerOrStaff]
+    throttle_classes = [MembershipWriteThrottle]
 
     def post(self, request, pk):
         membership = get_membership_or_404(pk)
@@ -295,6 +304,7 @@ class MembershipRenewView(APIView):
     mutating the old one, so the renewal history stays intact.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [MembershipWriteThrottle]
 
     def _can_access(self, request, membership):
         if request.user.role in (User.Role.OWNER, User.Role.STAFF):

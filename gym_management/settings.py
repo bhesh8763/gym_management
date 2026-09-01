@@ -137,6 +137,17 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # ── Throttling ────────────────────────────────────────────────────────
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '50/hour',
+        'user': '200/hour',
+        'auth': '10/hour',
+        'membership-write': '30/min',
+    },
 }
 
 # ─── SIMPLE JWT ───────────────────────────────────────────────────────────────
