@@ -230,15 +230,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
-    let currentUser = null;
-
-    async function init() {
-        currentUser = await loadProfile();
-        if (!currentUser) { window.location.href = 'login.html'; return; }
-        applyRoleGating();
-        loadTopbarNotifications();
-        await loadMyLocker();
-    }
+    if (!getAccessToken()) window.location.href = 'login.html';
 
     async function loadMyLocker() {
         document.getElementById('loadingState').style.display = '';
@@ -274,7 +266,7 @@
         document.getElementById('detailLockerNumber').textContent = locker;
         document.getElementById('detailLockerLocation').textContent = location;
         document.getElementById('detailLockerStatus').textContent = 'Occupied';
-        document.getElementById('detailLockerFee').textContent = `Rs. ${parseFloat(fee).toFixed(0)}/mo`;
+        document.getElementById('detailLockerFee').textContent = 'Rs. ' + parseFloat(fee).toFixed(0) + '/mo';
         document.getElementById('detailAssignedDate').textContent = a.start_date || '-';
         document.getElementById('detailValidUntil').textContent = a.end_date || 'No expiry';
         document.getElementById('detailAssignedBy').textContent = a.assigned_by_name || '-';
@@ -283,7 +275,7 @@
             const end = new Date(a.end_date);
             const now = new Date();
             const diffDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-            document.getElementById('daysRemaining').textContent = diffDays > 0 ? `${diffDays} days` : 'Expired';
+            document.getElementById('daysRemaining').textContent = diffDays > 0 ? diffDays + ' days' : 'Expired';
             document.getElementById('daysRemaining').className = diffDays > 7 ? 'locker-info-value fw-bold text-success' : 'locker-info-value fw-bold text-warning';
         } else {
             document.getElementById('daysRemaining').textContent = 'Ongoing';
@@ -291,7 +283,6 @@
 
         document.getElementById('lockerStatusBadge').innerHTML = '<span class="status-badge status-active"><i class="bi bi-check-circle-fill"></i> Active</span>';
 
-        // Load all assignments (including expired) for history
         loadLockerHistory();
     }
 
@@ -312,19 +303,12 @@
             const isActive = a.is_active;
             const statusClass = isActive ? 'status-active' : 'status-expired';
             const statusText = isActive ? 'Active' : 'Released';
-            return `
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <div>
-                        <div class="fw-semibold">Locker ${a.locker_number}</div>
-                        <div class="text-muted small">${a.start_date} → ${a.end_date || 'Ongoing'}</div>
-                    </div>
-                    <span class="status-badge ${statusClass}">${statusText}</span>
-                </div>
-            `;
+            return '<div class="d-flex justify-content-between align-items-center py-2 border-bottom"><div><div class="fw-semibold">Locker ' + a.locker_number + '</div><div class="text-muted small">' + a.start_date + ' → ' + (a.end_date || 'Ongoing') + '</div></div><span class="status-badge ' + statusClass + '">' + statusText + '</span></div>';
         }).join('');
     }
 
-    init();
+    loadMyLocker();
+    loadTopbarNotifications();
 </script>
 <script src="js/bottom-tabs.js"></script>
 </body>
