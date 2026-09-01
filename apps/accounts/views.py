@@ -20,6 +20,7 @@ from django.conf import settings
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -47,6 +48,8 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+    throttle_scope = 'auth'
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -75,6 +78,8 @@ class LoginView(TokenObtainPairView):
     """
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+    throttle_scope = 'auth'
 
 
 class LogoutView(APIView):
@@ -160,6 +165,8 @@ class ForgotPasswordView(APIView):
     Sends a password-reset link to the user's email if found.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+    throttle_scope = 'auth'
 
     def post(self, request):
         email = request.data.get('email', '').strip().lower()
@@ -213,6 +220,8 @@ class ResetPasswordView(APIView):
     Validates token, updates password, and invalidates the token.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]
+    throttle_scope = 'auth'
 
     def post(self, request):
         token_value = request.data.get('token', '').strip()

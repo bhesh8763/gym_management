@@ -114,7 +114,7 @@ def _export_response(request, filename_base, headers, rows):
     Return CSV or Excel depending on ?format= query param.
     Defaults to CSV if openpyxl is not installed.
     """
-    fmt = request.query_params.get('format', 'csv').lower()
+    fmt = request.query_params.get('export_format', 'csv').lower()
     if fmt == 'excel':
         response = _make_excel_response(f'{filename_base}.xlsx', headers, rows)
         if response:
@@ -623,7 +623,7 @@ def export_maintenance(request):
             str(r.scheduled_date) if r.scheduled_date else '',
             str(r.completed_date) if r.completed_date else '',
             float(r.cost) if r.cost else '',
-            r.notes,
+            r.description,
         ])
 
     return _export_response(request, 'maintenance', headers, rows)
