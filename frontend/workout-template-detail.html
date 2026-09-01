@@ -172,7 +172,8 @@
           <input type="hidden" id="exChosenId">
           <div class="row">
             <div class="col-4 mb-2"><label class="small">Sets</label><input type="number" id="exSets" class="form-control" value="3"></div>
-            <div class="col-4 mb-2"><label class="small">Reps</label><input type="text" id="exReps" class="form-control" value="10"></div>
+            <div class="col-4 mb-2"><label class="small">Reps <span class="text-muted fw-normal">(leave blank for timed)</span></label><input type="text" id="exReps" class="form-control" value="10"></div>
+            <div class="col-4 mb-2"><label class="small">Duration (s) <span class="text-muted fw-normal">for holds/timed</span></label><input type="number" id="exDuration" class="form-control" placeholder="e.g. 30"></div>
             <div class="col-4 mb-2"><label class="small">Rest (s)</label><input type="number" id="exRest" class="form-control" value="60"></div>
             <div class="col-4 mb-2"><label class="small">Tempo</label><input type="text" id="exTempo" class="form-control" placeholder="2-0-2"></div>
             <div class="col-4 mb-2"><label class="small">RPE</label><input type="number" id="exRpe" class="form-control" placeholder="8"></div>
@@ -325,7 +326,7 @@ function renderDays() {
                                         </div>
                                     </div>
                                     <div class="text-muted small mb-1">${ex.muscle_group || ''}</div>
-                                    <div class="small">${ex.sets || '-'} sets - ${ex.reps || '-'} reps - ${ex.rest_seconds || 0}s rest${ex.rpe ? ' - RPE ' + ex.rpe : ''}</div>
+                                    <div class="small">${ex.sets || '-'} sets - ${ex.reps ? ex.reps + ' reps' : ex.duration_seconds ? ex.duration_seconds + 's hold' : '- reps'} - ${ex.rest_seconds || 0}s rest${ex.rpe ? ' - RPE ' + ex.rpe : ''}</div>
                                     ${ex.notes ? `<div class="fst-italic small text-muted mt-1">"${ex.notes}"</div>` : ''}
                                 </div>
                             </div>
@@ -387,6 +388,7 @@ function editExercise(dayId, ex) {
     document.getElementById('exChosenName').textContent = ex.exercise_name;
     document.getElementById('exSets').value = ex.sets || '';
     document.getElementById('exReps').value = ex.reps || '';
+    document.getElementById('exDuration').value = ex.duration_seconds || '';
     document.getElementById('exRest').value = ex.rest_seconds || 60;
     document.getElementById('exTempo').value = ex.tempo || '';
     document.getElementById('exRpe').value = ex.rpe || '';
@@ -405,6 +407,7 @@ async function saveExercise() {
         exercise: parseInt(document.getElementById('exChosenId').value),
         sets: document.getElementById('exSets').value || null,
         reps: document.getElementById('exReps').value,
+        duration_seconds: document.getElementById('exDuration').value || null,
         rest_seconds: document.getElementById('exRest').value || 60,
         tempo: document.getElementById('exTempo').value,
         rpe: document.getElementById('exRpe').value || null,

@@ -88,6 +88,17 @@ class PersonalRecord(models.Model):
         max_length=20, default='kg',
         help_text='Unit for the value (kg, km, seconds, reps, etc.)'
     )
+    best_weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    best_reps = models.PositiveIntegerField(null=True, blank=True)
+    best_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    assignment = models.ForeignKey(
+        'workouts.WorkoutAssignment', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='personal_records',
+    )
+    log = models.ForeignKey(
+        'workouts.WorkoutCompletionLog', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='personal_records',
+    )
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

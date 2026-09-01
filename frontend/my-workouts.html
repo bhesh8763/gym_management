@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Workouts - FitCore</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
@@ -72,21 +72,8 @@
   /* ── Right Sidebar ── */
   .mw-sidebar-card{border:1px solid var(--border-card);border-radius:var(--radius-lg);background:var(--bg-card);overflow:hidden;margin-bottom:20px}
   .mw-sidebar-head{padding:16px 18px 12px;font-weight:700;font-size:0.9rem;color:var(--text-primary);border-bottom:1px solid var(--border-light)}
-
-  /* Week Day Circles */
-  .week-circles{display:flex;justify-content:space-between;padding:16px 18px}
-  .week-circle{display:flex;flex-direction:column;align-items:center;gap:4px}
-  .week-circle .wc-label{font-size:0.65rem;font-weight:600;color:var(--text-muted);text-transform:uppercase}
-  .week-circle .wc-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:600;transition:all var(--transition-fast)}
-  .wc-dot.done{background:var(--color-success);color:#fff}
-  .wc-dot.today{background:var(--brand-red-50);color:var(--brand-red);border:2px solid var(--brand-red)}
-  .wc-dot.pending{background:var(--bg-hover);color:var(--text-muted)}
-  .wc-dot.future{background:var(--bg-hover);color:var(--text-muted);opacity:0.5}
-
-  .week-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px 16px}
-  .week-stat-item{text-align:center}
-  .week-stat-item .ws-value{font-size:1.3rem;font-weight:800;color:var(--text-primary)}
-  .week-stat-item .ws-label{font-size:0.7rem;color:var(--text-muted)}
+  .view-schedule-link{display:block;text-align:center;padding:10px;font-size:0.78rem;color:var(--brand-red);font-weight:600;text-decoration:none;border-top:1px solid var(--border-light);transition:background var(--transition-fast)}
+  .view-schedule-link:hover{background:var(--bg-hover)}
 
   /* Upcoming Workouts */
   .upcoming-item{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border-light);transition:background var(--transition-fast)}
@@ -136,10 +123,6 @@
   .activity-item .btn-details{padding:6px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-light);background:var(--bg-card);font-size:0.75rem;font-weight:600;color:var(--text-primary);transition:all var(--transition-fast);white-space:nowrap}
   .activity-item .btn-details:hover{border-color:var(--brand-red);color:var(--brand-red)}
 
-  /* View Full Schedule link */
-  .view-schedule-link{display:block;text-align:center;padding:10px;font-size:0.8rem;font-weight:600;color:var(--brand-red);text-decoration:none;border-top:1px solid var(--border-light);transition:background var(--transition-fast)}
-  .view-schedule-link:hover{background:var(--brand-red-50);text-decoration:none}
-
   /* Log Workout Header Button */
   .btn-log-workout{display:inline-flex;align-items:center;gap:6px;background:var(--brand-red);color:#fff;border:none;padding:10px 22px;border-radius:var(--radius-full);font-size:0.85rem;font-weight:700;transition:all var(--transition-fast);box-shadow:0 2px 8px rgba(230,57,70,0.25)}
   .btn-log-workout:hover{background:var(--brand-red-dark);transform:translateY(-1px);box-shadow:0 4px 16px rgba(230,57,70,0.35)}
@@ -162,6 +145,141 @@
   .exercise-detail-card .ed-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--radius-full);background:var(--bg-hover);font-size:0.72rem;font-weight:500;color:var(--text-secondary)}
   .exercise-detail-card .ed-chip i{font-size:0.7rem}
   .exercise-detail-card .ed-instructions{font-size:0.8rem;color:var(--text-secondary);line-height:1.5;padding:10px 12px;background:var(--bg-root);border-radius:var(--radius-md)}
+
+  /* ── Program Menu ── */
+  .prog-menu-item{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:0.8rem;font-weight:500;color:var(--text-primary);cursor:pointer;transition:background var(--transition-fast);border:none;background:none;width:100%;text-align:left}
+  .prog-menu-item:hover{background:var(--bg-hover)}
+  .prog-menu-item i{font-size:0.9rem;color:var(--text-muted)}
+  .prog-menu-item.danger{color:var(--brand-red)}
+  .prog-menu-item.danger i{color:var(--brand-red)}
+  .prog-menu-divider{height:1px;background:var(--border-light);margin:4px 0}
+
+  /* ── History Filters ── */
+  .history-filters{display:flex;gap:8px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border-light)}
+  .history-filter-select{padding:6px 12px;border:1px solid var(--border-light);border-radius:var(--radius-md);font-size:0.78rem;font-weight:500;color:var(--text-primary);background:var(--bg-card);cursor:pointer}
+
+  /* ── Video Embed ── */
+  .video-embed{border-radius:var(--radius-md);overflow:hidden;margin-top:8px;position:relative;padding-bottom:56.25%;height:0}
+  .video-embed iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none}
+
+  /* ── Rest Timer ── */
+  .rest-timer-widget{position:fixed;bottom:90px;right:20px;z-index:1060;background:var(--bg-card);border:2px solid var(--brand-red);border-radius:var(--radius-xl);padding:18px 20px;box-shadow:0 8px 32px rgba(230,57,70,0.2);display:none;min-width:220px;text-align:center}
+  .rest-timer-widget.active{display:block}
+  .rest-timer-label{font-size:0.75rem;color:var(--text-muted);margin-bottom:10px}
+  @media (max-width:768px) {
+    .rest-timer-widget{bottom:calc(56px + env(safe-area-inset-bottom, 0px));right:12px;left:12px;min-width:unset}
+  }
+  .rest-timer-presets{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  .rest-timer-presets .rt-preset{padding:5px 12px;border-radius:var(--radius-full);border:1.5px solid var(--border-light);background:var(--bg-card);color:var(--text-secondary);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all var(--transition-fast)}
+  .rest-timer-presets .rt-preset:hover,.rest-timer-presets .rt-preset.active{border-color:var(--brand-red);color:var(--brand-red);background:var(--brand-red-50)}
+  .rest-timer-actions{display:flex;gap:8px;justify-content:center;margin-top:10px}
+  .rest-timer-actions .btn{padding:5px 16px;font-size:0.75rem;font-weight:600;border-radius:var(--radius-full)}
+  .rt-ring{position:relative;width:100px;height:100px;margin:0 auto 8px}
+  .rt-ring svg{transform:rotate(-90deg)}
+  .rt-ring .rt-time{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;color:var(--brand-red)}
+
+  /* ── Calendar View ── */
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:12px 14px}
+  .cal-head{text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-muted);padding:4px 0;text-transform:uppercase}
+  .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all var(--transition-fast);position:relative}
+  .cal-day:hover{background:var(--bg-hover)}
+  .cal-day.empty{cursor:default}
+  .cal-day.today{box-shadow:inset 0 0 0 2px var(--brand-red)}
+  .cal-day.logged{background:var(--color-success);color:#fff}
+  .cal-day.planned{background:var(--color-warning-bg);color:var(--color-warning)}
+  .cal-day.missed{background:var(--brand-red-50);color:var(--brand-red)}
+  .cal-day.rest{background:var(--bg-hover);color:var(--text-muted)}
+  .cal-nav{display:flex;justify-content:space-between;align-items:center;padding:0 14px 8px}
+  .cal-nav button{background:none;border:none;color:var(--text-muted);font-size:1rem;cursor:pointer;padding:2px 6px}
+  .cal-nav button:hover{color:var(--text-primary)}
+  .cal-nav span{font-weight:700;font-size:0.85rem;color:var(--text-primary)}
+  .cal-legend{display:flex;gap:12px;padding:8px 14px 12px;font-size:0.65rem;color:var(--text-muted)}
+  .cal-legend span{display:flex;align-items:center;gap:4px}
+  .cal-legend .cal-dot{width:8px;height:8px;border-radius:2px}
+  .cal-week-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 12px;font-size:0.72rem}
+  .cal-week-summary .cws-item{text-align:center}
+  .cal-week-summary .cws-val{font-size:1.1rem;font-weight:800;color:var(--text-primary)}
+  .cal-week-summary .cws-label{color:var(--text-muted)}
+
+  /* ── Muscle Heatmap ── */
+  .heatmap-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:14px 18px}
+  .heatmap-cell{padding:8px 4px;border-radius:var(--radius-md);text-align:center;transition:all var(--transition-fast);cursor:default;position:relative}
+  .heatmap-cell .hm-name{font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.03em}
+  .heatmap-cell .hm-count{font-size:0.58rem;opacity:0.8;margin-top:1px}
+  .heatmap-cell.intensity-0{background:var(--bg-hover);color:var(--text-muted)}
+  .heatmap-cell.intensity-1{background:#fecaca;color:#991b1b}
+  .heatmap-cell.intensity-2{background:#f87171;color:#fff}
+  .heatmap-cell.intensity-3{background:#ef4444;color:#fff}
+  .heatmap-cell.intensity-4{background:#dc2626;color:#fff}
+  [data-theme="dark"] .heatmap-cell.intensity-0{background:var(--bg-hover);color:var(--text-muted)}
+  [data-theme="dark"] .heatmap-cell.intensity-1{background:#450a0a;color:#fca5a5}
+  [data-theme="dark"] .heatmap-cell.intensity-2{background:#7f1d1d;color:#fca5a5}
+  [data-theme="dark"] .heatmap-cell.intensity-3{background:#991b1b;color:#fecaca}
+  [data-theme="dark"] .heatmap-cell.intensity-4{background:#dc2626;color:#fff}
+
+  /* ── PR Cards ── */
+  .pr-item{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border-light);transition:background var(--transition-fast)}
+  .pr-item:last-child{border-bottom:none}
+  .pr-item:hover{background:var(--bg-hover)}
+  .pr-trophy{font-size:1.1rem;color:#f59e0b}
+  .pr-info{flex:1;min-width:0}
+  .pr-info .pr-name{font-weight:600;font-size:0.82rem;color:var(--text-primary)}
+  .pr-info .pr-detail{font-size:0.72rem;color:var(--text-muted)}
+  .pr-badge-new{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);animation:prPulse 2s ease-in-out infinite}
+  @keyframes prPulse{0%,100%{opacity:1}50%{opacity:0.7}}
+  .pr-toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:1090;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;padding:14px 28px;border-radius:var(--radius-full);font-weight:700;font-size:0.9rem;box-shadow:0 4px 20px rgba(245,158,11,0.4);display:none;animation:prSlideIn 0.4s ease}
+  @keyframes prSlideIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+  /* ── Export Button ── */
+  .btn-export{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border-light);border-radius:var(--radius-full);background:var(--bg-card);color:var(--text-secondary);font-size:0.75rem;font-weight:600;cursor:pointer;transition:all var(--transition-fast)}
+  .btn-export:hover{border-color:var(--brand-red);color:var(--brand-red)}
+
+  /* ── Set-by-Set Logging ── */
+  .set-logs-section{border-top:1px solid var(--border-light);margin-top:12px;padding-top:12px}
+  .set-row{display:grid;grid-template-columns:40px 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:6px}
+  .set-row .set-num{font-size:0.75rem;font-weight:700;color:var(--text-muted);text-align:center}
+  .set-row input{padding:6px 10px;border:1px solid var(--border-light);border-radius:var(--radius-sm);font-size:0.8rem;background:var(--bg-card);color:var(--text-primary)}
+  .set-row input:focus{border-color:var(--brand-red);outline:none;box-shadow:0 0 0 2px var(--brand-red-50)}
+  .set-row .btn-remove-set{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.9rem;padding:2px}
+  .set-row .btn-remove-set:hover{color:var(--brand-red)}
+  .btn-add-set{background:none;border:1.5px dashed var(--border-light);border-radius:var(--radius-sm);padding:6px;width:100%;font-size:0.75rem;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all var(--transition-fast)}
+  .btn-add-set:hover{border-color:var(--brand-red);color:var(--brand-red)}
+  .set-header{display:grid;grid-template-columns:40px 1fr 1fr auto;gap:8px;margin-bottom:6px;font-size:0.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase}
+
+  /* ── Quick Notes Tags ── */
+  .quick-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .quick-tag{padding:5px 12px;border-radius:var(--radius-full);border:1.5px solid var(--border-light);background:var(--bg-card);color:var(--text-secondary);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all var(--transition-fast);user-select:none}
+  .quick-tag:hover{border-color:var(--brand-red);color:var(--brand-red)}
+  .quick-tag.active{border-color:var(--brand-red);background:var(--brand-red-50);color:var(--brand-red)}
+  .quick-tag:focus{outline:2px solid var(--brand-red);outline-offset:2px}
+  .cal-day:focus{outline:2px solid var(--brand-red);outline-offset:1px}
+
+  /* ── Workout Summary Card ── */
+  .summary-overlay{position:fixed;inset:0;z-index:1070;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center}
+  .summary-overlay.active{display:flex}
+  .summary-card{background:var(--bg-card);border-radius:var(--radius-xl);padding:32px;max-width:400px;width:90%;text-align:center;animation:summarySlide 0.4s ease}
+  @keyframes summarySlide{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+  .summary-card .sc-icon{width:64px;height:64px;border-radius:50%;background:var(--color-success-bg);color:var(--color-success);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px}
+  .summary-card .sc-title{font-size:1.2rem;font-weight:800;color:var(--text-primary);margin-bottom:4px}
+  .summary-card .sc-sub{font-size:0.85rem;color:var(--text-muted);margin-bottom:20px}
+  .summary-card .sc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+  .summary-card .sc-stat-val{font-size:1.1rem;font-weight:800;color:var(--text-primary)}
+  .summary-card .sc-stat-label{font-size:0.65rem;color:var(--text-muted)}
+  .summary-card .sc-btn{background:var(--brand-red);color:#fff;border:none;padding:10px 32px;border-radius:var(--radius-full);font-size:0.85rem;font-weight:700;cursor:pointer;transition:all var(--transition-fast)}
+  .summary-card .sc-btn:hover{background:var(--brand-red-dark);transform:translateY(-1px)}
+
+  /* ── Difficulty Trend ── */
+  .trend-chart{padding:8px 18px 14px}
+  .trend-svg{width:100%;height:40px}
+  .trend-labels{display:flex;justify-content:space-between;font-size:0.6rem;color:var(--text-muted);padding:0 2px}
+
+  /* ── Error Recovery ── */
+  .error-state{text-align:center;padding:40px 20px}
+  .error-state i{font-size:2.5rem;color:var(--brand-red);margin-bottom:12px;display:block}
+  .error-state .es-title{font-size:1rem;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+  .error-state .es-desc{font-size:0.82rem;color:var(--text-muted);margin-bottom:16px}
+  .error-state .btn-retry{padding:8px 24px;border-radius:var(--radius-full);background:var(--brand-red);color:#fff;border:none;font-size:0.82rem;font-weight:600;cursor:pointer}
+  .error-state .btn-retry:hover{background:var(--brand-red-dark)}
 </style>
 </head>
 <body data-allowed-roles="MEMBER">
@@ -262,6 +380,13 @@
             <div class="skeleton-card mb-3"><div class="skeleton-title" style="width:30%;"></div><div class="skeleton-text"></div><div class="skeleton-text" style="width:70%;"></div></div>
         </div>
 
+        <div id="errorState" class="error-state" style="display:none;">
+          <i class="bi bi-exclamation-triangle"></i>
+          <div class="es-title">Couldn't Load Workouts</div>
+          <div class="es-desc">Something went wrong. Check your connection and try again.</div>
+          <button class="btn-retry" onclick="loadAll()"><i class="bi bi-arrow-clockwise me-1"></i>Retry</button>
+        </div>
+
         <div id="noAssignmentsState" class="empty-state" style="display:none;">
           <i class="bi bi-heart-pulse"></i>
           <h5 class="es-title">No Workout Plan Yet</h5>
@@ -330,7 +455,10 @@
 
               <!-- Recent Activity -->
               <div class="mt-4">
-                <h5 class="fw-700 mb-3" style="font-size:1rem;">Recent Activity</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="fw-700 mb-0" style="font-size:1rem;">Recent Activity</h5>
+                  <button class="btn-export" onclick="exportWorkoutCSV()"><i class="bi bi-download"></i> Export CSV</button>
+                </div>
                 <div class="fitness-card" style="padding:0 18px;">
                   <div id="activityLoading" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm"></div></div>
                   <div id="activityEmpty" class="text-center py-4 text-muted" style="display:none;font-size:0.82rem;">No recent activity.</div>
@@ -341,27 +469,28 @@
 
             <!-- Right Sidebar -->
             <div>
-              <!-- This Week Overview -->
+              <!-- Workout Calendar -->
               <div class="mw-sidebar-card">
-                <div class="mw-sidebar-head"><i class="bi bi-calendar-week me-2" style="color:var(--brand-red);"></i>This Week Overview</div>
-                <div class="week-circles" id="weekCircles"></div>
-                <div class="week-stats">
-                  <div class="week-stat-item">
-                    <div class="ws-value" id="weekDone">0 / 0</div>
-                    <div class="ws-label">Workouts Completed</div>
-                  </div>
-                  <div class="week-stat-item">
-                    <div class="ws-value" id="weekGoal">0%</div>
-                    <div class="ws-label">Weekly Goal</div>
-                  </div>
+                <div class="mw-sidebar-head"><i class="bi bi-calendar3 me-2" style="color:var(--brand-red);"></i>Workout Calendar</div>
+                <div class="cal-nav">
+                  <button onclick="changeCalMonth(-1)"><i class="bi bi-chevron-left"></i></button>
+                  <span id="calMonthLabel">August 2026</span>
+                  <button onclick="changeCalMonth(1)"><i class="bi bi-chevron-right"></i></button>
                 </div>
+                <div class="cal-grid" id="calGrid"></div>
+                <div class="cal-legend">
+                  <span><span class="cal-dot" style="background:var(--color-success);"></span>Logged</span>
+                  <span><span class="cal-dot" style="background:var(--color-warning);"></span>Planned</span>
+                  <span><span class="cal-dot" style="background:var(--brand-red);"></span>Missed</span>
+                </div>
+                <div class="cal-week-summary" id="calWeekSummary"></div>
               </div>
 
               <!-- Upcoming Workouts -->
               <div class="mw-sidebar-card">
                 <div class="mw-sidebar-head"><i class="bi bi-clock-history me-2" style="color:var(--brand-red);"></i>Upcoming Workouts</div>
                 <div id="upcomingList"></div>
-                <a href="javascript:void(0)" class="view-schedule-link" onclick="document.querySelector('.mw-tab.active')?.click()">View Full Schedule &rarr;</a>
+                <a href="javascript:void(0)" class="view-schedule-link" onclick="document.getElementById('programsWrap').scrollIntoView({behavior:'smooth',block:'start'})">View Full Schedule &rarr;</a>
               </div>
 
               <!-- Progress Insights -->
@@ -369,6 +498,19 @@
                 <div class="mw-sidebar-head"><i class="bi bi-graph-up-arrow me-2" style="color:var(--brand-red);"></i>Progress Insights</div>
                 <div class="insight-desc" id="insightDesc"></div>
                 <div class="insight-grid" id="insightGrid"></div>
+                <div class="trend-chart" id="trendChart"></div>
+              </div>
+
+              <!-- Muscle Group Heatmap -->
+              <div class="mw-sidebar-card">
+                <div class="mw-sidebar-head"><i class="bi bi-fire me-2" style="color:var(--brand-red);"></i>Muscle Heatmap <span style="font-weight:400;font-size:0.72rem;color:var(--text-muted);">this week</span></div>
+                <div class="heatmap-grid" id="heatmapGrid"></div>
+              </div>
+
+              <!-- Personal Records -->
+              <div class="mw-sidebar-card">
+                <div class="mw-sidebar-head"><i class="bi bi-trophy me-2" style="color:#f59e0b;"></i>Personal Records</div>
+                <div id="prList"></div>
               </div>
 
               <!-- Need Help -->
@@ -376,7 +518,7 @@
                 <div class="need-help-bg">
                   <div class="nh-title">Need Help?</div>
                   <div class="nh-sub"><strong>Ask your trainer</strong><br>We're here to help you stay on track.</div>
-                  <button class="btn-msg"><i class="bi bi-chat-dots"></i> Message Trainer</button>
+                  <button class="btn-msg" onclick="openMsgTrainer()"><i class="bi bi-chat-dots"></i> Message Trainer</button>
                 </div>
               </div>
             </div>
@@ -437,8 +579,8 @@
           </div>
         </div>
         <div class="row">
-          <div class="col-6 mb-3"><label class="form-label">Duration (min)</label><input type="number" id="logDuration" class="form-control" placeholder="e.g. 45"></div>
-          <div class="col-6 mb-3"><label class="form-label">Calories</label><input type="number" id="logCalories" class="form-control" placeholder="optional"></div>
+          <div class="col-6 mb-3"><label class="form-label">Duration (min)</label><input type="number" id="logDuration" class="form-control" placeholder="e.g. 45" min="1" max="600"></div>
+          <div class="col-6 mb-3"><label class="form-label">Calories</label><input type="number" id="logCalories" class="form-control" placeholder="optional" min="1" max="5000"></div>
         </div>
         <div class="row">
           <div class="col-6 mb-3">
@@ -452,7 +594,20 @@
         </div>
         <div class="mb-3">
           <label class="form-label">Notes <span class="text-muted fw-normal">(optional)</span></label>
+          <div class="quick-tags" id="quickTags">
+            <span class="quick-tag" tabindex="0" role="button" onclick="toggleQuickTag(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQuickTag(this)}">Felt strong</span>
+            <span class="quick-tag" tabindex="0" role="button" onclick="toggleQuickTag(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQuickTag(this)}">PR today</span>
+            <span class="quick-tag" tabindex="0" role="button" onclick="toggleQuickTag(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQuickTag(this)}">Was tired</span>
+            <span class="quick-tag" tabindex="0" role="button" onclick="toggleQuickTag(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQuickTag(this)}">Need more rest</span>
+            <span class="quick-tag" tabindex="0" role="button" onclick="toggleQuickTag(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQuickTag(this)}">Equipment issue</span>
+          </div>
           <textarea id="logNotes" class="form-control" rows="2" placeholder="How did you feel? Any PRs?"></textarea>
+        </div>
+        <div class="set-logs-section" id="setLogsSection" style="display:none;">
+          <label class="form-label fw-bold" style="font-size:0.82rem;">Log Sets <span class="text-muted fw-normal">(optional)</span></label>
+          <div class="set-header"><span>Set</span><span>Weight (kg)</span><span>Reps</span><span></span></div>
+          <div id="setLogsContainer"></div>
+          <button class="btn-add-set" onclick="addSetRow()"><i class="bi bi-plus"></i> Add Set</button>
         </div>
       </div>
       <div class="modal-footer">
@@ -483,6 +638,71 @@
   </div>
 </div>
 
+<!-- Message Trainer Modal -->
+<div class="modal fade" id="msgTrainerModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-700">Message Trainer</h5>
+          <div class="text-muted" style="font-size:0.8rem;" id="msgTrainerSub">Send a message to your assigned trainer</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="msgTrainerText" class="form-control" rows="4" placeholder="Type your message here..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="sendTrainerMessage()"><i class="bi bi-send me-1"></i>Send Message</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Program Menu Dropdown -->
+<div id="programMenuDropdown" class="dropdown-panel" style="min-width:160px;padding:6px 0;"></div>
+
+<!-- Rest Timer Widget -->
+<div class="rest-timer-widget" id="restTimerWidget">
+  <div class="rest-timer-label">REST TIMER</div>
+  <div class="rt-ring">
+    <svg width="100" height="100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#e5e7eb" stroke-width="6"/>
+      <circle cx="50" cy="50" r="42" fill="none" stroke="var(--brand-red)" stroke-width="6" stroke-dasharray="263.89" stroke-dashoffset="0" stroke-linecap="round" id="rtRing" style="transition:stroke-dashoffset 1s linear"/>
+    </svg>
+    <div class="rt-time" id="rtTime">0:00</div>
+  </div>
+  <div class="rest-timer-presets">
+    <button class="rt-preset" onclick="setRestTimer(30, this)">30s</button>
+    <button class="rt-preset active" onclick="setRestTimer(60, this)">60s</button>
+    <button class="rt-preset" onclick="setRestTimer(90, this)">90s</button>
+    <button class="rt-preset" onclick="setRestTimer(120, this)">2min</button>
+  </div>
+  <div class="rest-timer-actions">
+    <button class="btn btn-sm btn-outline-secondary" onclick="pauseRestTimer()">Pause</button>
+    <button class="btn btn-sm btn-danger" onclick="stopRestTimer()">Stop</button>
+  </div>
+</div>
+
+<!-- PR Celebration Toast -->
+<div class="pr-toast" id="prToast">🏆 New Personal Record!</div>
+
+<!-- Workout Summary Overlay -->
+<div class="summary-overlay" id="summaryOverlay" onclick="closeSummary()">
+  <div class="summary-card" onclick="event.stopPropagation()">
+    <div class="sc-icon"><i class="bi bi-check-lg"></i></div>
+    <div class="sc-title" id="summaryTitle">Workout Complete!</div>
+    <div class="sc-sub" id="summarySub">Great job finishing your session</div>
+    <div class="sc-stats">
+      <div><div class="sc-stat-val" id="summaryDuration">—</div><div class="sc-stat-label">Duration</div></div>
+      <div><div class="sc-stat-val" id="summaryCalories">—</div><div class="sc-stat-label">Calories</div></div>
+      <div><div class="sc-stat-val" id="summaryDifficulty">—</div><div class="sc-stat-label">Difficulty</div></div>
+    </div>
+    <button class="sc-btn" onclick="closeSummary()">Continue</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
@@ -501,7 +721,6 @@ let allAssignments = [];
 let allTemplates = {};
 let allLogs = [];
 let currentTab = 'active';
-let selectedWeek = {};
 let detailContext = {};
 
 function showToast(msg, variant) {
@@ -512,11 +731,6 @@ function showToast(msg, variant) {
     t.classList.add(variant === 'error' ? 'bg-danger' : 'bg-success');
     b.textContent = msg;
     bootstrap.Toast.getOrCreateInstance(t, { delay: 2800 }).show();
-}
-
-function statusBadge(status) {
-    const m = { ACTIVE: 'success', PAUSED: 'warning', COMPLETED: 'primary', CANCELLED: 'secondary' };
-    return `<span class="badge bg-${m[status] || 'secondary'}" style="font-size:0.68rem;">${status}</span>`;
 }
 
 function diffBadge(d) {
@@ -571,48 +785,48 @@ function computeStats() {
 
     let streak = 0;
     const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    const scheduledDays = new Set();
+    for (const a of allAssignments.filter(a => a.status === 'ACTIVE')) {
+        const tpl = allTemplates[a.template];
+        if (!tpl) continue;
+        (tpl.days || []).forEach(dd => scheduledDays.add(dd.day_number));
+    }
     for (let i = 0; i < 365; i++) {
         const ds = d.toISOString().slice(0, 10);
-        if (allLogs.some(l => l.date === ds)) { streak++; d.setDate(d.getDate() - 1); } else break;
+        const dayNum = d.getDay() === 0 ? 7 : d.getDay();
+        const logged = allLogs.some(l => l.date === ds);
+        if (logged) { streak++; d.setDate(d.getDate() - 1); }
+        else if (!scheduledDays.size || !scheduledDays.has(dayNum)) { d.setDate(d.getDate() - 1); }
+        else break;
     }
     document.getElementById('statStreak').textContent = streak;
     document.getElementById('statStreakMsg').textContent = streak > 0 ? 'Keep it up!' : 'Start building your streak!';
 }
 
-function renderWeekOverview() {
-    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+function renderWeekSummary() {
     const now = new Date();
     const todayIdx = (now.getDay() + 6) % 7;
     const weekStart = new Date(now);
     weekStart.setDate(now.getDate() - todayIdx);
     weekStart.setHours(0, 0, 0, 0);
 
-    const loggedDays = new Set();
+    let weekCompleted = 0;
     allLogs.forEach(l => {
         const ld = new Date(l.date);
-        if (ld >= weekStart && ld < new Date(weekStart.getTime() + 7 * 86400000)) {
-            const idx = (ld.getDay() + 6) % 7;
-            loggedDays.add(idx);
-        }
+        if (ld >= weekStart && ld < new Date(weekStart.getTime() + 7 * 86400000)) weekCompleted++;
     });
 
-    const weekTotal = allAssignments.filter(a => a.status === 'ACTIVE').reduce((s, a) => {
+    const active = allAssignments.filter(a => a.status === 'ACTIVE');
+    const weekTotal = active.reduce((s, a) => {
         const tpl = allTemplates[a.template];
-        return s + (tpl ? (tpl.days || []).length : 0);
+        return s + (tpl ? Math.min((tpl.days || []).length, 7) : 0);
     }, 0);
-    const weekCompleted = loggedDays.size;
-    const weekGoal = weekTotal ? Math.round((weekCompleted / Math.min(weekTotal, 7)) * 100) : 0;
+    const weekGoal = weekTotal ? Math.round((weekCompleted / weekTotal) * 100) : 0;
 
-    document.getElementById('weekCircles').innerHTML = days.map((d, i) => {
-        let cls = 'pending';
-        if (loggedDays.has(i)) cls = 'done';
-        else if (i === todayIdx) cls = 'today';
-        else if (i > todayIdx) cls = 'future';
-        return `<div class="week-circle"><div class="wc-label">${d}</div><div class="wc-dot ${cls}"><i class="bi bi-${cls === 'done' ? 'check-lg' : cls === 'today' ? 'dot' : ''}"></i></div></div>`;
-    }).join('');
-
-    document.getElementById('weekDone').textContent = `${weekCompleted} / ${Math.min(weekTotal || 3, 7)}`;
-    document.getElementById('weekGoal').textContent = weekGoal + '%';
+    document.getElementById('calWeekSummary').innerHTML = `
+      <div class="cws-item"><div class="cws-val">${weekCompleted} / ${weekTotal || 7}</div><div class="cws-label">This Week</div></div>
+      <div class="cws-item"><div class="cws-val">${weekGoal}%</div><div class="cws-label">Goal Hit</div></div>`;
 }
 
 function renderUpcoming() {
@@ -675,16 +889,48 @@ function renderInsights() {
     const totalMins = allLogs.reduce((s, l) => s + (l.duration_minutes || 0), 0);
     const totalHrs = (totalMins / 60).toFixed(1);
     const totalCal = allLogs.reduce((s, l) => s + (l.calories || 0), 0);
-    const avgDiff = allLogs.length ? (allLogs.reduce((s, l) => s + (l.perceived_difficulty || 0), 0) / allLogs.length).toFixed(1) : '—';
 
     const active = allAssignments.filter(a => a.status === 'ACTIVE');
     const avgComp = active.length ? Math.round(active.reduce((s, a) => s + (a.completion_pct || 0), 0) / active.length) : 0;
 
-    document.getElementById('insightDesc').textContent = `You've completed ${avgComp}% of your workouts this month. ${avgComp >= 60 ? "You're doing great!" : 'Keep pushing!'}`;
+    document.getElementById('insightDesc').textContent = `You've completed ${avgComp}% of your assigned workouts. ${avgComp >= 60 ? "You're doing great!" : 'Keep pushing!'}`;
     document.getElementById('insightGrid').innerHTML = `
       <div class="insight-item"><i class="bi bi-clipboard2-pulse ig-red"></i><div class="ig-value">${totalWorkouts}</div><div class="ig-label">Total Workouts</div></div>
       <div class="insight-item"><i class="bi bi-clock ig-blue"></i><div class="ig-value">${totalHrs} hrs</div><div class="ig-label">Total Duration</div></div>
       <div class="insight-item"><i class="bi bi-fire ig-orange"></i><div class="ig-value">${totalCal.toLocaleString()}</div><div class="ig-label">Total Calories</div></div>`;
+
+    // Difficulty trend mini-chart
+    renderDifficultyTrend();
+}
+
+function renderDifficultyTrend() {
+    const wrap = document.getElementById('trendChart');
+    if (!wrap) return;
+    const recent = allLogs.filter(l => l.perceived_difficulty).slice(0, 14).reverse();
+    if (recent.length < 2) { wrap.innerHTML = ''; return; }
+    const max = 10;
+    const w = 280, h = 40, pad = 4;
+    const points = recent.map((l, i) => {
+        const x = pad + (i / (recent.length - 1)) * (w - pad * 2);
+        const y = h - pad - ((l.perceived_difficulty || 0) / max) * (h - pad * 2);
+        return `${x},${y}`;
+    });
+    const last = recent[recent.length - 1];
+    const avg = (recent.reduce((s, l) => s + (l.perceived_difficulty || 0), 0) / recent.length).toFixed(1);
+    wrap.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:0.72rem;font-weight:700;color:var(--text-primary);">Difficulty Trend</span>
+        <span style="font-size:0.65rem;color:var(--text-muted);">Avg: ${avg}/10</span>
+      </div>
+      <svg class="trend-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        <polyline points="${points.join(' ')}" fill="none" stroke="var(--brand-red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        ${recent.map((l, i) => {
+            const x = pad + (i / (recent.length - 1)) * (w - pad * 2);
+            const y = h - pad - ((l.perceived_difficulty || 0) / max) * (h - pad * 2);
+            return `<circle cx="${x}" cy="${y}" r="2.5" fill="var(--brand-red)"/>`;
+        }).join('')}
+      </svg>
+      <div class="trend-labels"><span>${recent.length} sessions ago</span><span>Latest</span></div>`;
 }
 
 function renderPrograms() {
@@ -706,11 +952,24 @@ function renderPrograms() {
         const maxWeek = days.length ? Math.max(...days.map(d => d.week_number)) : (tpl?.duration_weeks || 4);
         const weekInCycle = Math.min(((Math.floor((new Date() - new Date(assignment.start_date)) / 604800000)) % maxWeek) + 1, maxWeek);
 
+        // Find first exercise image for the hero
+        let heroBg = progImg(idx);
+        let heroImg = '';
+        if (days.length) {
+            for (const d of days) {
+                for (const ex of (d.exercises || [])) {
+                    if (ex.image) { heroImg = ex.image; break; }
+                    if (ex.exercise_image) { heroImg = ex.exercise_image; break; }
+                }
+                if (heroImg) break;
+            }
+        }
+
         const card = document.createElement('div');
         card.className = 'program-card mb-3';
         card.innerHTML = `
           <div class="program-card-inner">
-            <div class="program-card-img" style="background:${progImg(idx)}">
+            <div class="program-card-img" style="${heroImg ? `background-image:url('${heroImg}');background-size:cover;background-position:center;` : `background:${heroBg};`}">
               <div class="pci-overlay"></div>
               <div class="pci-content">
                 <div class="pci-title">${assignment.template_name}</div>
@@ -752,7 +1011,69 @@ function filterTab(tab) {
 }
 
 function toggleProgramMenu(assignmentId) {
-    // Placeholder for future context menu
+    event.stopPropagation();
+    const dropdown = document.getElementById('programMenuDropdown');
+    const assignment = allAssignments.find(a => a.id === assignmentId);
+    if (!assignment) return;
+
+    const isActive = assignment.status === 'ACTIVE';
+    const isPaused = assignment.status === 'PAUSED';
+    const btn = event.currentTarget;
+    const rect = btn.getBoundingClientRect();
+
+    let menuHtml = '';
+    if (isActive) {
+        menuHtml += `<button class="prog-menu-item" onclick="pauseAssignment(${assignmentId})"><i class="bi bi-pause-circle"></i> Pause Program</button>`;
+    }
+    if (isPaused) {
+        menuHtml += `<button class="prog-menu-item" onclick="resumeAssignment(${assignmentId})"><i class="bi bi-play-circle"></i> Resume Program</button>`;
+    }
+    if (isActive || isPaused) {
+        menuHtml += `<div class="prog-menu-divider"></div>`;
+        menuHtml += `<button class="prog-menu-item danger" onclick="cancelAssignment(${assignmentId})"><i class="bi bi-x-circle"></i> Cancel Program</button>`;
+    }
+    if (!menuHtml) return;
+
+    dropdown.innerHTML = menuHtml;
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = (rect.bottom + 4) + 'px';
+    dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+    dropdown.style.zIndex = '9999';
+    dropdown.classList.add('show');
+
+    const close = (e) => {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+            document.removeEventListener('click', close);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', close), 10);
+}
+
+async function pauseAssignment(id) {
+    document.getElementById('programMenuDropdown').classList.remove('show');
+    if (!confirm('Pause this program? You can resume it later.')) return;
+    const r = await apiRequest(`/workouts/assignments/${id}/pause/`, { method: 'POST' });
+    if (r && r.ok) { showToast('Program paused', 'success'); await loadAll(); }
+    else if (r) { const e = await r.json(); showToast(e.detail || 'Could not pause', 'error'); }
+    else showToast('Could not pause program', 'error');
+}
+
+async function resumeAssignment(id) {
+    document.getElementById('programMenuDropdown').classList.remove('show');
+    const r = await apiRequest(`/workouts/assignments/${id}/resume/`, { method: 'POST' });
+    if (r && r.ok) { showToast('Program resumed!', 'success'); await loadAll(); }
+    else if (r) { const e = await r.json(); showToast(e.detail || 'Could not resume', 'error'); }
+    else showToast('Could not resume program', 'error');
+}
+
+async function cancelAssignment(id) {
+    document.getElementById('programMenuDropdown').classList.remove('show');
+    if (!confirm('Cancel this program? This cannot be undone.')) return;
+    const r = await apiRequest(`/workouts/assignments/${id}/cancel/`, { method: 'POST' });
+    if (r && r.ok) { showToast('Program cancelled', 'success'); await loadAll(); }
+    else if (r) { const e = await r.json(); showToast(e.detail || 'Could not cancel', 'error'); }
+    else showToast('Could not cancel program', 'error');
 }
 
 function viewProgramDays(assignmentId) {
@@ -826,7 +1147,30 @@ function viewDayDetail(assignmentId, dayId) {
     if (!exercises.length) {
         body.innerHTML = '<div class="text-center text-muted py-4">No exercises configured for this day yet.</div>';
     } else {
-        body.innerHTML = exercises.map((ex, i) => `
+        // Check if there's a log with set data for this day
+        const dayLog = allLogs.find(l => l.assignment === assignmentId && l.workout_day === dayId);
+
+        let setInfoHtml = '';
+        if (dayLog && dayLog.set_logs && dayLog.set_logs.length) {
+            setInfoHtml = `<div style="margin:12px 0;padding:12px;background:var(--bg-root);border-radius:var(--radius-md);border:1px solid var(--border-light);">
+              <div style="font-size:0.78rem;font-weight:700;color:var(--text-primary);margin-bottom:8px;"><i class="bi bi-grid-3x3-gap me-1"></i> Sets Logged</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${dayLog.set_logs.map(s => `<span class="ed-chip" style="font-size:0.72rem;"><i class="bi bi-check2"></i> Set ${s.set}: ${s.weight || '—'}kg × ${s.reps || '—'}</span>`).join('')}
+              </div>
+            </div>`;
+        }
+
+        body.innerHTML = setInfoHtml + exercises.map((ex, i) => {
+            let videoHtml = '';
+            if (ex.video_url) {
+                const ytMatch = ex.video_url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?#]+)/);
+                if (ytMatch) {
+                    videoHtml = `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" allowfullscreen></iframe></div>`;
+                } else {
+                    videoHtml = `<div class="ed-links"><a href="${ex.video_url}" target="_blank" rel="noopener"><i class="bi bi-play-circle"></i> Watch Video</a></div>`;
+                }
+            }
+            return `
           <div class="exercise-detail-card">
             <div class="ed-header">
               <div class="ed-icon"><i class="bi ${muscleIcon(ex.muscle_group)}"></i></div>
@@ -837,14 +1181,18 @@ function viewDayDetail(assignmentId, dayId) {
             </div>
             <div class="ed-meta">
               <span class="ed-chip"><i class="bi bi-grid-3x3-gap"></i> ${ex.sets || '—'} sets</span>
-              <span class="ed-chip"><i class="bi bi-arrow-repeat"></i> ${ex.reps || (ex.duration_seconds ? ex.duration_seconds + 's' : '—')}</span>
+              ${ex.reps ? `<span class="ed-chip"><i class="bi bi-arrow-repeat"></i> ${ex.reps} reps</span>` : ''}
+              ${ex.duration_seconds ? `<span class="ed-chip"><i class="bi bi-clock"></i> ${ex.duration_seconds}s hold</span>` : ''}
+              ${!ex.reps && !ex.duration_seconds ? `<span class="ed-chip"><i class="bi bi-arrow-repeat"></i> —</span>` : ''}
               ${ex.rest_seconds ? `<span class="ed-chip"><i class="bi bi-hourglass-split"></i> ${ex.rest_seconds}s rest</span>` : ''}
               ${ex.tempo ? `<span class="ed-chip"><i class="bi bi-speedometer"></i> ${ex.tempo}</span>` : ''}
               ${ex.rpe ? `<span class="ed-chip"><i class="bi bi-fire"></i> RPE ${ex.rpe}</span>` : ''}
               ${ex.weight_kg ? `<span class="ed-chip"><i class="bi bi-box"></i> ${ex.weight_kg} kg</span>` : ''}
             </div>
             ${ex.notes ? `<div class="ed-instructions">${ex.notes}</div>` : ''}
-          </div>`).join('');
+            ${videoHtml}
+          </div>`;
+        }).join('');
     }
     bootstrap.Modal.getInstance(document.getElementById('dayDetailModal'))?.hide();
     setTimeout(() => new bootstrap.Modal(document.getElementById('dayDetailModal')).show(), 200);
@@ -909,6 +1257,7 @@ function openLogModal(assignmentId, dayId, dayLabel) {
     document.getElementById('logPainVal').textContent = '(0/10)';
     document.querySelectorAll('.log-status-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.log-status-btn[data-status="COMPLETED"]').classList.add('active');
+    initSetLogs();
     new bootstrap.Modal(document.getElementById('logModal')).show();
 }
 
@@ -917,8 +1266,36 @@ function selectLogStatus(btn) {
     btn.classList.add('active');
 }
 
+function openMsgTrainer() {
+    document.getElementById('msgTrainerText').value = '';
+    const active = allAssignments.find(a => a.status === 'ACTIVE' || a.status === 'PAUSED');
+    if (active) {
+        document.getElementById('msgTrainerSub').textContent = `To: ${active.template_name} trainer`;
+    }
+    new bootstrap.Modal(document.getElementById('msgTrainerModal')).show();
+}
+
+async function sendTrainerMessage() {
+    const msg = document.getElementById('msgTrainerText').value.trim();
+    if (!msg) { showToast('Please type a message', 'error'); return; }
+    const r = await apiRequest('/workouts/message-trainer/', { method: 'POST', body: JSON.stringify({ message: msg }) });
+    if (r && r.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('msgTrainerModal'))?.hide();
+        showToast('Message sent to your trainer!', 'success');
+    } else if (r) {
+        const e = await r.json();
+        showToast(e.detail || 'Could not send message', 'error');
+    } else {
+        showToast('Could not send message', 'error');
+    }
+}
+
 async function submitLog() {
     const status = document.querySelector('.log-status-btn.active')?.dataset.status || 'COMPLETED';
+    const setLogs = getSetLogs();
+    const tags = [...document.querySelectorAll('.quick-tag.active')].map(t => t.textContent.trim());
+    const userNotes = document.getElementById('logNotes').value.trim();
+    const allNotes = [...tags, userNotes ? `[${userNotes}]` : []].filter(Boolean).join(' | ');
     const payload = {
         assignment: parseInt(document.getElementById('logAssignmentId').value),
         workout_day: parseInt(document.getElementById('logDayId').value),
@@ -928,13 +1305,24 @@ async function submitLog() {
         calories: document.getElementById('logCalories').value || null,
         perceived_difficulty: parseInt(document.getElementById('logDifficulty').value) || null,
         pain_level: parseInt(document.getElementById('logPain').value) || null,
-        notes: document.getElementById('logNotes').value,
+        notes: allNotes || '',
+        set_logs: setLogs,
     };
+    const prevPRCount = allPRs.length;
+    const submitBtn = document.querySelector('#logModal .btn-primary');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving...'; }
     const r = await apiRequest('/workouts/completion-logs/', { method: 'POST', body: JSON.stringify(payload) });
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Save Log'; }
     if (r && r.ok) {
         bootstrap.Modal.getInstance(document.getElementById('logModal'))?.hide();
-        showToast('Workout logged — nice work!', 'success');
+        showWorkoutSummary(payload);
         await loadAll();
+        setTimeout(async () => {
+            await loadPersonalRecords();
+            renderPRs();
+            if (allPRs.length > prevPRCount) showPRTrophy();
+        }, 500);
+        showRestTimerAfterLog();
     } else if (r) {
         const err = await r.json();
         showToast(formatApiError(err), 'error');
@@ -954,8 +1342,24 @@ function renderActivity() {
     }
     loading.style.display = 'none'; empty.style.display = 'none';
 
-    const sorted = [...allLogs].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-    wrap.innerHTML = sorted.map(l => {
+    const sorted = [...allLogs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    let filtersHtml = `<div class="history-filters">
+      <select class="history-filter-select" id="actFilterStatus" onchange="filterActivity()">
+        <option value="">All Status</option>
+        <option value="COMPLETED">Completed</option>
+        <option value="PARTIAL">Partial</option>
+        <option value="SKIPPED">Skipped</option>
+      </select>
+      <select class="history-filter-select" id="actFilterDate" onchange="filterActivity()">
+        <option value="">All Time</option>
+        <option value="7">Last 7 Days</option>
+        <option value="30">Last 30 Days</option>
+        <option value="90">Last 90 Days</option>
+      </select>
+    </div>`;
+
+    let rowsHtml = sorted.map(l => {
         const assignment = allAssignments.find(a => a.id === l.assignment);
         const tpl = allTemplates[assignment?.template];
         let dayName = '';
@@ -963,26 +1367,388 @@ function renderActivity() {
             const day = (tpl.days || []).find(d => d.id === l.workout_day);
             dayName = day ? (day.day_name || 'Day ' + day.day_number) : '';
         }
-        return `<div class="activity-item">
+        let setInfo = '';
+        if (l.set_logs && l.set_logs.length) {
+            setInfo = `<div class="as-item"><div class="as-value" style="font-size:0.75rem;">${l.set_logs.length} sets</div><div class="as-label">Sets</div></div>`;
+        }
+        return `<div class="activity-item" data-status="${l.status}" data-date="${l.date}">
           <div class="activity-dot ${l.status.toLowerCase()}"><i class="bi bi-${l.status === 'COMPLETED' ? 'check-lg' : l.status === 'SKIPPED' ? 'skip-forward' : 'half'}"></i></div>
           <div class="activity-info">
             <div class="ai-name">${dayName || assignment?.template_name || 'Workout'}</div>
             <div class="ai-sub">${new Date(l.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} &bull; ${l.status}</div>
           </div>
           <div class="activity-stats">
-            <div class="as-item"><div class="as-value">${l.duration_minutes ? l.duration_minutes + ':' + '00'.padStart(2, '0') : '—'}</div><div class="as-label">Duration</div></div>
+            <div class="as-item"><div class="as-value">${l.duration_minutes ? l.duration_minutes + ' min' : '—'}</div><div class="as-label">Duration</div></div>
             <div class="as-item"><div class="as-value">${l.calories ? l.calories + ' kcal' : '—'}</div><div class="as-label">Calories</div></div>
+            ${setInfo}
           </div>
           <button class="btn-details" onclick="viewDayDetail(${l.assignment}, ${l.workout_day})">View Details</button>
         </div>`;
     }).join('');
+
+    wrap.innerHTML = filtersHtml + rowsHtml;
+}
+
+function filterActivity() {
+    const status = document.getElementById('actFilterStatus')?.value || '';
+    const days = parseInt(document.getElementById('actFilterDate')?.value) || 0;
+    const cutoff = days ? new Date(Date.now() - days * 86400000) : null;
+    document.querySelectorAll('#activityList .activity-item').forEach(item => {
+        const s = item.dataset.status;
+        const d = new Date(item.dataset.date);
+        const showStatus = !status || s === status;
+        const showDate = !cutoff || d >= cutoff;
+        item.style.display = (showStatus && showDate) ? '' : 'none';
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. REST TIMER
+// ═══════════════════════════════════════════════════════════════════════════
+let rtInterval = null;
+let rtRemaining = 0;
+let rtTotal = 60;
+let rtPaused = false;
+
+function setRestTimer(seconds, fromPreset) {
+    rtTotal = seconds;
+    rtRemaining = seconds;
+    rtPaused = false;
+    if (fromPreset) {
+        document.querySelectorAll('.rt-preset').forEach(b => b.classList.remove('active'));
+        fromPreset.classList.add('active');
+    }
+    startRestTimerCountdown();
+}
+
+function startRestTimerCountdown() {
+    clearInterval(rtInterval);
+    document.getElementById('restTimerWidget').classList.add('active');
+    updateRestTimerDisplay();
+    rtInterval = setInterval(() => {
+        if (rtPaused) return;
+        rtRemaining--;
+        updateRestTimerDisplay();
+        if (rtRemaining <= 0) {
+            clearInterval(rtInterval);
+            restTimerDone();
+        }
+    }, 1000);
+    sessionStorage.setItem('rt_state', JSON.stringify({ total: rtTotal, remaining: rtRemaining, paused: false, time: Date.now() }));
+}
+
+function updateRestTimerDisplay() {
+    const mins = Math.floor(rtRemaining / 60);
+    const secs = rtRemaining % 60;
+    document.getElementById('rtTime').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    const circumference = 2 * Math.PI * 42;
+    const progress = rtTotal > 0 ? (rtRemaining / rtTotal) : 0;
+    document.getElementById('rtRing').setAttribute('stroke-dashoffset', circumference * (1 - progress));
+}
+
+function pauseRestTimer() {
+    rtPaused = !rtPaused;
+    const btn = document.querySelector('.rest-timer-actions .btn-outline-secondary');
+    if (btn) btn.textContent = rtPaused ? 'Resume' : 'Pause';
+}
+
+function stopRestTimer() {
+    clearInterval(rtInterval);
+    document.getElementById('restTimerWidget').classList.remove('active');
+    sessionStorage.removeItem('rt_state');
+}
+
+function restTimerDone() {
+    document.getElementById('restTimerWidget').classList.remove('active');
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 200, 400].forEach(delay => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            gain.gain.value = 0.3;
+            osc.start(ctx.currentTime + delay / 1000);
+            osc.stop(ctx.currentTime + delay / 1000 + 0.15);
+        });
+    } catch (e) {}
+    showToast('Rest over — time to lift!', 'success');
+}
+
+function restoreRestTimer() {
+    try {
+        const saved = JSON.parse(sessionStorage.getItem('rt_state'));
+        if (!saved || !saved.remaining) return;
+        const elapsed = Math.floor((Date.now() - saved.time) / 1000);
+        rtTotal = saved.total;
+        rtRemaining = Math.max(0, saved.remaining - elapsed);
+        if (rtRemaining > 0) {
+            startRestTimerCountdown();
+        }
+    } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. WORKOUT CALENDAR VIEW
+// ═══════════════════════════════════════════════════════════════════════════
+let calYear, calMonth;
+
+function initCalendar() {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+    renderCalendar();
+    renderWeekSummary();
+}
+
+function changeCalMonth(delta) {
+    const now = new Date();
+    const minMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const maxMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+    const target = new Date(calYear, calMonth + delta, 1);
+    if (target < minMonth || target > maxMonth) return;
+    calMonth += delta;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('calMonthLabel').textContent = `${monthNames[calMonth]} ${calYear}`;
+
+    const firstDay = new Date(calYear, calMonth, 1);
+    const lastDay = new Date(calYear, calMonth + 1, 0);
+    const startIdx = (firstDay.getDay() + 6) % 7;
+
+    const loggedDates = new Set();
+    allLogs.forEach(l => loggedDates.add(l.date));
+
+    // Build planned dates by checking which weekdays each active template schedules
+    const plannedDates = new Set();
+    const activeAssignments = allAssignments.filter(a => a.status === 'ACTIVE');
+    activeAssignments.forEach(a => {
+        const tpl = allTemplates[a.template];
+        if (!tpl) return;
+        const days = tpl.days || [];
+        const weekdaysScheduled = new Set(days.map(d => d.day_number));
+        const d = new Date(firstDay);
+        while (d <= lastDay) {
+            const dayNum = d.getDay() === 0 ? 7 : d.getDay();
+            if (weekdaysScheduled.has(dayNum)) {
+                plannedDates.add(d.toISOString().slice(0, 10));
+            }
+            d.setDate(d.getDate() + 1);
+        }
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    let html = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<div class="cal-head">${d}</div>`).join('');
+
+    for (let i = 0; i < startIdx; i++) html += '<div class="cal-day empty"></div>';
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        let cls = '';
+        if (dateStr === today) cls = ' today';
+        if (loggedDates.has(dateStr)) cls += ' logged';
+        else if (plannedDates.has(dateStr) && dateStr < today) cls += ' missed';
+        else if (plannedDates.has(dateStr)) cls += ' planned';
+        html += `<div class="cal-day${cls}" onclick="showCalendarDayDetail('${dateStr}')">${day}</div>`;
+    }
+    document.getElementById('calGrid').innerHTML = html;
+}
+
+function showCalendarDayDetail(dateStr) {
+    const logsOnDay = allLogs.filter(l => l.date === dateStr);
+    if (!logsOnDay.length) {
+        showToast(dateStr + ': No workouts logged', 'success');
+        return;
+    }
+    const l = logsOnDay[0];
+    const assignment = allAssignments.find(a => a.id === l.assignment);
+    if (assignment) viewProgramDays(assignment.id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. EXPORT WORKOUT DATA (CSV)
+// ═══════════════════════════════════════════════════════════════════════════
+function exportWorkoutCSV() {
+    const token = getAccessToken();
+    if (!token) return;
+    const btn = document.querySelector('.btn-export');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Exporting...'; }
+    const url = '/api/workouts/export-csv/';
+    fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(r => {
+            if (!r.ok) throw new Error('Export failed');
+            return r.blob();
+        })
+        .then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `fitcore-workouts-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('CSV exported!', 'success');
+        })
+        .catch(() => showToast('Could not export CSV', 'error'))
+        .finally(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-download"></i> Export CSV'; } });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. SET-BY-SET LOGGING
+// ═══════════════════════════════════════════════════════════════════════════
+let setLogCount = 0;
+
+function addSetRow(weight, reps) {
+    setLogCount++;
+    const container = document.getElementById('setLogsContainer');
+    const row = document.createElement('div');
+    row.className = 'set-row';
+    row.innerHTML = `
+      <div class="set-num">${setLogCount}</div>
+      <input type="number" step="0.5" min="0" max="500" placeholder="0" class="set-weight" value="${weight || ''}">
+      <input type="number" min="1" max="999" placeholder="0" class="set-reps" value="${reps || ''}">
+      <button class="btn-remove-set" onclick="removeSetRow(this)"><i class="bi bi-x"></i></button>
+    `;
+    container.appendChild(row);
+}
+
+function removeSetRow(btn) {
+    const row = btn.closest('.set-row');
+    row.remove();
+    renumberSets();
+}
+
+function renumberSets() {
+    document.querySelectorAll('#setLogsContainer .set-row .set-num').forEach((el, i) => {
+        el.textContent = i + 1;
+    });
+    setLogCount = document.querySelectorAll('#setLogsContainer .set-row').length;
+}
+
+function getSetLogs() {
+    const logs = [];
+    document.querySelectorAll('#setLogsContainer .set-row').forEach((row, i) => {
+        const weight = row.querySelector('.set-weight').value;
+        const reps = row.querySelector('.set-reps').value;
+        if (weight || reps) {
+            const w = weight ? Math.max(0, Math.min(500, parseFloat(weight))) : null;
+            const r = reps ? Math.max(1, Math.min(999, parseInt(reps))) : null;
+            logs.push({ set: i + 1, weight: w, reps: r });
+        }
+    });
+    return logs;
+}
+
+function initSetLogs() {
+    setLogCount = 0;
+    document.getElementById('setLogsContainer').innerHTML = '';
+    const section = document.getElementById('setLogsSection');
+    section.style.display = 'block';
+    addSetRow();
+    addSetRow();
+    addSetRow();
+}
+
+// Show rest timer after log submit
+function showRestTimerAfterLog() {
+    const assignment = allAssignments.find(a => a.id === parseInt(document.getElementById('logAssignmentId').value));
+    if (!assignment) return;
+    const tpl = allTemplates[assignment.template];
+    if (!tpl) return;
+    const day = (tpl.days || []).find(d => d.id === parseInt(document.getElementById('logDayId').value));
+    if (day && day.exercises && day.exercises.length) {
+        const firstEx = day.exercises[0];
+        if (firstEx.rest_seconds) {
+            setRestTimer(firstEx.rest_seconds);
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. MUSCLE GROUP HEATMAP
+// ═══════════════════════════════════════════════════════════════════════════
+function renderHeatmap() {
+    const groups = { CHEST: 0, BACK: 0, SHOULDERS: 0, ARMS: 0, LEGS: 0, CORE: 0 };
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekLogIds = allLogs.filter(l => new Date(l.date) >= weekStart).map(l => l.workout_day);
+
+    for (const assignment of allAssignments) {
+        const tpl = allTemplates[assignment.template];
+        if (!tpl) continue;
+        for (const day of (tpl.days || [])) {
+            if (!weekLogIds.includes(day.id)) continue;
+            for (const ex of (day.exercises || [])) {
+                const mg = ex.muscle_group;
+                if (mg && groups[mg] !== undefined) groups[mg]++;
+            }
+        }
+    }
+
+    const names = { CHEST: 'Chest', BACK: 'Back', SHOULDERS: 'Shoulders', ARMS: 'Arms', LEGS: 'Legs', CORE: 'Core' };
+
+    document.getElementById('heatmapGrid').innerHTML = Object.entries(groups).map(([key, count]) => {
+        const intensity = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count === 3 ? 3 : 4;
+        return `<div class="heatmap-cell intensity-${intensity}" title="${names[key]}: ${count} session${count !== 1 ? 's' : ''}">
+          <div class="hm-name">${names[key]}</div>
+          <div class="hm-count">${count}x</div>
+        </div>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. PERSONAL RECORDS
+// ═══════════════════════════════════════════════════════════════════════════
+let allPRs = [];
+
+async function loadPersonalRecords() {
+    const r = await apiRequest('/progress/personal-records/');
+    if (r && r.ok) {
+        const data = await r.json();
+        allPRs = data.results || data;
+    }
+}
+
+function renderPRs() {
+    const wrap = document.getElementById('prList');
+    if (!allPRs.length) {
+        wrap.innerHTML = '<div class="text-center py-4" style="font-size:0.82rem;color:var(--text-muted);">No PRs yet — keep training!</div>';
+        return;
+    }
+    wrap.innerHTML = allPRs.slice(0, 8).map(pr => {
+        const detail = pr.best_weight_kg ? `${pr.best_weight_kg}kg` : (pr.value ? `${pr.value} ${pr.unit}` : '');
+        const repsText = pr.best_reps ? ` × ${pr.best_reps} reps` : '';
+        const isNew = pr.date === new Date().toISOString().slice(0, 10);
+        return `<div class="pr-item">
+          <div class="pr-trophy"><i class="bi bi-trophy-fill"></i></div>
+          <div class="pr-info">
+            <div class="pr-name">${pr.exercise_name || 'Exercise'}</div>
+            <div class="pr-detail">${detail}${repsText} &bull; ${new Date(pr.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+          </div>
+          ${isNew ? '<span class="pr-badge-new">NEW</span>' : ''}
+        </div>`;
+    }).join('');
+}
+
+function showPRTrophy() {
+    const toast = document.getElementById('prToast');
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
 }
 
 async function loadAll() {
-    document.getElementById('loadingState').style.display = 'block';
     document.getElementById('noAssignmentsState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('loadingState').style.display = 'block';
     document.getElementById('mainContent').style.display = 'none';
 
+    try {
     const [assignRes, logRes] = await Promise.all([
         apiRequest('/workouts/assignments/'),
         apiRequest('/workouts/completion-logs/')
@@ -991,7 +1757,7 @@ async function loadAll() {
     document.getElementById('loadingState').style.display = 'none';
 
     if (!assignRes || !assignRes.ok) {
-        showToast('Could not load your workouts', 'error');
+        document.getElementById('errorState').style.display = 'block';
         return;
     }
 
@@ -1017,11 +1783,42 @@ async function loadAll() {
 
     document.getElementById('mainContent').style.display = 'block';
     computeStats();
-    renderWeekOverview();
+    renderWeekSummary();
     renderUpcoming();
     renderInsights();
     renderPrograms();
     renderActivity();
+    try { initCalendar(); } catch(e) { console.error('Calendar error:', e); }
+    try { renderHeatmap(); } catch(e) { console.error('Heatmap error:', e); }
+    try { await loadPersonalRecords(); renderPRs(); } catch(e) { console.error('PR error:', e); }
+    try { restoreRestTimer(); } catch(e) { console.error('Timer error:', e); }
+
+    } catch(err) {
+        console.error('loadAll error:', err);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+    }
+}
+
+function toggleQuickTag(el) {
+    el.classList.toggle('active');
+    const textarea = document.getElementById('logNotes');
+    const tags = [...document.querySelectorAll('.quick-tag.active')].map(t => t.textContent.trim());
+    textarea.placeholder = tags.length ? tags.join(', ') + '...' : 'How did you feel? Any PRs?';
+}
+
+function showWorkoutSummary(payload) {
+    document.getElementById('summaryTitle').textContent = 'Workout Complete!';
+    document.getElementById('summarySub').textContent = 'Great job finishing your session';
+    document.getElementById('summaryDuration').textContent = payload.duration_minutes ? payload.duration_minutes + ' min' : '—';
+    document.getElementById('summaryCalories').textContent = payload.calories || '—';
+    const diff = payload.perceived_difficulty;
+    document.getElementById('summaryDifficulty').textContent = diff ? diff + '/10' : '—';
+    document.getElementById('summaryOverlay').classList.add('active');
+}
+
+function closeSummary() {
+    document.getElementById('summaryOverlay').classList.remove('active');
 }
 
 loadAll();
