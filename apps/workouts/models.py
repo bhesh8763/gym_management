@@ -440,6 +440,10 @@ class WorkoutCompletionLog(models.Model):
     calories = models.PositiveIntegerField(null=True, blank=True)
     perceived_difficulty = models.PositiveSmallIntegerField(null=True, blank=True, help_text='1-10')
     pain_level = models.PositiveSmallIntegerField(null=True, blank=True, help_text='0-10, 0 = none')
+    set_logs = models.JSONField(
+        default=list, blank=True,
+        help_text='Per-set data, e.g. [{"set":1,"weight":80,"reps":10},{"set":2,"weight":80,"reps":8}]',
+    )
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

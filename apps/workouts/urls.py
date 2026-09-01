@@ -19,6 +19,11 @@ from .views import (
     WorkoutAssignmentListCreateView,
     WorkoutAssignmentDetailView,
     WorkoutCompletionLogListCreateView,
+    AssignmentPauseView,
+    AssignmentResumeView,
+    AssignmentCancelView,
+    TrainerMessageView,
+    WorkoutCompletionLogExportView,
 )
 
 urlpatterns = [
@@ -49,4 +54,15 @@ urlpatterns = [
 
     # Member-facing completion logs (drives Progress tab)
     path('completion-logs/', WorkoutCompletionLogListCreateView.as_view(), name='workout-completion-log-list'),
+
+    # Member self-service actions
+    path('assignments/<int:pk>/pause/', AssignmentPauseView.as_view(), name='assignment-pause'),
+    path('assignments/<int:pk>/resume/', AssignmentResumeView.as_view(), name='assignment-resume'),
+    path('assignments/<int:pk>/cancel/', AssignmentCancelView.as_view(), name='assignment-cancel'),
+
+    # Trainer messaging (via notifications)
+    path('message-trainer/', TrainerMessageView.as_view(), name='message-trainer'),
+
+    # CSV Export
+    path('export-csv/', WorkoutCompletionLogExportView.as_view(), name='workout-export-csv'),
 ]

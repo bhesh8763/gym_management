@@ -6,9 +6,10 @@ MealViewSet       — full CRUD for individual meals
 MealLogViewSet    — member-scoped daily meal logging
 MealLogDailySummaryView — aggregate daily intake vs. plan calorie goal
 """
-from datetime import date as date_cls
+from datetime import date as date_cls, timedelta
 
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -170,6 +171,14 @@ class MealLogViewSet(viewsets.ModelViewSet):
         if date_filter:
             qs = qs.filter(date=date_filter)
 
+        date_from = self.request.query_params.get('date_from')
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+
+        date_to = self.request.query_params.get('date_to')
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
+
         member_id = self.request.query_params.get('member')
         if member_id and user.role in ('OWNER', 'STAFF', 'TRAINER'):
             qs = qs.filter(member_id=member_id)
@@ -178,6 +187,69 @@ class MealLogViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(member=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='weekly-summary')
+    def weekly_summary(self, request):
+        """
+        GET /api/diet/meal-logs/weekly-summary/
+
+        Returns daily calorie + macro totals for the last 7 days,
+        plus the active plan's targets.
+        """
+        user = request.user
+        member_id = request.query_params.get('member')
+        if member_id and user.role in ('OWNER', 'STAFF', 'TRAINER'):
+            try:
+                member = User.objects.get(pk=member_id, role='MEMBER')
+            except User.DoesNotExist:
+                return Response({'error': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
+        elif user.is_member:
+            member = user
+        else:
+            return Response({'error': 'Specify ?member=<id>.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        today = timezone.localdate()
+        start = today - timedelta(days=6)
+
+        logs = MealLog.objects.filter(member=member, date__gte=start, date__lte=today)
+
+        daily = {}
+        for log in logs:
+            d = log.date.isoformat()
+            if d not in daily:
+                daily[d] = {'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0}
+            daily[d]['calories'] += log.total_calories
+            for item in log.food_items:
+                daily[d]['protein'] += item.get('protein', 0)
+                daily[d]['carbs'] += item.get('carbs', 0)
+                daily[d]['fat'] += item.get('fat', 0)
+
+        plan = (
+            DietPlan.objects.filter(member=member, is_active=True)
+            .order_by('-start_date').first()
+        )
+
+        days = []
+        for i in range(7):
+            d = start + timedelta(days=i)
+            key = d.isoformat()
+            entry = daily.get(key, {'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0})
+            days.append({
+                'date': key,
+                'day': d.strftime('%a'),
+                'is_today': d == today,
+                **entry,
+            })
+
+        return Response({
+            'days': days,
+            'targets': {
+                'calories': plan.daily_calories if plan else None,
+                'protein': plan.protein_g if plan else None,
+                'carbs': plan.carbs_g if plan else None,
+                'fat': plan.fats_g if plan else None,
+            },
+        })
 
 
 # ─── Daily Summary (function-style view) ─────────────────────────────────────

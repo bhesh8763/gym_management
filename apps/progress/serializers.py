@@ -49,6 +49,7 @@ class ProgressEntrySerializer(serializers.ModelSerializer):
 
 class PersonalRecordSerializer(serializers.ModelSerializer):
     exercise_name = serializers.CharField(source="exercise.name", read_only=True)
+    exercise_muscle_group = serializers.CharField(source="exercise.muscle_group", read_only=True)
     member = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role='MEMBER'),
         required=False,
