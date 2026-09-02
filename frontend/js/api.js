@@ -399,7 +399,8 @@ syncSidebarCollapsedState();
 
     let doc;
     try {
-      const res = await fetch(url, { credentials: 'same-origin', cache: 'no-cache' });
+      const bustUrl = url + (url.includes('?') ? '&' : '?') + '_v=' + Date.now();
+      const res = await fetch(bustUrl, { credentials: 'same-origin', cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       doc = new DOMParser().parseFromString(await res.text(), 'text/html');
     } catch (err) {
