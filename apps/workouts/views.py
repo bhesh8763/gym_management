@@ -32,6 +32,7 @@ from .serializers import (
     WorkoutCompletionLogSerializer,
     WorkoutTemplateVersionSerializer,
 )
+from apps.notifications.models import Notification
 from apps.progress.models import PersonalRecord
 
 
@@ -469,14 +470,133 @@ class TrainerMessageView(APIView):
             return Response({'detail': 'No trainer assigned to you yet.'}, status=status.HTTP_400_BAD_REQUEST)
 
         trainer = assignment.template.trainer
-        from apps.notifications.models import Notification
         Notification.objects.create(
             recipient=trainer,
-            notification_type='GENERAL',
+            notification_type=Notification.NotificationType.MEMBER_MESSAGE,
             title=f'Message from {request.user.get_full_name() or request.user.email}',
             message=message[:500],
+            related_membership_id=request.user.id,
         )
         return Response({'detail': 'Message sent to your trainer.'}, status=status.HTTP_201_CREATED)
+
+
+# ─── Trainer Messages Inbox + Reply ────────────────────────────────────────
+
+
+def _serialize_notification(n):
+    """Serialize a notification for the messages inbox API."""
+    sender = n.title.replace('Message from ', '')
+    return {
+        'id': n.id,
+        'title': n.title,
+        'message': n.message,
+        'is_read': n.is_read,
+        'read_at': n.read_at,
+        'created_at': n.created_at,
+        'sender_name': sender,
+        'sender_id': n.related_membership_id,
+        'notification_type': n.notification_type,
+    }
+
+
+class TrainerMessagesView(APIView):
+    """Trainer views all member messages and replies sent via the messaging feature."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        member_id = request.query_params.get('member_id')
+
+        if request.user.is_member:
+            # Members see their own sent messages and replies they received
+            member_name = request.user.get_full_name() or request.user.email
+            qs = Notification.objects.filter(
+                Q(
+                    notification_type=Notification.NotificationType.MEMBER_MESSAGE,
+                    related_membership_id=request.user.id,
+                )
+                |
+                Q(
+                    notification_type=Notification.NotificationType.TRAINER_REPLY,
+                    recipient=request.user,
+                ),
+            ).order_by('created_at')
+
+            # Optionally filter by a specific trainer
+            trainer_id = request.query_params.get('trainer_id')
+            if trainer_id:
+                qs = qs.filter(
+                    Q(related_membership_id=request.user.id, recipient_id=trainer_id)
+                    | Q(recipient=request.user, related_membership_id=trainer_id)
+                )
+        else:
+            # Trainers/owners/staff see messages sent to them and their replies
+            qs = Notification.objects.filter(
+                Q(
+                    recipient=request.user,
+                    notification_type=Notification.NotificationType.MEMBER_MESSAGE,
+                )
+                |
+                Q(
+                    notification_type=Notification.NotificationType.TRAINER_REPLY,
+                    related_membership_id=request.user.id,
+                ),
+            ).order_by('created_at')
+
+            # Filter by a specific member if provided
+            if member_id:
+                qs = qs.filter(
+                    Q(related_membership_id=member_id, recipient=request.user)
+                    | Q(recipient_id=member_id, related_membership_id=request.user.id)
+                )
+
+        unread_only = request.query_params.get('is_read')
+        if unread_only is not None:
+            qs = qs.filter(is_read=unread_only.lower() in ('true', '1', 'yes'))
+
+        items = list(qs)
+        return Response([_serialize_notification(n) for n in items])
+
+
+class TrainerReplyView(APIView):
+    """Trainer replies to a member's message."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role not in ('TRAINER', 'OWNER', 'STAFF'):
+            return Response(
+                {'detail': 'Only trainers, owners, and staff can reply.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        reply_text = request.data.get('message', '').strip()
+        if not reply_text:
+            return Response({'detail': 'Reply cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        member_id = request.data.get('member_id')
+        if not member_id:
+            return Response({'detail': 'member_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Resolve the member user
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            member = User.objects.get(pk=member_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not member.is_member:
+            return Response({'detail': 'Target user is not a member.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a TRAINER_REPLY notification for the member
+        trainer_name = request.user.get_full_name() or request.user.email
+        Notification.objects.create(
+            recipient=member,
+            notification_type=Notification.NotificationType.TRAINER_REPLY,
+            title=f'Reply from {trainer_name}',
+            message=reply_text[:500],
+            related_membership_id=request.user.id,
+        )
+        return Response({'detail': 'Reply sent.'}, status=status.HTTP_201_CREATED)
 
 
 # ─── CSV Export ─────────────────────────────────────────────────────────────

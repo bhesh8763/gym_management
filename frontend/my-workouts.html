@@ -614,13 +614,14 @@
     <div class="modal-content">
       <div class="modal-header">
         <div>
-          <h5 class="modal-title fw-700">Message Trainer</h5>
+          <h5 class="modal-title fw-700"><i class="bi bi-chat-dots me-2"></i>Message Trainer</h5>
           <div class="text-muted" style="font-size:0.8rem;" id="msgTrainerSub">Send a message to your assigned trainer</div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <textarea id="msgTrainerText" class="form-control" rows="4" placeholder="Type your message here..."></textarea>
+        <div id="msgConversation" class="mb-3" style="max-height:300px;overflow-y:auto;background:var(--bg-root,#f8f9fa);border-radius:8px;padding:12px;"></div>
+        <textarea id="msgTrainerText" class="form-control" rows="3" placeholder="Type your message here..."></textarea>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1237,13 +1238,62 @@ function selectLogStatus(btn) {
     btn.classList.add('active');
 }
 
-function openMsgTrainer() {
+function timeAgo(dateStr) {
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+}
+
+let trainerConversation = [];
+
+async function openMsgTrainer() {
     document.getElementById('msgTrainerText').value = '';
+    const convEl = document.getElementById('msgConversation');
+
     const active = allAssignments.find(a => a.status === 'ACTIVE' || a.status === 'PAUSED');
     if (active) {
         document.getElementById('msgTrainerSub').textContent = `To: ${active.template_name} trainer`;
     }
+
+    // Load conversation history
+    convEl.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm"></div></div>';
     new bootstrap.Modal(document.getElementById('msgTrainerModal')).show();
+
+    const res = await apiRequest('/workouts/trainer-messages/');
+    if (res && res.ok) {
+        trainerConversation = await res.json();
+    } else {
+        trainerConversation = [];
+    }
+
+    renderMemberConversation();
+    convEl.scrollTop = convEl.scrollHeight;
+}
+
+function renderMemberConversation() {
+    const convEl = document.getElementById('msgConversation');
+    if (!trainerConversation.length) {
+        convEl.innerHTML = '<div class="text-center text-muted" style="font-size:0.82rem;padding:8px 0;">No messages yet. Start the conversation!</div>';
+        return;
+    }
+    convEl.innerHTML = trainerConversation.map(m => {
+        const isMember = m.notification_type === 'MEMBER_MESSAGE';
+        const isTrainer = m.notification_type === 'TRAINER_REPLY';
+        const align = isMember ? 'end' : 'start';
+        const bg = isMember ? 'var(--brand-red, #e63946)' : 'var(--bg-hover, #e9ecef)';
+        const color = isMember ? '#fff' : 'var(--text-primary, #1a1a1f)';
+        const senderName = isMember ? 'You' : (m.sender_name || 'Trainer');
+        return `
+            <div class="d-flex justify-content-${align} mb-2">
+                <div style="max-width:85%;padding:8px 12px;border-radius:12px;background:${bg};color:${color};font-size:0.82rem;">
+                    <div style="font-weight:600;font-size:0.72rem;margin-bottom:2px;${isMember ? 'opacity:0.8;' : ''}">${escapeHtml(senderName)}</div>
+                    <div>${escapeHtml(m.message)}</div>
+                    <div style="font-size:0.65rem;margin-top:4px;${isMember ? 'opacity:0.7;' : 'color:var(--text-muted, #888);'}">${timeAgo(m.created_at)}</div>
+                </div>
+            </div>`;
+    }).join('');
 }
 
 async function sendTrainerMessage() {
@@ -1251,8 +1301,14 @@ async function sendTrainerMessage() {
     if (!msg) { showToast('Please type a message', 'error'); return; }
     const r = await apiRequest('/workouts/message-trainer/', { method: 'POST', body: JSON.stringify({ message: msg }) });
     if (r && r.ok) {
-        bootstrap.Modal.getInstance(document.getElementById('msgTrainerModal'))?.hide();
+        document.getElementById('msgTrainerText').value = '';
         showToast('Message sent to your trainer!', 'success');
+        // Reload conversation
+        const res = await apiRequest('/workouts/trainer-messages/');
+        if (res && res.ok) trainerConversation = await res.json();
+        renderMemberConversation();
+        const convEl = document.getElementById('msgConversation');
+        convEl.scrollTop = convEl.scrollHeight;
     } else if (r) {
         const e = await r.json();
         showToast(e.detail || 'Could not send message', 'error');

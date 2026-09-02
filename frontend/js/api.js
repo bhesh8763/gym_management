@@ -296,6 +296,7 @@ function buildSidebar(activePage) {
     ${link('trainer-members.html', 'bi-people', 'My Members', 'TRAINER', a('trainer-members'))}
     ${link('attendance.html', 'bi-calendar-check', 'Attendance', 'OWNER,STAFF,TRAINER', a('attendance'))}
     ${link('progress.html', 'bi-graph-up', 'Progress Report', 'OWNER,STAFF,TRAINER', a('progress'))}
+    ${link('messages.html', 'bi-chat-dots', 'Messages', 'OWNER,STAFF,TRAINER', a('messages'))}
 
     ${section('Staff Management')}
     ${link('staff.html', 'bi-people', 'Staff', 'OWNER', a('staff'))}
@@ -307,12 +308,14 @@ function buildSidebar(activePage) {
     ${section('Payments')}
     ${link('payments.html', 'bi-cash-coin', 'Payments', 'OWNER,STAFF', a('payments'))}
 
+    ${section('My Account', 'MEMBER')}
+    ${link('my-workouts.html', 'bi-heart-pulse', 'My Workouts', 'MEMBER', a('my-workouts'))}
+    ${link('my-diet.html', 'bi-egg-fried', 'My Diet', 'MEMBER', a('my-diet'))}
+    ${link('my-progress.html', 'bi-graph-up', 'My Progress', 'MEMBER', a('my-progress'))}
+    ${link('messages.html', 'bi-chat-dots', 'Messages', 'MEMBER', a('messages'))}
     ${link('my-attendance.html', 'bi-fingerprint', 'My Attendance', 'MEMBER', a('my-attendance'))}
     ${link('my-payments.html', 'bi-cash-coin', 'My Payments', 'MEMBER', a('my-payments'))}
     ${link('my-memberships.html', 'bi-card-checklist', 'My Memberships', 'MEMBER', a('my-memberships'))}
-    ${link('my-progress.html', 'bi-graph-up', 'My Progress', 'MEMBER', a('my-progress'))}
-    ${link('my-workouts.html', 'bi-heart-pulse', 'My Workouts', 'MEMBER', a('my-workouts'))}
-    ${link('my-diet.html', 'bi-egg-fried', 'My Diet', 'MEMBER', a('my-diet'))}
     ${link('my-locker.html', 'bi-lock', 'My Locker', 'MEMBER', a('my-locker'))}
 
     ${section('Equipment')}
@@ -522,6 +525,18 @@ syncSidebarCollapsedState();
     // Update sidebar active state after content swap
     document.querySelectorAll('.sidebar a.list-group-item').forEach(a => {
       a.classList.toggle('active', a.getAttribute('href') === url);
+    });
+
+    // Remove any previously injected page-specific styles
+    document.querySelectorAll('style[data-spa-page]').forEach(s => s.remove());
+    // Inject <style> tags from the new page's <head> BEFORE scripts run
+    // so page-specific CSS is available when inline scripts initialize.
+    // Only inject styles from <head> — styles inside #page-content are already
+    // part of the innerHTML swap and should not be duplicated in <head>.
+    doc.head.querySelectorAll('style').forEach(styleEl => {
+      const clone = styleEl.cloneNode(true);
+      clone.setAttribute('data-spa-page', url);
+      document.head.appendChild(clone);
     });
 
     doc.querySelectorAll('script:not([src])').forEach(scriptEl => {

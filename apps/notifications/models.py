@@ -21,6 +21,8 @@ class Notification(models.Model):
         WORKOUT_REMINDER = 'WORKOUT_REMINDER', 'Workout Reminder'
         GENERAL = 'GENERAL', 'General'
         ANNOUNCEMENT = 'ANNOUNCEMENT', 'Announcement'
+        MEMBER_MESSAGE = 'MEMBER_MESSAGE', 'Member Message'
+        TRAINER_REPLY = 'TRAINER_REPLY', 'Trainer Reply'
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,

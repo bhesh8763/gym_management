@@ -23,6 +23,8 @@ from .views import (
     AssignmentResumeView,
     AssignmentCancelView,
     TrainerMessageView,
+    TrainerMessagesView,
+    TrainerReplyView,
     WorkoutCompletionLogExportView,
 )
 
@@ -62,6 +64,8 @@ urlpatterns = [
 
     # Trainer messaging (via notifications)
     path('message-trainer/', TrainerMessageView.as_view(), name='message-trainer'),
+    path('trainer-messages/', TrainerMessagesView.as_view(), name='trainer-messages'),
+    path('trainer-reply/', TrainerReplyView.as_view(), name='trainer-reply'),
 
     # CSV Export
     path('export-csv/', WorkoutCompletionLogExportView.as_view(), name='workout-export-csv'),
