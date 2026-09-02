@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Locker - FitCore</title>
+<title>My Locker - FitCore</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/theme.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
@@ -19,6 +19,8 @@
         .status-active { background:rgba(16,185,129,0.1);color:#059669; }
         .status-expired { background:rgba(239,68,68,0.1);color:#dc2626; }
         .status-released { background:rgba(107,114,128,0.1);color:#6b7280; }
+        .status-unpaid { background:rgba(245,158,11,0.1);color:#d97706; }
+        .status-paid { background:rgba(16,185,129,0.1);color:#059669; }
     </style>
 </head>
 <body data-allowed-roles="MEMBER">
@@ -105,13 +107,30 @@
                     <div id="activeLockerCard" class="locker-hero mb-4" style="display:none;">
                         <div class="d-flex align-items-start gap-3">
                             <div class="locker-icon"><i class="bi bi-lock-fill"></i></div>
-                            <div>
+                            <div class="flex-grow-1">
                                 <h4 class="mb-1">Locker <span id="lockerNumber">-</span></h4>
                                 <div class="opacity-75 mb-2" id="lockerLocation">-</div>
-                                <div class="d-flex gap-2 flex-wrap">
-                                    <span class="status-badge status-active"><i class="bi bi-check-circle-fill"></i> Active</span>
+                                <div class="d-flex gap-2 flex-wrap align-items-center">
+                                    <span class="status-badge status-active" id="heroStatusBadge"><i class="bi bi-check-circle-fill"></i> Active</span>
+                                    <span class="status-badge" id="heroPaymentBadge" style="display:none;"></span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Alert -->
+                    <div id="paymentAlert" class="alert mb-4" style="display:none;border-radius:var(--radius-md);">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-exclamation-triangle-fill" id="paymentAlertIcon"></i>
+                                <div>
+                                    <div class="fw-semibold" id="paymentAlertTitle">Payment Required</div>
+                                    <div class="small" id="paymentAlertMsg" style="font-size:0.82rem;"></div>
+                                </div>
+                            </div>
+                            <a href="my-payments.html" id="paymentAlertBtn" class="btn btn-sm fw-semibold" style="background:var(--brand-red);color:#fff;border:none;border-radius:8px;text-decoration:none;">
+                                <i class="bi bi-credit-card me-1"></i>Pay Now
+                            </a>
                         </div>
                     </div>
 
@@ -148,6 +167,10 @@
                         <div class="locker-info-row">
                             <span class="locker-info-label">Assigned By</span>
                             <span class="locker-info-value" id="detailAssignedBy">-</span>
+                        </div>
+                        <div class="locker-info-row" id="paymentStatusRow" style="display:none;">
+                            <span class="locker-info-label">Payment Status</span>
+                            <span class="locker-info-value" id="detailPaymentStatus">-</span>
                         </div>
                     </div>
                 </div>
@@ -203,44 +226,126 @@
 buildSidebar('my-locker');
     if (!getAccessToken()) window.location.href = 'login.html';
 
+    let lockerFee = 0;
+
+    function show(id) { var el = document.getElementById(id); if (el) el.style.display = ''; }
+    function hide(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
     async function loadMyLocker() {
-        document.getElementById('loadingState').style.display = '';
-        document.getElementById('noAssignmentState').style.display = 'none';
-        document.getElementById('lockerContent').style.display = 'none';
+        show('loadingState');
+        hide('noAssignmentState');
+        hide('lockerContent');
 
-        const res = await apiRequest('/lockers/assignments/?active=true');
-        if (!res || !res.ok) {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('noAssignmentState').style.display = '';
+        let assignRes, duesRes;
+        try {
+            [assignRes, duesRes] = await Promise.all([
+                apiRequest('/lockers/assignments/?active=true'),
+                apiRequest('/payments/my-dues/'),
+            ]);
+        } catch (e) {
+            console.error('loadMyLocker: fetch failed', e);
+            hide('loadingState');
+            show('noAssignmentState');
             return;
         }
 
-        const data = await res.json();
-        const assignments = data.results || data;
+        hide('loadingState');
 
-        document.getElementById('loadingState').style.display = 'none';
+        let lockerDues = [];
+        if (duesRes && duesRes.ok) {
+            try {
+                const duesData = await duesRes.json();
+                lockerDues = (duesData.results || duesData).filter(d => d.payment_for === 'LOCKER');
+            } catch (e) { console.error('Failed to parse dues', e); }
+        }
 
-        if (!assignments.length) {
-            document.getElementById('noAssignmentState').style.display = '';
+        if (!assignRes || !assignRes.ok) {
+            console.warn('Locker assignments request failed', assignRes);
+            show('noAssignmentState');
             return;
         }
 
-        document.getElementById('lockerContent').style.display = '';
+        let assignments;
+        try {
+            const assignData = await assignRes.json();
+            assignments = assignData.results || assignData;
+        } catch (e) {
+            console.error('Failed to parse assignments', e);
+            show('noAssignmentState');
+            return;
+        }
+
+        if (!assignments || !assignments.length) {
+            show('noAssignmentState');
+            return;
+        }
+
+        show('lockerContent');
+        show('activeLockerCard');
+
         const a = assignments[0];
         const locker = a.locker_number || '-';
-        const location = a.locker ? (a.locker.location || '-') : '-';
-        const fee = a.locker ? (a.locker.monthly_fee || '0') : '0';
+        const loc = a.locker_location || '-';
+        const fee = parseFloat(a.monthly_fee) || 0;
+        lockerFee = fee;
 
         document.getElementById('lockerNumber').textContent = locker;
-        document.getElementById('lockerLocation').textContent = location;
+        document.getElementById('lockerLocation').textContent = loc;
 
         document.getElementById('detailLockerNumber').textContent = locker;
-        document.getElementById('detailLockerLocation').textContent = location;
+        document.getElementById('detailLockerLocation').textContent = loc || '-';
         document.getElementById('detailLockerStatus').textContent = 'Occupied';
-        document.getElementById('detailLockerFee').textContent = 'Rs. ' + parseFloat(fee).toFixed(0) + '/mo';
+        document.getElementById('detailLockerFee').textContent = fee > 0 ? 'NPR ' + fee.toLocaleString() + '/mo' : 'Free';
         document.getElementById('detailAssignedDate').textContent = a.start_date || '-';
         document.getElementById('detailValidUntil').textContent = a.end_date || 'No expiry';
         document.getElementById('detailAssignedBy').textContent = a.assigned_by_name || '-';
+
+        const hasUnpaid = lockerDues.length > 0;
+        const dueAmount = hasUnpaid ? parseFloat(lockerDues[0].amount) : 0;
+
+        show('paymentStatusRow');
+        if (hasUnpaid) {
+            document.getElementById('detailPaymentStatus').innerHTML = '<span class="status-badge status-unpaid"><i class="bi bi-exclamation-circle-fill"></i> NPR ' + dueAmount.toLocaleString() + ' Due</span>';
+        } else if (fee > 0) {
+            document.getElementById('detailPaymentStatus').innerHTML = '<span class="status-badge status-paid"><i class="bi bi-check-circle-fill"></i> Paid</span>';
+        } else {
+            document.getElementById('detailPaymentStatus').innerHTML = '<span class="status-badge status-paid"><i class="bi bi-check-circle-fill"></i> No Fee</span>';
+        }
+
+        const heroBadge = document.getElementById('heroPaymentBadge');
+        if (hasUnpaid) {
+            heroBadge.style.display = '';
+            heroBadge.className = 'status-badge status-unpaid';
+            heroBadge.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> Payment Pending';
+        } else {
+            heroBadge.style.display = fee > 0 ? '' : 'none';
+            if (fee > 0) {
+                heroBadge.className = 'status-badge status-paid';
+                heroBadge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Paid';
+            }
+        }
+
+        const alertEl = document.getElementById('paymentAlert');
+        if (hasUnpaid) {
+            alertEl.style.display = '';
+            alertEl.className = 'alert mb-4';
+            alertEl.style.cssText = 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius-md);';
+            document.getElementById('paymentAlertIcon').className = 'bi bi-exclamation-triangle-fill';
+            document.getElementById('paymentAlertIcon').style.color = '#d97706';
+            document.getElementById('paymentAlertTitle').textContent = 'Locker Fee Pending';
+            document.getElementById('paymentAlertMsg').textContent = 'NPR ' + dueAmount.toLocaleString() + ' is due for your locker this month.';
+        } else if (fee > 0) {
+            alertEl.style.display = '';
+            alertEl.className = 'alert mb-4';
+            alertEl.style.cssText = 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:var(--radius-md);';
+            document.getElementById('paymentAlertIcon').className = 'bi bi-check-circle-fill';
+            document.getElementById('paymentAlertIcon').style.color = '#059669';
+            document.getElementById('paymentAlertTitle').textContent = 'Locker Fee Paid';
+            document.getElementById('paymentAlertMsg').textContent = 'Your locker fee for this month has been paid.';
+            document.getElementById('paymentAlertBtn').style.display = 'none';
+        } else {
+            alertEl.style.display = 'none';
+        }
 
         if (a.end_date) {
             const end = new Date(a.end_date);
@@ -265,6 +370,7 @@ buildSidebar('my-locker');
         const all = data.results || data;
 
         const container = document.getElementById('lockerHistory');
+        if (!container) return;
         if (!all.length) {
             container.innerHTML = '<div class="text-muted small text-center py-3">No locker history found.</div>';
             return;

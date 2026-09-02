@@ -15,12 +15,15 @@ class LockerSerializer(serializers.ModelSerializer):
 class LockerAssignmentSerializer(serializers.ModelSerializer):
     member_name = serializers.CharField(source='member.get_full_name', read_only=True)
     locker_number = serializers.CharField(source='locker.locker_number', read_only=True)
+    locker_location = serializers.CharField(source='locker.location', read_only=True)
+    monthly_fee = serializers.DecimalField(source='locker.monthly_fee', max_digits=8, decimal_places=2, read_only=True)
     assigned_by_name = serializers.CharField(source='assigned_by.get_full_name', read_only=True)
 
     class Meta:
         model = LockerAssignment
         fields = [
-            'id', 'locker', 'locker_number', 'member', 'member_name',
+            'id', 'locker', 'locker_number', 'locker_location', 'monthly_fee',
+            'member', 'member_name',
             'start_date', 'end_date', 'is_active',
             'assigned_by', 'assigned_by_name', 'created_at',
         ]
