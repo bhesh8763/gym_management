@@ -265,6 +265,70 @@ function exportTableToCsv(tableId, filename) {
   URL.revokeObjectURL(url);
 }
 
+// ── Shared sidebar builder ─────────────────────────────────────────────────
+// Every page shares the same sidebar links. Instead of duplicating ~50 lines of
+// sidebar HTML in every file, each page just needs a <div class="sidebar" id="sidebar">
+// placeholder and calls buildSidebar('activePage') in its inline script.
+function buildSidebar(activePage) {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  const link = (href, icon, label, roles, isActive) => {
+    const roleAttr = roles ? ` data-roles="${roles}"` : '';
+    const activeClass = isActive ? ' active' : '';
+    return `<a href="${href}" class="list-group-item list-group-item-action${activeClass}"${roleAttr}><i class="bi ${icon}"></i> <span>${label}</span></a>`;
+  };
+  const section = (label, roles) => {
+    const roleAttr = roles ? ` data-roles="${roles}"` : '';
+    return `<div class="nav-section-label"${roleAttr}>${label}</div>`;
+  };
+
+  const a = (page) => activePage === page;
+
+  sidebar.innerHTML = `<div class="list-group list-group-flush pt-2">
+    ${section('Main')}
+    ${link('dashboard.html', 'bi-speedometer2', 'Dashboard', 'OWNER,STAFF', a('dashboard'))}
+    ${link('trainer-dashboard.html', 'bi-speedometer2', 'Dashboard', 'TRAINER', a('trainer-dashboard'))}
+
+    ${section('Members')}
+    ${link('members.html', 'bi-person-lines-fill', 'Members', 'OWNER,STAFF', a('members'))}
+    ${link('memberships.html', 'bi-card-checklist', 'Memberships', 'OWNER,STAFF', a('memberships'))}
+    ${link('trainer-members.html', 'bi-people', 'My Members', 'TRAINER', a('trainer-members'))}
+    ${link('attendance.html', 'bi-calendar-check', 'Attendance', 'OWNER,STAFF,TRAINER', a('attendance'))}
+    ${link('progress.html', 'bi-graph-up', 'Progress Report', 'OWNER,STAFF,TRAINER', a('progress'))}
+
+    ${section('Staff Management')}
+    ${link('staff.html', 'bi-people', 'Staff', 'OWNER', a('staff'))}
+
+    ${section('Workout & Diet', 'OWNER,STAFF,TRAINER')}
+    ${link('workouts.html', 'bi-heart-pulse', 'Workouts', 'OWNER,STAFF,TRAINER', a('workouts'))}
+    ${link('diet.html', 'bi-egg-fried', 'Diet', 'OWNER,STAFF,TRAINER', a('diet'))}
+
+    ${section('Payments')}
+    ${link('payments.html', 'bi-cash-coin', 'Payments', 'OWNER,STAFF', a('payments'))}
+
+    ${link('my-attendance.html', 'bi-fingerprint', 'My Attendance', 'MEMBER', a('my-attendance'))}
+    ${link('my-payments.html', 'bi-cash-coin', 'My Payments', 'MEMBER', a('my-payments'))}
+    ${link('my-memberships.html', 'bi-card-checklist', 'My Memberships', 'MEMBER', a('my-memberships'))}
+    ${link('my-progress.html', 'bi-graph-up', 'My Progress', 'MEMBER', a('my-progress'))}
+    ${link('my-workouts.html', 'bi-heart-pulse', 'My Workouts', 'MEMBER', a('my-workouts'))}
+    ${link('my-diet.html', 'bi-egg-fried', 'My Diet', 'MEMBER', a('my-diet'))}
+    ${link('my-locker.html', 'bi-lock', 'My Locker', 'MEMBER', a('my-locker'))}
+
+    ${section('Equipment')}
+    ${link('lockers.html', 'bi-lock', 'Lockers', 'OWNER,STAFF', a('lockers'))}
+    ${link('equipment.html', 'bi-tools', 'Equipment', 'OWNER,STAFF', a('equipment'))}
+
+    ${section('Insights')}
+    ${link('reports.html', 'bi-bar-chart-line', 'Reports', 'OWNER', a('reports'))}
+
+    ${section('System')}
+    ${link('notifications.html', 'bi-bell', 'Notifications', '', a('notifications'))}
+  </div>`;
+
+  applySidebarRoleVisibility();
+}
+
 // ── Role-based sidebar ──────────────────────────────────────────────────────
 // Every page shares the same sidebar markup. Links that should only be visible
 // to certain roles carry a data-roles="OWNER,STAFF" attribute (see dashboard.html

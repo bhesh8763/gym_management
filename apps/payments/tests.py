@@ -12,6 +12,8 @@ Coverage:
     - RBAC: members cannot record payments, staff-side roles can
     - Duplicate receipt_number is rejected (unique constraint)
 """
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -39,12 +41,28 @@ class PaymentAPITestCase(APITestCase):
                                 first_name='Staff', last_name='User')
         self.member = make_user('alice@gym.com', role=User.Role.MEMBER,
                                  first_name='Alice', last_name='Smith')
+        self.other_member = make_user('bob@gym.com', role=User.Role.MEMBER,
+                                       first_name='Bob', last_name='Jones')
         self.list_url = '/api/payments/'
 
     def auth_as(self, user):
         self.client.credentials(
             HTTP_AUTHORIZATION=f'Bearer {str(RefreshToken.for_user(user).access_token)}'
         )
+
+    def _create_payment(self, **overrides):
+        defaults = {
+            'member': self.member,
+            'payment_for': 'MEMBERSHIP',
+            'amount': 3000,
+            'discount': 0,
+            'payment_method': 'CASH',
+            'status': 'PAID',
+            'receipt_number': 'RCPT-DEFAULT',
+            'collected_by': self.staff,
+        }
+        defaults.update(overrides)
+        return Payment.objects.create(**defaults)
 
 
 class PaymentCreateTests(PaymentAPITestCase):
@@ -141,3 +159,120 @@ class PaymentListTests(PaymentAPITestCase):
         self.auth_as(self.owner)
         r = self.client.get(self.list_url, {'payment_for': 'LOCKER'})
         self.assertEqual(r.data['count'], 1)
+
+    def test_member_sees_only_own_payments(self):
+        self.auth_as(self.member)
+        r = self.client.get(self.list_url)
+        self.assertEqual(r.data['count'], 2)  # both belong to self.member
+
+        # Other member's payment should not appear
+        self._create_payment(member=self.other_member, receipt_number='RCPT-C')
+        r = self.client.get(self.list_url)
+        self.assertEqual(r.data['count'], 2)  # still only own
+
+
+class PaymentAuthTests(PaymentAPITestCase):
+    def test_unauthenticated_list_returns_401(self):
+        r = self.client.get(self.list_url)
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_unauthenticated_create_returns_401(self):
+        r = self.client.post(self.list_url, {
+            'member': self.member.id,
+            'payment_for': 'MEMBERSHIP',
+            'amount': '3000.00',
+            'receipt_number': 'RCPT-UNAUTH',
+        })
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PaymentDetailTests(PaymentAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.payment = self._create_payment(receipt_number='RCPT-DETAIL')
+
+    def test_owner_can_retrieve(self):
+        self.auth_as(self.owner)
+        r = self.client.get(f'{self.list_url}{self.payment.id}/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['receipt_number'], 'RCPT-DETAIL')
+
+    def test_member_can_retrieve_own(self):
+        self.auth_as(self.member)
+        r = self.client.get(f'{self.list_url}{self.payment.id}/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+    def test_member_cannot_retrieve_other_payment(self):
+        other_payment = self._create_payment(
+            member=self.other_member, receipt_number='RCPT-OTHER'
+        )
+        self.auth_as(self.member)
+        r = self.client.get(f'{self.list_url}{other_payment.id}/')
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class PaymentSummaryTests(PaymentAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.summary_url = f'{self.list_url}summary/'
+        self._create_payment(status='PAID', amount=5000, discount=500,
+                              receipt_number='RCPT-S1')
+        self._create_payment(status='PENDING', amount=2000, discount=0,
+                              receipt_number='RCPT-S2')
+
+    def test_owner_can_access_summary(self):
+        self.auth_as(self.owner)
+        r = self.client.get(self.summary_url)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertIn('total_collected', r.data)
+        self.assertIn('total_pending', r.data)
+        self.assertIn('by_method', r.data)
+        self.assertIn('by_status', r.data)
+
+    def test_staff_can_access_summary(self):
+        self.auth_as(self.staff)
+        r = self.client.get(self.summary_url)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+    def test_member_cannot_access_summary(self):
+        self.auth_as(self.member)
+        r = self.client.get(self.summary_url)
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_summary_collects_only_paid(self):
+        self.auth_as(self.owner)
+        r = self.client.get(self.summary_url)
+        # PAID payment: amount=5000, discount=500, amount_paid=4500
+        self.assertEqual(r.data['total_collected'], 4500.0)
+        self.assertEqual(r.data['total_pending'], 2000.0)
+
+
+class PaymentDiscountValidationTests(PaymentAPITestCase):
+    def test_discount_cannot_exceed_amount(self):
+        self.auth_as(self.staff)
+        r = self.client.post(self.list_url, {
+            'member': self.member.id,
+            'payment_for': 'MEMBERSHIP',
+            'amount': '1000.00',
+            'discount': '1500.00',
+            'payment_method': 'CASH',
+            'status': 'PAID',
+            'receipt_number': 'RCPT-BAD-DISC',
+        })
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('discount', str(r.data))
+
+
+class PaymentCreateRBACTests(PaymentAPITestCase):
+    def test_owner_can_record_payment(self):
+        self.auth_as(self.owner)
+        r = self.client.post(self.list_url, {
+            'member': self.member.id,
+            'payment_for': 'MEMBERSHIP',
+            'amount': '3000.00',
+            'discount': '0.00',
+            'payment_method': 'CASH',
+            'status': 'PAID',
+            'receipt_number': 'RCPT-OWNER',
+        })
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)

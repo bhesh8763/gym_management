@@ -75,6 +75,90 @@ class EquipmentCreateTests(EquipmentAPITestCase):
         })
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_owner_can_create_equipment(self):
+        self.auth_as(self.owner)
+        r = self.client.post(self.equipment_url, {
+            'name': 'Rowing Machine', 'category': 'Cardio', 'quantity': 2,
+        })
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+
+class EquipmentRetrieveTests(EquipmentAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.equip = Equipment.objects.create(name='Treadmill', category='Cardio', quantity=1)
+
+    def test_owner_can_retrieve(self):
+        self.auth_as(self.owner)
+        r = self.client.get(f'{self.equipment_url}{self.equip.id}/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['name'], 'Treadmill')
+
+    def test_member_cannot_retrieve(self):
+        self.auth_as(self.member)
+        r = self.client.get(f'{self.equipment_url}{self.equip.id}/')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class EquipmentUpdateTests(EquipmentAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.equip = Equipment.objects.create(name='Bike', category='Cardio', quantity=1)
+
+    def test_staff_can_update_equipment(self):
+        self.auth_as(self.staff)
+        r = self.client.patch(f'{self.equipment_url}{self.equip.id}/', {
+            'quantity': 5, 'condition': 'POOR',
+        })
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.equip.refresh_from_db()
+        self.assertEqual(self.equip.quantity, 5)
+
+    def test_member_cannot_update_equipment(self):
+        self.auth_as(self.member)
+        r = self.client.patch(f'{self.equipment_url}{self.equip.id}/', {'quantity': 999})
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class EquipmentDeleteTests(EquipmentAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.equip = Equipment.objects.create(name='Old', category='Cardio', quantity=1)
+
+    def test_owner_can_delete_equipment(self):
+        self.auth_as(self.owner)
+        r = self.client.delete(f'{self.equipment_url}{self.equip.id}/')
+        self.assertEqual(r.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_member_cannot_delete_equipment(self):
+        self.auth_as(self.member)
+        r = self.client.delete(f'{self.equipment_url}{self.equip.id}/')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class EquipmentAuthTests(EquipmentAPITestCase):
+    def test_unauthenticated_list_returns_401(self):
+        r = self.client.get(self.equipment_url)
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_unauthenticated_create_returns_401(self):
+        r = self.client.post(self.equipment_url, {
+            'name': 'Treadmill', 'category': 'Cardio', 'quantity': 1,
+        })
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class EquipmentUniqueSerialTests(EquipmentAPITestCase):
+    def test_duplicate_serial_number_rejected(self):
+        self.auth_as(self.staff)
+        self.client.post(self.equipment_url, {
+            'name': 'Treadmill', 'category': 'Cardio', 'quantity': 1, 'serial_number': 'SN-001',
+        })
+        r = self.client.post(self.equipment_url, {
+            'name': 'Another', 'category': 'Cardio', 'quantity': 1, 'serial_number': 'SN-001',
+        })
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class EquipmentFilterTests(EquipmentAPITestCase):
     def setUp(self):
@@ -150,3 +234,52 @@ class MaintenanceRecordTests(EquipmentAPITestCase):
         self.auth_as(self.owner)
         r = self.client.get(self.maintenance_url, {'status': 'COMPLETED'})
         self.assertEqual(r.data['count'], 1)
+
+
+class MaintenanceRecordUpdateTests(EquipmentAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.treadmill = Equipment.objects.create(
+            name='Treadmill', category='Cardio', quantity=1,
+        )
+        self.auth_as(self.staff)
+        r = self.client.post(self.maintenance_url, {
+            'equipment': self.treadmill.id, 'maintenance_type': 'ROUTINE',
+            'scheduled_date': self.get_future_date_str(1), 'description': 'Belt check',
+        })
+        self.record_id = r.data['id']
+
+    def test_staff_can_update_maintenance_status(self):
+        self.auth_as(self.staff)
+        r = self.client.patch(f'{self.maintenance_url}{self.record_id}/', {
+            'status': 'COMPLETED', 'completed_date': self.get_future_date_str(1),
+            'performed_by': 'Technician A',
+        })
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['status'], 'COMPLETED')
+
+    def test_member_cannot_update_maintenance(self):
+        self.auth_as(self.member)
+        r = self.client.patch(f'{self.maintenance_url}{self.record_id}/', {
+            'status': 'COMPLETED',
+        })
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class MaintenanceRecordDeleteTests(EquipmentAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.treadmill = Equipment.objects.create(
+            name='Treadmill', category='Cardio', quantity=1,
+        )
+        self.auth_as(self.staff)
+        r = self.client.post(self.maintenance_url, {
+            'equipment': self.treadmill.id, 'maintenance_type': 'ROUTINE',
+            'scheduled_date': self.get_future_date_str(1), 'description': 'Belt check',
+        })
+        self.record_id = r.data['id']
+
+    def test_owner_can_delete_maintenance_record(self):
+        self.auth_as(self.owner)
+        r = self.client.delete(f'{self.maintenance_url}{self.record_id}/')
+        self.assertEqual(r.status_code, status.HTTP_204_NO_CONTENT)

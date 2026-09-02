@@ -177,3 +177,76 @@ class AttendanceListTests(AttendanceAPITestCase):
         r = self.client.get(self.list_url, {'type': 'STAFF'})
         self.assertEqual(r.data['count'], 1)
         self.assertEqual(r.data['results'][0]['attendance_type'], 'STAFF')
+
+
+class AttendanceCheckInTests(AttendanceAPITestCase):
+    def test_member_can_self_check_in(self):
+        self.auth_as(self.member)
+        r = self.client.post('/api/attendance/records/check-in/')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(r.data['user'], self.member.id)
+
+    def test_member_cannot_check_in_twice(self):
+        self.auth_as(self.member)
+        self.client.post('/api/attendance/records/check-in/')
+        r = self.client.post('/api/attendance/records/check-in/')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_staff_cannot_self_check_in(self):
+        self.auth_as(self.staff)
+        r = self.client.post('/api/attendance/records/check-in/')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class AttendanceCheckOutSelfServiceTests(AttendanceAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.auth_as(self.member)
+        self.client.post('/api/attendance/records/check-in/')
+
+    def test_member_can_self_check_out(self):
+        r = self.client.post('/api/attendance/records/check-out/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(r.data['check_out'])
+
+    def test_member_cannot_check_out_without_check_in(self):
+        # Create a second member who hasn't checked in
+        member2 = make_user('bob@gym.com', role=User.Role.MEMBER, first_name='Bob', last_name='Jones')
+        self.auth_as(member2)
+        r = self.client.post('/api/attendance/records/check-out/')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_member_cannot_check_out_twice(self):
+        self.client.post('/api/attendance/records/check-out/')
+        r = self.client.post('/api/attendance/records/check-out/')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class AttendanceUnauthenticatedTests(AttendanceAPITestCase):
+    def test_unauthenticated_list_returns_401(self):
+        r = self.client.get(self.list_url)
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_unauthenticated_create_returns_401(self):
+        r = self.client.post(self.list_url, {
+            'user': self.member.id, 'attendance_type': 'MEMBER',
+            'date': self.get_today_str(), 'check_in': '09:00:00',
+        })
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class AttendanceMemberScopingTests(AttendanceAPITestCase):
+    def test_member_only_sees_own_records(self):
+        Attendance.objects.create(
+            user=self.member, attendance_type='MEMBER',
+            date=self.get_today_str(), check_in='09:00:00', marked_by=self.staff,
+        )
+        other_member = make_user('other@gym.com', role=User.Role.MEMBER, first_name='Other', last_name='U')
+        Attendance.objects.create(
+            user=other_member, attendance_type='MEMBER',
+            date=self.get_today_str(), check_in='10:00:00', marked_by=self.staff,
+        )
+        self.auth_as(self.member)
+        r = self.client.get(self.list_url)
+        self.assertEqual(r.data['count'], 1)
+        self.assertEqual(r.data['results'][0]['user'], self.member.id)

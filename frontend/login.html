@@ -101,6 +101,7 @@
 </div>
 
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
   // Clear fields on load — prevents browser from silently pre-filling
   // a saved/generated password before the user interacts with the form.
@@ -111,8 +112,17 @@
     document.getElementById('password').value = '';
   });
 
-  document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  const loginRules = {
+    email: [
+      v => validate.required(v, 'Email'),
+      v => validate.email(v),
+    ],
+    password: [
+      v => validate.required(v, 'Password'),
+    ],
+  };
+
+  initFormValidation(document.getElementById('loginForm'), loginRules, async (form) => {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const errorBox = document.getElementById('errorBox');

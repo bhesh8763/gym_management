@@ -260,3 +260,166 @@ class WorkoutTemplateVersionTestCase(APITestCase):
         self.template.refresh_from_db()
         restored_day = self.template.days.first()
         self.assertEqual(restored_day.day_name, 'Original Day')
+
+
+from apps.workouts.models import Exercise, WorkoutCompletionLog, WorkoutDayExercise
+
+
+class ExerciseCRUDTestCase(APITestCase):
+    def setUp(self):
+        self.owner = make_user('owner_ex@gym.com', role=User.Role.OWNER)
+        self.trainer = make_user('trainer_ex@gym.com', role=User.Role.TRAINER)
+        self.member = make_user('member_ex@gym.com', role=User.Role.MEMBER)
+
+    def test_trainer_can_create_exercise(self):
+        self.client.force_authenticate(self.trainer)
+        r = self.client.post('/api/workouts/exercises/', {
+            'name': 'Bench Press', 'muscle_group': 'CHEST', 'exercise_type': 'STRENGTH',
+        })
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+    def test_owner_can_create_exercise(self):
+        self.client.force_authenticate(self.owner)
+        r = self.client.post('/api/workouts/exercises/', {
+            'name': 'Squat', 'muscle_group': 'LEGS', 'exercise_type': 'STRENGTH',
+        })
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+    def test_member_cannot_create_exercise(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post('/api/workouts/exercises/', {
+            'name': 'Deadlift', 'muscle_group': 'BACK', 'exercise_type': 'STRENGTH',
+        })
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unauthenticated_cannot_list_exercises(self):
+        r = self.client.get('/api/workouts/exercises/')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_member_can_list_exercises(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.get('/api/workouts/exercises/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+    def test_duplicate_exercise_name_rejected(self):
+        self.client.force_authenticate(self.trainer)
+        self.client.post('/api/workouts/exercises/', {
+            'name': 'Push Up', 'muscle_group': 'CHEST', 'exercise_type': 'STRENGTH',
+        })
+        r = self.client.post('/api/workouts/exercises/', {
+            'name': 'Push Up', 'muscle_group': 'CHEST', 'exercise_type': 'STRENGTH',
+        })
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class CompletionLogTestCase(APITestCase):
+    def setUp(self):
+        self.trainer = make_user('trainer_cl@gym.com', role=User.Role.TRAINER)
+        self.member = make_user('member_cl@gym.com', role=User.Role.MEMBER)
+        self.other_member = make_user('other_cl@gym.com', role=User.Role.MEMBER)
+        self.template = WorkoutTemplate.objects.create(
+            name='CL Test', trainer=self.trainer, status=WorkoutTemplate.Status.APPROVED,
+        )
+        self.day = WorkoutDay.objects.create(template=self.template, week_number=1, day_number=1)
+        self.assignment = WorkoutAssignment.objects.create(
+            template=self.template, member=self.member, start_date=date.today(),
+        )
+
+    def test_member_can_log_completion(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post('/api/workouts/completion-logs/', {
+            'assignment': self.assignment.id,
+            'workout_day': self.day.id,
+            'date': str(date.today()),
+            'status': 'COMPLETED',
+            'duration_minutes': 45,
+            'calories': 300,
+        })
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+    def test_member_cannot_log_for_other_members_assignment(self):
+        self.client.force_authenticate(self.other_member)
+        r = self.client.post('/api/workouts/completion-logs/', {
+            'assignment': self.assignment.id,
+            'workout_day': self.day.id,
+            'date': str(date.today()),
+            'status': 'COMPLETED',
+        })
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_member_can_list_own_logs(self):
+        WorkoutCompletionLog.objects.create(
+            assignment=self.assignment, workout_day=self.day,
+            date=date.today(), status='COMPLETED',
+        )
+        self.client.force_authenticate(self.member)
+        r = self.client.get('/api/workouts/completion-logs/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['count'], 1)
+
+
+class AssignmentActionTestCase(APITestCase):
+    def setUp(self):
+        self.trainer = make_user('trainer_act@gym.com', role=User.Role.TRAINER)
+        self.member = make_user('member_act@gym.com', role=User.Role.MEMBER)
+        self.other_member = make_user('other_act@gym.com', role=User.Role.MEMBER)
+        self.template = WorkoutTemplate.objects.create(
+            name='Action Test', trainer=self.trainer, status=WorkoutTemplate.Status.APPROVED,
+        )
+        self.assignment = WorkoutAssignment.objects.create(
+            template=self.template, member=self.member, start_date=date.today(),
+        )
+
+    def test_member_can_pause_active_assignment(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post(f'/api/workouts/assignments/{self.assignment.id}/pause/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.assignment.status, WorkoutAssignment.Status.PAUSED)
+
+    def test_member_can_resume_paused_assignment(self):
+        self.assignment.status = WorkoutAssignment.Status.PAUSED
+        self.assignment.save()
+        self.client.force_authenticate(self.member)
+        r = self.client.post(f'/api/workouts/assignments/{self.assignment.id}/resume/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.assignment.status, WorkoutAssignment.Status.ACTIVE)
+
+    def test_member_can_cancel_assignment(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post(f'/api/workouts/assignments/{self.assignment.id}/cancel/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.assignment.status, WorkoutAssignment.Status.CANCELLED)
+
+    def test_member_cannot_pause_other_members_assignment(self):
+        self.client.force_authenticate(self.other_member)
+        r = self.client.post(f'/api/workouts/assignments/{self.assignment.id}/pause/')
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_member_cannot_resume_active_assignment(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post(f'/api/workouts/assignments/{self.assignment.id}/resume/')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_member_cannot_pause_already_paused(self):
+        self.assignment.status = WorkoutAssignment.Status.PAUSED
+        self.assignment.save()
+        self.client.force_authenticate(self.member)
+        r = self.client.post(f'/api/workouts/assignments/{self.assignment.id}/pause/')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class UnauthenticatedWorkoutsTests(APITestCase):
+    def test_unauthenticated_exercises_returns_401(self):
+        r = self.client.get('/api/workouts/exercises/')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_unauthenticated_templates_returns_401(self):
+        r = self.client.get('/api/workouts/templates/')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_unauthenticated_assignments_returns_401(self):
+        r = self.client.get('/api/workouts/assignments/')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)

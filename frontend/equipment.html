@@ -104,47 +104,7 @@
 <div id="page-content">
 
 <div class="d-flex">
-  <div class="sidebar" id="sidebar">
-    <div class="list-group list-group-flush pt-2">
-      <div class="nav-section-label">Main</div>
-      <a href="dashboard.html" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a>
-      <a href="trainer-dashboard.html" class="list-group-item list-group-item-action" data-roles="TRAINER"><i class="bi bi-speedometer2"></i> <span>Trainer Dashboard</span></a>
-
-      <div class="nav-section-label">Members</div>
-      <a href="members.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-person-lines-fill"></i> <span>Members</span></a>
-      <a href="memberships.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-card-checklist"></i> <span>Memberships</span></a>
-      <a href="attendance.html" class="list-group-item list-group-item-action"><i class="bi bi-calendar-check"></i> <span>Attendance</span></a>
-      <a href="progress.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-graph-up"></i> <span>Progress Report</span></a>
-
-      <div class="nav-section-label">Staff Management</div>
-      <a href="staff.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-people"></i> <span>Staff</span></a>
-
-      <div class="nav-section-label" data-roles="OWNER,STAFF,TRAINER">Workout & Diet</div>
-      <a href="workouts.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-heart-pulse"></i> <span>Workouts</span></a>
-      <a href="diet.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF,TRAINER"><i class="bi bi-egg-fried"></i> <span>Diet</span></a>
-
-      <div class="nav-section-label">Payments</div>
-      <a href="payments.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-cash-coin"></i> <span>Payments</span></a>
-
-      <a href="my-attendance.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-fingerprint"></i> <span>My Attendance</span></a>
-      <a href="my-payments.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-cash-coin"></i> <span>My Payments</span></a>
-      <a href="my-memberships.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-card-checklist"></i> <span>My Memberships</span></a>
-      <a href="my-progress.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-graph-up"></i> <span>My Progress</span></a>
-      <a href="my-workouts.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-heart-pulse"></i> <span>My Workouts</span></a>
-      <a href="my-diet.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-egg-fried"></i> <span>My Diet</span></a>
-      <a href="my-locker.html" class="list-group-item list-group-item-action" data-roles="MEMBER"><i class="bi bi-lock"></i> <span>My Locker</span></a>
-
-      <div class="nav-section-label">Equipment</div>
-      <a href="lockers.html" class="list-group-item list-group-item-action" data-roles="OWNER,STAFF"><i class="bi bi-lock"></i> <span>Lockers</span></a>
-      <a href="equipment.html" class="list-group-item list-group-item-action active" data-roles="OWNER,STAFF"><i class="bi bi-tools"></i> <span>Equipment</span></a>
-
-      <div class="nav-section-label">Insights</div>
-      <a href="reports.html" class="list-group-item list-group-item-action" data-roles="OWNER"><i class="bi bi-bar-chart-line"></i> <span>Reports</span></a>
-
-      <div class="nav-section-label">System</div>
-      <a href="notifications.html" class="list-group-item list-group-item-action"><i class="bi bi-bell"></i> <span>Notifications</span></a>
-    </div>
-  </div>
+  <div class="sidebar" id="sidebar"></div>
 
   <div class="p-4 flex-grow-1">
     <h3 class="mb-3 fw-bold">Equipment Inventory</h3>
@@ -535,7 +495,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
+buildSidebar('equipment');
   if (!getAccessToken()) window.location.href = "login.html";
 
   restrictPastDates('purchaseDate', 'scheduledDate');

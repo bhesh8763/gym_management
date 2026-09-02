@@ -268,3 +268,176 @@ class RBACTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['user']['role'], 'MEMBER')
+
+
+class ChangePasswordTests(APITestCase):
+    """POST /api/auth/change-password/"""
+
+    url = reverse('auth-change-password')
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='cpuser@gym.com', password='OldPass@123',
+            first_name='CP', last_name='User', role='MEMBER',
+        )
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+    def test_successful_password_change(self):
+        r = self.client.put(self.url, {
+            'old_password': 'OldPass@123',
+            'new_password': 'NewPass@456',
+            'new_password2': 'NewPass@456',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewPass@456'))
+
+    def test_wrong_old_password_rejected(self):
+        r = self.client.put(self.url, {
+            'old_password': 'WrongPass',
+            'new_password': 'NewPass@456',
+            'new_password2': 'NewPass@456',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_mismatched_new_passwords_rejected(self):
+        r = self.client.put(self.url, {
+            'old_password': 'OldPass@123',
+            'new_password': 'NewPass@456',
+            'new_password2': 'DifferentPass@789',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_weak_new_password_rejected(self):
+        r = self.client.put(self.url, {
+            'old_password': 'OldPass@123',
+            'new_password': '123',
+            'new_password2': '123',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class ForgotPasswordTests(APITestCase):
+    """POST /api/auth/forgot-password/"""
+
+    url = reverse('auth-forgot-password')
+
+    def test_existing_email_returns_200(self):
+        User.objects.create_user(
+            email='reset@gym.com', password='Pass@123',
+            first_name='R', last_name='U',
+        )
+        r = self.client.post(self.url, {'email': 'reset@gym.com'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+    def test_nonexistent_email_also_returns_200(self):
+        """Always 200 to prevent email enumeration."""
+        r = self.client.post(self.url, {'email': 'nobody@gym.com'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+    def test_missing_email_returns_400(self):
+        r = self.client.post(self.url, {}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_inactive_user_also_returns_200(self):
+        """Inactive user should not leak info."""
+        User.objects.create_user(
+            email='inactive@gym.com', password='Pass@123',
+            first_name='I', last_name='U', is_active=False,
+        )
+        r = self.client.post(self.url, {'email': 'inactive@gym.com'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+
+class ResetPasswordTests(APITestCase):
+    """POST /api/auth/reset-password/"""
+
+    url = reverse('auth-reset-password')
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='rppass@gym.com', password='OldPass@123',
+            first_name='RP', last_name='User',
+        )
+        from apps.accounts.models import PasswordResetToken
+        self.token = PasswordResetToken.create_for_user(self.user)
+
+    def test_successful_reset(self):
+        r = self.client.post(self.url, {
+            'token': self.token.token,
+            'new_password': 'ResetPass@456',
+            'new_password2': 'ResetPass@456',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('ResetPass@456'))
+
+    def test_invalid_token_rejected(self):
+        r = self.client.post(self.url, {
+            'token': 'invalid-token',
+            'new_password': 'ResetPass@456',
+            'new_password2': 'ResetPass@456',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_used_token_rejected(self):
+        self.token.is_used = True
+        self.token.save()
+        r = self.client.post(self.url, {
+            'token': self.token.token,
+            'new_password': 'ResetPass@456',
+            'new_password2': 'ResetPass@456',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_mismatched_passwords_rejected(self):
+        r = self.client.post(self.url, {
+            'token': self.token.token,
+            'new_password': 'ResetPass@456',
+            'new_password2': 'DifferentPass@789',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_missing_token_returns_400(self):
+        r = self.client.post(self.url, {
+            'new_password': 'ResetPass@456',
+            'new_password2': 'ResetPass@456',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class UserModelTests(APITestCase):
+    def test_display_id_generation(self):
+        user = User.objects.create_user(
+            email='display@gym.com', password='Pass@123',
+            first_name='D', last_name='U', role='MEMBER',
+        )
+        self.assertIsNotNone(user.display_id)
+        self.assertTrue(user.display_id.startswith('MEM-'))
+
+    def test_full_name_with_middle_name(self):
+        user = User.objects.create_user(
+            email='full@gym.com', password='Pass@123',
+            first_name='First', last_name='Last',
+        )
+        user.middle_name = 'Middle'
+        user.save()
+        self.assertEqual(user.get_full_name(), 'First Middle Last')
+
+    def test_full_name_without_middle_name(self):
+        user = User.objects.create_user(
+            email='short@gym.com', password='Pass@123',
+            first_name='First', last_name='Last',
+        )
+        self.assertEqual(user.get_full_name(), 'First Last')
+
+    def test_role_properties(self):
+        owner = User.objects.create_user(email='o@g.com', password='p', first_name='O', last_name='O', role='OWNER')
+        staff = User.objects.create_user(email='s@g.com', password='p', first_name='S', last_name='S', role='STAFF')
+        trainer = User.objects.create_user(email='t@g.com', password='p', first_name='T', last_name='T', role='TRAINER')
+        member = User.objects.create_user(email='m@g.com', password='p', first_name='M', last_name='M', role='MEMBER')
+        self.assertTrue(owner.is_owner)
+        self.assertTrue(staff.is_gym_staff)
+        self.assertTrue(trainer.is_trainer)
+        self.assertTrue(member.is_member)
