@@ -62,8 +62,7 @@ class StaffProfileTests(StaffAPITestCase):
         self.auth_as(self.owner)
         r = self.client.post(self.profiles_url, {
             'user': self.trainer.id,
-            'department': 'FRONT_DESK',
-            'designation': 'Trainer',
+            'role': 'RECEPTIONIST',
             'joined_date': '2026-01-01',
             'salary': '25000.00',
         })
@@ -73,8 +72,7 @@ class StaffProfileTests(StaffAPITestCase):
         self.auth_as(self.owner)
         payload = {
             'user': self.trainer.id,
-            'department': 'FRONT_DESK',
-            'designation': 'Trainer',
+            'role': 'RECEPTIONIST',
             'joined_date': '2026-01-01',
             'salary': '25000.00',
         }
@@ -87,16 +85,16 @@ class StaffProfileTests(StaffAPITestCase):
     def test_member_cannot_create_profile(self):
         self.auth_as(self.member)
         r = self.client.post(self.profiles_url, {
-            'user': self.member.id, 'department': 'FRONT_DESK',
-            'designation': 'Test', 'joined_date': '2026-01-01',
+            'user': self.member.id, 'role': 'RECEPTIONIST',
+            'joined_date': '2026-01-01',
         })
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_only_staff_or_trainer_role_can_have_profile(self):
         self.auth_as(self.owner)
         r = self.client.post(self.profiles_url, {
-            'user': self.member.id, 'department': 'FRONT_DESK',
-            'designation': 'Test', 'joined_date': '2026-01-01',
+            'user': self.member.id, 'role': 'RECEPTIONIST',
+            'joined_date': '2026-01-01',
         })
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -106,8 +104,8 @@ class StaffCreateSerializerTests(StaffAPITestCase):
         self.auth_as(self.owner)
         r = self.client.post(self.profiles_url, {
             'email': 'newstaff@gym.com', 'first_name': 'New', 'last_name': 'Staff',
-            'password': 'StrongPass123!', 'department': 'ACCOUNTS',
-            'designation': 'Accountant', 'joined_date': '2026-06-01',
+            'password': 'StrongPass123!', 'role': 'GYM_KEEPER',
+            'joined_date': '2026-06-01',
         })
         self.assertEqual(r.status_code, status.HTTP_201_CREATED)
         user = User.objects.get(email='newstaff@gym.com')
@@ -129,7 +127,7 @@ class StaffProfileActionTests(StaffAPITestCase):
         self.auth_as(self.owner)
         r = self.client.post(self.profiles_url, {
             'email': 'actionstaff@gym.com', 'first_name': 'Action',
-            'last_name': 'Staff', 'password': 'StrongPass123!', 'department': 'FRONT_DESK',
+            'last_name': 'Staff', 'password': 'StrongPass123!', 'role': 'RECEPTIONIST',
         })
         self.profile_id = r.data['id']
 

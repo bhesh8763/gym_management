@@ -10,27 +10,28 @@ from django.db import models
 class StaffProfile(models.Model):
     """Profile for users with role=STAFF."""
 
-    class Department(models.TextChoices):
-        FRONT_DESK = 'FRONT_DESK', 'Front Desk'
-        ACCOUNTS = 'ACCOUNTS', 'Accounts'
-        MAINTENANCE = 'MAINTENANCE', 'Maintenance'
-        MANAGEMENT = 'MANAGEMENT', 'Management'
-        OTHER = 'OTHER', 'Other'
+    class Role(models.TextChoices):
+        RECEPTIONIST = 'RECEPTIONIST', 'Receptionist'
+        GYM_KEEPER = 'GYM_KEEPER', 'Gym Keeper'
+        TRAINER = 'TRAINER', 'Trainer'
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='staff_profile',
     )
-    department = models.CharField(
-        max_length=15, choices=Department.choices, default=Department.FRONT_DESK
+    role = models.CharField(
+        max_length=15, choices=Role.choices, default=Role.RECEPTIONIST
     )
-    designation = models.CharField(max_length=100, blank=True)
     joined_date = models.DateField(null=True, blank=True)
     salary = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True,
         validators=[MinValueValidator(Decimal('0'))],
     )
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=1, blank=True)
+    marital_status = models.CharField(max_length=15, blank=True)
+    nationality = models.CharField(max_length=100, blank=True)
     id_document = models.FileField(
         upload_to='staff/documents/', null=True, blank=True
     )
@@ -44,7 +45,7 @@ class StaffProfile(models.Model):
         verbose_name_plural = 'Staff Profiles'
 
     def __str__(self):
-        return f'{self.user.get_full_name()} — {self.department}'
+        return f'{self.user.get_full_name()} — {self.role}'
 
 
 class LeaveRequest(models.Model):

@@ -4,8 +4,8 @@ from .models import StaffProfile, LeaveRequest
 
 @admin.register(StaffProfile)
 class StaffProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'department', 'designation', 'joined_date', 'salary')
-    list_filter = ('department',)
+    list_display = ('user', 'role', 'joined_date', 'salary')
+    list_filter = ('role',)
     search_fields = ('user__email', 'user__first_name', 'user__last_name')
 
 

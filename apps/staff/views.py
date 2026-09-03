@@ -3,15 +3,15 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from apps.accounts.permissions import IsOwnerOrStaff, IsAnyStaffRole
+from apps.accounts.permissions import IsOwner, IsOwnerOrStaff, IsAnyStaffRole
 from .models import StaffProfile, LeaveRequest
 from .serializers import StaffProfileSerializer, StaffCreateSerializer, LeaveRequestSerializer
 
 
 class StaffProfileViewSet(viewsets.ModelViewSet):
-    """Owner/Staff manage staff profiles."""
+    """Owner manages staff profiles."""
     serializer_class = StaffProfileSerializer
-    permission_classes = [IsOwnerOrStaff]
+    permission_classes = [IsOwner]
     queryset = StaffProfile.objects.select_related('user').all()
 
     def get_serializer_class(self):
@@ -32,6 +32,43 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
             StaffProfileSerializer(profile).data,
             status=status.HTTP_201_CREATED,
         )
+
+    def update(self, request, *args, **kwargs):
+        """Handle User-owned fields (email, phone, profile_picture) before serializer validates."""
+        partial = kwargs.get('partial', False)
+        profile = self.get_object()
+        user = profile.user
+        user_fields_updated = []
+
+        # profile_picture lives on User
+        if 'profile_picture' in request.FILES:
+            user.profile_picture = request.FILES['profile_picture']
+            user_fields_updated.append('profile_picture')
+
+        # email lives on User
+        if 'email' in request.data and request.data['email'] != user.email:
+            user.email = request.data['email']
+            user_fields_updated.append('email')
+
+        # user_phone lives on User
+        if 'user_phone' in request.data:
+            new_phone = request.data['user_phone']
+            if new_phone != user.phone:
+                user.phone = new_phone
+                user_fields_updated.append('phone')
+
+        if user_fields_updated:
+            user.save(update_fields=user_fields_updated)
+
+        # Remove User-only fields from request data so serializer doesn't choke
+        mutable_data = request.data.copy() if hasattr(request.data, 'copy') else request.data
+        for field in ('email', 'user_phone', 'profile_picture'):
+            mutable_data.pop(field, None)
+
+        serializer = self.get_serializer(profile, data=mutable_data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(StaffProfileSerializer(profile, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):

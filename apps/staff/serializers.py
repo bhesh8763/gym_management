@@ -14,15 +14,26 @@ class StaffProfileSerializer(serializers.ModelSerializer):
     user_email = serializers.CharField(source='user.email', read_only=True)
     user_display_id = serializers.CharField(source='user.display_id', read_only=True)
     is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    user_phone = serializers.CharField(source='user.phone', read_only=True)
+    profile_picture_url = serializers.SerializerMethodField()
 
     class Meta:
         model = StaffProfile
         fields = [
-            'id', 'user', 'user_name', 'user_email', 'user_display_id', 'is_active', 'department',
-            'designation', 'joined_date', 'salary', 'id_document',
-            'notes', 'created_at', 'updated_at',
+            'id', 'user', 'user_name', 'user_email', 'user_display_id', 'is_active',
+            'user_phone', 'role', 'date_of_birth', 'gender', 'marital_status', 'nationality',
+            'joined_date', 'salary', 'id_document',
+            'notes', 'created_at', 'updated_at', 'profile_picture_url',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_profile_picture_url(self, obj):
+        if not obj.user.profile_picture:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.user.profile_picture.url)
+        return obj.user.profile_picture.url
 
     def validate_user(self, value):
         if value.role not in [User.Role.STAFF, User.Role.TRAINER]:
@@ -39,7 +50,7 @@ class StaffCreateSerializer(serializers.Serializer):
 
     Required user fields:  email, first_name, last_name, password
     Optional user fields:  phone
-    Optional profile fields: department, designation, joined_date, salary, notes
+    Optional profile fields: role, date_of_birth, gender, marital_status, nationality, joined_date, salary, notes
     """
     # User fields
     email = serializers.EmailField()
@@ -52,16 +63,26 @@ class StaffCreateSerializer(serializers.Serializer):
     )
 
     # Profile fields
-    department = serializers.ChoiceField(
-        choices=StaffProfile.Department.choices, required=False,
-        default=StaffProfile.Department.FRONT_DESK,
+    role = serializers.ChoiceField(
+        choices=StaffProfile.Role.choices, required=False,
+        default=StaffProfile.Role.RECEPTIONIST,
     )
-    designation = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    gender = serializers.CharField(max_length=1, required=False, allow_blank=True)
+    marital_status = serializers.CharField(max_length=15, required=False, allow_blank=True)
+    nationality = serializers.CharField(max_length=100, required=False, allow_blank=True)
     joined_date = serializers.DateField(required=False, allow_null=True)
     salary = serializers.DecimalField(
         max_digits=10, decimal_places=2, required=False, allow_null=True, min_value=Decimal('0'),
     )
     notes = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_phone(self, value):
+        if value and (not value.isdigit() or len(value) != 10):
+            raise serializers.ValidationError(
+                'Phone number must be exactly 10 digits.'
+            )
+        return value
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():

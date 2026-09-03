@@ -9,7 +9,275 @@
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <style>
-  /* Mobile: collapse dense tables into stacked cards below ~700px */
+  /* ==========================================================================
+     Staff Page — UI/UX Polish (scoped to this page only)
+     All tokens reference css/theme.css CSS variables — no new values invented.
+     ========================================================================== */
+
+  /* ── Section hierarchy ────────────────────────────────────────────────────── */
+  #staffProfilesSection,
+  #leaveRequestsSection {
+    padding-bottom: var(--sp-8);
+  }
+  #staffProfilesSection {
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: var(--sp-6);
+  }
+  #leaveRequestsSection {
+    padding-top: var(--sp-4);
+  }
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: var(--sp-8) 0 var(--sp-6);
+    opacity: 0.5;
+  }
+  .section-label {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: var(--sp-3);
+  }
+
+  /* ── Stat cards — consistent height & icon sizing ──────────────────────────── */
+  .stat-card {
+    min-height: 144px;
+    padding: var(--sp-5) var(--sp-4);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .stat-card .stat-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    font-size: 1.5rem;
+    margin-bottom: var(--sp-3);
+  }
+  .stat-card h3 {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+  .stat-card .text-muted.small {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: var(--sp-1);
+  }
+
+  /* ── Form field sizing/spacing in modals ───────────────────────────────────── */
+  /* Primary fields get larger hit area; related fields grouped tighter */
+  .modal-body .form-control,
+  .modal-body .form-select {
+    padding: 10px 14px;
+    font-size: var(--text-sm);
+    border-radius: var(--radius-md);
+  }
+  .modal-body .form-control.form-control-lg,
+  .modal-body .form-select.form-control-lg {
+    padding: 12px 16px;
+    font-size: var(--text-base);
+  }
+  /* Tighter grouping for name fields (First/Middle/Last) */
+  #profileForm .row.g-3 > .col-md-4:first-child,
+  #profileForm .row.g-3 > .col-md-4:nth-child(2),
+  #profileForm .row.g-3 > .col-md-4:nth-child(3) {
+    padding-right: var(--sp-2);
+    padding-left: var(--sp-2);
+  }
+  /* Password input-group alignment */
+  .input-group .form-control {
+    padding-right: var(--sp-3);
+  }
+  .input-group .btn {
+    padding: 8px 12px;
+    font-size: var(--text-sm);
+  }
+  .input-group .btn i {
+    font-size: 1rem;
+  }
+  /* Consistent label spacing */
+  .modal-body .form-label {
+    margin-bottom: var(--sp-1);
+    font-size: var(--text-sm);
+  }
+  /* Leave Request modal fields */
+  #leaveForm .form-label {
+    margin-bottom: var(--sp-1);
+  }
+  #leaveForm .row.g-3 > div {
+    margin-bottom: 0; /* let row gap handle spacing */
+  }
+  /* Leave type cards — consistent sizing */
+  .leave-type-card {
+    padding: var(--sp-4) var(--sp-3) !important;
+    border-radius: var(--radius-md) !important;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+  }
+  .leave-type-card i {
+    font-size: 2rem !important;
+    line-height: 1;
+  }
+  /* Duration preview card */
+  #leaveDurationPreview {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* ── Table density and readability ─────────────────────────────────────────── */
+  .table-responsive {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-card);
+    overflow: hidden;
+    background: var(--bg-card);
+  }
+  .table thead th {
+    background: var(--bg-topbar) !important;
+    color: rgba(255,255,255,0.85) !important;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 12px var(--sp-4);
+    border: none !important;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .table tbody td {
+    padding: 12px var(--sp-4);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-light) !important;
+    vertical-align: middle;
+  }
+  .table tbody tr:last-child td {
+    border-bottom: none !important;
+  }
+  .table-hover tbody tr:hover {
+    background: var(--brand-red-50);
+  }
+  /* Actions column — consistent button sizing & spacing */
+  /* manage-btn sized by its own classes (btn-sm + manage-btn); no overrides here */
+  /* Badges in tables — consistent with theme badge-status */
+  .table .badge {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+  }
+  .table .badge.bg-success,
+  .table .badge.bg-danger,
+  .table .badge.bg-warning,
+  .table .badge.bg-info,
+  .table .badge.bg-primary,
+  .table .badge.bg-secondary {
+    /* use theme's semantic badge colors */
+  }
+  /* Role badges — map to theme pill colors */
+  .table .badge.bg-primary,
+  .table .badge.bg-success,
+  .table .badge.bg-warning,
+  .table .badge.bg-info,
+  .table .badge.bg-secondary {
+    padding: 4px 10px;
+    font-size: var(--text-xs);
+    border-radius: var(--radius-full);
+    font-weight: 600;
+  }
+
+  /* ── Modal headers — consistent treatment ───────────────────────────────────── */
+  /* All staff modals get brand header (like Leave modal) */
+  #profileAddModal .modal-header,
+  #resetPasswordModal .modal-header,
+  #reviewModal .modal-header {
+    background: linear-gradient(135deg, var(--bg-topbar), #1a1b23);
+    border-bottom: 2px solid var(--brand-red);
+    color: #fff;
+    padding: var(--sp-4) var(--sp-5);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  #profileAddModal .modal-title,
+  #resetPasswordModal .modal-title,
+  #reviewModal .modal-title {
+    font-weight: 700;
+    font-size: var(--text-lg);
+    color: #fff !important;
+  }
+  #profileAddModal .btn-close,
+  #resetPasswordModal .btn-close,
+  #reviewModal .btn-close {
+    filter: invert(1);
+    opacity: 0.7;
+  }
+  #profileAddModal .btn-close:hover,
+  #resetPasswordModal .btn-close:hover,
+  #reviewModal .btn-close:hover {
+    opacity: 1;
+  }
+  /* Modal body/footer padding */
+  #profileAddModal .modal-body,
+  #resetPasswordModal .modal-body,
+  #reviewModal .modal-body,
+  #leaveModal .modal-body {
+    padding: var(--sp-5);
+  }
+  #profileAddModal .modal-footer,
+  #resetPasswordModal .modal-footer,
+  #reviewModal .modal-footer,
+  #leaveModal .modal-footer {
+    padding: var(--sp-4) var(--sp-5);
+    border-top: 1px solid var(--border-light);
+    background: var(--bg-card);
+  }
+
+
+
+  /* ── Bulk actions bar ───────────────────────────────────────────────────────── */
+  #staffBulkActions {
+    background: var(--bg-root);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md);
+    padding: var(--sp-3) var(--sp-4);
+    gap: var(--sp-3);
+  }
+  #staffBulkActions .btn {
+    font-size: var(--text-sm);
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  /* ── Pagination buttons ─────────────────────────────────────────────────────── */
+  .d-flex .btn-sm {
+    padding: 6px 12px;
+    font-size: var(--text-sm);
+    border-radius: var(--radius-md);
+  }
+
+  /* ── Leave type badge mapping (uses theme semantic colors) ─────────────────── */
+  /* Already handled by leaveTypeBadge() JS — ensure consistent rendering */
+  .leaveTypeBadge { /* JS injects these classes */
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* ── Mobile responsiveness — extend existing 700px breakpoint ───────────────── */
   @media (max-width: 700px) {
     #profileTable thead, #leaveTable thead { display: none; }
     #profileTable, #profileTable tbody, #profileTable tr, #profileTable td,
@@ -18,25 +286,178 @@
       width: 100%;
     }
     #profileTable tr, #leaveTable tr {
-      margin-bottom: 0.75rem;
-      border: 1px solid #dee2e6;
-      border-radius: 0.375rem;
-      padding: 0.5rem 0.75rem;
+      margin-bottom: var(--sp-4);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--bg-card);
+      box-shadow: var(--shadow-xs);
     }
     #profileTable td, #leaveTable td {
       border: none;
-      padding: 0.25rem 0;
+      padding: var(--sp-1) 0;
       text-align: left !important;
     }
     #profileTable td:not(:last-child)::before,
     #leaveTable td:not(:last-child)::before {
       content: attr(data-label);
       display: block;
-      font-size: 0.72rem;
+      font-size: var(--text-xs);
       font-weight: 600;
       text-transform: uppercase;
-      color: #6c757d;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 2px;
     }
+    /* Stack stat cards on mobile */
+    .row.mb-4.g-3 > .col-md-3,
+    #leaveStatsRow > .col-6 {
+      width: 100%;
+      max-width: 100%;
+    }
+    .row.mb-4.g-3,
+    #leaveStatsRow {
+      flex-direction: column;
+    }
+    /* Bulk actions bar stacks */
+    #staffBulkActions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--sp-2);
+    }
+    #staffBulkActions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+    /* Modal forms stack */
+    .modal-body .row.g-3 > div {
+      width: 100% !important;
+      max-width: 100% !important;
+      flex: 0 0 100% !important;
+    }
+    /* Leave type cards stack nicely */
+    #leaveTypeCards > div {
+      width: 50% !important;
+      max-width: 50% !important;
+    }
+    /* Table actions column — manage-btn full width on mobile card view */
+    .table td:last-child .manage-btn {
+      width: 100%;
+      height: auto;
+      padding: 8px 12px;
+      justify-content: center;
+    }
+    /* Section headers */
+    h3.fw-bold, h5.fw-bold {
+      font-size: var(--text-lg);
+    }
+  }
+
+  /* ── Dark mode support for scoped styles ────────────────────────────────────── */
+  [data-theme="dark"] {
+    /* Table sticky header in dark mode */
+    .table thead th {
+      background: var(--bg-topbar) !important;
+    }
+    .table tbody td {
+      color: var(--text-primary) !important;
+      border-bottom-color: var(--border-light) !important;
+    }
+    .table-hover tbody tr:hover {
+      background: var(--bg-hover) !important;
+    }
+    /* Bulk actions bar */
+    #staffBulkActions {
+      background: var(--bg-root) !important;
+      border-color: var(--border-light) !important;
+    }
+    /* Modal headers */
+    #profileAddModal .modal-header,
+    #resetPasswordModal .modal-header,
+    #reviewModal .modal-header {
+      background: linear-gradient(135deg, var(--bg-topbar), #1a1b23) !important;
+      border-bottom-color: var(--brand-red) !important;
+    }
+    /* Mobile card view */
+    #profileTable tr, #leaveTable tr {
+      background: var(--bg-card) !important;
+      border-color: var(--border-light) !important;
+      box-shadow: var(--shadow-xs) !important;
+    }
+    #profileTable td:not(:last-child)::before,
+    #leaveTable td:not(:last-child)::before {
+      color: var(--text-muted) !important;
+    }
+  }
+
+  /* ── Utility: ensure form controls respect theme in modals ──────────────────── */
+  .modal-content {
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+  }
+  .modal-content .form-control,
+  .modal-content .form-select {
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+  }
+  .modal-content .form-control:hover:not(:focus):not(:disabled),
+  .modal-content .form-select:hover:not(:focus):not(:disabled) {
+    border-color: var(--text-muted);
+  }
+  .modal-content .form-control:focus,
+  .modal-content .form-select:focus {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 3px rgba(230,57,70,0.1);
+    outline: none;
+  }
+  .modal-content .form-control::placeholder {
+    color: var(--text-muted);
+  }
+  .modal-content .input-group-text {
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-root);
+    color: var(--text-muted);
+  }
+  /* Ensure input-group buttons align */
+  .modal-content .input-group .btn {
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-root);
+    color: var(--text-secondary);
+  }
+  .modal-content .input-group .btn:hover {
+    border-color: var(--brand-red);
+    color: var(--brand-red);
+  }
+  .modal-content .input-group .btn:focus {
+    box-shadow: none;
+  }
+  .modal-content .input-group > .form-control:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .modal-content .input-group > .btn:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .modal-content .input-group > .form-control:not(:last-child),
+  .modal-content .input-group > .btn:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  /* Leave Request modal header already has bg-danger — keep it distinct */
+  #leaveModal .modal-header {
+    background: linear-gradient(135deg, var(--brand-red), var(--brand-red-dark)) !important;
+    border: none;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  #leaveModal .btn-close {
+    filter: invert(1);
   }
 </style>
 </head>
@@ -107,35 +528,36 @@
 
   <div class="p-4 flex-grow-1">
     <div data-roles="OWNER" id="staffProfilesSection">
+      <div class="section-label" aria-hidden="true">Staff Management</div>
       <h3 class="mb-3 fw-bold">Staff Profiles</h3>
 
       <!-- Staff stat cards -->
-      <div class="row mb-4 g-3">
+      <div class="row mb-4 g-3" role="list">
         <div class="col-md-3">
-          <div class="card stat-card h-100 shadow-sm">
+          <div class="card stat-card h-100" role="listitem">
             <div class="stat-icon icon-total"><i class="bi bi-people-fill"></i></div>
             <div class="text-muted small text-uppercase fw-semibold">Total Staff</div>
             <h3 id="statTotalStaff">-</h3>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="card stat-card h-100 shadow-sm">
+          <div class="card stat-card h-100" role="listitem">
             <div class="stat-icon icon-active"><i class="bi bi-person-check-fill"></i></div>
             <div class="text-muted small text-uppercase fw-semibold">Active</div>
             <h3 id="statActiveStaff">-</h3>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="card stat-card h-100 shadow-sm">
+          <div class="card stat-card h-100" role="listitem">
             <div class="stat-icon icon-advanced"><i class="bi bi-person-x-fill"></i></div>
             <div class="text-muted small text-uppercase fw-semibold">Deactivated</div>
             <h3 id="statDeactivatedStaff">-</h3>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="card stat-card h-100 shadow-sm">
+          <div class="card stat-card h-100" role="listitem">
             <div class="stat-icon icon-beginner"><i class="bi bi-diagram-3-fill"></i></div>
-            <div class="text-muted small text-uppercase fw-semibold">Departments</div>
+            <div class="text-muted small text-uppercase fw-semibold">Roles</div>
             <h3 id="statDepartments">-</h3>
           </div>
         </div>
@@ -158,33 +580,64 @@
             </div>
             <form id="profileForm" autocomplete="off">
               <div class="modal-body">
-                <div class="row g-3">
+                <!-- Section 1: Personal Info -->
+                <h6 class="text-uppercase text-secondary small fw-bold mb-2">Personal Info</h6>
+                <div class="row g-3 mb-3">
                   <div class="col-md-4">
                     <label class="form-label">First Name</label>
-                    <input type="text" id="firstName" class="form-control" autocomplete="off" required>
+                    <input type="text" id="firstName" class="form-control form-control-lg" autocomplete="off" required>
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Middle Name <span class="text-muted fw-normal">(optional)</span></label>
-                    <input type="text" id="middleName" class="form-control" autocomplete="off">
+                    <input type="text" id="middleName" class="form-control form-control-lg" autocomplete="off">
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Last Name</label>
-                    <input type="text" id="lastName" class="form-control" autocomplete="off" required>
+                    <input type="text" id="lastName" class="form-control form-control-lg" autocomplete="off" required>
                   </div>
 
                   <div class="col-md-6">
                     <label class="form-label">Email</label>
-                    <input type="email" id="email" class="form-control" autocomplete="off" required>
+                    <input type="email" id="email" class="form-control form-control-lg" autocomplete="off" required>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Phone</label>
-                    <input type="tel" id="phone" class="form-control" autocomplete="off" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
+                    <input type="tel" id="phone" class="form-control form-control-lg" autocomplete="off" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
                   </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Date of Birth</label>
+                    <input type="date" id="dob" class="form-control">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Gender</label>
+                    <select id="gender" class="form-select">
+                      <option value="">--</option><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Marital Status</label>
+                    <select id="maritalStatus" class="form-select">
+                      <option value="">--</option><option value="SINGLE">Single</option><option value="MARRIED">Married</option><option value="DIVORCED">Divorced</option><option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Nationality</label>
+                    <input type="text" id="nationality" class="form-control" autocomplete="off">
+                  </div>
+                  <div class="col-md-8">
+                    <label class="form-label">About Me</label>
+                    <textarea id="aboutMe" class="form-control" rows="2"></textarea>
+                  </div>
+                </div>
+                <hr class="section-divider my-3">
 
+                <!-- Section 2: Account -->
+                <h6 class="text-uppercase text-secondary small fw-bold mb-2">Account</h6>
+                <div class="row g-3 mb-3">
                   <div class="col-md-6">
                     <label class="form-label">Password</label>
                     <div class="input-group">
-                      <input type="password" id="password" class="form-control" autocomplete="new-password" required>
+                      <input type="password" id="password" class="form-control form-control-lg" autocomplete="new-password" required>
                       <button type="button" class="btn btn-outline-secondary" id="generatePasswordBtn" onclick="generateStaffPassword()" title="Generate a random password">
                         <i class="bi bi-shuffle"></i> Generate
                       </button>
@@ -194,21 +647,21 @@
                     </div>
                     <div class="form-text">Click Generate for a random secure password, then the eye icon to reveal and share it.</div>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Department</label>
+                </div>
+                <hr class="section-divider my-3">
+
+                <!-- Section 3: Employment Details -->
+                <h6 class="text-uppercase text-secondary small fw-bold mb-2">Employment Details</h6>
+                <div class="row g-3 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Role</label>
                     <select id="department" class="form-select" required>
-                      <option value="FRONT_DESK">Front Desk</option>
-                      <option value="ACCOUNTS">Accounts</option>
-                      <option value="MAINTENANCE">Maintenance</option>
-                      <option value="MANAGEMENT">Management</option>
-                      <option value="OTHER">Other</option>
+                      <option value="RECEPTIONIST">Receptionist</option>
+                      <option value="GYM_KEEPER">Gym Keeper</option>
+                      <option value="TRAINER">Trainer</option>
                     </select>
                   </div>
 
-                  <div class="col-md-4">
-                    <label class="form-label">Designation</label>
-                    <input type="text" id="designation" class="form-control" required>
-                  </div>
                   <div class="col-md-4">
                     <label class="form-label">Joined Date</label>
                     <input type="date" id="joinedDate" class="form-control" required>
@@ -232,20 +685,18 @@
       <!-- -- Staff: search / filter ------------------------------------- -->
       <div class="row g-2 mb-2">
         <div class="col">
-          <input type="text" id="staffSearch" class="form-control" placeholder="Search name, email, or staff ID" oninput="onStaffSearchInput()">
+          <input type="text" id="staffSearch" class="form-control form-control-lg" placeholder="Search name, email, or staff ID" oninput="onStaffSearchInput()">
         </div>
         <div class="col-auto">
-          <select id="staffDeptFilter" class="form-select" onchange="renderStaffPage(1)">
-            <option value="">All Departments</option>
-            <option value="FRONT_DESK">Front Desk</option>
-            <option value="ACCOUNTS">Accounts</option>
-            <option value="MAINTENANCE">Maintenance</option>
-            <option value="MANAGEMENT">Management</option>
-            <option value="OTHER">Other</option>
+          <select id="staffDeptFilter" class="form-select form-control-lg" onchange="renderStaffPage(1)">
+            <option value="">All Roles</option>
+            <option value="RECEPTIONIST">Receptionist</option>
+            <option value="GYM_KEEPER">Gym Keeper</option>
+            <option value="TRAINER">Trainer</option>
           </select>
         </div>
         <div class="col-auto">
-          <select id="staffStatusFilter" class="form-select" onchange="renderStaffPage(1)">
+          <select id="staffStatusFilter" class="form-select form-control-lg" onchange="renderStaffPage(1)">
             <option value="">All Statuses</option>
             <option value="active">Active</option>
             <option value="inactive">Deactivated</option>
@@ -261,7 +712,7 @@
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="d-flex align-items-center gap-2">
           <label class="form-label mb-0 small text-muted">Rows per page</label>
-          <select id="staffPageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderStaffPage(1)">
+          <select id="staffPageSize" class="form-select form-select-sm form-control-lg" style="width:auto;" onchange="renderStaffPage(1)">
             <option value="10">10</option>
             <option value="25">25</option>
             <option value="50">50</option>
@@ -269,10 +720,18 @@
         </div>
       </div>
 
+      <!-- Bulk actions bar (hidden until rows selected) -->
+      <div id="staffBulkActions" class="d-none align-items-center gap-2 mb-2 p-2 bg-light rounded border">
+        <span class="small text-muted" id="staffSelectedCount">0 selected</span>
+        <button class="btn btn-sm btn-outline-danger" onclick="bulkDeactivateStaff()">
+          <i class="bi bi-person-x"></i> Deactivate Selected
+        </button>
+      </div>
+
       <div class="table-responsive">
-        <table class="table table-bordered mb-2" id="profileTable">
+        <table class="table table-hover mb-2" id="profileTable">
           <thead>
-            <tr><th>Staff ID</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th><th>Joined</th><th class="text-end">Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
+            <tr><th><input type="checkbox" id="selectAllStaff" class="form-check-input" onclick="toggleSelectAllStaff()"></th><th>Staff ID</th><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th class="text-end">Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
           </thead>
           <tbody id="profileTableBody">
             <tr><td colspan="9" class="text-center text-muted py-4">Loading staff...</td></tr>
@@ -287,55 +746,14 @@
         </div>
       </div>
 
-      <!-- Edit Staff Profile Modal -->
-      <div class="modal fade" id="staffEditModal" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Edit Staff Profile</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="staffEditForm">
-              <div class="modal-body">
-                <input type="hidden" id="editStaffId">
-                <div class="mb-2">
-                  <label class="form-label">Department</label>
-                  <select id="editDepartment" class="form-select">
-                    <option value="FRONT_DESK">Front Desk</option>
-                    <option value="ACCOUNTS">Accounts</option>
-                    <option value="MAINTENANCE">Maintenance</option>
-                    <option value="MANAGEMENT">Management</option>
-                    <option value="OTHER">Other</option>
-                  </select>
-                </div>
-                <div class="mb-2">
-                  <label class="form-label">Designation</label>
-                  <input type="text" id="editDesignation" class="form-control" required>
-                </div>
-                <div class="mb-2">
-                  <label class="form-label">Joined Date</label>
-                  <input type="date" id="editJoinedDate" class="form-control" required>
-                </div>
-                <div class="mb-2">
-                  <label class="form-label">Salary</label>
-                  <input type="number" step="0.01" min="0" id="editSalary" class="form-control" required>
-                </div>
-                <div id="staffEditError" class="alert alert-danger d-none"></div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary" id="staffEditSubmitBtn">Save Changes</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
+      <!-- View/Edit Staff Profile — now handled by staff-detail.html -->
     </div>
 
-    <hr>
+    <hr class="section-divider" aria-hidden="true">
 
     <!-- -------------- LEAVE REQUESTS SECTION -------------- -->
     <div id="leaveRequestsSection">
+      <div class="section-label" aria-hidden="true">Leave Management</div>
 
       <!-- Section header -->
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -347,30 +765,30 @@
       </div>
 
       <!-- Quick-stats cards (staff sees own counts, owner sees all) -->
-      <div class="row g-3 mb-4" id="leaveStatsRow">
+      <div class="row g-3 mb-4" id="leaveStatsRow" role="list">
         <div class="col-6 col-md-3">
-          <div class="card stat-card h-100 shadow-sm">
+          <div class="card stat-card h-100" role="listitem">
             <div class="stat-icon icon-beginner"><i class="bi bi-hourglass-split"></i></div>
             <div class="text-muted small text-uppercase fw-semibold">Pending</div>
             <h3 id="statPending"></h3>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card stat-card h-100 shadow-sm">
+          <div class="card stat-card h-100" role="listitem">
             <div class="stat-icon icon-active"><i class="bi bi-check-circle"></i></div>
             <div class="text-muted small text-uppercase fw-semibold">Approved</div>
             <h3 id="statApproved"></h3>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card stat-card h-100 shadow-sm">
+          <div class="card stat-card h-100" role="listitem">
             <div class="stat-icon icon-advanced"><i class="bi bi-x-circle"></i></div>
             <div class="text-muted small text-uppercase fw-semibold">Rejected</div>
             <h3 id="statRejected"></h3>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card stat-card h-100 shadow-sm">
+          <div class="card stat-card h-100" role="listitem">
             <div class="stat-icon icon-total"><i class="bi bi-slash-circle"></i></div>
             <div class="text-muted small text-uppercase fw-semibold">Cancelled</div>
             <h3 id="statCancelled"></h3>
@@ -381,10 +799,10 @@
       <!-- -- Leave: search / filter ------------------------------------- -->
       <div class="row g-2 mb-2">
         <div class="col">
-          <input type="text" id="leaveSearch" class="form-control" placeholder="Search requester or reason" oninput="onLeaveSearchInput()">
+          <input type="text" id="leaveSearch" class="form-control form-control-lg" placeholder="Search requester or reason" oninput="onLeaveSearchInput()">
         </div>
         <div class="col-auto">
-          <select id="leaveStatusFilter" class="form-select" onchange="renderLeavePage(1)">
+          <select id="leaveStatusFilter" class="form-select form-control-lg" onchange="renderLeavePage(1)">
             <option value="">All Statuses</option>
             <option value="PENDING">Pending</option>
             <option value="APPROVED">Approved</option>
@@ -393,7 +811,7 @@
           </select>
         </div>
         <div class="col-auto">
-          <select id="leaveTypeFilter" class="form-select" onchange="renderLeavePage(1)">
+          <select id="leaveTypeFilter" class="form-select form-control-lg" onchange="renderLeavePage(1)">
             <option value="">All Types</option>
             <option value="SICK">Sick</option>
             <option value="CASUAL">Casual</option>
@@ -412,7 +830,7 @@
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="d-flex align-items-center gap-2">
           <label class="form-label mb-0 small text-muted">Rows per page</label>
-          <select id="leavePageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderLeavePage(1)">
+          <select id="leavePageSize" class="form-select form-select-sm form-control-lg" style="width:auto;" onchange="renderLeavePage(1)">
             <option value="10">10</option>
             <option value="25">25</option>
             <option value="50">50</option>
@@ -423,7 +841,7 @@
       <!-- Leave table -->
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-2" id="leaveTable">
-          <thead class="table-light">
+          <thead>
             <tr>
               <th>#</th>
               <th>Requester</th>
@@ -516,11 +934,11 @@
             <div class="row g-3 mb-3">
               <div class="col-md-5">
                 <label class="form-label fw-semibold">Start Date</label>
-                <input type="date" id="startDate" class="form-control" required>
+                <input type="date" id="startDate" class="form-control form-control-lg" required>
               </div>
               <div class="col-md-5">
                 <label class="form-label fw-semibold">End Date</label>
-                <input type="date" id="endDate" class="form-control" required>
+                <input type="date" id="endDate" class="form-control form-control-lg" required>
               </div>
               <div class="col-md-2 d-flex flex-column justify-content-end">
                 <div class="card border-0 bg-light text-center py-2">
@@ -533,7 +951,7 @@
             <!-- Reason -->
             <div class="mb-3">
               <label class="form-label fw-semibold">Reason</label>
-              <textarea id="reason" class="form-control" rows="3"
+              <textarea id="reason" class="form-control form-control-lg" rows="3"
                         placeholder="Briefly describe your reason for leave..." required></textarea>
             </div>
 
@@ -565,7 +983,7 @@
             <p class="text-muted small mb-3">Setting a new password for <strong id="resetPasswordStaffName"></strong>.</p>
             <label class="form-label">New Password</label>
             <div class="input-group">
-              <input type="password" id="resetPasswordField" class="form-control" autocomplete="new-password" required>
+              <input type="password" id="resetPasswordField" class="form-control form-control-lg" autocomplete="new-password" required>
               <button type="button" class="btn btn-outline-secondary" onclick="generateStaffPassword('resetPasswordField')" title="Generate a random password">
                 <i class="bi bi-shuffle"></i> Generate
               </button>
@@ -670,13 +1088,13 @@ buildSidebar('staff');
             </span>`;
   }
 
-  function departmentBadge(dept) {
+  function roleBadge(role) {
     const map = {
-      FRONT_DESK: 'primary', ACCOUNTS: 'success',
-      MAINTENANCE: 'warning text-dark', MANAGEMENT: 'info text-dark', OTHER: 'secondary',
+      RECEPTIONIST: 'primary', GYM_KEEPER: 'success',
+      TRAINER: 'info text-dark',
     };
-    const label = dept ? dept.replace('_', ' ') : '-';
-    return `<span class="badge bg-${map[dept] || 'secondary'}">${label}</span>`;
+    const label = role ? role.replace('_', ' ') : '-';
+    return `<span class="badge bg-${map[role] || 'secondary'}">${label}</span>`;
   }
 
   function formatSalary(value) {
@@ -703,10 +1121,10 @@ buildSidebar('staff');
   }
 
   function exportStaffCsv() {
-    const header = ['Staff ID', 'Name', 'Email', 'Department', 'Designation', 'Joined', 'Salary', 'Status'];
+    const header = ['Staff ID', 'Name', 'Email', 'Role', 'Joined', 'Salary', 'Status'];
     const rows = staffFilteredCache.map(row => [
       row.user_display_id || row.id, row.user_name, row.user_email,
-      row.department, row.designation, row.joined_date, row.salary,
+      row.role, row.joined_date, row.salary,
       row.is_active ? 'Active' : 'Deactivated',
     ]);
     downloadCsv('staff.csv', [header, ...rows]);
@@ -745,12 +1163,12 @@ buildSidebar('staff');
     const total = staffCache.length;
     const active = staffCache.filter(s => s.is_active).length;
     const deactivated = total - active;
-    const departments = new Set(staffCache.map(s => s.department)).size;
+    const roles = new Set(staffCache.map(s => s.role)).size;
 
     document.getElementById('statTotalStaff').textContent = total;
     document.getElementById('statActiveStaff').textContent = active;
     document.getElementById('statDeactivatedStaff').textContent = deactivated;
-    document.getElementById('statDepartments').textContent = departments;
+    document.getElementById('statDepartments').textContent = roles;
 
     renderStaffPage(1);
   }
@@ -766,7 +1184,7 @@ buildSidebar('staff');
         (row.user_name || '').toLowerCase().includes(search) ||
         (row.user_email || '').toLowerCase().includes(search) ||
         idStr.includes(search);
-      const matchesDept = !deptFilter || row.department === deptFilter;
+      const matchesDept = !deptFilter || row.role === deptFilter;
       const matchesStatus = !statusFilter ||
         (statusFilter === 'active' ? row.is_active : !row.is_active);
       return matchesSearch && matchesDept && matchesStatus;
@@ -779,6 +1197,9 @@ buildSidebar('staff');
     const pageRows = staffFilteredCache.slice(start, start + pageSize);
 
     const tbody = document.getElementById('profileTableBody');
+    // Update bulk action bar
+    updateBulkBar();
+
     if (pageRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No staff found for this filter.</td></tr>`;
     } else {
@@ -791,6 +1212,7 @@ buildSidebar('staff');
           : `<button class="btn btn-sm btn-outline-success" onclick="toggleStaffActive(${row.id}, true)" title="Activate"><i class="bi bi-person-check"></i></button>`;
         return `
       <tr>
+        <td><input type="checkbox" class="form-check-input staff-row-cb" value="${row.id}" onchange="updateBulkBar()"></td>
         <td data-label="Staff ID">${row.user_display_id || row.id}</td>
         <td data-label="Name">
           <div class="d-flex align-items-center gap-2">
@@ -799,15 +1221,14 @@ buildSidebar('staff');
           </div>
         </td>
         <td data-label="Email">${row.user_email}</td>
-        <td data-label="Department">${departmentBadge(row.department)}</td>
-        <td data-label="Designation">${row.designation}</td>
+        <td data-label="Role">${roleBadge(row.role)}</td>
         <td data-label="Joined">${row.joined_date}</td>
         <td data-label="Salary" class="text-end">${formatSalary(row.salary)}</td>
         <td data-label="Status">${statusBadge}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary" onclick="openStaffEdit(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-outline-warning" onclick="openResetPassword(${row.id}, '${(row.user_name || '').replace(/'/g, "\\'")}')" title="Reset Password"><i class="bi bi-key"></i></button>
-          ${toggleBtn}
+          <button class="manage-btn btn btn-sm" onclick="window.location.href='staff-detail.html?id='+${row.id}">
+            Manage
+          </button>
         </td>
       </tr>`;
       }).join('');
@@ -820,61 +1241,53 @@ buildSidebar('staff');
     document.getElementById('nextStaffPageBtn').disabled = currentStaffPage === totalPages;
   }
 
-  function openStaffEdit(id) {
-    const row = staffCache.find(p => p.id === id);
-    if (!row) return;
-    document.getElementById('editStaffId').value = row.id;
-    document.getElementById('editDepartment').value = row.department;
-    document.getElementById('editDesignation').value = row.designation || '';
-    document.getElementById('editJoinedDate').value = row.joined_date || '';
-    document.getElementById('editSalary').value = row.salary || '';
-    document.getElementById('staffEditError').classList.add('d-none');
-    new bootstrap.Modal(document.getElementById('staffEditModal')).show();
+  // openStaffView, openStaffEdit, and closeStaffEditModalAndRefresh replaced by staff-detail.html
+  function openStaffManage(id) {
+    window.location.href = 'staff-detail.html?id=' + id;
   }
 
-  function closeStaffEditModalAndRefresh() {
-    try {
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('staffEditModal')).hide();
-    } catch (e) {
-      console.error('Could not close Edit Staff modal:', e);
+  // --- Bulk selection --------------------------------------------------------
+  function toggleSelectAllStaff() {
+    const checked = document.getElementById('selectAllStaff').checked;
+    document.querySelectorAll('.staff-row-cb').forEach(cb => cb.checked = checked);
+    updateBulkBar();
+  }
+
+  function updateBulkBar() {
+    const selected = document.querySelectorAll('.staff-row-cb:checked');
+    const bar = document.getElementById('staffBulkActions');
+    const countEl = document.getElementById('staffSelectedCount');
+    if (selected.length > 0) {
+      bar.classList.remove('d-none');
+      bar.classList.add('d-flex');
+      countEl.textContent = selected.length + ' selected';
+    } else {
+      bar.classList.add('d-none');
+      bar.classList.remove('d-flex');
     }
+    // Sync select-all checkbox state
+    const allCbs = document.querySelectorAll('.staff-row-cb');
+    const selectAll = document.getElementById('selectAllStaff');
+    if (allCbs.length > 0) {
+      selectAll.checked = allCbs.length === selected.length;
+      selectAll.indeterminate = selected.length > 0 && selected.length < allCbs.length;
+    }
+  }
+
+  async function bulkDeactivateStaff() {
+    const selected = document.querySelectorAll('.staff-row-cb:checked');
+    if (!selected.length) return;
+    const ids = Array.from(selected).map(cb => parseInt(cb.value));
+    if (!(await confirmAction(`Deactivate ${ids.length} staff member(s)?`, { confirmText: 'Deactivate', variant: 'warning', icon: 'bi-person-x' }))) return;
+    let successCount = 0;
+    for (const id of ids) {
+      const res = await apiRequest(`/staff/profiles/${id}/deactivate/`, { method: 'POST' });
+      if (res && res.ok) successCount++;
+    }
+    document.getElementById('selectAllStaff').checked = false;
     loadProfiles();
-  }
-
-  document.getElementById('staffEditForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('staffEditSubmitBtn');
-    if (btn) btn.disabled = true;
-    try {
-      const id = document.getElementById('editStaffId').value;
-      const errorBox = document.getElementById('staffEditError');
-      errorBox.classList.add('d-none');
-      const payload = {
-        department: document.getElementById('editDepartment').value,
-        designation: document.getElementById('editDesignation').value,
-        joined_date: document.getElementById('editJoinedDate').value,
-        salary: document.getElementById('editSalary').value,
-      };
-      const res = await apiRequest(`/staff/profiles/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
-      if (!res) {
-        alert('Update request failed to send. Check your connection or session.');
-        return;
-      }
-      if (res.ok) {
-        closeStaffEditModalAndRefresh();
-        showToast('Staff profile updated.');
-      } else {
-        const err = await res.json();
-        errorBox.textContent = formatApiError(err);
-        errorBox.classList.remove('d-none');
-      }
-    } catch (err) {
-      console.error('Staff update failed:', err);
-      alert('Something went wrong updating this staff member: ' + err.message);
-    } finally {
-      if (btn) btn.disabled = false;
-    }
-  });
+    showToast(`${successCount} staff member(s) deactivated.`);
+  }  // Staff edit form submission moved to staff-detail.html
 
   async function toggleStaffActive(id, activate) {
     const verb = activate ? 'reactivate' : 'deactivate';
@@ -948,10 +1361,14 @@ buildSidebar('staff');
         email: document.getElementById('email').value,
         phone: document.getElementById('phone').value,
         password: document.getElementById('password').value,
-        department: document.getElementById('department').value,
-        designation: document.getElementById('designation').value,
+        role: document.getElementById('department').value,
         joined_date: document.getElementById('joinedDate').value,
         salary: document.getElementById('salary').value,
+        date_of_birth: document.getElementById('dob').value || null,
+        gender: document.getElementById('gender').value || null,
+        marital_status: document.getElementById('maritalStatus').value || null,
+        nationality: document.getElementById('nationality').value || null,
+        notes: document.getElementById('aboutMe').value || null,
       };
       const res = await apiRequest('/staff/profiles/', { method: 'POST', body: JSON.stringify(payload) });
       if (!res) {

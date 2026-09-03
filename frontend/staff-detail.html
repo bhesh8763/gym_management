@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Profile - FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    .stat-mini{background:#fff;border-radius:12px;padding:1rem;box-shadow:0 2px 10px rgba(0,0,0,.05);text-align:center}
+    .stat-mini .stat-icon-sm{width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;margin-bottom:.5rem}
+    .stat-mini .stat-val{font-size:1.5rem;font-weight:800;color:#1a1a2e;line-height:1}
+    .stat-mini .stat-lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;font-weight:600;margin-top:4px}
+    .info-card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;margin-bottom:1.5rem}
+    .info-card-header{padding:1rem 1.25rem;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
+    .info-card-header h6{margin:0;font-weight:700;font-size:.9rem;color:#1a1a2e;display:flex;align-items:center;gap:.5rem}
+    .info-card-header h6 i{color:var(--brand-red)}
+    .info-card-body{padding:1.25rem}
+    .edit-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1050;display:none;align-items:center;justify-content:center;overflow-y:auto}
+    .edit-overlay.show{display:flex}
+    .edit-panel{background:#fff;border-radius:16px;width:90%;max-width:700px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);scrollbar-width:none;-ms-overflow-style:none;scrollbar-color:transparent transparent}
+    .edit-panel::-webkit-scrollbar{width:0;height:0;background:transparent}
+    .edit-panel-header{padding:1.25rem 1.5rem;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
+    .edit-panel-header h5{margin:0;font-weight:700;color:#1a1a2e}
+    .edit-panel-body{padding:1.5rem}
+    .edit-panel-footer{padding:1rem 1.5rem;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;gap:.5rem}
+    .photo-upload-ring{width:88px;height:88px;border-radius:50%;overflow:hidden;cursor:pointer;position:relative;flex-shrink:0;border:3px solid #e5e7eb;transition:border-color .2s;}
+    .photo-upload-ring:hover{border-color:var(--brand-red);}
+    .photo-upload-ring:hover .photo-upload-overlay{opacity:1;}
+    .photo-upload-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:.6rem;font-weight:600;opacity:0;transition:opacity .2s;text-align:center;gap:2px;}
+    .empty-state{text-align:center;padding:2rem 1rem;color:#9ca3af}
+    .empty-state i{font-size:2rem;display:block;margin-bottom:.5rem;color:#d1d5db}
+    .empty-state p{margin:0;font-size:.85rem}
+    .tab-btn{padding:.5rem 1.25rem;font-size:.85rem;font-weight:600;color:#6b7280;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .15s;}
+    .tab-btn.active{color:var(--brand-red);border-bottom-color:var(--brand-red);}
+    .tab-btn:hover{color:#1a1a2e;}
+    @media(max-width:1024px){.profile-grid{grid-template-columns:1fr!important}}
+    @media(max-width:768px){.stat-row{grid-template-columns:repeat(2,1fr)!important}.detail-grid{grid-template-columns:1fr!important}}
+  </style>
+</head>
+<body data-allowed-roles="OWNER">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta"><div class="profile-name" id="profileName">—</div><div class="profile-role" id="profileRole">—</div></span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content"><div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="flex-grow-1" style="padding:1.5rem;max-width:1400px;overflow-y:auto;">
+    <div id="profileLoading" style="display:flex;align-items:center;justify-content:center;min-height:60vh;color:#9ca3af;gap:.75rem;">
+      <div class="skeleton-avatar lg mx-auto mb-3"></div>
+      <div class="skeleton-text mx-auto" style="width:180px;margin-bottom:6px;"></div>
+      <div class="skeleton-text mx-auto" style="width:120px;"></div>
+    </div>
+    <div id="profileContent" style="display:none;"></div>
+  </div>
+</div></div>
+
+<!-- Edit Overlay -->
+<div class="edit-overlay" id="editOverlay">
+  <div class="edit-panel">
+    <div class="edit-panel-header">
+      <h5><i class="bi bi-pencil me-2" style="color:var(--brand-red);"></i>Edit Staff Profile</h5>
+      <button onclick="closeEdit()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9ca3af;">&times;</button>
+    </div>
+    <div class="edit-panel-body">
+      <div id="editError" style="background:#fee2e2;color:#991b1b;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;display:none;"></div>
+      <div id="editSuccess" style="background:#dcfce7;color:#166534;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;display:none;">Profile updated successfully!</div>
+      <form id="editForm">
+        <!-- Photo upload -->
+        <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid #f3f4f6;">
+          <div class="photo-upload-ring" onclick="document.getElementById('photoInput').click();" title="Click to change photo">
+            <div id="editPhotoPreview" style="width:100%;height:100%;background:linear-gradient(135deg,var(--brand-red),#ff6b6b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;font-weight:700;"></div>
+            <div class="photo-upload-overlay"><i class="bi bi-camera" style="font-size:1.2rem;"></i>Change</div>
+          </div>
+          <div>
+            <div style="font-weight:600;color:#1f2937;font-size:.9rem;">Profile Photo</div>
+            <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">JPG, PNG or WEBP - max 5 MB</div>
+            <button type="button" onclick="document.getElementById('photoInput').click();"
+              style="margin-top:.5rem;font-size:.75rem;font-weight:600;color:var(--brand-red);background:none;border:none;cursor:pointer;padding:0;">
+              <i class="bi bi-upload me-1"></i>Upload new photo
+            </button>
+          </div>
+          <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="previewPhoto(this)">
+        </div>
+        <!-- Personal fields -->
+        <div style="font-size:.75rem;font-weight:600;color:#6b7280;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.05em;">Personal Information</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div style="grid-column:1/-1;">
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Full Name</label>
+            <input type="text" id="editFullName" class="form-control form-control-sm" readonly style="background:#f9fafb;color:#6b7280;">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Email</label>
+            <input type="email" id="editEmail" class="form-control form-control-sm" required>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Phone</label>
+            <input type="tel" id="editPhone" class="form-control form-control-sm" maxlength="10" inputmode="numeric">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Date of Birth</label>
+            <input type="date" id="editDob" class="form-control form-control-sm">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Gender</label>
+            <select id="editGender" class="form-select form-select-sm">
+              <option value="">--</option><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Marital Status</label>
+            <select id="editMaritalStatus" class="form-select form-select-sm">
+              <option value="">--</option><option value="SINGLE">Single</option><option value="MARRIED">Married</option><option value="DIVORCED">Divorced</option><option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Nationality</label>
+            <input type="text" id="editNationality" class="form-control form-control-sm">
+          </div>
+          <div style="grid-column:1/-1;">
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">About Me</label>
+            <textarea id="editNotes" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+        </div>
+        <hr style="margin:1rem 0;border-color:#f3f4f6;">
+        <div style="font-size:.75rem;font-weight:600;color:#6b7280;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.05em;">Employment</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Role</label>
+            <select id="editDepartment" class="form-select form-select-sm">
+              <option value="RECEPTIONIST">Receptionist</option>
+              <option value="GYM_KEEPER">Gym Keeper</option>
+              <option value="TRAINER">Trainer</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Joined Date</label>
+            <input type="date" id="editJoinedDate" class="form-control form-control-sm">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Salary</label>
+            <input type="number" step="0.01" min="0" id="editSalary" class="form-control form-control-sm">
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="edit-panel-footer">
+      <button onclick="closeEdit()" class="btn btn-secondary btn-sm" style="padding:.5rem 1.25rem;border-radius:8px;">Cancel</button>
+      <button onclick="saveEdit()" id="editSaveBtn" class="btn btn-primary btn-sm" style="padding:.5rem 1.25rem;border-radius:8px;background:var(--brand-red);border-color:var(--brand-red);">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-key me-2"></i>Reset Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="resetPasswordForm" autocomplete="off">
+        <div class="modal-body">
+          <input type="hidden" id="resetPasswordStaffId">
+          <p class="text-muted small mb-3">Setting a new password for <strong id="resetPasswordStaffName"></strong>.</p>
+          <label class="form-label">New Password</label>
+          <div class="input-group">
+            <input type="password" id="resetPasswordField" class="form-control form-control-lg" autocomplete="new-password" required>
+            <button type="button" class="btn btn-outline-secondary" onclick="generatePassword('resetPasswordField')" title="Generate a random password">
+              <i class="bi bi-shuffle"></i> Generate
+            </button>
+            <button type="button" class="btn btn-outline-secondary toggle-password" data-target="resetPasswordField" tabindex="-1">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+          <div class="form-text">Share this with the staff member directly – it won't be shown again after you close this window.</div>
+          <div id="resetPasswordError" class="alert alert-danger d-none mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning" id="resetPasswordSubmitBtn"><i class="bi bi-key me-1"></i> Set New Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+buildSidebar('staff');
+if (!getAccessToken()) window.location.href = 'login.html';
+
+var params = new URLSearchParams(window.location.search);
+var staffId = params.get('id');
+var profileData = null;
+var currentTab = 'personal';
+
+function showToast(message, variant) {
+  // Simple alert fallback for this page
+  if (variant === 'error') { alert('Error: ' + message); } else { /* silent success */ }
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  renderDetail();
+}
+
+// ── Load Profile ───────────────────────────────────────────────────────
+async function loadProfile() {
+  if (!staffId) { window.location.href = 'staff.html'; return; }
+  var res = await apiRequest('/staff/profiles/' + staffId + '/');
+  if (!res || !res.ok) {
+    document.getElementById('profileLoading').innerHTML =
+      '<div style="text-align:center;color:#dc2626;"><i class="bi bi-exclamation-circle" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>Could not load staff profile.</div>';
+    return;
+  }
+  var d = await res.json();
+  profileData = d;
+  document.getElementById('profileLoading').style.display = 'none';
+  document.getElementById('profileContent').style.display = 'block';
+  document.title = (d.user_name || 'Staff') + ' - FitCore';
+  renderDetail();
+}
+
+// ── Render Detail ──────────────────────────────────────────────────────
+function renderDetail() {
+  var d = profileData;
+  if (!d) return;
+  var c = document.getElementById('profileContent');
+  var av = d.profile_picture_url ? '<img src="' + d.profile_picture_url + '" style="width:100%;height:100%;object-fit:cover;">' : (d.user_name || '?').charAt(0).toUpperCase();
+  var st = d.is_active ? '<span style="background:#dcfce7;color:#166534;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Active</span>' : '<span style="background:#fee2e2;color:#991b1b;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Deactivated</span>';
+  var jd = d.joined_date ? new Date(d.joined_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
+  var roleLabel = d.role ? d.role.replace('_', ' ') : '--';
+  var salary = d.salary ? parseFloat(d.salary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '--';
+  var created = d.created_at ? new Date(d.created_at).toLocaleString() : '--';
+  var updated = d.updated_at ? new Date(d.updated_at).toLocaleString() : '--';
+
+  // ── Header ──
+  var html =
+    '<div class="info-card" style="border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:1.5rem 2rem;display:flex;align-items:center;gap:1.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">' +
+    '<a href="staff.html" style="background:none;border:2px solid #e5e7eb;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;text-decoration:none;flex-shrink:0;"><i class="bi bi-arrow-left"></i></a>' +
+    '<div style="width:72px;height:72px;border-radius:14px;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,var(--brand-red),#ff6b6b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem;font-weight:700;">' + av + '</div>' +
+    '<div style="flex:1;min-width:200px;"><h2 style="margin:0;font-weight:700;font-size:1.4rem;color:#1a1a2e;">' + (d.user_name || '--') + '</h2>' +
+    '<div style="display:flex;align-items:center;gap:1rem;margin-top:.3rem;flex-wrap:wrap;">' +
+    '<span style="background:#f3f4f6;padding:2px 10px;border-radius:6px;font-weight:600;color:#374151;font-size:.8rem;">' + (d.user_display_id || 'STF-' + d.id) + '</span>' +
+    '<span style="font-size:.85rem;color:#6b7280;">' + (d.user_email || '') + '</span>' +
+    '<span style="font-size:.85rem;color:#6b7280;"><i class="bi bi-person-badge me-1"></i>' + roleLabel + '</span>' +
+    '<span style="font-size:.85rem;color:#6b7280;">Joined ' + jd + '</span>' +
+    st + '</div></div>' +
+    '<div style="display:flex;gap:.5rem;flex-shrink:0;">' +
+    '<button class="btn btn-primary btn-sm" onclick="openEdit()" style="border-radius:10px;padding:.5rem 1rem;font-weight:600;font-size:.85rem;background:var(--brand-red);border-color:var(--brand-red);"><i class="bi bi-pencil me-1"></i> Edit</button>' +
+    '<div class="dropdown">' +
+    '<button class="btn btn-outline-secondary btn-sm" style="border-radius:10px;padding:.5rem .75rem;font-size:1.1rem;line-height:1;" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots-vertical"></i></button>' +
+    '<ul class="dropdown-menu dropdown-menu-end" style="min-width:200px;">' +
+    '<li><button class="dropdown-item" onclick="openResetPassword(' + d.id + ', \'' + (d.user_name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-key me-2"></i>Reset Password</button></li>' +
+    '<li><hr class="dropdown-divider"></li>' +
+    '<li><button class="dropdown-item text-danger" onclick="toggleActive(' + d.id + ', ' + !d.is_active + ')"><i class="bi bi-' + (d.is_active ? 'person-x' : 'person-check') + ' me-2"></i>' + (d.is_active ? 'Deactivate Staff' : 'Activate Staff') + '</button></li>' +
+    '</ul></div></div></div>';
+
+  // ── Stats row ──
+  html +=
+    '<div class="stat-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.5rem;">' +
+    '<div class="stat-mini"><div class="stat-icon-sm" style="background:#dbeafe;color:#2563eb;"><i class="bi bi-person-badge"></i></div><div class="stat-val" style="font-size:1rem;">' + roleLabel + '</div><div class="stat-lbl">Role</div></div>' +
+    '<div class="stat-mini"><div class="stat-icon-sm" style="background:#fef3c7;color:#d97706;"><i class="bi bi-cash-stack"></i></div><div class="stat-val" style="font-size:1rem;">NPR ' + salary + '</div><div class="stat-lbl">Salary</div></div>' +
+    '<div class="stat-mini"><div class="stat-icon-sm" style="background:#f3e8ff;color:#9333ea;"><i class="bi bi-calendar-check"></i></div><div class="stat-val" style="font-size:1rem;">' + jd + '</div><div class="stat-lbl">Joined</div></div>' +
+    '<div class="stat-mini"><div class="stat-icon-sm" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-' + (d.is_active ? 'person-check' : 'person-x') + '"></i></div><div class="stat-val" style="font-size:1rem;">' + (d.is_active ? 'Active' : 'Inactive') + '</div><div class="stat-lbl">Status</div></div>' +
+    '</div>';
+
+  // ── Tabs ──
+  html +=
+    '<div style="display:flex;gap:0;border-bottom:1px solid #e5e7eb;margin-bottom:1.25rem;">' +
+    '<button class="tab-btn' + (currentTab === 'personal' ? ' active' : '') + '" data-tab="personal" onclick="switchTab(\'personal\')"><i class="bi bi-person me-1"></i>Personal Information</button>' +
+    '<button class="tab-btn' + (currentTab === 'employment' ? ' active' : '') + '" data-tab="employment" onclick="switchTab(\'employment\')"><i class="bi bi-briefcase me-1"></i>Employment</button>' +
+    '</div>';
+
+  // ── Tab Content ──
+  html += '<div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;">';
+
+  if (currentTab === 'personal') {
+    html +=
+      '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-person"></i> Personal Info</h6><button onclick="openEdit()" style="background:none;border:none;color:var(--brand-red);cursor:pointer;font-size:.8rem;font-weight:600;"><i class="bi bi-pencil"></i></button></div><div class="info-card-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">' +
+      '<div style="grid-column:1/-1;"><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Full Name</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.user_name || '--') + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Email</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.user_email || '--') + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Phone</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.user_phone || '--') + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Date of Birth</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.date_of_birth || '--') + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Gender</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.gender || '--') + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Marital Status</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.marital_status || '--') + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Nationality</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.nationality || '--') + '</span></div>' +
+      '<div style="grid-column:1/-1;"><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">About Me</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.notes || '--') + '</span></div>' +
+      '</div></div></div>';
+  } else {
+    // Employment tab
+    html +=
+      '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-briefcase"></i> Employment Details</h6><button onclick="openEdit()" style="background:none;border:none;color:var(--brand-red);cursor:pointer;font-size:.8rem;font-weight:600;"><i class="bi bi-pencil"></i></button></div><div class="info-card-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Staff ID</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.user_display_id || '--') + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Role</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + roleLabel + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Joined Date</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + jd + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Salary</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">NPR ' + salary + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Status</label>' + st + '</div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">ID Document</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + (d.id_document ? '<a href="' + d.id_document + '" target="_blank" class="text-danger">View Document</a>' : '--') + '</span></div>' +
+      '</div></div></div>';
+
+    html +=
+      '<div class="info-card"><div class="info-card-header"><h6><i class="bi bi-clipboard-data"></i> System Info</h6></div><div class="info-card-body"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Profile Created</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + created + '</span></div>' +
+      '<div><label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:2px;">Last Updated</label><span style="font-size:.9rem;color:#1f2937;font-weight:500;">' + updated + '</span></div>' +
+      '</div></div></div>';
+  }
+
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+// ── Edit ───────────────────────────────────────────────────────────────
+function openEdit() {
+  if (!profileData) return;
+  var d = profileData;
+  // Photo preview
+  var preview = document.getElementById('editPhotoPreview');
+  if (d.profile_picture_url) {
+    preview.innerHTML = '<img src="' + d.profile_picture_url + '" style="width:100%;height:100%;object-fit:cover;">';
+    preview.style.cssText = '';
+  } else {
+    var initial = (d.user_name || '?').charAt(0).toUpperCase();
+    preview.innerHTML = initial;
+    preview.style.cssText = 'width:100%;height:100%;background:linear-gradient(135deg,var(--brand-red),#ff6b6b);display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;font-weight:700;';
+  }
+  document.getElementById('photoInput').value = '';
+  document.getElementById('editFullName').value = d.user_name || '';
+  document.getElementById('editEmail').value = d.user_email || '';
+  document.getElementById('editPhone').value = d.user_phone || '';
+  document.getElementById('editDob').value = d.date_of_birth || '';
+  document.getElementById('editGender').value = d.gender || '';
+  document.getElementById('editMaritalStatus').value = d.marital_status || '';
+  document.getElementById('editNationality').value = d.nationality || '';
+  document.getElementById('editDepartment').value = d.role || 'RECEPTIONIST';
+  document.getElementById('editJoinedDate').value = d.joined_date || '';
+  document.getElementById('editSalary').value = d.salary || '';
+  document.getElementById('editNotes').value = d.notes || '';
+  document.getElementById('editError').style.display = 'none';
+  document.getElementById('editSuccess').style.display = 'none';
+  document.getElementById('editOverlay').classList.add('show');
+}
+function closeEdit() { document.getElementById('editOverlay').classList.remove('show'); }
+
+function previewPhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Image is too large. Please choose a file under 5 MB.');
+    input.value = ''; return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var preview = document.getElementById('editPhotoPreview');
+    preview.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+    preview.style.cssText = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveEdit() {
+  var btn = document.getElementById('editSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  document.getElementById('editError').style.display = 'none';
+  document.getElementById('editSuccess').style.display = 'none';
+
+  var photoFile = document.getElementById('photoInput').files[0];
+  var res;
+
+  if (photoFile) {
+    var fd = new FormData();
+    fd.append('email', document.getElementById('editEmail').value);
+    fd.append('user_phone', document.getElementById('editPhone').value);
+    fd.append('role', document.getElementById('editDepartment').value);
+    fd.append('joined_date', document.getElementById('editJoinedDate').value);
+    fd.append('salary', document.getElementById('editSalary').value);
+    fd.append('notes', document.getElementById('editNotes').value);
+    if (document.getElementById('editDob').value) fd.append('date_of_birth', document.getElementById('editDob').value);
+    if (document.getElementById('editGender').value) fd.append('gender', document.getElementById('editGender').value);
+    if (document.getElementById('editMaritalStatus').value) fd.append('marital_status', document.getElementById('editMaritalStatus').value);
+    if (document.getElementById('editNationality').value) fd.append('nationality', document.getElementById('editNationality').value);
+    fd.append('profile_picture', photoFile);
+    res = await apiRequest('/staff/profiles/' + staffId + '/', { method: 'PATCH', body: fd, isFormData: true });
+  } else {
+    var payload = {
+      email: document.getElementById('editEmail').value,
+      user_phone: document.getElementById('editPhone').value,
+      role: document.getElementById('editDepartment').value,
+      joined_date: document.getElementById('editJoinedDate').value,
+      salary: document.getElementById('editSalary').value,
+      notes: document.getElementById('editNotes').value,
+      date_of_birth: document.getElementById('editDob').value || null,
+      gender: document.getElementById('editGender').value || null,
+      marital_status: document.getElementById('editMaritalStatus').value || null,
+      nationality: document.getElementById('editNationality').value || null,
+    };
+    res = await apiRequest('/staff/profiles/' + staffId + '/', { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+
+  btn.disabled = false; btn.textContent = 'Save Changes';
+
+  if (!res) {
+    document.getElementById('editError').textContent = 'Network error. Please try again.';
+    document.getElementById('editError').style.display = 'block'; return;
+  }
+  if (res.ok) {
+    document.getElementById('editSuccess').style.display = 'block';
+    setTimeout(function() { closeEdit(); loadProfile(); }, 800);
+  } else {
+    var err = await res.json().catch(function() { return { error: 'Could not parse error response' }; });
+    var msg = typeof err === 'object' ? Object.values(err).flat().join(' ') : 'Update failed';
+    document.getElementById('editError').textContent = msg;
+    document.getElementById('editError').style.display = 'block';
+  }
+}
+
+// ── Actions ────────────────────────────────────────────────────────────
+function openResetPassword(id, name) {
+  document.getElementById('resetPasswordStaffId').value = id;
+  document.getElementById('resetPasswordStaffName').textContent = name;
+  document.getElementById('resetPasswordField').value = '';
+  document.getElementById('resetPasswordError').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+}
+
+document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', function() {
+  var field = document.getElementById('resetPasswordField');
+  field.value = '';
+  field.type = 'password';
+  var toggleIcon = document.querySelector('.toggle-password[data-target="resetPasswordField"] i');
+  if (toggleIcon) {
+    toggleIcon.classList.remove('bi-eye-slash');
+    toggleIcon.classList.add('bi-eye');
+  }
+  document.getElementById('resetPasswordError').classList.add('d-none');
+});
+
+document.getElementById('resetPasswordForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var btn = document.getElementById('resetPasswordSubmitBtn');
+  if (btn) btn.disabled = true;
+  try {
+    var id = document.getElementById('resetPasswordStaffId').value;
+    var errorBox = document.getElementById('resetPasswordError');
+    errorBox.classList.add('d-none');
+    var payload = { new_password: document.getElementById('resetPasswordField').value };
+    var res = await apiRequest('/staff/profiles/' + id + '/reset-password/', { method: 'POST', body: JSON.stringify(payload) });
+    if (!res) { alert('Request failed to send.'); return; }
+    if (res.ok) {
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('resetPasswordModal')).hide();
+      alert('Password reset successfully.');
+    } else {
+      var err = await res.json();
+      errorBox.textContent = typeof err === 'object' ? Object.values(err).flat().join(' ') : 'Reset failed';
+      errorBox.classList.remove('d-none');
+    }
+  } catch (err) {
+    alert('Something went wrong: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+});
+
+async function toggleActive(id, activate) {
+  var verb = activate ? 'activate' : 'deactivate';
+  if (!confirm(activate ? 'Activate this staff member?' : 'Deactivate this staff member? They will no longer be able to access their account.')) return;
+  var res = await apiRequest('/staff/profiles/' + id + '/' + verb + '/', { method: 'POST' });
+  if (res && res.ok) {
+    loadProfile();
+  } else {
+    alert('Could not ' + verb + ' this staff member.');
+  }
+}
+
+// ── Password generator ─────────────────────────────────────────────────
+function generatePassword(fieldId) {
+  fieldId = fieldId || 'resetPasswordField';
+  var upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  var lower = 'abcdefghijkmnopqrstuvwxyz';
+  var digits = '23456789';
+  var symbols = '!@#$%&*';
+  var all = upper + lower + digits + symbols;
+  var pwd = [
+    upper[Math.floor(Math.random() * upper.length)],
+    lower[Math.floor(Math.random() * lower.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    symbols[Math.floor(Math.random() * symbols.length)],
+  ];
+  for (var i = pwd.length; i < 12; i++) {
+    pwd.push(all[Math.floor(Math.random() * all.length)]);
+  }
+  for (var i = pwd.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = pwd[i]; pwd[i] = pwd[j]; pwd[j] = tmp;
+  }
+  var passwordField = document.getElementById(fieldId);
+  passwordField.value = pwd.join('');
+  passwordField.type = 'text';
+  var toggleIcon = document.querySelector('.toggle-password[data-target="' + fieldId + '"] i');
+  if (toggleIcon) {
+    toggleIcon.classList.remove('bi-eye');
+    toggleIcon.classList.add('bi-eye-slash');
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────
+loadProfile();
+loadTopbarNotifications();
+</script>
+</body>
+</html>
