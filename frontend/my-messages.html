@@ -9,7 +9,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <style>
   /* ── Messages Page Layout ────────────────────────────────────────────── */
-  .msg-page { display: grid; grid-template-columns: 340px 1fr; height: calc(100vh - 60px); overflow: hidden; }
+  .msg-page { display: grid; grid-template-columns: 340px 1fr; grid-template-rows: minmax(0, 1fr); height: calc(100vh - 60px); overflow: hidden; }
+  .msg-page .msg-list-panel, .msg-page .msg-chat-panel { min-height: 0; }
   @media (max-width: 900px) { .msg-page { grid-template-columns: 1fr; } .msg-page.hide-list .msg-list-panel { display: none; } .msg-page.hide-chat .msg-chat-panel { display: none; } }
 
   /* ── Left: Conversation List ─────────────────────────────────────────── */
@@ -230,6 +231,7 @@ if (!getAccessToken()) window.location.href = 'login.html';
 let allMessages = [];
 let conversations = {};    // keyed by trainerId
 let selectedTrainerId = null;
+const MY_ID = parseInt(localStorage.getItem('user_id')) || 0;
 
 // ── Helpers ────────────────────────────────────────────────────────────
 function timeAgo(dateStr) {
@@ -275,18 +277,21 @@ async function loadMessages() {
 function groupConversations() {
   conversations = {};
   allMessages.forEach(m => {
-    const isMemberMsg = m.notification_type === 'MEMBER_MESSAGE';
-    const trainerId = isMemberMsg ? m.related_membership_id : m.sender_id;
+    // "Mine" = the sender is the current user
+    const isMine = Number(m.sender_id) === MY_ID;
+    // If I sent it: other party = recipient_id (the trainer)
+    // If from trainer: other party = sender_id (the trainer)
+    const trainerId = isMine ? m.recipient_id : m.sender_id;
     if (!trainerId) return;
     if (!conversations[trainerId]) {
       conversations[trainerId] = { name: 'Your Trainer', messages: [], unread: 0 };
     }
     conversations[trainerId].messages.push(m);
     // Update trainer name from reply if available
-    if (!isMemberMsg && m.sender_name) {
+    if (!isMine && m.sender_name) {
       conversations[trainerId].name = m.sender_name;
     }
-    if (!m.is_read && m.notification_type === 'TRAINER_REPLY') conversations[trainerId].unread++;
+    if (!m.is_read && !isMine) conversations[trainerId].unread++;
   });
 }
 
@@ -314,7 +319,7 @@ function renderConversationList() {
     const initial = (conv.name || '?').charAt(0).toUpperCase();
     const isActive = selectedTrainerId == id;
     const hasUnread = conv.unread > 0;
-    const sender = lastMsg.notification_type === 'MEMBER_MESSAGE' ? 'You' : conv.name;
+    const sender = Number(lastMsg.sender_id) === MY_ID ? 'You' : conv.name;
     return `
       <div class="msg-conversation-item ${isActive ? 'active' : ''}" onclick="selectConversation(${id})">
         <div class="msg-conv-avatar">${initial}</div>
@@ -353,7 +358,7 @@ function selectConversation(trainerId) {
   const conv = conversations[trainerId];
   if (conv) {
     conv.messages.forEach(m => {
-      if (!m.is_read && m.notification_type === 'TRAINER_REPLY') {
+      if (!m.is_read && Number(m.sender_id) !== MY_ID) {
         apiRequest(`/notifications/${m.id}/read/`, { method: 'PATCH' });
         m.is_read = true;
       }
@@ -369,6 +374,7 @@ function selectConversation(trainerId) {
   }
 
   loadTopbarNotifications();
+  loadSidebarMessageBadge();
 }
 
 // ── Render chat messages ───────────────────────────────────────────────
@@ -395,7 +401,7 @@ function renderChat() {
 
   let lastDate = '';
   body.innerHTML = conv.messages.map(m => {
-    const isMember = m.notification_type === 'MEMBER_MESSAGE';
+    const isMember = Number(m.sender_id) === MY_ID;
     const type = isMember ? 'sent' : 'received';
     const senderName = isMember ? 'You' : conv.name;
 
@@ -452,6 +458,7 @@ async function sendMessage() {
       sender_id: parseInt(localStorage.getItem('user_id')),
       notification_type: 'MEMBER_MESSAGE',
       related_membership_id: selectedTrainerId,
+      recipient_id: selectedTrainerId,
     };
     allMessages.push(sent);
     groupConversations();

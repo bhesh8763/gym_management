@@ -18,6 +18,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.workouts.models import WorkoutTemplate, WorkoutAssignment, WorkoutDay
+from apps.notifications.models import Notification
 
 User = get_user_model()
 
@@ -409,6 +410,354 @@ class AssignmentActionTestCase(APITestCase):
         self.client.force_authenticate(self.member)
         r = self.client.post(f'/api/workouts/assignments/{self.assignment.id}/pause/')
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class MessagingPermissionsTestCase(WorkoutAPITestCase):
+    """Direct-message permission rules + recipient picker."""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.staff = make_user('staff@gym.com', role=User.Role.STAFF, first_name='Sta', last_name='Ff')
+        self.other_staff = make_user('staff2@gym.com', role=User.Role.STAFF)
+        self.trainer = make_user('trainer@gym.com', role=User.Role.TRAINER, first_name='Tra', last_name='Iner')
+        self.other_trainer = make_user('trainer2@gym.com', role=User.Role.TRAINER)
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.other_member = make_user('member2@gym.com', role=User.Role.MEMBER)
+        self.template = WorkoutTemplate.objects.create(
+            name='PPL', trainer=self.trainer, duration_weeks=4,
+        )
+        WorkoutAssignment.objects.create(
+            template=self.template, member=self.member,
+            assigned_by=self.trainer, start_date=self.get_future_date(-1),
+        )
+
+    def _send(self, user, recipient_id, message='hello'):
+        self.client.force_authenticate(user)
+        return self.client.post(
+            '/api/workouts/messages/direct/',
+            {'recipient_id': recipient_id, 'message': message},
+            format='json',
+        )
+
+    def test_member_can_message_assigned_trainer(self):
+        r = self._send(self.member, self.trainer.pk)
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+    def test_member_can_message_staff(self):
+        self.assertEqual(self._send(self.member, self.staff.pk).status_code, status.HTTP_201_CREATED)
+
+    def test_member_cannot_initiate_conversation_with_owner(self):
+        # No prior message from the owner -> member may not message them
+        self.assertEqual(self._send(self.member, self.owner.pk).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_member_can_continue_conversation_owner_started(self):
+        # Owner messages the member first (TRAINER_REPLY, sender = owner)
+        Notification.objects.create(
+            recipient=self.member,
+            notification_type=Notification.NotificationType.TRAINER_REPLY,
+            title=f'Reply from {self.owner.get_full_name()}',
+            message='Hi!',
+            related_membership_id=self.owner.pk,
+        )
+        # Now the member can reply (continue) but not in reverse
+        self.assertEqual(self._send(self.member, self.owner.pk).status_code, status.HTTP_201_CREATED)
+
+    def test_member_cannot_message_other_members_or_other_trainers(self):
+        self.assertEqual(self._send(self.member, self.other_member.pk).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self._send(self.member, self.other_trainer.pk).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_trainer_can_message_assigned_member_and_staff(self):
+        self.assertEqual(self._send(self.trainer, self.member.pk).status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self._send(self.trainer, self.staff.pk).status_code, status.HTTP_201_CREATED)
+
+    def test_trainer_cannot_message_unassigned_member_owner_or_other_trainer(self):
+        self.assertEqual(self._send(self.trainer, self.other_member.pk).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self._send(self.trainer, self.owner.pk).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self._send(self.trainer, self.other_trainer.pk).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_can_message_owner_member_trainer_and_other_staff(self):
+        self.assertEqual(self._send(self.staff, self.owner.pk).status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self._send(self.staff, self.member.pk).status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self._send(self.staff, self.trainer.pk).status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self._send(self.staff, self.other_staff.pk).status_code, status.HTTP_201_CREATED)
+
+    def test_owner_can_message_anyone(self):
+        for u in (self.member, self.staff, self.trainer):
+            self.assertEqual(self._send(self.owner, u.pk).status_code, status.HTTP_201_CREATED)
+
+    def test_cannot_message_yourself(self):
+        self.assertEqual(self._send(self.member, self.member.pk).status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_member_recipient_list_contains_trainer_and_staff_not_owner(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.get('/api/workouts/message-recipients/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = {u['user_id'] for u in r.data}
+        self.assertIn(self.trainer.pk, ids)
+        self.assertIn(self.staff.pk, ids)
+        self.assertNotIn(self.owner.pk, ids)
+        self.assertNotIn(self.other_member.pk, ids)
+
+    def test_owner_never_in_member_recipients_picker_even_after_messaging(self):
+        # Owner messaged the member -> member may reply (continue), but the
+        # "New Message" picker still never offers the owner.
+        Notification.objects.create(
+            recipient=self.member,
+            notification_type=Notification.NotificationType.TRAINER_REPLY,
+            title=f'Reply from {self.owner.get_full_name()}',
+            message='Hi!',
+            related_membership_id=self.owner.pk,
+        )
+        self.client.force_authenticate(self.member)
+        r = self.client.get('/api/workouts/message-recipients/')
+        ids = {u['user_id'] for u in r.data}
+        self.assertNotIn(self.owner.pk, ids)
+        # ...but the member can still reply inside the existing conversation
+        self.assertEqual(self._send(self.member, self.owner.pk).status_code, status.HTTP_201_CREATED)
+
+    def test_staff_recipient_list_includes_owner(self):
+        self.client.force_authenticate(self.staff)
+        r = self.client.get('/api/workouts/message-recipients/')
+        ids = {u['user_id'] for u in r.data}
+        self.assertIn(self.owner.pk, ids)
+
+
+class GroupMessagingTestCase(WorkoutAPITestCase):
+    """Group chat creation, membership rules, send + read flows."""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.staff = make_user('staff@gym.com', role=User.Role.STAFF)
+        self.trainer = make_user('trainer@gym.com', role=User.Role.TRAINER)
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.member2 = make_user('member2@gym.com', role=User.Role.MEMBER)
+        self.member3 = make_user('member3@gym.com', role=User.Role.MEMBER)
+        self.template = WorkoutTemplate.objects.create(
+            name='PPL', trainer=self.trainer, duration_weeks=4,
+        )
+        for m in (self.member, self.member2):
+            WorkoutAssignment.objects.create(
+                template=self.template, member=m,
+                assigned_by=self.trainer, start_date=self.get_future_date(-1),
+            )
+
+    def _create_group(self, user, name='Team', member_ids=None):
+        self.client.force_authenticate(user)
+        return self.client.post(
+            '/api/workouts/message-groups/',
+            {'name': name, 'member_ids': member_ids or []},
+            format='json',
+        )
+
+    def test_member_cannot_create_group(self):
+        r = self._create_group(self.member, member_ids=[self.member2.pk])
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_trainer_can_create_group_with_assigned_members_only(self):
+        r = self._create_group(self.trainer, member_ids=[self.member.pk, self.member2.pk])
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        # unassigned member rejected
+        r = self._create_group(self.trainer, name='Bad', member_ids=[self.member3.pk])
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_can_create_group_but_not_with_owner(self):
+        r = self._create_group(self.staff, member_ids=[self.member.pk, self.trainer.pk, self.member3.pk])
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        r = self._create_group(self.staff, name='WithOwner', member_ids=[self.owner.pk])
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_owner_can_create_group_with_anyone(self):
+        r = self._create_group(self.owner, member_ids=[self.member.pk, self.staff.pk, self.trainer.pk, self.owner.pk])
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+    def test_send_and_list_messages_members_only(self):
+        r = self._create_group(self.trainer, member_ids=[self.member.pk, self.member2.pk])
+        group_id = r.data['id']
+
+        # send as trainer
+        self.client.force_authenticate(self.trainer)
+        r = self.client.post(
+            f'/api/workouts/message-groups/{group_id}/messages/',
+            {'message': 'hello team'}, format='json',
+        )
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+        # member can list and sees it unread
+        self.client.force_authenticate(self.member)
+        r = self.client.get(f'/api/workouts/message-groups/{group_id}/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(r.data), 1)
+        self.assertFalse(r.data[0]['is_read'])
+
+        # outsider cannot list
+        self.client.force_authenticate(self.member3)
+        r = self.client.get(f'/api/workouts/message-groups/{group_id}/')
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_mark_group_read_clears_unread_count(self):
+        r = self._create_group(self.trainer, member_ids=[self.member.pk])
+        group_id = r.data['id']
+        self.client.force_authenticate(self.trainer)
+        self.client.post(
+            f'/api/workouts/message-groups/{group_id}/messages/',
+            {'message': 'hi'}, format='json',
+        )
+
+        self.client.force_authenticate(self.member)
+        r = self.client.get('/api/workouts/message-groups/')
+        group = next(g for g in r.data if g['id'] == group_id)
+        self.assertEqual(group['unread_count'], 1)
+
+        self.client.post(f'/api/workouts/message-groups/{group_id}/read/')
+        r = self.client.get('/api/workouts/message-groups/')
+        group = next(g for g in r.data if g['id'] == group_id)
+        self.assertEqual(group['unread_count'], 0)
+
+    def test_sender_does_not_count_own_message_as_unread(self):
+        r = self._create_group(self.trainer, member_ids=[self.member.pk])
+        group_id = r.data['id']
+        self.client.force_authenticate(self.trainer)
+        self.client.post(
+            f'/api/workouts/message-groups/{group_id}/messages/',
+            {'message': 'hi'}, format='json',
+        )
+        r = self.client.get('/api/workouts/message-groups/')
+        group = next(g for g in r.data if g['id'] == group_id)
+        self.assertEqual(group['unread_count'], 0)  # trainer's own message not unread for them
+
+
+class MessageEditDeletePinTestCase(WorkoutAPITestCase):
+    """Edit / delete own messages and pin/unpin conversations."""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.staff = make_user('staff@gym.com', role=User.Role.STAFF)
+        self.trainer = make_user('trainer@gym.com', role=User.Role.TRAINER)
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.template = WorkoutTemplate.objects.create(
+            name='PPL', trainer=self.trainer, duration_weeks=4,
+        )
+        WorkoutAssignment.objects.create(
+            template=self.template, member=self.member,
+            assigned_by=self.trainer, start_date=self.get_future_date(-1),
+        )
+
+    def _member_to_staff_message(self):
+        self.client.force_authenticate(self.member)
+        r = self.client.post(
+            '/api/workouts/messages/direct/',
+            {'recipient_id': self.staff.pk, 'message': 'original text'},
+            format='json',
+        )
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        return Notification.objects.filter(
+            recipient=self.staff, related_membership_id=self.member.pk
+        ).first()
+
+    def test_sender_can_edit_own_direct_message(self):
+        n = self._member_to_staff_message()
+        self.client.force_authenticate(self.member)
+        r = self.client.patch(
+            f'/api/workouts/messages/direct/{n.pk}/',
+            {'message': 'edited text'}, format='json',
+        )
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        n.refresh_from_db()
+        self.assertEqual(n.message, 'edited text')
+        self.assertTrue(n.is_edited)
+
+    def test_recipient_cannot_edit_or_delete_senders_message(self):
+        n = self._member_to_staff_message()
+        self.client.force_authenticate(self.staff)
+        self.assertEqual(
+            self.client.patch(f'/api/workouts/messages/direct/{n.pk}/', {'message': 'hacked'}, format='json').status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+        self.assertEqual(
+            self.client.delete(f'/api/workouts/messages/direct/{n.pk}/').status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+        self.assertTrue(Notification.objects.filter(pk=n.pk).exists())
+
+    def test_sender_can_delete_own_direct_message(self):
+        n = self._member_to_staff_message()
+        self.client.force_authenticate(self.member)
+        self.assertEqual(
+            self.client.delete(f'/api/workouts/messages/direct/{n.pk}/').status_code,
+            status.HTTP_204_NO_CONTENT,
+        )
+        self.assertFalse(Notification.objects.filter(pk=n.pk).exists())
+
+    def test_group_message_edit_delete_sender_only(self):
+        self.client.force_authenticate(self.trainer)
+        r = self.client.post(
+            '/api/workouts/message-groups/',
+            {'name': 'Team', 'member_ids': [self.member.pk]},
+            format='json',
+        )
+        group_id = r.data['id']
+        self.client.force_authenticate(self.trainer)
+        r = self.client.post(
+            f'/api/workouts/message-groups/{group_id}/messages/',
+            {'message': 'hi team'}, format='json',
+        )
+        msg_id = r.data['id']
+
+        # member (not sender) cannot edit/delete
+        self.client.force_authenticate(self.member)
+        self.assertEqual(
+            self.client.patch(f'/api/workouts/message-groups/{group_id}/messages/{msg_id}/', {'message': 'x'}, format='json').status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+        # sender can edit
+        self.client.force_authenticate(self.trainer)
+        r = self.client.patch(
+            f'/api/workouts/message-groups/{group_id}/messages/{msg_id}/',
+            {'message': 'updated'}, format='json',
+        )
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        # sender can delete
+        self.assertEqual(
+            self.client.delete(f'/api/workouts/message-groups/{group_id}/messages/{msg_id}/').status_code,
+            status.HTTP_204_NO_CONTENT,
+        )
+
+    def test_pin_unpin_conversation(self):
+        self.client.force_authenticate(self.member)
+        # pin a direct conversation with staff
+        r = self.client.post('/api/workouts/message-pins/', {'kind': 'direct', 'target_id': self.staff.pk}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        # pin a group (need to be a member) - create group as trainer then member joins? member added by trainer
+        self.client.force_authenticate(self.trainer)
+        r = self.client.post('/api/workouts/message-groups/', {'name': 'Team', 'member_ids': [self.member.pk]}, format='json')
+        group_id = r.data['id']
+        self.client.force_authenticate(self.member)
+        r = self.client.post('/api/workouts/message-pins/', {'kind': 'group', 'target_id': group_id}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+        r = self.client.get('/api/workouts/message-pins/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(r.data), 2)
+
+        # duplicate pin is idempotent
+        self.client.post('/api/workouts/message-pins/', {'kind': 'direct', 'target_id': self.staff.pk}, format='json')
+        r = self.client.get('/api/workouts/message-pins/')
+        self.assertEqual(len(r.data), 2)
+
+        # unpin
+        self.assertEqual(
+            self.client.delete(f"/api/workouts/message-pins/?kind=direct&target_id={self.staff.pk}").status_code,
+            status.HTTP_204_NO_CONTENT,
+        )
+        r = self.client.get('/api/workouts/message-pins/')
+        self.assertEqual(len(r.data), 1)
+
+    def test_member_cannot_pin_group_they_are_not_in(self):
+        self.client.force_authenticate(self.member)
+        self.assertEqual(
+            self.client.post('/api/workouts/message-pins/', {'kind': 'group', 'target_id': 9999}, format='json').status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
 
 
 class UnauthenticatedWorkoutsTests(APITestCase):

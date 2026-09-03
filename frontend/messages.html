@@ -104,10 +104,16 @@
           <div class="msg-chat-header">
             <button class="msg-back-btn" onclick="showListPanel()"><i class="bi bi-arrow-left"></i></button>
             <div class="msg-chat-avatar" id="chatAvatar">?</div>
-            <div>
+            <div style="flex:1;min-width:0;">
               <div class="msg-chat-name" id="chatName"></div>
               <div class="msg-chat-sub" id="chatSub">0 messages</div>
             </div>
+            <button class="msg-chat-pin-btn" id="chatPinBtn" onclick="togglePin()" title="Pin conversation" style="display:none;">
+              <i class="bi bi-pin"></i>
+            </button>
+            <button class="msg-chat-pin-btn" id="chatDeleteBtn" onclick="deleteConversation()" title="Delete conversation" style="display:none;color:var(--brand-red,#e63946);">
+              <i class="bi bi-trash"></i>
+            </button>
           </div>
           <div class="msg-chat-body" id="chatBody">
             <div class="msg-chat-empty">
@@ -131,7 +137,7 @@
 </div>
 </div>
 
-<!-- New Message Modal (Member only) -->
+<!-- New Message Modal -->
 <div class="modal fade" id="newMsgModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -159,6 +165,34 @@
   </div>
 </div>
 
+<!-- New Group Modal (trainers / staff / owner only) -->
+<div class="modal fade" id="newGroupModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-people me-2"></i>New Group</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Group name</label>
+          <input type="text" id="newGroupName" class="form-control" placeholder="e.g. Monday Bootcamp" maxlength="150">
+        </div>
+        <div class="mb-1">
+          <label class="form-label">Members</label>
+          <div id="newGroupMembers" class="group-member-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--border-light,#e5e7eb);border-radius:8px;padding:10px;">
+            <div class="text-center py-3"><div class="spinner-border spinner-border-sm text-danger"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="createGroup()"><i class="bi bi-people me-1"></i>Create Group</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
 <script>
@@ -173,9 +207,17 @@ const IS_STAFF_LIKE = ['OWNER', 'STAFF', 'TRAINER'].includes(USER_ROLE);
 buildSidebar('messages');
 
 // ── State ──────────────────────────────────────────────────────────────
-let allMessages = [];
-let conversations = {};    // keyed by otherPartyId
-let selectedId = null;
+let allMessages = [];          // direct messages from the server
+let conversations = {};        // direct conversations keyed by otherPartyId
+let groups = [];               // group chats the user belongs to
+let groupMessagesCache = {};   // groupId -> messages
+let selectedId = null;         // selected direct conversation key
+let selectedGroupId = null;    // selected group id
+let selectedKind = null;       // 'direct' | 'group'
+let pins = {};                 // 'kind:targetId' -> true (pinned conversations)
+let editingMessageId = null;   // message currently being edited in the open chat
+const MY_ID = parseInt(localStorage.getItem('user_id')) || 0;
+const CAN_CREATE_GROUP = USER_ROLE !== 'MEMBER'; // trainers, staff, owner
 
 // Remove role-specific code that's no longer needed
 // IS_MEMBER and IS_STAFF_LIKE are kept for backend API routing only
@@ -210,25 +252,44 @@ function showToast(msg, variant) {
   bootstrap.Toast.getOrCreateInstance(t, { delay: 2800 }).show();
 }
 
+function pinKey(kind, id) { return kind + ':' + id; }
+
+function isPinned(kind, id) { return !!pins[pinKey(kind, id)]; }
+
 // ── Load messages ──────────────────────────────────────────────────────
 async function loadMessages() {
-  const res = await apiRequest('/workouts/trainer-messages/');
-  if (!res || !res.ok) return;
-  allMessages = await res.json();
+  const [res, groupRes, pinRes] = await Promise.all([
+    apiRequest('/workouts/trainer-messages/'),
+    apiRequest('/workouts/message-groups/'),
+    apiRequest('/workouts/message-pins/'),
+  ]);
+  if (res && res.ok) allMessages = await res.json();
+  if (groupRes && groupRes.ok) groups = await groupRes.json();
+  if (pinRes && pinRes.ok) {
+    const p = await pinRes.json();
+    pins = {};
+    p.forEach(x => { pins[pinKey(x.kind, x.target_id)] = true; });
+  }
   groupConversations();
   renderConversationList();
-  if (selectedId) renderChat();
+  if (selectedKind === 'group' && selectedGroupId) {
+    loadGroupMessages(selectedGroupId);
+    renderGroupChat();
+  } else if (selectedKind === 'direct' && selectedId) {
+    renderChat();
+  }
 }
 
 function groupConversations() {
   conversations = {};
   allMessages.forEach(m => {
-    const isMine = (IS_MEMBER && m.notification_type === 'MEMBER_MESSAGE')
-                || (!IS_MEMBER && m.notification_type === 'TRAINER_REPLY');
-    const otherId = isMine ? m.related_membership_id : m.sender_id;
-    const otherName = isMine
-      ? (IS_MEMBER ? 'Your Trainer' : (m.sender_name || m.title.replace('Message from ', '')))
-      : (m.sender_name || m.title.replace('Reply from ', ''));
+    // "Mine" = the sender is the current user (works for every role pairing)
+    const isMine = Number(m.sender_id) === MY_ID;
+    // Determine the other party in this conversation:
+    // - If I sent it (isMine): other party = recipient_id
+    // - If from others: other party = sender_id
+    const otherId = isMine ? m.recipient_id : m.sender_id;
+    const otherName = isMine ? (m.recipient_name || '') : (m.sender_name || '');
     if (!otherId) return;
     if (!conversations[otherId]) {
       conversations[otherId] = { name: otherName, messages: [], unread: 0 };
@@ -238,16 +299,18 @@ function groupConversations() {
     const isFromOther = !isMine;
     if (!m.is_read && isFromOther) conversations[otherId].unread++;
     // Update name from their messages
-    if (isFromOther && otherName && otherName !== (IS_MEMBER ? 'Your Trainer' : '')) {
+    if (isFromOther && otherName) {
       conversations[otherId].name = otherName;
     }
   });
 }
 
-// ── Render conversation list ───────────────────────────────────────────
+// ── Render conversation list (direct + groups) ─────────────────────────
 function renderConversationList() {
   const el = document.getElementById('conversationList');
-  const totalUnread = Object.values(conversations).reduce((s, c) => s + c.unread, 0);
+  const directUnread = Object.values(conversations).reduce((s, c) => s + c.unread, 0);
+  const groupUnread = groups.reduce((s, g) => s + (g.unread_count || 0), 0);
+  const totalUnread = directUnread + groupUnread;
   const badge = document.getElementById('totalUnreadBadge');
 
   if (totalUnread > 0) {
@@ -257,40 +320,77 @@ function renderConversationList() {
     badge.classList.add('d-none');
   }
 
-  const ids = Object.keys(conversations);
-  if (!ids.length) {
+  // Build one sorted list of items (direct conversations + groups)
+  const items = [];
+  Object.keys(conversations).forEach(id => {
+    const conv = conversations[id];
+    const lastMsg = conv.messages[conv.messages.length - 1];
+    items.push({
+      kind: 'direct',
+      id,
+      name: conv.name,
+      unread: conv.unread,
+      lastTime: lastMsg.created_at,
+      lastMsg,
+      lastSender: (Number(lastMsg.sender_id) === MY_ID) ? 'You' : conv.name,
+      pinned: isPinned('direct', id),
+    });
+  });
+  groups.forEach(g => {
+    items.push({
+      kind: 'group',
+      id: g.id,
+      name: g.name,
+      unread: g.unread_count || 0,
+      lastTime: g.last_created_at,
+      lastMsg: { message: g.last_message || '' },
+      lastSender: g.last_sender_name || '',
+      memberCount: (g.member_ids || []).length,
+      memberNames: g.member_names || {},
+      pinned: isPinned('group', g.id),
+    });
+  });
+
+  if (!items.length) {
     el.innerHTML = '<div class="msg-empty-list"><i class="bi bi-chat-dots"></i>No conversations yet.<br>Click <strong>New</strong> to start a conversation.</div>';
     return;
   }
 
-  ids.sort((a, b) => {
-    const lastA = conversations[a].messages[conversations[a].messages.length - 1];
-    const lastB = conversations[b].messages[conversations[b].messages.length - 1];
-    return new Date(lastB.created_at) - new Date(lastA.created_at);
+  items.sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    const tA = a.lastTime ? new Date(a.lastTime).getTime() : 0;
+    const tB = b.lastTime ? new Date(b.lastTime).getTime() : 0;
+    return tB - tA;
   });
 
-  el.innerHTML = ids.map(id => {
-    const conv = conversations[id];
-    const lastMsg = conv.messages[conv.messages.length - 1];
-    const initial = (conv.name || '?').charAt(0).toUpperCase();
-    const isActive = selectedId == id;
-    const hasUnread = conv.unread > 0;
-    const isLastMine = (IS_MEMBER && lastMsg.notification_type === 'MEMBER_MESSAGE')
-                    || (!IS_MEMBER && lastMsg.notification_type === 'TRAINER_REPLY');
-    const sender = isLastMine ? 'You' : conv.name;
+  el.innerHTML = items.map(item => {
+    const isActive = item.kind === 'group'
+      ? (selectedKind === 'group' && selectedGroupId == item.id)
+      : (selectedKind === 'direct' && selectedId == item.id);
+    const hasUnread = item.unread > 0;
+    const initial = (item.name || '?').charAt(0).toUpperCase();
+    const preview = item.lastMsg && item.lastMsg.message ? escapeHtml(item.lastMsg.message) : '<span style="opacity:0.6;">No messages yet</span>';
+    const senderLabel = item.lastSender ? `<strong>${escapeHtml(item.lastSender)}:</strong> ` : '';
+    const onClick = item.kind === 'group' ? `selectGroup(${item.id})` : `selectConversation(${item.id})`;
+    const avatar = item.kind === 'group'
+      ? `<div class="msg-conv-avatar msg-conv-avatar-group"><i class="bi bi-people"></i></div>`
+      : `<div class="msg-conv-avatar">${initial}</div>`;
+    const sub = item.kind === 'group' && item.memberCount ? ` · ${item.memberCount} members` : '';
+    const pinIcon = item.pinned ? '<i class="bi bi-pin-angle-fill msg-conv-pinned-icon"></i>' : '';
     return `
-      <div class="msg-conv-item ${isActive ? 'active' : ''}" onclick="selectConversation(${id})">
-        <div class="msg-conv-avatar">${initial}</div>
+      <div class="msg-conv-item ${isActive ? 'active' : ''} ${item.pinned ? 'pinned' : ''}" onclick="${onClick}">
+        ${avatar}
         <div class="msg-conv-body">
           <div class="msg-conv-name">
-            ${escapeHtml(conv.name)}
+            ${escapeHtml(item.name)}<span style="font-weight:400;color:var(--text-muted,#888);font-size:0.68rem;">${sub}</span>
+            ${pinIcon}
             ${hasUnread ? '<span class="badge bg-danger" style="font-size:0.55rem;padding:2px 5px;">NEW</span>' : ''}
           </div>
-          <div class="msg-conv-preview"><strong>${escapeHtml(sender)}:</strong> ${escapeHtml(lastMsg.message)}</div>
+          <div class="msg-conv-preview">${senderLabel}${preview}</div>
         </div>
         <div class="msg-conv-meta">
-          <div class="msg-conv-time">${timeAgo(lastMsg.created_at)}</div>
-          ${hasUnread ? `<div class="msg-conv-unread">${conv.unread}</div>` : ''}
+          <div class="msg-conv-time">${item.lastTime ? timeAgo(item.lastTime) : ''}</div>
+          ${hasUnread ? `<div class="msg-conv-unread">${item.unread}</div>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -306,9 +406,11 @@ function filterConversations() {
   });
 }
 
-// ── Select conversation ────────────────────────────────────────────────
+// ── Select conversation (direct) ───────────────────────────────────────
 function selectConversation(id) {
+  selectedKind = 'direct';
   selectedId = id;
+  selectedGroupId = null;
   renderConversationList();
   renderChat();
 
@@ -316,8 +418,7 @@ function selectConversation(id) {
   const conv = conversations[id];
   if (conv) {
     conv.messages.forEach(m => {
-      const isMine = (IS_MEMBER && m.notification_type === 'MEMBER_MESSAGE')
-                  || (!IS_MEMBER && m.notification_type === 'TRAINER_REPLY');
+      const isMine = Number(m.sender_id) === MY_ID;
       if (!m.is_read && !isMine) {
         apiRequest(`/notifications/${m.id}/read/`, { method: 'PATCH' });
         m.is_read = true;
@@ -332,10 +433,118 @@ function selectConversation(id) {
     document.getElementById('msgPage').classList.remove('hide-chat');
   }
   loadTopbarNotifications();
+  loadSidebarMessageBadge();
 }
 
-// ── Render chat ────────────────────────────────────────────────────────
+// ── Select a group chat ────────────────────────────────────────────────
+function selectGroup(id) {
+  selectedKind = 'group';
+  selectedGroupId = id;
+  selectedId = null;
+  renderConversationList();
+  renderGroupChat();
+  loadGroupMessages(id);
+
+  // Mark the group as read for this user
+  apiRequest(`/workouts/message-groups/${id}/read/`, { method: 'POST' }).then(async res => {
+    if (res && res.ok) {
+      const g = groups.find(x => x.id == id);
+      if (g) g.unread_count = 0;
+      renderConversationList();
+    }
+  });
+
+  if (window.innerWidth <= 900) {
+    document.getElementById('msgPage').classList.add('hide-list');
+    document.getElementById('msgPage').classList.remove('hide-chat');
+  }
+  loadTopbarNotifications();
+  loadSidebarMessageBadge();
+}
+
+async function loadGroupMessages(id) {
+  const res = await apiRequest(`/workouts/message-groups/${id}/`);
+  if (res && res.ok) {
+    groupMessagesCache[id] = await res.json();
+    if (selectedKind === 'group' && selectedGroupId == id) renderGroupChat();
+  }
+}
+
+// ── Message bubbles (edit / delete / edited tag) ───────────────────────
+function updateChatPinButton() {
+  const btn = document.getElementById('chatPinBtn');
+  if (!btn) return;
+  const pinned = selectedKind === 'group'
+    ? isPinned('group', selectedGroupId)
+    : isPinned('direct', selectedId);
+  if (pinned) {
+    btn.classList.add('pinned');
+    btn.title = 'Unpin conversation';
+    btn.innerHTML = '<i class="bi bi-pin-angle-fill"></i>';
+  } else {
+    btn.classList.remove('pinned');
+    btn.title = 'Pin conversation';
+    btn.innerHTML = '<i class="bi bi-pin"></i>';
+  }
+}
+
+function bubbleHtml(m, senderName, isMine) {
+  const editing = editingMessageId === m.id;
+  const time = new Date(m.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const editedTag = (m.is_edited && !editing)
+    ? '<span class="msg-edited-tag">edited</span>'
+    : '';
+  let content;
+  let cls = 'msg-bubble' + (isMine ? ' sent' : ' received');
+  if (editing) {
+    cls += ' editing';
+    content = `
+      <textarea id="editMsgInput" class="msg-edit-input" rows="1" onkeydown="handleEditKeydown(event)">${escapeHtml(m.message)}</textarea>
+      <div class="msg-edit-actions">
+        <button class="btn btn-sm btn-danger" onclick="saveEdit()"><i class="bi bi-check2 me-1"></i>Save</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="cancelEdit()">Cancel</button>
+      </div>`;
+  } else {
+    const actions = isMine ? `
+      <div class="msg-bubble-actions">
+        <button class="msg-bubble-action" onclick="startEditMessage(${m.id})" title="Edit"><i class="bi bi-pencil"></i></button>
+        <button class="msg-bubble-action" onclick="deleteMessage(${m.id})" title="Delete"><i class="bi bi-trash"></i></button>
+      </div>` : '';
+    content = `
+      <div class="msg-bubble-text">${escapeHtml(m.message)}</div>${actions}`;
+  }
+  return `
+    <div class="${cls}" data-msg-id="${m.id}">
+      <div class="msg-bubble-sender">${escapeHtml(senderName)}</div>
+      ${content}
+      <div class="msg-bubble-time">${time} ${editedTag}</div>
+    </div>`;
+}
+
+function renderMessageList(messages, convName) {
+  const body = document.getElementById('chatBody');
+  if (!messages.length) {
+    body.innerHTML = '<div class="msg-chat-empty"><i class="bi bi-chat-dots"></i><div>No messages yet</div></div>';
+    return;
+  }
+  let lastDate = '';
+  body.innerHTML = messages.map(m => {
+    const isMine = Number(m.sender_id) === MY_ID;
+    const senderName = isMine ? 'You' : (convName(m) || 'Member');
+    const msgDate = new Date(m.created_at).toDateString();
+    let divider = '';
+    if (msgDate !== lastDate) {
+      lastDate = msgDate;
+      divider = `<div class="msg-date-divider">${formatDateDivider(m.created_at)}</div>`;
+    }
+    return divider + bubbleHtml(m, senderName, isMine);
+  }).join('');
+  body.scrollTop = body.scrollHeight;
+}
+
+// ── Render chat (direct) ───────────────────────────────────────────────
 function renderChat() {
+  if (selectedKind !== 'direct') return;
   const conv = conversations[selectedId];
   if (!conv) return;
 
@@ -347,79 +556,301 @@ function renderChat() {
   document.getElementById('chatAvatar').textContent = initial;
   document.getElementById('chatName').textContent = conv.name;
   document.getElementById('chatSub').textContent = `${conv.messages.length} message${conv.messages.length !== 1 ? 's' : ''}`;
+  updateChatPinButton();
+  document.getElementById('chatPinBtn').style.display = '';
+  document.getElementById('chatDeleteBtn').style.display = '';
 
-  const body = document.getElementById('chatBody');
-  if (!conv.messages.length) {
-    body.innerHTML = '<div class="msg-chat-empty"><i class="bi bi-chat-dots"></i><div>No messages yet</div></div>';
-    return;
-  }
-
-  let lastDate = '';
-  body.innerHTML = conv.messages.map(m => {
-    const isMine = (IS_MEMBER && m.notification_type === 'MEMBER_MESSAGE')
-                || (!IS_MEMBER && m.notification_type === 'TRAINER_REPLY');
-    const type = isMine ? 'sent' : 'received';
-    const senderName = isMine ? 'You' : conv.name;
-
-    const msgDate = new Date(m.created_at).toDateString();
-    let divider = '';
-    if (msgDate !== lastDate) {
-      lastDate = msgDate;
-      divider = `<div class="msg-date-divider">${formatDateDivider(m.created_at)}</div>`;
-    }
-    const time = new Date(m.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-
-    return `${divider}
-      <div class="msg-bubble ${type}">
-        <div class="msg-bubble-sender">${escapeHtml(senderName)}</div>
-        <div>${escapeHtml(m.message)}</div>
-        <div class="msg-bubble-time">${time}</div>
-      </div>`;
-  }).join('');
-
-  body.scrollTop = body.scrollHeight;
+  renderMessageList(conv.messages, () => conv.name);
   document.getElementById('sendBtn').disabled = !document.getElementById('replyInput').value.trim();
 }
 
-// ── Send reply ─────────────────────────────────────────────────────────
+// ── Render chat (group) ────────────────────────────────────────────────
+function renderGroupChat() {
+  if (selectedKind !== 'group') return;
+  const group = groups.find(g => g.id == selectedGroupId);
+  if (!group) return;
+
+  document.getElementById('noChatPlaceholder').style.display = 'none';
+  const chatView = document.getElementById('chatView');
+  chatView.style.display = 'flex';
+
+  document.getElementById('chatAvatar').textContent = '👥';
+  document.getElementById('chatName').textContent = group.name;
+  const memberCount = (group.member_ids || []).length;
+  document.getElementById('chatSub').textContent = `${memberCount} member${memberCount !== 1 ? 's' : ''}`;
+  updateChatPinButton();
+  document.getElementById('chatPinBtn').style.display = '';
+  document.getElementById('chatDeleteBtn').style.display = '';
+
+  const msgs = groupMessagesCache[group.id] || [];
+  renderMessageList(msgs, m => m.sender_name || 'Member');
+  document.getElementById('sendBtn').disabled = !document.getElementById('replyInput').value.trim();
+}
+
+// ── Pin / unpin ────────────────────────────────────────────────────────
+async function togglePin() {
+  let kind, id;
+  if (selectedKind === 'group') { kind = 'group'; id = selectedGroupId; }
+  else if (selectedKind === 'direct') { kind = 'direct'; id = selectedId; }
+  else return;
+  if (id == null) return;
+
+  if (isPinned(kind, id)) {
+    await apiRequest(`/workouts/message-pins/?kind=${kind}&target_id=${id}`, { method: 'DELETE' });
+    delete pins[pinKey(kind, id)];
+  } else {
+    const res = await apiRequest('/workouts/message-pins/', {
+      method: 'POST',
+      body: JSON.stringify({ kind, target_id: Number(id) }),
+    });
+    if (!res || !res.ok) {
+      showToast('Could not pin this conversation', 'error');
+      return;
+    }
+    pins[pinKey(kind, id)] = true;
+  }
+  updateChatPinButton();
+  renderConversationList();
+}
+
+// ── Delete conversation ──────────────────────────────────────────────
+async function deleteConversation() {
+  let kind, id, name;
+  if (selectedKind === 'group') {
+    kind = 'group';
+    id = selectedGroupId;
+    const group = groups.find(g => g.id == id);
+    name = group ? group.name : 'this group';
+  } else if (selectedKind === 'direct') {
+    kind = 'direct';
+    id = selectedId;
+    const conv = conversations[id];
+    name = conv ? conv.name : 'this conversation';
+  } else {
+    return;
+  }
+  if (id == null) return;
+
+  const ok = await confirmAction(
+    `This will permanently delete the entire conversation with "${name}" for you. This cannot be undone.`,
+    {
+      title: 'Delete conversation?',
+      confirmText: 'Delete',
+    }
+  );
+  if (!ok) return;
+
+  const res = await apiRequest(`/workouts/conversations/delete/?kind=${kind}&target_id=${id}`, {
+    method: 'DELETE',
+  });
+  if (!res) {
+    showToast('Could not delete conversation', 'error');
+    return;
+  }
+  if (!res.ok) {
+    const err = await res.json();
+    showToast(err.detail || 'Could not delete conversation', 'error');
+    return;
+  }
+
+  showToast('Conversation deleted', 'success');
+
+  // Remove from local state
+  if (kind === 'group') {
+    groups = groups.filter(g => g.id != id);
+    delete groupMessagesCache[id];
+  } else {
+    allMessages = allMessages.filter(m => {
+      const isMine = Number(m.sender_id) === MY_ID;
+      const otherId = isMine ? m.recipient_id : m.sender_id;
+      return otherId != id;
+    });
+    groupConversations();
+  }
+  delete pins[pinKey(kind, id)];
+  resetChat();
+}
+
+// ── Edit message (own messages only) ───────────────────────────────────
+function startEditMessage(id) {
+  editingMessageId = id;
+  if (selectedKind === 'group') renderGroupChat(); else renderChat();
+  const input = document.getElementById('editMsgInput');
+  if (input) {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+}
+
+function cancelEdit() {
+  editingMessageId = null;
+  if (selectedKind === 'group') renderGroupChat(); else renderChat();
+}
+
+function handleEditKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(); }
+  else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+}
+
+async function saveEdit() {
+  const input = document.getElementById('editMsgInput');
+  if (!input) return;
+  const newText = input.value.trim();
+  if (!newText) { showToast('Message cannot be empty', 'error'); return; }
+  const id = editingMessageId;
+  let res;
+  if (selectedKind === 'group') {
+    res = await apiRequest(`/workouts/message-groups/${selectedGroupId}/messages/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ message: newText }),
+    });
+  } else {
+    res = await apiRequest(`/workouts/messages/direct/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ message: newText }),
+    });
+  }
+  if (res && res.ok) {
+    if (selectedKind === 'group') {
+      const m = (groupMessagesCache[selectedGroupId] || []).find(x => x.id === id);
+      if (m) { m.message = newText; m.is_edited = true; }
+      const g = groups.find(x => x.id == selectedGroupId);
+      if (g && g.last_sender_id === MY_ID) {
+        g.last_message = newText;
+        g.last_created_at = new Date().toISOString();
+      }
+      renderConversationList();
+    } else {
+      const m = allMessages.find(x => x.id === id);
+      if (m) { m.message = newText; m.is_edited = true; }
+      groupConversations();
+      renderConversationList();
+    }
+    editingMessageId = null;
+    if (selectedKind === 'group') renderGroupChat(); else renderChat();
+  } else if (res) {
+    const err = await res.json();
+    showToast(err.detail || 'Could not update message', 'error');
+  } else {
+    showToast('Could not update message', 'error');
+  }
+}
+
+// ── Delete message (own messages only) ─────────────────────────────────
+async function deleteMessage(id) {
+  const ok = await confirmAction('This removes the message for everyone in this chat.', {
+    title: 'Delete message?',
+    confirmText: 'Delete',
+  });
+  if (!ok) return;
+  let res;
+  if (selectedKind === 'group') {
+    res = await apiRequest(`/workouts/message-groups/${selectedGroupId}/messages/${id}/`, { method: 'DELETE' });
+  } else {
+    res = await apiRequest(`/workouts/messages/direct/${id}/`, { method: 'DELETE' });
+  }
+  if (!res) { showToast('Could not delete message', 'error'); return; }
+  if (!res.ok) {
+    const err = await res.json();
+    showToast(err.detail || 'Could not delete message', 'error');
+    return;
+  }
+  if (selectedKind === 'group') {
+    groupMessagesCache[selectedGroupId] = (groupMessagesCache[selectedGroupId] || []).filter(m => m.id !== id);
+    renderGroupChat();
+  } else {
+    allMessages = allMessages.filter(m => m.id !== id);
+    groupConversations();
+    renderConversationList();
+    if (selectedId != null && conversations[selectedId]) {
+      renderChat();
+    } else {
+      resetChat();
+    }
+  }
+}
+
+function resetChat() {
+  editingMessageId = null;
+  selectedKind = null;
+  selectedId = null;
+  selectedGroupId = null;
+  document.getElementById('chatView').style.display = 'none';
+  document.getElementById('noChatPlaceholder').style.display = '';
+  document.getElementById('chatPinBtn').style.display = 'none';
+  document.getElementById('chatDeleteBtn').style.display = 'none';
+  renderConversationList();
+}
+
+// ── Send reply (direct or group) ───────────────────────────────────────
 async function sendReply() {
   const input = document.getElementById('replyInput');
   const msg = input.value.trim();
-  if (!msg || !selectedId) return;
+  if (!msg) return;
 
   const btn = document.getElementById('sendBtn');
   btn.disabled = true;
   input.value = '';
 
   let res;
-  if (IS_MEMBER) {
-    res = await apiRequest('/workouts/message-trainer/', {
+  if (selectedKind === 'group') {
+    if (!selectedGroupId) { btn.disabled = false; return; }
+    res = await apiRequest(`/workouts/message-groups/${selectedGroupId}/messages/`, {
       method: 'POST',
       body: JSON.stringify({ message: msg }),
     });
   } else {
-    res = await apiRequest('/workouts/trainer-reply/', {
+    if (!selectedId) { btn.disabled = false; return; }
+    res = await apiRequest('/workouts/messages/direct/', {
       method: 'POST',
-      body: JSON.stringify({ message: msg, member_id: parseInt(selectedId) }),
+      body: JSON.stringify({ message: msg, recipient_id: parseInt(selectedId) }),
     });
   }
 
   if (res && res.ok) {
-    const sent = {
-      id: Date.now(),
-      message: msg,
-      is_read: true,
-      created_at: new Date().toISOString(),
-      sender_name: localStorage.getItem('user_name') || 'You',
-      notification_type: IS_MEMBER ? 'MEMBER_MESSAGE' : 'TRAINER_REPLY',
-      related_membership_id: IS_MEMBER ? selectedId : parseInt(localStorage.getItem('user_id')),
-      sender_id: IS_MEMBER ? parseInt(localStorage.getItem('user_id')) : null,
-      title: IS_MEMBER ? 'Message from You' : 'Reply from You',
-    };
-    allMessages.push(sent);
-    groupConversations();
-    renderConversationList();
-    renderChat();
+    let savedId = null;
+    try { savedId = (await res.json()).id || null; } catch (e) { /* 204 or empty body */ }
+    if (selectedKind === 'group') {
+      const sent = {
+        id: savedId || Date.now(),
+        message: msg,
+        is_read: true,
+        created_at: new Date().toISOString(),
+        sender_id: MY_ID,
+        sender_name: localStorage.getItem('user_name') || 'You',
+      };
+      if (!groupMessagesCache[selectedGroupId]) groupMessagesCache[selectedGroupId] = [];
+      groupMessagesCache[selectedGroupId].push(sent);
+      // Update the group preview
+      const g = groups.find(x => x.id == selectedGroupId);
+      if (g) {
+        g.last_message = msg;
+        g.last_sender_name = 'You';
+        g.last_created_at = new Date().toISOString();
+        g.unread_count = 0;
+      }
+      renderConversationList();
+      renderGroupChat();
+    } else {
+      const conv = conversations[selectedId];
+      const sent = {
+        id: savedId || Date.now(),
+        message: msg,
+        is_read: true,
+        created_at: new Date().toISOString(),
+        sender_name: localStorage.getItem('user_name') || 'You',
+        notification_type: IS_MEMBER ? 'MEMBER_MESSAGE' : 'TRAINER_REPLY',
+        related_membership_id: MY_ID,
+        sender_id: MY_ID,
+        recipient_id: parseInt(selectedId),
+        recipient_name: conv ? conv.name : '',
+        title: IS_MEMBER ? 'Message from You' : 'Reply from You',
+      };
+      allMessages.push(sent);
+      groupConversations();
+      renderConversationList();
+      renderChat();
+    }
   } else {
     if (res) {
       const err = await res.json();
@@ -446,71 +877,35 @@ document.getElementById('replyInput')?.addEventListener('input', function() {
   this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
 
-// ── New Message Modal (Member: message trainer / Staff: message member) ─
+// ── New Message Modal (recipient list is role-filtered by the API) ────
 async function openNewMessageModal() {
   document.getElementById('newMsgText').value = '';
   const select = document.getElementById('newMsgRecipient');
-  const label = document.querySelector('#newMsgModal .form-label');
+  select.innerHTML = '<option value="">Loading...</option>';
   new bootstrap.Modal(document.getElementById('newMsgModal')).show();
 
-  if (IS_MEMBER) {
-    label.textContent = 'To (Trainer)';
-    select.innerHTML = '<option value="">Loading trainers...</option>';
-    const res = await apiRequest('/workouts/assignments/');
-    if (res && res.ok) {
-      const data = await res.json();
-      const assignments = data.results || data;
-      const trainerMap = {};
-      for (const a of assignments) {
-        if (a.template) {
-          const tplRes = await apiRequest(`/workouts/templates/${a.template}/`);
-          if (tplRes && tplRes.ok) {
-            const tpl = await tplRes.json();
-            if (tpl.trainer && tpl.trainer_name) trainerMap[tpl.trainer] = tpl.trainer_name;
-          }
-        }
-      }
-      const ids = Object.keys(trainerMap);
-      select.innerHTML = ids.length
-        ? '<option value="">Select a trainer...</option>' + ids.map(id => `<option value="${id}">${trainerMap[id]}</option>`).join('')
-        : '<option value="">No trainers found</option>';
-    } else {
-      select.innerHTML = '<option value="">Could not load trainers</option>';
-    }
+  const res = await apiRequest('/workouts/message-recipients/');
+  if (res && res.ok) {
+    const users = await res.json();
+    select.innerHTML = users.length
+      ? '<option value="">Select a recipient...</option>' + users.map(u =>
+          `<option value="${u.user_id}">${escapeHtml(u.full_name)} (${escapeHtml(u.role.toLowerCase())})</option>`).join('')
+      : '<option value="">No one available to message</option>';
   } else {
-    label.textContent = 'To (Member)';
-    select.innerHTML = '<option value="">Loading members...</option>';
-    const res = await apiRequest('/members/?is_active=true');
-    if (res && res.ok) {
-      const data = await res.json();
-      const members = data.results || data;
-      select.innerHTML = members.length
-        ? '<option value="">Select a member...</option>' + members.map(m => `<option value="${m.user_id}">${escapeHtml(m.full_name)}</option>`).join('')
-        : '<option value="">No active members</option>';
-    } else {
-      select.innerHTML = '<option value="">Could not load members</option>';
-    }
+    select.innerHTML = '<option value="">Could not load recipients</option>';
   }
 }
 
 async function sendNewMessage() {
   const msg = document.getElementById('newMsgText').value.trim();
   if (!msg) { showToast('Please type a message', 'error'); return; }
+  const recipientId = document.getElementById('newMsgRecipient').value;
+  if (!recipientId) { showToast('Please select a recipient', 'error'); return; }
 
-  let res;
-  if (IS_MEMBER) {
-    res = await apiRequest('/workouts/message-trainer/', {
-      method: 'POST',
-      body: JSON.stringify({ message: msg }),
-    });
-  } else {
-    const memberId = document.getElementById('newMsgRecipient').value;
-    if (!memberId) { showToast('Please select a recipient', 'error'); return; }
-    res = await apiRequest('/workouts/trainer-reply/', {
-      method: 'POST',
-      body: JSON.stringify({ message: msg, member_id: parseInt(memberId) }),
-    });
-  }
+  const res = await apiRequest('/workouts/messages/direct/', {
+    method: 'POST',
+    body: JSON.stringify({ message: msg, recipient_id: parseInt(recipientId) }),
+  });
 
   if (res && res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('newMsgModal'))?.hide();
@@ -524,19 +919,74 @@ async function sendNewMessage() {
   }
 }
 
+// ── New Group Modal (trainers / staff / owner only) ────────────────────
+async function openNewGroupModal() {
+  document.getElementById('newGroupName').value = '';
+  const list = document.getElementById('newGroupMembers');
+  list.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-danger"></div></div>';
+  new bootstrap.Modal(document.getElementById('newGroupModal')).show();
+
+  const res = await apiRequest('/workouts/message-recipients/?purpose=group');
+  if (res && res.ok) {
+    const users = await res.json();
+    list.innerHTML = users.length
+      ? users.map(u => `
+          <div class="form-check mb-1">
+            <input class="form-check-input group-member-cb" type="checkbox" value="${u.user_id}" id="gm${u.user_id}">
+            <label class="form-check-label" for="gm${u.user_id}" style="font-size:0.85rem;">${escapeHtml(u.full_name)} <span class="text-muted">(${escapeHtml(u.role.toLowerCase())})</span></label>
+          </div>`).join('')
+      : '<div class="text-muted small text-center py-2">No one available to add</div>';
+  } else {
+    list.innerHTML = '<div class="text-muted small text-center py-2">Could not load members</div>';
+  }
+}
+
+async function createGroup() {
+  const name = document.getElementById('newGroupName').value.trim();
+  const memberIds = [...document.querySelectorAll('.group-member-cb:checked')].map(cb => parseInt(cb.value));
+  if (!name) { showToast('Please enter a group name', 'error'); return; }
+  if (!memberIds.length) { showToast('Select at least one member', 'error'); return; }
+
+  const res = await apiRequest('/workouts/message-groups/', {
+    method: 'POST',
+    body: JSON.stringify({ name, member_ids: memberIds }),
+  });
+
+  if (res && res.ok) {
+    const data = await res.json();
+    bootstrap.Modal.getInstance(document.getElementById('newGroupModal'))?.hide();
+    showToast('Group created!', 'success');
+    await loadMessages();
+    selectGroup(data.id);
+  } else if (res) {
+    const err = await res.json();
+    showToast(err.detail || 'Could not create group', 'error');
+  } else {
+    showToast('Could not create group', 'error');
+  }
+}
+
 function showListPanel() {
   document.getElementById('msgPage').classList.remove('hide-list');
   document.getElementById('msgPage').classList.add('hide-chat');
 }
 
-// ── Inject "New" button for all roles ──────────────────────────────
-(function injectNewButton() {
+// ── Inject "New" / "New Group" buttons ─────────────────────────────
+(function injectNewButtons() {
   const header = document.querySelector('.msg-list-header .d-flex');
-  if (header && !header.querySelector('.btn-new-msg')) {
+  if (!header) return;
+  if (!header.querySelector('.btn-new-msg')) {
     const btn = document.createElement('button');
     btn.className = 'btn-new-msg';
     btn.onclick = openNewMessageModal;
     btn.innerHTML = '<i class="bi bi-plus-lg"></i> New';
+    header.appendChild(btn);
+  }
+  if (CAN_CREATE_GROUP && !header.querySelector('.btn-new-group')) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-new-msg btn-new-group';
+    btn.onclick = openNewGroupModal;
+    btn.innerHTML = '<i class="bi bi-people"></i> New Group';
     header.appendChild(btn);
   }
 })();

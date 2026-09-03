@@ -273,10 +273,10 @@ function buildSidebar(activePage) {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
 
-  const link = (href, icon, label, roles, isActive) => {
+  const link = (href, icon, label, roles, isActive, badgeHtml) => {
     const roleAttr = roles ? ` data-roles="${roles}"` : '';
     const activeClass = isActive ? ' active' : '';
-    return `<a href="${href}" class="list-group-item list-group-item-action${activeClass}"${roleAttr}><i class="bi ${icon}"></i> <span>${label}</span></a>`;
+    return `<a href="${href}" class="list-group-item list-group-item-action${activeClass}"${roleAttr} style="position:relative;"><i class="bi ${icon}"></i> <span>${label}</span>${badgeHtml || ''}</a>`;
   };
   const section = (label, roles) => {
     const roleAttr = roles ? ` data-roles="${roles}"` : '';
@@ -287,6 +287,7 @@ function buildSidebar(activePage) {
 
   sidebar.innerHTML = `<div class="list-group list-group-flush pt-2">
     ${section('Main')}
+    ${link('dashboard.html', 'bi-speedometer2', 'Dashboard', 'MEMBER', a('dashboard'))}
     ${link('dashboard.html', 'bi-speedometer2', 'Dashboard', 'OWNER,STAFF', a('dashboard'))}
     ${link('trainer-dashboard.html', 'bi-speedometer2', 'Dashboard', 'TRAINER', a('trainer-dashboard'))}
 
@@ -296,7 +297,7 @@ function buildSidebar(activePage) {
     ${link('trainer-members.html', 'bi-people', 'My Members', 'TRAINER', a('trainer-members'))}
     ${link('attendance.html', 'bi-calendar-check', 'Attendance', 'OWNER,STAFF,TRAINER', a('attendance'))}
     ${link('progress.html', 'bi-graph-up', 'Progress Report', 'OWNER,STAFF,TRAINER', a('progress'))}
-    ${link('messages.html', 'bi-chat-dots', 'Messages', 'OWNER,STAFF,TRAINER', a('messages'))}
+    ${link('messages.html', 'bi-chat-dots', 'Messages', 'OWNER,STAFF,TRAINER', a('messages'), '<span class="msg-sidebar-badge" style="display:none;"></span>')}
 
     ${section('Staff Management')}
     ${link('staff.html', 'bi-people', 'Staff', 'OWNER', a('staff'))}
@@ -312,7 +313,7 @@ function buildSidebar(activePage) {
     ${link('my-workouts.html', 'bi-heart-pulse', 'My Workouts', 'MEMBER', a('my-workouts'))}
     ${link('my-diet.html', 'bi-egg-fried', 'My Diet', 'MEMBER', a('my-diet'))}
     ${link('my-progress.html', 'bi-graph-up', 'My Progress', 'MEMBER', a('my-progress'))}
-    ${link('messages.html', 'bi-chat-dots', 'Messages', 'MEMBER', a('messages'))}
+    ${link('messages.html', 'bi-chat-dots', 'Messages', 'MEMBER', a('messages'), '<span class="msg-sidebar-badge" style="display:none;"></span>')}
     ${link('my-attendance.html', 'bi-fingerprint', 'My Attendance', 'MEMBER', a('my-attendance'))}
     ${link('my-payments.html', 'bi-cash-coin', 'My Payments', 'MEMBER', a('my-payments'))}
     ${link('my-memberships.html', 'bi-card-checklist', 'My Memberships', 'MEMBER', a('my-memberships'))}
@@ -330,6 +331,7 @@ function buildSidebar(activePage) {
   </div>`;
 
   applySidebarRoleVisibility();
+  loadSidebarMessageBadge();
 }
 
 // ── Role-based sidebar ──────────────────────────────────────────────────────
@@ -1122,6 +1124,38 @@ async function markAllTopbarNotificationsRead() {
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-check2-all me-1"></i>Mark all as read';
   }
+}
+
+// ── Sidebar unread-messages badge ────────────────────────────────────────
+// Shows a red badge on the "Messages" sidebar link when there are unread
+// messages. Runs once on page load and is also called after sending a message
+// so the badge updates immediately.
+async function loadSidebarMessageBadge() {
+  const [res, groupRes] = await Promise.all([
+    apiRequest('/workouts/trainer-messages/'),
+    apiRequest('/workouts/message-groups/'),
+  ]);
+  let unreadCount = 0;
+  // Only count unread messages sent by the OTHER person. Our own sent
+  // messages come back from the server with is_read=false (they're unread
+  // from the recipient's side), so counting them would inflate the badge.
+  const myId = parseInt(localStorage.getItem('user_id') || '0');
+  if (res && res.ok) {
+    const messages = await res.json();
+    unreadCount += messages.filter(m => !m.is_read && Number(m.sender_id) !== myId).length;
+  }
+  if (groupRes && groupRes.ok) {
+    const groups = await groupRes.json();
+    unreadCount += groups.reduce((s, g) => s + (g.unread_count || 0), 0);
+  }
+  document.querySelectorAll('.msg-sidebar-badge').forEach(badge => {
+    if (unreadCount > 0) {
+      badge.style.display = 'inline-flex';
+      badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+    } else {
+      badge.style.display = 'none';
+    }
+  });
 }
 
 // ── Dark Mode ───────────────────────────────────────────────────────────

@@ -197,6 +197,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .topbar-icon-btn{position:relative;background:none;border:none;color:var(--text-sidebar);font-size:1.2rem;cursor:pointer;padding:6px;border-radius:var(--radius-sm);transition:all var(--transition-fast);display:flex;align-items:center;justify-content:center}
 .topbar-icon-btn:hover{color:#fff;background:rgba(255,255,255,0.08)}
 .notif-badge{position:absolute;top:0;right:0;background:var(--brand-red);color:#fff;font-size:0.6rem;font-weight:700;min-width:16px;height:16px;padding:0 4px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-topbar);line-height:1}
+.msg-sidebar-badge{position:absolute;top:50%;right:12px;transform:translateY(-50%);background:var(--brand-red);color:#fff;font-size:0.6rem;font-weight:700;min-width:16px;height:16px;padding:0 4px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;line-height:1}
 
 /* Dropdown Panels */
 .dropdown-panel{position:absolute;top:calc(100% + 8px);right:0;background:var(--bg-card);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);border:1px solid var(--border-light);min-width:170px;width:fit-content;max-height:360px;overflow-y:auto;z-index:var(--z-dropdown);display:none;overflow-x:hidden}
@@ -231,7 +232,8 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 #page-content .flex-grow-1::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
 
 /* ── Messages Page Layout ────────────────────────────────────────────────── */
-.msg-page{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 60px);overflow:hidden}
+.msg-page{display:grid;grid-template-columns:340px 1fr;grid-template-rows:minmax(0,1fr);height:calc(100vh - 60px);overflow:hidden}
+.msg-page .msg-list-panel,.msg-page .msg-chat-panel{min-height:0}
 .msg-list-panel{border-right:1px solid var(--border-light,#e5e7eb);display:flex;flex-direction:column;background:var(--bg-card,#fff)}
 .msg-list-header{padding:18px 16px 12px;border-bottom:1px solid var(--border-light,#e5e7eb)}
 .msg-list-header h5{margin:0;font-size:1.1rem;font-weight:700}
@@ -243,6 +245,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .msg-conv-item:hover{background:var(--bg-hover,#f5f5f5)}
 .msg-conv-item.active{background:rgba(230,57,70,0.06);border-left:3px solid var(--brand-red,#e63946)}
 .msg-conv-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--brand-red),var(--brand-red-light,#ff6b6b));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;flex-shrink:0}
+.msg-conv-avatar-group{background:linear-gradient(135deg,#6c757d,#343a40);font-size:1rem}
 .msg-conv-body{flex:1;min-width:0}
 .msg-conv-name{font-weight:600;font-size:0.85rem;color:var(--text-primary,#1a1a1f);display:flex;align-items:center;gap:6px}
 .msg-conv-preview{font-size:0.75rem;color:var(--text-muted,#888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
@@ -280,6 +283,29 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .btn-new-msg:hover{background:var(--brand-red-dark,#c62828)}
 .msg-page.hide-list .msg-list-panel{display:none}
 .msg-page.hide-chat .msg-chat-panel{display:none}
+
+/* Chat header pin toggle */
+.msg-chat-pin-btn{background:none;border:none;color:var(--text-muted,#888);font-size:1.05rem;cursor:pointer;padding:6px 8px;border-radius:var(--radius-sm);transition:all .15s;flex-shrink:0}
+.msg-chat-pin-btn:hover{color:var(--brand-red,#e63946);background:rgba(230,57,70,0.08)}
+.msg-chat-pin-btn.pinned{color:var(--brand-red,#e63946)}
+.msg-chat-pin-btn[title="Delete conversation"]:hover{color:#fff;background:var(--brand-red,#e63946)}
+.msg-conv-pinned-icon{color:var(--brand-red,#e63946);font-size:0.7rem;margin-left:2px}
+.msg-conv-item.pinned{background:rgba(230,57,70,0.04)}
+.msg-conv-item.pinned:hover{background:rgba(230,57,70,0.08)}
+
+/* Message actions (edit / delete) on hover */
+.msg-bubble{position:relative}
+.msg-bubble-actions{position:absolute;top:6px;right:8px;display:none;gap:4px}
+.msg-bubble.sent:hover .msg-bubble-actions{display:inline-flex}
+.msg-bubble-actions .msg-bubble-action{background:rgba(0,0,0,0.25);border:none;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.68rem;transition:all .15s}
+.msg-bubble-actions .msg-bubble-action:hover{background:rgba(0,0,0,0.45)}
+.msg-edited-tag{font-size:0.6rem;opacity:0.7;margin-left:4px;font-style:italic}
+
+/* Inline edit mode */
+.msg-bubble.editing{max-width:85%;padding-bottom:8px}
+.msg-edit-input{width:100%;min-height:44px;resize:none;border:1px solid var(--border-light,#e5e7eb);border-radius:10px;padding:8px 10px;font-size:0.85rem;background:var(--bg-card,#fff);color:var(--text-primary,#1a1a1f)}
+.msg-edit-input:focus{outline:none;border-color:var(--brand-red,#e63946)}
+.msg-edit-actions{display:flex;gap:8px;margin-top:8px}
 @media(max-width:900px){.msg-page{grid-template-columns:1fr}.msg-back-btn{display:block}}
 
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */

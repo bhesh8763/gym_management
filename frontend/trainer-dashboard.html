@@ -665,15 +665,19 @@ buildSidebar('trainer-dashboard');
   function groupConversations() {
     conversations = {};
     allMessages.forEach(m => {
-      const isMemberMsg = m.notification_type === 'MEMBER_MESSAGE';
-      const memberId = isMemberMsg ? m.sender_id : m.related_membership_id;
-      const memberName = isMemberMsg ? (m.sender_name || m.title.replace('Message from ', '')) : (m.title.replace('Reply from ', ''));
+      const isMine = m.notification_type === 'TRAINER_REPLY';
+      // If I sent it (TRAINER_REPLY): other party = recipient_id (the member)
+      // If from member (MEMBER_MESSAGE): other party = sender_id (the member)
+      const memberId = isMine ? m.recipient_id : m.sender_id;
+      const memberName = m.sender_name || '';
       if (!memberId) return;
       if (!conversations[memberId]) {
         conversations[memberId] = { name: memberName, messages: [], unread: 0 };
       }
       conversations[memberId].messages.push(m);
-      if (!m.is_read) conversations[memberId].unread++;
+      if (!m.is_read && !isMine) conversations[memberId].unread++;
+      // Update name from member's messages
+      if (!isMine && memberName) conversations[memberId].name = memberName;
     });
   }
 

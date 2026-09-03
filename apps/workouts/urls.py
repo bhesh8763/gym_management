@@ -25,6 +25,16 @@ from .views import (
     TrainerMessageView,
     TrainerMessagesView,
     TrainerReplyView,
+    DirectMessageView,
+    DirectMessageDetailView,
+    MessageRecipientsView,
+    MessageGroupListCreateView,
+    MessageGroupDetailView,
+    MessageGroupSendView,
+    MessageGroupMarkReadView,
+    GroupMessageDetailView,
+    MessagePinView,
+    ConversationDeleteView,
     WorkoutCompletionLogExportView,
 )
 
@@ -66,6 +76,18 @@ urlpatterns = [
     path('message-trainer/', TrainerMessageView.as_view(), name='message-trainer'),
     path('trainer-messages/', TrainerMessagesView.as_view(), name='trainer-messages'),
     path('trainer-reply/', TrainerReplyView.as_view(), name='trainer-reply'),
+
+    # General messaging: 1-on-1 between any allowed roles + group chats
+    path('messages/direct/', DirectMessageView.as_view(), name='message-direct'),
+    path('messages/direct/<int:pk>/', DirectMessageDetailView.as_view(), name='message-direct-detail'),
+    path('message-recipients/', MessageRecipientsView.as_view(), name='message-recipients'),
+    path('message-groups/', MessageGroupListCreateView.as_view(), name='message-group-list'),
+    path('message-groups/<int:pk>/', MessageGroupDetailView.as_view(), name='message-group-detail'),
+    path('message-groups/<int:pk>/messages/', MessageGroupSendView.as_view(), name='message-group-send'),
+    path('message-groups/<int:group_pk>/messages/<int:message_pk>/', GroupMessageDetailView.as_view(), name='message-group-message-detail'),
+    path('message-groups/<int:pk>/read/', MessageGroupMarkReadView.as_view(), name='message-group-read'),
+    path('message-pins/', MessagePinView.as_view(), name='message-pin'),
+    path('conversations/delete/', ConversationDeleteView.as_view(), name='conversation-delete'),
 
     # CSV Export
     path('export-csv/', WorkoutCompletionLogExportView.as_view(), name='workout-export-csv'),
