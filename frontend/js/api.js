@@ -1,4 +1,4 @@
-const API_BASE = window.FITCORE_API_BASE || 'http://127.0.0.1:8000/api';
+const API_BASE = window.FITCORE_API_BASE || 'http://localhost:8000/api';
 
 // ── Skeleton loading helpers ──────────────────────────────────────────────
 // Reusable functions that return HTML strings for skeleton placeholders.

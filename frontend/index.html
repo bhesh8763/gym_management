@@ -11,35 +11,50 @@
 <body>
 
 <!-- ── Navbar ─────────────────────────────────────────────────────── -->
-<nav class="lp-navbar">
+<nav class="lp-navbar" id="navbar">
   <div class="container d-flex align-items-center justify-content-between py-3">
-    <a href="http://localhost:5500/" class="lp-brand">
-      <img src="logo.png" alt="FitCore" style="height:28px;width:28px;object-fit:contain;"> FitCore
+    <a href="/" class="lp-brand">
+      <img src="logo.png" alt="FitCore" style="height:30px;width:30px;object-fit:contain;"> FitCore
     </a>
-    <div class="d-flex gap-2">
+    <div class="d-flex align-items-center gap-2">
       <a href="login.html" class="btn btn-outline-light btn-sm px-3">Log In</a>
+      <a href="signup.html" class="btn lp-btn-accent btn-sm px-3">Sign Up</a>
     </div>
   </div>
 </nav>
 
 <!-- ── Hero ──────────────────────────────────────────────────────── -->
 <section class="lp-hero">
-  <div class="container">
+  <div class="lp-hero-bg">
+    <div class="lp-hero-orb lp-orb-1"></div>
+    <div class="lp-hero-orb lp-orb-2"></div>
+    <div class="lp-hero-orb lp-orb-3"></div>
+  </div>
+  <div class="container position-relative">
     <div class="row align-items-center min-vh-hero">
       <div class="col-lg-6">
-        <span class="lp-eyebrow">All-in-one gym platform</span>
-        <h1 class="lp-hero-title">Run your gym.<br>Smarter.</h1>
+        <span class="lp-eyebrow"><i class="bi bi-lightning-charge-fill me-1"></i> All-in-one gym platform</span>
+        <h1 class="lp-hero-title">Run your gym.<br><span class="lp-hero-highlight">Smarter.</span></h1>
         <p class="lp-hero-sub">
           Memberships, attendance, payments, trainers, workout plans, diet
           tracking, lockers, and equipment — managed from one clean dashboard.
         </p>
         <div class="d-flex gap-3 flex-wrap mt-4">
-          <a href="login.html" class="btn lp-btn-primary btn-lg px-4">
-            <i class="bi bi-box-arrow-in-right me-2"></i>Go to Dashboard
+          <a href="signup.html" class="btn lp-btn-primary btn-lg px-4">
+            <i class="bi bi-rocket-takeoff me-2"></i>Get Started Free
           </a>
           <a href="#features" class="btn lp-btn-ghost btn-lg px-4">
-            Explore Features
+            Explore Features <i class="bi bi-arrow-down ms-1"></i>
           </a>
+        </div>
+        <div class="lp-hero-trust mt-4">
+          <div class="lp-trust-avatars">
+            <div class="lp-trust-avatar" style="background:#e63946;">R</div>
+            <div class="lp-trust-avatar" style="background:#457b9d;">S</div>
+            <div class="lp-trust-avatar" style="background:#06a77d;">A</div>
+            <div class="lp-trust-avatar" style="background:#f77f00;">M</div>
+          </div>
+          <span class="lp-trust-text">Trusted by <strong>248+ active members</strong></span>
         </div>
       </div>
       <div class="col-lg-6 d-none d-lg-flex justify-content-center mt-5 mt-lg-0">
@@ -61,7 +76,7 @@
           <div class="lp-stat-card lp-stat-3">
             <i class="bi bi-cash-stack"></i>
             <div>
-              <div class="lp-stat-num">Rs 1.2 L</div>
+              <div class="lp-stat-num">Rs 1.2L</div>
               <div class="lp-stat-label">Monthly Revenue</div>
             </div>
           </div>
@@ -79,11 +94,43 @@
   </div>
 </section>
 
+<!-- ── Stats Bar ─────────────────────────────────────────────────── -->
+<section class="lp-stats-bar">
+  <div class="container">
+    <div class="row g-4 text-center">
+      <div class="col-6 col-md-3">
+        <div class="lp-stats-item">
+          <div class="lp-stats-value">248+</div>
+          <div class="lp-stats-label">Active Members</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="lp-stats-item">
+          <div class="lp-stats-value">15+</div>
+          <div class="lp-stats-label">Expert Trainers</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="lp-stats-item">
+          <div class="lp-stats-value">94%</div>
+          <div class="lp-stats-label">Attendance Rate</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="lp-stats-item">
+          <div class="lp-stats-value">500+</div>
+          <div class="lp-stats-label">Workouts Completed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ── Features ──────────────────────────────────────────────────── -->
 <section class="lp-features py-5" id="features">
   <div class="container">
     <div class="text-center mb-5">
-      <span class="lp-eyebrow lp-eyebrow-dark">What's included</span>
+      <span class="lp-eyebrow lp-eyebrow-dark"><i class="bi bi-grid-3x3-gap-fill me-1"></i> What's included</span>
       <h2 class="lp-section-title">Everything your gym needs</h2>
       <p class="lp-section-sub">One system. Every operation covered.</p>
     </div>
@@ -169,8 +216,9 @@
 <section class="lp-roles py-5">
   <div class="container">
     <div class="text-center mb-5">
-      <span class="lp-eyebrow lp-eyebrow-dark">Role-based access</span>
+      <span class="lp-eyebrow lp-eyebrow-dark"><i class="bi bi-shield-lock-fill me-1"></i> Role-based access</span>
       <h2 class="lp-section-title">The right tools for everyone</h2>
+      <p class="lp-section-sub">Every role gets a tailored dashboard experience.</p>
     </div>
     <div class="row g-4 justify-content-center">
 
@@ -214,21 +262,36 @@
 <section class="lp-cta">
   <div class="container text-center py-5">
     <h2 class="lp-cta-title">Ready to take control?</h2>
-    <p class="lp-cta-sub mb-4">Log in and start managing your gym from a single dashboard.</p>
-    <a href="login.html" class="btn lp-btn-primary btn-lg px-5">
-      <i class="bi bi-box-arrow-in-right me-2"></i>Log In Now
-    </a>
+    <p class="lp-cta-sub mb-4">Join FitCore today and start managing your gym like a pro.</p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      <a href="signup.html" class="btn lp-btn-primary btn-lg px-5">
+        <i class="bi bi-rocket-takeoff me-2"></i>Sign Up
+      </a>
+      <a href="login.html" class="btn lp-btn-ghost btn-lg px-5">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Log In
+      </a>
+    </div>
   </div>
 </section>
 
 <!-- ── Footer ─────────────────────────────────────────────────────── -->
 <footer class="lp-footer">
-  <div class="container d-flex flex-column flex-sm-row align-items-center justify-content-between py-3 gap-2">
+  <div class="container d-flex flex-column flex-sm-row align-items-center justify-content-between py-4 gap-3">
     <span class="lp-brand-sm"><img src="logo.png" alt="FitCore" style="height:28px;width:28px;object-fit:contain;"> FitCore</span>
-    <span class="text-muted small">© 2026 FitCore. All rights reserved.</span>
+    <div class="d-flex gap-3">
+      <a href="login.html" class="lp-footer-link">Log In</a>
+      <a href="signup.html" class="lp-footer-link">Sign Up</a>
+    </div>
+    <span class="text-muted small">&copy; 2026 FitCore. All rights reserved.</span>
   </div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Navbar shadow on scroll
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+});
+</script>
 </body>
 </html>
