@@ -37,5 +37,7 @@ Thumbs.db
 opencode.json
 AGENTS.md
 
-# GitHub Actions (DO NOT ignore — needed for CI)
-# .github/.github/
+# AI tool local data
+.empryo/
+
+# (CI workflow removed — nothing to ignore here)
