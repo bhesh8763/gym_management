@@ -638,3 +638,66 @@ class NotificationDeleteViewTest(APITestCase):
     def test_requires_auth(self):
         response = self.client.delete(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class NotificationSenderFieldTest(APITestCase):
+    """Verify the new ``sender`` FK on Notification is used by the messaging API
+    and that legacy inbox serialization no longer parses the title."""
+
+    def setUp(self):
+        self.member = make_user(role=User.Role.MEMBER)
+        self.trainer = make_user(role=User.Role.TRAINER)
+        self.assignment = make_workout_assignment(self.member, self.trainer)
+        self.reply_url = reverse('trainer-reply')
+        self.direct_url = reverse('message-direct')
+
+    def test_trainer_reply_notification_has_sender(self):
+        """Trainer replies should set sender=trainer explicitly."""
+        self.client.credentials(**auth_header(self.trainer))
+        r = self.client.post(self.reply_url, {
+            'member_id': self.member.pk,
+            'message': 'Good form today',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+        reply = Notification.objects.filter(
+            recipient=self.member,
+            notification_type=Notification.NotificationType.TRAINER_REPLY,
+        ).latest('created_at')
+        self.assertEqual(reply.sender, self.trainer)
+        self.assertIsNotNone(reply.sender_id)
+
+    def test_member_message_notification_has_sender(self):
+        """Member messages should set sender=member explicitly."""
+        self.client.credentials(**auth_header(self.member))
+        r = self.client.post(self.direct_url, {
+            'recipient_id': self.trainer.pk,
+            'message': 'Ready for tomorrow',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+        msg = Notification.objects.filter(
+            recipient=self.trainer,
+            notification_type=Notification.NotificationType.MEMBER_MESSAGE,
+        ).latest('created_at')
+        self.assertEqual(msg.sender, self.member)
+
+    def test_inbox_serializer_reads_sender_from_fk(self):
+        """The inbox serialization should use the sender FK, not the legacy
+        "Message from X" title prefix."""
+        from apps.workouts.views import _serialize_notification
+
+        n = Notification.objects.create(
+            sender=self.trainer,
+            recipient=self.member,
+            notification_type=Notification.NotificationType.TRAINER_REPLY,
+            title='Trainer reply',
+            message='Some feedback',
+            related_membership_id=self.trainer.pk,
+        )
+
+        serialized = _serialize_notification(n)
+        self.assertEqual(serialized['sender_name'], self.trainer.get_full_name())
+        self.assertEqual(serialized['sender_id'], self.trainer.pk)
+        # The old parsed-name convention would have put the title itself here.
+        self.assertNotEqual(serialized['sender_name'], 'Trainer reply')

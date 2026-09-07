@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ─── SECURITY ────────────────────────────────────────────────────────────────
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
 
 # ─── APPLICATIONS ────────────────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -27,6 +27,13 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.facebook',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
 ]
 
 LOCAL_APPS = [
@@ -58,6 +65,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'gym_management.urls'
@@ -118,6 +126,7 @@ USE_TZ = True
 # ─── STATIC & MEDIA ───────────────────────────────────────────────────────────
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -130,7 +139,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ─── DJANGO REST FRAMEWORK ────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'apps.accounts.authentication.VersionedJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -170,6 +179,8 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
     'http://localhost:8080',
     'http://127.0.0.1:8080',
     # Frontend served by Live Server or serve_https.py
@@ -181,6 +192,16 @@ CORS_ALLOWED_ORIGINS = [
     'https://192.168.100.234:5500',
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# ─── CSRF ─────────────────────────────────────────────────────────────────────
+# Trusted origins for CSRF in production.  Django requires the full scheme,
+# so these must start with https:// (or http:// for local dev).
+# Override via CSRF_TRUSTED_ORIGINS env var as a comma-separated list:
+#   CSRF_TRUSTED_ORIGINS=https://fitcore.example.com,https://www.fitcore.example.com
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:5500,http://127.0.0.1:5500',
+).split(',')
 
 # ─── EMAIL ─────────────────────────────────────────────────────────────────────
 # In development: print emails to the console.
@@ -195,6 +216,117 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Gym Management <norep
 
 # Frontend base URL — used in password reset emails
 FRONTEND_URL = config('FRONTEND_URL', default='http://192.168.100.234:5500')
+
+# ─── LOGGING ─────────────────────────────────────────────────────────────────
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file_general': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'general.log',
+            'maxBytes': 5 * 1024 * 1024,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'file_errors': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'errors.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'file_security': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'security.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'file_reminders': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'reminders.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file_general'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['file_errors', 'mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['file_security'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['file_general'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'apps': {
+            'handlers': ['console', 'file_general', 'file_errors'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'apps.notifications.management.commands.send_reminders': {
+            'handlers': ['file_reminders', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.notifications.management.commands.send_scheduled_notifications': {
+            'handlers': ['file_reminders', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
 # ─── KHALTI (sandbox) ───────────────────────────────────────────────────────
 # Get KHALTI_SECRET_KEY from your merchant dashboard at test-admin.khalti.com
 # (Sign up as a merchant there — login OTP for sandbox is always 987654).
@@ -218,3 +350,57 @@ ESEWA_BASE_URL = config(
 ESEWA_STATUS_CHECK_URL = config(
     'ESEWA_STATUS_CHECK_URL', default='https://rc.esewa.com.np/api/epay/transaction/status/'
 )
+
+# ─── ALLAUTH ────────────────────────────────────────────────────────────────
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SITE_ID = 1
+
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+LOGIN_REDIRECT_URL = config('FRONTEND_URL', default='http://localhost:5500')
+LOGOUT_REDIRECT_URL = config('FRONTEND_URL', default='http://localhost:5500')
+
+# Social account providers
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID', default=''),
+            'secret': config('GOOGLE_CLIENT_SECRET', default=''),
+            'key': '',
+        },
+        'SCOPE': ['profile', 'email'],
+    },
+    'facebook': {
+        'APP': {
+            'client_id': config('FACEBOOK_APP_ID', default=''),
+            'secret': config('FACEBOOK_APP_SECRET', default=''),
+            'key': '',
+        },
+        'SCOPE': ['email', 'public_profile'],
+        'AUTH_PARAMS': {'auth_type': 'reauthenticate'},
+    },
+}
+
+# dj-rest-auth configuration
+REST_USE_JWT = True
+JWT_AUTH_HTTPONLY = False
+
+REST_AUTH = {
+    'TOKEN_MODEL': None,
+    'USE_JWT': True,
+    'JWT_AUTH_HTTPONLY': False,
+    # dj-rest-auth (social login) must embed the same claims — most
+    # importantly token_version — into the JWTs it issues for
+    # Google/Facebook sessions.
+    'JWT_TOKEN_CLAIMS_SERIALIZER': 'apps.accounts.social_claims.SocialTokenObtainPairSerializer',
+}
+
+SOCIALACCOUNT_LOGIN_REDIRECT_URL = config('FRONTEND_URL', default='http://localhost:5500')
+SOCIALACCOUNT_SIGNUP_REDIRECT_URL = config('FRONTEND_URL', default='http://localhost:5500')

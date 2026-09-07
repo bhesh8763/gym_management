@@ -364,6 +364,72 @@ def staff_report(request):
 
 @api_view(['GET'])
 @permission_classes([IsOwner])
+def retention_report(request):
+    """
+    GET /api/reports/retention/
+    Member retention analysis: how many members from each cohort (by join
+    month) are still active vs churned, plus overall retention rate.
+    """
+    from django.contrib.auth import get_user_model
+    from django.db.models.functions import TruncMonth
+    User = get_user_model()
+
+    today = timezone.now().date()
+    twelve_months_ago = today - timedelta(days=365)
+
+    # Cohort: members grouped by join month
+    cohorts = (
+        User.objects.filter(role=User.Role.MEMBER, date_joined__date__gte=twelve_months_ago)
+        .annotate(join_month=TruncMonth('date_joined'))
+        .values('join_month')
+        .annotate(total_joined=Count('id'))
+        .order_by('join_month')
+    )
+
+    result = []
+    for cohort in cohorts:
+        join_month = cohort['join_month']
+        total = cohort['total_joined']
+
+        # Members who joined this month and still have an active membership
+        active = (
+            Membership.objects.filter(
+                member__date_joined__date__gte=join_month,
+                member__date_joined__date__lt=join_month + timedelta(days=32),
+                status=Membership.Status.ACTIVE,
+            ).values('member').distinct().count()
+        )
+
+        retention_rate = round((active / total * 100), 1) if total else 0
+
+        result.append({
+            'join_month': join_month.strftime('%Y-%m'),
+            'total_joined': total,
+            'still_active': active,
+            'churned': total - active,
+            'retention_rate': retention_rate,
+        })
+
+    # Overall stats
+    total_members = User.objects.filter(role=User.Role.MEMBER).count()
+    active_with_membership = (
+        Membership.objects.filter(status=Membership.Status.ACTIVE)
+        .values('member').distinct().count()
+    )
+    overall_retention = round((active_with_membership / total_members * 100), 1) if total_members else 0
+
+    return Response({
+        'cohorts': result,
+        'overall': {
+            'total_members': total_members,
+            'members_with_active_membership': active_with_membership,
+            'overall_retention_rate': overall_retention,
+        },
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsOwner])
 def overview_report(request):
     """
     GET /api/reports/overview/

@@ -31,6 +31,56 @@ from .serializers import PaymentSerializer
 logger = logging.getLogger(__name__)
 
 
+def _notify_payment_received(payment):
+    """Send a ``PAYMENT_RECEIVED`` notification to the member when a payment
+    is marked PAID.
+
+    The collector is the user who recorded the payment (for staff-recorded
+    payments) or the member themselves (for self-service gateway payments that
+    came back verified). For webhook-driven payments there is no request user,
+    so we fall back to the member as the logical sender of the receipt note.
+    """
+    from apps.notifications.models import Notification
+
+    sender = payment.collected_by or payment.member
+    Notification.objects.create(
+        sender=sender,
+        recipient=payment.member,
+        notification_type=Notification.NotificationType.PAYMENT_RECEIVED,
+        title='Payment received',
+        message=(
+            f'Your payment of {payment.amount_paid} {payment.currency or "NPR"} '
+            f'for {payment.payment_for} has been received. '
+            f'Receipt: {payment.receipt_number}.'
+        ),
+        related_payment_id=payment.id,
+    )
+
+
+def _initiate_khalti_payment(payment):
+    """Start a Khalti checkout for `payment` and attach the transaction id.
+
+    Returns (payment, payment_url) on success. Raises KhaltiError on failure.
+    On failure the caller is expected to mark the payment FAILED.
+    """
+    result = khalti.initiate_payment(payment)
+    payment.transaction_id = result['pidx']
+    payment.save(update_fields=['transaction_id'])
+    return payment, result['payment_url']
+
+
+def _initiate_esewa_payment(payment):
+    """Build eSewa form fields for `payment` and attach the transaction uuid.
+
+    Returns (payment, action_url, form_fields) on success. Raises EsewaError
+    on failure. On failure the caller is expected to mark the payment FAILED.
+    """
+    form_fields = esewa.build_form_fields(payment)
+    payment.transaction_id = form_fields['transaction_uuid']
+    payment.save(update_fields=['transaction_id'])
+    return payment, settings.ESEWA_BASE_URL, form_fields
+
+
 class PaymentViewSet(viewsets.ModelViewSet):
     """
     Owner/Staff/Trainer record and manage payments made on a member's behalf
@@ -321,7 +371,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         if payment_method == Payment.PaymentMethod.KHALTI:
             try:
-                result = khalti.initiate_payment(payment)
+                payment, payment_url = _initiate_khalti_payment(payment)
             except KhaltiError as exc:
                 logger.error('Khalti initiate failed for payment %s: %s', payment.id, exc)
                 payment.status = Payment.PaymentStatus.FAILED
@@ -331,15 +381,13 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     {'detail': f'Could not start Khalti checkout: {exc}'},
                     status=502,
                 )
-            payment.transaction_id = result['pidx']
-            payment.save()
             data = PaymentSerializer(payment).data
-            data['payment_url'] = result['payment_url']
+            data['payment_url'] = payment_url
             return Response(data, status=201)
 
         if payment_method == Payment.PaymentMethod.ESEWA:
             try:
-                form_fields = esewa.build_form_fields(payment)
+                payment, action_url, form_fields = _initiate_esewa_payment(payment)
             except EsewaError as exc:
                 logger.error('eSewa build_form_fields failed for payment %s: %s', payment.id, exc)
                 payment.status = Payment.PaymentStatus.FAILED
@@ -349,10 +397,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     {'detail': f'Could not start eSewa checkout: {exc}'},
                     status=502,
                 )
-            payment.transaction_id = form_fields['transaction_uuid']
-            payment.save()
             data = PaymentSerializer(payment).data
-            data['esewa_action_url'] = settings.ESEWA_BASE_URL
+            data['esewa_action_url'] = action_url
             data['esewa_form_fields'] = form_fields
             return Response(data, status=201)
 
@@ -455,6 +501,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
             payment.notes = f'Verified via Khalti lookup — txn {result["transaction_id"]}'
             payment.save()
             logger.info('Khalti payment %s verified successfully', payment.id)
+            _notify_payment_received(payment)
         elif gateway_status in ('Expired', 'User canceled'):
             payment.status = Payment.PaymentStatus.FAILED
             payment.notes = f'Khalti status: {gateway_status}'
@@ -560,6 +607,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
             payment.notes = f'Verified via eSewa status check — ref {result["ref_id"]}'
             payment.save()
             logger.info('eSewa payment %s verified successfully', payment.id)
+            _notify_payment_received(payment)
         elif gateway_status in ('CANCELED', 'NOT_FOUND'):
             payment.status = Payment.PaymentStatus.FAILED
             payment.notes = f'eSewa status: {gateway_status}'
@@ -713,9 +761,13 @@ def khalti_webhook(request):
     if verified:
         payment.status = Payment.PaymentStatus.PAID
         payment.paid_at = timezone.now()
-        payment.notes = f'Verified via Khalti webhook — txn {result["transaction_id"]}'
+        payment.notes = (
+            f'Verified via Khalti webhook — '
+            f'txn {result["transaction_id"]}'
+        )
         payment.save()
         logger.info('Khalti webhook: payment %s verified', payment.id)
+        _notify_payment_received(payment)
     elif gateway_status in ('Expired', 'User canceled'):
         payment.status = Payment.PaymentStatus.FAILED
         payment.notes = f'Khalti webhook status: {gateway_status}'
@@ -723,8 +775,9 @@ def khalti_webhook(request):
         logger.info('Khalti webhook: payment %s status %s', payment.id, gateway_status)
     elif gateway_status == 'Completed' and not verified:
         payment.notes = (
-            f'Khalti webhook: Completed but amount mismatch — '
-            f'expected {int(payment.amount * 100)}, got {result["raw"].get("total_amount")}'
+            'Khalti webhook: Completed but amount mismatch — '
+            f'expected {int(payment.amount * 100)}, '
+            f'got {result["raw"].get("total_amount")}'
         )
         payment.save()
         logger.warning('Khalti webhook amount mismatch for payment %s', payment.id)

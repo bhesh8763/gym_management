@@ -340,6 +340,66 @@ class WorkoutAssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
         return _visible_assignments(self.request.user)
 
 
+# ─── Personal record detection (extracted from completion-log view) ────────
+
+def _detect_personal_records(log, member, assignment):
+    """Scan one completion log for new or improved personal records.
+
+    Only weighted exercises (those with ``weight_kg`` set on the day's
+    exercise line) are considered, and only the best weight from the log's
+    ``set_logs`` is used for each exercise.
+
+    This is kept as a pure function of the log so the completion-log view
+    stays focused on HTTP concerns and PR rules are easy to test in
+    isolation.
+    """
+    if not log.set_logs:
+        return
+
+    workout_day = log.workout_day
+    if not workout_day:
+        return
+
+    exercises = workout_day.exercises.select_related('exercise').all()
+    weighted_exercises = [wde for wde in exercises if wde.weight_kg is not None]
+
+    for wde in weighted_exercises:
+        exercise = wde.exercise
+        best_weight = None
+        best_reps = None
+        for s in log.set_logs:
+            if 'weight' in s and s['weight'] is not None:
+                w = float(s['weight'])
+                if w > 0 and (best_weight is None or w > float(best_weight)):
+                    best_weight = s['weight']
+                    best_reps = s.get('reps')
+        if best_weight is None:
+            continue
+
+        pr, created = PersonalRecord.objects.get_or_create(
+            member=member,
+            exercise=exercise,
+            defaults={
+                'value': best_weight,
+                'unit': 'kg',
+                'date': log.date,
+                'best_weight_kg': best_weight,
+                'best_reps': best_reps,
+                'assignment': assignment,
+                'log': log,
+            },
+        )
+        if not created:
+            if float(best_weight) > float(pr.best_weight_kg or 0):
+                pr.best_weight_kg = best_weight
+                pr.best_reps = best_reps
+                pr.value = best_weight
+                pr.date = log.date
+                pr.assignment = assignment
+                pr.log = log
+                pr.save()
+
+
 # ─── Completion logs (member-facing progress) ───────────────────────────────
 
 class WorkoutCompletionLogListCreateView(generics.ListCreateAPIView):
@@ -359,47 +419,9 @@ class WorkoutCompletionLogListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied('Members can only log their own workouts.')
         log = serializer.save()
 
-        # Auto-detect Personal Records — only for exercises that have weight in set_logs
-        if log.set_logs and self.request.user.is_member:
-            workout_day = log.workout_day
-            exercises = workout_day.exercises.select_related('exercise').all()
-            # Only check exercises that are configured as weighted (have weight_kg set)
-            weighted_exercises = [wde for wde in exercises if wde.weight_kg is not None]
-            for wde in weighted_exercises:
-                exercise = wde.exercise
-                # Find the best weight logged for this exercise from set_logs
-                best_weight = None
-                best_reps = None
-                for s in log.set_logs:
-                    if 'weight' in s and s['weight'] is not None:
-                        w = float(s['weight'])
-                        if w > 0 and (best_weight is None or w > float(best_weight)):
-                            best_weight = s['weight']
-                            best_reps = s.get('reps')
-                if best_weight is None:
-                    continue
-                pr, created = PersonalRecord.objects.get_or_create(
-                    member=self.request.user,
-                    exercise=exercise,
-                    defaults={
-                        'value': best_weight,
-                        'unit': 'kg',
-                        'date': log.date,
-                        'best_weight_kg': best_weight,
-                        'best_reps': best_reps,
-                        'assignment': assignment,
-                        'log': log,
-                    },
-                )
-                if not created:
-                    if best_weight is not None and (pr.best_weight_kg is None or float(best_weight) > float(pr.best_weight_kg)):
-                        pr.best_weight_kg = best_weight
-                        pr.best_reps = best_reps
-                        pr.value = best_weight
-                        pr.date = log.date
-                        pr.assignment = assignment
-                        pr.log = log
-                        pr.save()
+        # Auto-detect personal records for this member after saving the log.
+        if self.request.user.is_member:
+            _detect_personal_records(log, self.request.user, assignment)
 
 
 # ─── Member self-service actions (pause / resume / cancel) ──────────────────
@@ -451,6 +473,26 @@ class AssignmentCancelView(APIView):
 
 # ─── Trainer messaging (via notifications) ──────────────────────────────────
 
+def _send_notification(sender, recipient, notification_type, title, message,
+                       related_membership_id=None, related_payment_id=None):
+    """Create a Notification with an explicit sender instead of encoding the
+    sender's name into the title.
+
+    Kept as a small helper so every notification creation site is consistent
+    and so the inbox can render sender info from the FK instead of parsing
+    the title string.
+    """
+    return Notification.objects.create(
+        sender=sender,
+        recipient=recipient,
+        notification_type=notification_type,
+        title=title,
+        message=message[:500],
+        related_membership_id=related_membership_id,
+        related_payment_id=related_payment_id,
+    )
+
+
 class TrainerMessageView(APIView):
     """Member sends a message to their trainer via the notification system."""
     permission_classes = [IsAuthenticated]
@@ -473,11 +515,12 @@ class TrainerMessageView(APIView):
             return Response({'detail': 'No trainer assigned to you yet.'}, status=status.HTTP_400_BAD_REQUEST)
 
         trainer = assignment.template.trainer
-        Notification.objects.create(
+        _send_notification(
+            sender=request.user,
             recipient=trainer,
             notification_type=Notification.NotificationType.MEMBER_MESSAGE,
-            title=f'Message from {request.user.get_full_name() or request.user.email}',
-            message=message[:500],
+            title='Member message',
+            message=message,
             related_membership_id=request.user.id,
         )
         return Response({'detail': 'Message sent to your trainer.'}, status=status.HTTP_201_CREATED)
@@ -487,15 +530,16 @@ class TrainerMessageView(APIView):
 
 
 def _serialize_notification(n):
-    """Serialize a notification for the messages inbox API."""
-    # Sender name is embedded in the title (e.g. "Message from Jane Doe" /
-    # "Reply from Jane Doe") — strip whichever prefix is present.
-    title = n.title or ''
-    sender = title
-    for prefix in ('Message from ', 'Reply from '):
-        if title.startswith(prefix):
-            sender = title[len(prefix):]
-            break
+    """Serialize a notification for the messages inbox API.
+
+    Sender info now comes from the ``sender`` FK (set by _send_notification)
+    instead of being parsed out of the legacy title string.
+    """
+    sender_name = (
+        n.sender.get_full_name() or n.sender.email
+        if n.sender_id
+        else None
+    )
     return {
         'id': n.id,
         'title': n.title,
@@ -503,8 +547,8 @@ def _serialize_notification(n):
         'is_read': n.is_read,
         'read_at': n.read_at,
         'created_at': n.created_at,
-        'sender_name': sender,
-        'sender_id': n.related_membership_id,
+        'sender_name': sender_name,
+        'sender_id': n.sender_id,
         'recipient_id': n.recipient_id,
         'recipient_name': (
             n.recipient.get_full_name() or n.recipient.email
@@ -515,19 +559,23 @@ def _serialize_notification(n):
 
 
 class TrainerMessagesView(APIView):
-    """Trainer views all member messages and replies sent via the messaging feature."""
+    """Trainer views all member messages and replies sent via the messaging feature.
+
+    Conversations are identified by ``sender_id`` / ``recipient_id`` now that
+    notifications carry an explicit sender FK, so the inbox no longer needs to
+    parse the legacy ``Message from X`` / ``Reply from X`` title prefix.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         member_id = request.query_params.get('member_id')
 
         if request.user.is_member:
-            # Members see their own sent messages and replies they received
-            member_name = request.user.get_full_name() or request.user.email
+            # Members see their own sent messages and replies they received.
             qs = Notification.objects.filter(
                 Q(
                     notification_type=Notification.NotificationType.MEMBER_MESSAGE,
-                    related_membership_id=request.user.id,
+                    sender=request.user,
                 )
                 |
                 Q(
@@ -536,15 +584,15 @@ class TrainerMessagesView(APIView):
                 ),
             ).order_by('created_at')
 
-            # Optionally filter by a specific trainer
+            # Optionally filter by a specific trainer.
             trainer_id = request.query_params.get('trainer_id')
             if trainer_id:
                 qs = qs.filter(
-                    Q(related_membership_id=request.user.id, recipient_id=trainer_id)
-                    | Q(recipient=request.user, related_membership_id=trainer_id)
+                    Q(sender=request.user, recipient_id=trainer_id)
+                    | Q(recipient=request.user, sender_id=trainer_id)
                 )
         else:
-            # Trainers/owners/staff see messages sent to them and their replies
+            # Trainers / owners / staff see messages sent to them and their replies.
             qs = Notification.objects.filter(
                 Q(
                     recipient=request.user,
@@ -553,15 +601,15 @@ class TrainerMessagesView(APIView):
                 |
                 Q(
                     notification_type=Notification.NotificationType.TRAINER_REPLY,
-                    related_membership_id=request.user.id,
+                    sender=request.user,
                 ),
             ).order_by('created_at')
 
-            # Filter by a specific member if provided
+            # Filter by a specific member if provided.
             if member_id:
                 qs = qs.filter(
-                    Q(related_membership_id=member_id, recipient=request.user)
-                    | Q(recipient_id=member_id, related_membership_id=request.user.id)
+                    Q(sender_id=member_id, recipient=request.user)
+                    | Q(recipient_id=member_id, sender=request.user)
                 )
 
         unread_only = request.query_params.get('is_read')
@@ -577,7 +625,7 @@ class TrainerReplyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if request.user.role not in ('TRAINER', 'OWNER', 'STAFF'):
+        if request.user.role not in (User.Role.TRAINER, User.Role.OWNER, User.Role.STAFF):
             return Response(
                 {'detail': 'Only trainers, owners, and staff can reply.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -592,23 +640,22 @@ class TrainerReplyView(APIView):
             return Response({'detail': 'member_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Resolve the member user
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        try:
-            member = User.objects.get(pk=member_id)
-        except User.DoesNotExist:
+        member = User.objects.filter(pk=member_id).first()
+        if member is None:
             return Response({'detail': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         if not member.is_member:
             return Response({'detail': 'Target user is not a member.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create a TRAINER_REPLY notification for the member
-        trainer_name = request.user.get_full_name() or request.user.email
-        Notification.objects.create(
+        # Create a TRAINER_REPLY notification for the member.
+        # sender=request.user is set explicitly so the inbox reads the sender
+        # from the FK instead of parsing the title.
+        _send_notification(
+            sender=request.user,
             recipient=member,
             notification_type=Notification.NotificationType.TRAINER_REPLY,
-            title=f'Reply from {trainer_name}',
-            message=reply_text[:500],
+            title='Trainer reply',
+            message=reply_text,
             related_membership_id=request.user.id,
         )
         return Response({'detail': 'Reply sent.'}, status=status.HTTP_201_CREATED)
@@ -641,10 +688,12 @@ def _owner_started_conversation(member, owner):
     """
     True when the owner has already messaged this member. A member may only
     *continue* a conversation with the owner — they can never start one.
+
+    Uses ``sender_id`` now that notifications carry an explicit sender FK.
     """
     return Notification.objects.filter(
         recipient=member,
-        related_membership_id=owner.pk,
+        sender=owner,
         notification_type__in=[
             Notification.NotificationType.MEMBER_MESSAGE,
             Notification.NotificationType.TRAINER_REPLY,
@@ -751,19 +800,19 @@ class DirectMessageView(APIView):
             )
 
         sender = request.user
-        sender_name = sender.get_full_name() or sender.email
         if sender.is_member:
             n_type = Notification.NotificationType.MEMBER_MESSAGE
-            title = f'Message from {sender_name}'
+            title = 'Direct message'
         else:
             n_type = Notification.NotificationType.TRAINER_REPLY
-            title = f'Reply from {sender_name}' if recipient.is_member else f'Message from {sender_name}'
+            title = 'Reply' if recipient.is_member else 'Direct message'
 
-        n = Notification.objects.create(
+        n = _send_notification(
+            sender=sender,
             recipient=recipient,
             notification_type=n_type,
             title=title,
-            message=message[:500],
+            message=message,
             related_membership_id=sender.pk,
         )
         return Response(
@@ -1087,7 +1136,7 @@ class ConversationDeleteView(APIView):
 
             # Only the creator, owner, or staff can delete a group
             is_creator = group.created_by_id == request.user.pk
-            is_admin = request.user.role in ('OWNER', 'STAFF')
+            is_admin = request.user.role in (User.Role.OWNER, User.Role.STAFF)
             if not is_creator and not is_admin:
                 return Response(
                     {'detail': 'Only the group creator or admin can delete a group.'},

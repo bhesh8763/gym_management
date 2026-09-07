@@ -10,6 +10,7 @@ urlpatterns = [
     path('equipment/', views.equipment_report, name='report-equipment'),
     path('lockers/', views.locker_report, name='report-lockers'),
     path('staff/', views.staff_report, name='report-staff'),
+    path('retention/', views.retention_report, name='report-retention'),
 
     # Export endpoints — CSV or Excel via ?format=csv|excel
     path('export/attendance/', views.export_attendance, name='export-attendance'),

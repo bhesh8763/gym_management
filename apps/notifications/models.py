@@ -24,6 +24,14 @@ class Notification(models.Model):
         MEMBER_MESSAGE = 'MEMBER_MESSAGE', 'Member Message'
         TRAINER_REPLY = 'TRAINER_REPLY', 'Trainer Reply'
 
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sent_notifications',
+        help_text='User who caused this notification (member, trainer, staff, owner).',
+    )
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

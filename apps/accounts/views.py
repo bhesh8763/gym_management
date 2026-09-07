@@ -25,6 +25,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 from .models import PasswordResetToken
 from .serializers import (
@@ -146,14 +147,23 @@ class ChangePasswordView(generics.UpdateAPIView):
     def update(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        user = serializer.save()
 
-        # Invalidate all existing tokens after password change
-        # by rotating the refresh token
+        # Invalidate every outstanding JWT for this user so that old access/
+        # refresh tokens can't be used after the password changes.
+        self._blacklist_user_tokens(user)
+
         return Response(
             {'message': 'Password changed successfully. Please log in again.'},
             status=status.HTTP_200_OK,
         )
+
+    @staticmethod
+    def _blacklist_user_tokens(user):
+        """Blacklist all outstanding tokens for `user` so existing sessions
+        are terminated immediately after a password change or reset."""
+        for token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=token)
 
 
 
@@ -254,5 +264,9 @@ class ResetPasswordView(APIView):
         reset_token.user.save(update_fields=['password'])
         reset_token.is_used = True
         reset_token.save(update_fields=['is_used'])
+
+        # Invalidate all existing JWTs issued before the reset, so any
+        # session that was active under the old password stops immediately.
+        ChangePasswordView._blacklist_user_tokens(reset_token.user)
 
         return Response({'message': 'Password reset successfully. You can now log in.'})

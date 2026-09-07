@@ -28,14 +28,14 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
         self._release_expired_assignments()
 
         user = self.request.user
-        if user.role in ('OWNER', 'STAFF'):
+        if user.role in (User.Role.OWNER, User.Role.STAFF):
             qs = LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').all()
         else:
             qs = LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').filter(member=user)
 
         member_id = self.request.query_params.get('member')
         active_only = self.request.query_params.get('active')
-        if member_id and user.role in ('OWNER', 'STAFF'):
+        if member_id and user.role in (User.Role.OWNER, User.Role.STAFF):
             qs = qs.filter(member_id=member_id)
         if active_only == 'true':
             qs = qs.filter(is_active=True)

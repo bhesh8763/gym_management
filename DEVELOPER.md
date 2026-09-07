@@ -13,6 +13,7 @@ Technical documentation for developers working on the Gym Management System.
 - [Adding New Endpoints](#adding-new-endpoints)
 - [Permission System](#permission-system)
 - [Serializer Patterns](#serializer-patterns)
+- [Social Authentication](#social-authentication)
 - [Testing Guide](#testing-guide)
 - [API Usage Examples](#api-usage-examples)
 - [Frontend Development](#frontend-development)
@@ -415,7 +416,109 @@ class MyView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return MyCreateSerializer
         return MyListSerializer
+```---
+
+## Social Authentication
+
+FitCore uses [django-allauth](https://github.com/pennersr/django-allauth) with [dj-rest-auth](https://github.com/iMerica/dj-rest-auth) for Google and Facebook social login.
+
+### Architecture
+
 ```
+Browser → Frontend (login.html / signup.html)
+    ↓ socialLogin('google') / socialSignup('google')
+/api/auth/google/login/ (OAuth2LoginView)
+    ↓ redirect to Google consent screen
+Google → /api/auth/google/callback/ (OAuth2CallbackView)
+    ↓ django-allauth creates SocialAccount + User
+/api/auth/3rdparty/login/callback/ (allauth)
+    ↓ redirect to FRONTEND_URL with JWT tokens
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `apps/accounts/adapters.py` | Custom OAuth2 adapters that force `localhost` in callback URLs (Facebook requires `localhost` for HTTP) |
+| `apps/accounts/social_views.py` | Custom OAuth2LoginView / OAuth2CallbackView using the adapters |
+| `gym_management/urls.py` | Wires up `/api/auth/google/login/`, `/api/auth/facebook/login/`, and `/api/auth/3rdparty/` |
+| `templates/allauth/socialaccount/login.html` | Custom allauth login confirmation page |
+| `templates/allauth/socialaccount/login_cancelled.html` | Custom cancelled page |
+| `templates/allauth/socialaccount/login_error.html` | Custom error page |
+
+### Custom Adapters
+
+Facebook rejects `127.0.0.1` as a callback host over HTTP — it requires `localhost`. The custom adapters in `adapters.py` replace `127.0.0.1` with `localhost` in callback URLs:
+
+```python
+# apps/accounts/adapters.py
+class CustomGoogleOAuth2Adapter(GoogleOAuth2Adapter):
+    def get_callback_url(self, request, app):
+        return _force_localhost(super().get_callback_url(request, app))
+
+class CustomFacebookOAuth2Adapter(FacebookOAuth2Adapter):
+    def get_callback_url(self, request, app):
+        return _force_localhost(super().get_callback_url(request, app))
+```
+
+### Configuration
+
+In `settings.py`:
+
+```python
+# Provider credentials from .env
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID', default=''),
+            'secret': config('GOOGLE_CLIENT_SECRET', default=''),
+        },
+        'SCOPE': ['profile', 'email'],
+    },
+    'facebook': {
+        'APP': {
+            'client_id': config('FACEBOOK_APP_ID', default=''),
+            'secret': config('FACEBOOK_APP_SECRET', default=''),
+        },
+        'SCOPE': ['email', 'public_profile'],
+    },
+}
+
+# dj-rest-auth uses JWT
+REST_USE_JWT = True
+REST_AUTH = {
+    'TOKEN_MODEL': None,
+    'USE_JWT': True,
+}
+```
+
+### Frontend Integration
+
+The login and signup pages include social login buttons:
+
+```javascript
+function socialLogin(provider) {
+    window.location.href = `${API_BASE}/auth/${provider}/login/`;
+}
+```
+
+After successful OAuth, allauth redirects to `FRONTEND_URL` (set in `.env`).
+
+### Setup Steps
+
+1. **Google**: Create OAuth 2.0 credentials in [Google Cloud Console](https://console.cloud.google.com/)
+   - Authorized redirect URI: `http://localhost:8000/api/auth/google/callback/`
+2. **Facebook**: Create an app in [Facebook Developers](https://developers.facebook.com/)
+   - Valid OAuth redirect URI: `http://localhost:8000/api/auth/facebook/callback/`
+3. Add credentials to `.env`:
+   ```env
+   GOOGLE_CLIENT_ID=your-client-id
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   FACEBOOK_APP_ID=your-app-id
+   FACEBOOK_APP_SECRET=your-app-secret
+   ```
+4. Create a `Site` object in Django admin (allauth requires it):
+   - `Site` id=1, domain=localhost:5500, name=FitCore
 
 ---
 
@@ -607,6 +710,32 @@ curl -X POST http://127.0.0.1:8000/api/diet/diet-plans/ \
   }'
 ```
 
+### Social Login (Google)
+
+```bash
+# 1. User clicks Google login button in frontend
+# 2. Browser redirects to:
+http://127.0.0.1:8000/api/auth/google/login/
+
+# 3. After Google consent, user is redirected to callback:
+http://127.0.0.1:8000/api/auth/google/callback/
+
+# 4. allauth processes the callback and redirects to FRONTEND_URL
+#    with JWT tokens in the URL or cookie
+```
+
+### Check Available Social Providers
+
+```bash
+curl http://127.0.0.1:8000/api/auth/3rdparty/login/
+
+# Response:
+# [
+#   { "name": "Google", "id": "google", "flows": ["redirect"] },
+#   { "name": "Facebook", "id": "facebook", "flows": ["redirect"] }
+# ]
+```
+
 ### Export Memberships as Excel
 
 ```bash
@@ -788,4 +917,4 @@ migrations.RunPython(forward),
 
 ---
 
-*Last updated: August 2026*
+*Last updated: September 2026*

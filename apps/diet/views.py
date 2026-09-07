@@ -41,7 +41,7 @@ DIET_DISCLAIMER = (
 def _visible_diet_plans(user):
     """Return the queryset of DietPlan records the requesting user may see."""
     qs = DietPlan.objects.select_related('member', 'created_by').prefetch_related('meals')
-    if user.role in ('OWNER', 'STAFF'):
+    if user.role in (User.Role.OWNER, User.Role.STAFF):
         return qs.all()
     if user.is_member:
         return qs.filter(member=user)
@@ -156,7 +156,7 @@ class MealLogViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ('OWNER', 'STAFF'):
+        if user.role in (User.Role.OWNER, User.Role.STAFF):
             qs = MealLog.objects.all()
         elif user.is_trainer:
             from apps.trainers.models import TrainerMemberAssignment
@@ -180,7 +180,7 @@ class MealLogViewSet(viewsets.ModelViewSet):
             qs = qs.filter(date__lte=date_to)
 
         member_id = self.request.query_params.get('member')
-        if member_id and user.role in ('OWNER', 'STAFF', 'TRAINER'):
+        if member_id and user.role in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER):
             qs = qs.filter(member_id=member_id)
 
         return qs.order_by('-date')

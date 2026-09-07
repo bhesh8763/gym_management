@@ -19,6 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.models import User
 from apps.accounts.permissions import IsOwnerOrStaff
 from apps.notifications.models import Notification
 from apps.notifications.serializers import NotificationCreateSerializer, NotificationSerializer
@@ -118,7 +119,7 @@ class NotificationDeleteView(APIView):
         except Notification.DoesNotExist:
             raise NotFound('Notification not found.')
 
-        is_privileged = request.user.role in ('OWNER', 'STAFF')
+        is_privileged = request.user.role in (User.Role.OWNER, User.Role.STAFF)
         if not is_privileged and notification.recipient != request.user:
             raise PermissionDenied('You do not have permission to delete this notification.')
 

@@ -13,9 +13,13 @@ __pycache__/
 *.pyo
 *.pyd
 *.pycache
+.coverage
+htmlcov/
 
 # Django
 *.log
+logs/
+backups/
 db.sqlite3
 staticfiles/
 media/
@@ -33,4 +37,5 @@ Thumbs.db
 opencode.json
 AGENTS.md
 
-.empryo
+# GitHub Actions (DO NOT ignore — needed for CI)
+# .github/.github/

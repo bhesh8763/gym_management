@@ -20,6 +20,7 @@ Search/Filter (list):
     ?ordering=<start_date|-start_date|end_date|-end_date|created_at|-created_at>
 """
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -34,7 +35,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsMember, IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
 from apps.notifications.models import Notification
-from apps.memberships.models import FreezeRequest, Membership, MembershipPlan
+from apps.memberships.models import FreezeRequest, Membership, MembershipPlan, Offer, PromoCode, PromoCodeUsage
 from apps.memberships.serializers import (
     FreezeRequestCreateSerializer,
     FreezeRequestListSerializer,
@@ -44,7 +45,10 @@ from apps.memberships.serializers import (
     MembershipListSerializer,
     MembershipPlanSerializer,
     MembershipUpdateSerializer,
+    OfferSerializer,
+    PromoCodeSerializer,
     RenewSerializer,
+    ValidatePromoCodeSerializer,
 )
 
 User = get_user_model()
@@ -352,6 +356,124 @@ class MembershipRenewView(APIView):
 
 # ─── Expiry tracking ────────────────────────────────────────────────────────────
 
+# ─── Offers ──────────────────────────────────────────────────────────────
+
+
+class OfferListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/memberships/offers/  — Owner/Staff list all, any user sees active
+    POST /api/memberships/offers/  — Owner/Staff create offer
+    """
+    serializer_class = OfferSerializer
+    permission_classes = [IsOwnerOrStaff]
+
+    def get_queryset(self):
+        return Offer.objects.prefetch_related('plans').all()
+
+
+class OfferDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET/PUT/PATCH/DELETE /api/memberships/offers/<id>/
+    """
+    serializer_class = OfferSerializer
+    queryset = Offer.objects.prefetch_related('plans').all()
+    permission_classes = [IsOwnerOrStaff]
+
+    def destroy(self, request, *args, **kwargs):
+        offer = self.get_object()
+        offer.is_active = False
+        offer.save(update_fields=['is_active'])
+        return Response(
+            {'detail': f'Offer "{offer.name}" deactivated.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class OfferValidateView(APIView):
+    """
+    POST /api/memberships/offers/validate/
+    Members submit a promo code + plan to get the discounted price.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ValidatePromoCodeSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        promo = serializer.validated_data['code']
+        plan = serializer.validated_data['plan_id']
+
+        original_price = plan.price
+        discount = promo.calculate_discount(original_price)
+        final_price = original_price - discount
+
+        return Response({
+            'promo_code': promo.code,
+            'offer_name': promo.offer.name,
+            'discount_type': promo.offer.discount_type,
+            'discount_value': str(promo.offer.discount_value),
+            'original_price': str(original_price),
+            'discount_amount': str(discount),
+            'final_price': str(max(final_price, Decimal('0'))),
+        })
+
+
+class PromoCodeListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/memberships/promo-codes/  — Owner/Staff list all
+    POST /api/memberships/promo-codes/  — Owner/Staff create promo code
+    """
+    serializer_class = PromoCodeSerializer
+    permission_classes = [IsOwnerOrStaff]
+
+    def get_queryset(self):
+        qs = PromoCode.objects.select_related('offer', 'created_by').all()
+        offer_id = self.request.query_params.get('offer')
+        if offer_id:
+            qs = qs.filter(offer_id=offer_id)
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET/PUT/PATCH/DELETE /api/memberships/promo-codes/<id>/
+    """
+    serializer_class = PromoCodeSerializer
+    queryset = PromoCode.objects.select_related('offer', 'created_by').all()
+    permission_classes = [IsOwnerOrStaff]
+
+
+class PromoCodeUsageListView(generics.ListAPIView):
+    """
+    GET /api/memberships/promo-code-usages/ — Owner/Staff see all usage records
+    """
+    permission_classes = [IsOwnerOrStaff]
+
+    def get_serializer_class(self):
+        from rest_framework import serializers as _serializers
+        from rest_framework.serializers import ModelSerializer
+        class _UsageSerializer(ModelSerializer):
+            member_name = _serializers.CharField(source='member.get_full_name', read_only=True)
+            promo_code_str = _serializers.CharField(source='promo_code.code', read_only=True)
+            class Meta:
+                model = PromoCodeUsage
+                fields = [
+                    'id', 'promo_code', 'promo_code_str', 'member', 'member_name',
+                    'membership', 'original_price', 'discount_applied', 'final_price', 'used_at',
+                ]
+        return _UsageSerializer
+
+    def get_queryset(self):
+        return PromoCodeUsage.objects.select_related(
+            'promo_code', 'member', 'membership'
+        ).all()
+
+
 class ExpiringMembershipsView(generics.ListAPIView):
     """
     GET /api/memberships/expiring/?days=7
@@ -472,8 +594,10 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
         freeze_request.reviewed_at = timezone.now()
         freeze_request.save()
 
-        # Notify the member
+        # Notify the member. The sender is the owner/staff who approved it,
+        # stored explicitly now that Notification carries a sender FK.
         Notification.objects.create(
+            sender=request.user,
             recipient=freeze_request.requested_by,
             notification_type=Notification.NotificationType.GENERAL,
             title='Freeze request approved',
@@ -505,8 +629,10 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
         freeze_request.rejection_reason = rejection_reason
         freeze_request.save()
 
-        # Notify the member
+        # Notify the member. The sender is the owner/staff who rejected it,
+        # stored explicitly now that Notification carries a sender FK.
         Notification.objects.create(
+            sender=request.user,
             recipient=freeze_request.requested_by,
             notification_type=Notification.NotificationType.GENERAL,
             title='Freeze request rejected',

@@ -451,11 +451,14 @@ class MessagingPermissionsTestCase(WorkoutAPITestCase):
         self.assertEqual(self._send(self.member, self.owner.pk).status_code, status.HTTP_403_FORBIDDEN)
 
     def test_member_can_continue_conversation_owner_started(self):
-        # Owner messages the member first (TRAINER_REPLY, sender = owner)
+        # Owner messages the member first (TRAINER_REPLY, sender = owner).
+        # New notifications carry an explicit sender FK; the legacy
+        # "Reply from <name>" title is no longer parsed.
         Notification.objects.create(
+            sender=self.owner,
             recipient=self.member,
             notification_type=Notification.NotificationType.TRAINER_REPLY,
-            title=f'Reply from {self.owner.get_full_name()}',
+            title='Trainer reply',
             message='Hi!',
             related_membership_id=self.owner.pk,
         )
@@ -502,9 +505,10 @@ class MessagingPermissionsTestCase(WorkoutAPITestCase):
         # Owner messaged the member -> member may reply (continue), but the
         # "New Message" picker still never offers the owner.
         Notification.objects.create(
+            sender=self.owner,
             recipient=self.member,
             notification_type=Notification.NotificationType.TRAINER_REPLY,
-            title=f'Reply from {self.owner.get_full_name()}',
+            title='Trainer reply',
             message='Hi!',
             related_membership_id=self.owner.pk,
         )
@@ -772,3 +776,92 @@ class UnauthenticatedWorkoutsTests(APITestCase):
     def test_unauthenticated_assignments_returns_401(self):
         r = self.client.get('/api/workouts/assignments/')
         self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PersonalRecordDetectionTestCase(APITestCase):
+    """Unit tests for _detect_personal_records (extracted from the log view)."""
+
+    def setUp(self):
+        self.trainer = make_user('pr_trainer@gym.com', role=User.Role.TRAINER)
+        self.member = make_user('pr_member@gym.com', role=User.Role.MEMBER)
+        self.exercise = Exercise.objects.create(
+            name='Bench Press', muscle_group='CHEST', exercise_type='STRENGTH',
+        )
+        self.template = WorkoutTemplate.objects.create(
+            name='PR Test', trainer=self.trainer, status=WorkoutTemplate.Status.APPROVED,
+        )
+        self.day = WorkoutDay.objects.create(
+            template=self.template, week_number=1, day_number=1,
+        )
+        WorkoutDayExercise.objects.create(
+            workout_day=self.day, exercise=self.exercise, weight_kg=60,
+        )
+        self.assignment = WorkoutAssignment.objects.create(
+            template=self.template, member=self.member, start_date=date.today(),
+        )
+
+    def _log(self, set_logs, day=None):
+        return WorkoutCompletionLog.objects.create(
+            assignment=self.assignment, workout_day=self.day,
+            date=day or date.today(), status='COMPLETED', set_logs=set_logs,
+        )
+
+    def test_new_personal_record_is_created(self):
+        from apps.workouts.views import _detect_personal_records
+
+        log = self._log([{'weight': 80, 'reps': 5}])
+        _detect_personal_records(log, self.member, self.assignment)
+
+        pr = self.member.personal_records.get(exercise=self.exercise)
+        self.assertEqual(pr.best_weight_kg, 80)
+        self.assertEqual(pr.best_reps, 5)
+
+    def test_improved_record_updates_existing_pr(self):
+        from apps.workouts.views import _detect_personal_records
+
+        log1 = self._log([{'weight': 80, 'reps': 5}], day=date.today() - timedelta(days=2))
+        _detect_personal_records(log1, self.member, self.assignment)
+
+        log2 = self._log([{'weight': 90, 'reps': 3}], day=date.today() - timedelta(days=1))
+        _detect_personal_records(log2, self.member, self.assignment)
+
+        pr = self.member.personal_records.get(exercise=self.exercise)
+        self.assertEqual(pr.best_weight_kg, 90)
+        self.assertEqual(pr.best_reps, 3)
+        self.assertEqual(pr.log_id, log2.id)
+
+    def test_lower_weight_does_not_overwrite_pr(self):
+        from apps.workouts.views import _detect_personal_records
+
+        log1 = self._log([{'weight': 90}], day=date.today() - timedelta(days=2))
+        _detect_personal_records(log1, self.member, self.assignment)
+
+        log2 = self._log([{'weight': 70}], day=date.today() - timedelta(days=1))
+        _detect_personal_records(log2, self.member, self.assignment)
+
+        pr = self.member.personal_records.get(exercise=self.exercise)
+        self.assertEqual(pr.best_weight_kg, 90)
+        self.assertEqual(pr.log_id, log1.id)
+
+    def test_non_weighted_exercise_is_skipped(self):
+        from apps.workouts.views import _detect_personal_records
+
+        bodyweight_exercise = Exercise.objects.create(
+            name='Pull Up', muscle_group='BACK', exercise_type='STRENGTH',
+        )
+        WorkoutDayExercise.objects.create(
+            workout_day=self.day, exercise=bodyweight_exercise, weight_kg=None,
+        )
+
+        log = self._log([{'weight': 80}])
+        _detect_personal_records(log, self.member, self.assignment)
+
+        self.assertFalse(self.member.personal_records.filter(exercise=bodyweight_exercise).exists())
+
+    def test_log_without_set_logs_does_not_create_pr(self):
+        from apps.workouts.views import _detect_personal_records
+
+        log = self._log([])
+        _detect_personal_records(log, self.member, self.assignment)
+
+        self.assertFalse(self.member.personal_records.exists())

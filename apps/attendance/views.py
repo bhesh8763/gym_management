@@ -4,6 +4,7 @@ import base64
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.db import models
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -13,8 +14,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAnyStaffRole, IsOwnerOrStaff
-from .models import Attendance, QRAttendanceToken
-from .serializers import AttendanceSerializer
+from .models import Attendance, QRAttendanceToken, BiometricRecord
+from .serializers import (
+    AttendanceSerializer,
+    BiometricAttendanceSerializer,
+    BiometricRecordSerializer,
+    QRTokenSerializer,
+)
 
 User = get_user_model()
 
@@ -378,6 +384,203 @@ class SharedCheckinQRView(APIView):
         return Response({
             'checkin_url': checkin_url,
             'qr_image_base64': f'data:image/png;base64,{img_base64}',
+        })
+
+
+class BiometricEnrollmentView(APIView):
+    """
+    GET  /api/attendance/biometric/        — list all enrolled biometric records (Owner/Staff)
+    POST /api/attendance/biometric/        — enroll a member's biometric data (Owner/Staff)
+    GET  /api/attendance/biometric/<id>/  — biometric record detail (Owner/Staff)
+    PATCH /api/attendance/biometric/<id>/ — update biometric record status (Owner/Staff)
+    DELETE /api/attendance/biometric/<id>/ — remove biometric enrollment for a member (Owner/Staff)
+    """
+    permission_classes = [IsAnyStaffRole]
+
+    def get(self, request):
+        qs = BiometricRecord.objects.select_related('member', 'enrolled_by').all()
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return Response(BiometricRecordSerializer(qs, many=True).data)
+
+    def post(self, request):
+        data = request.data.copy()
+        user = request.user
+
+        # Validate member exists and is a member
+        member = User.objects.filter(pk=data.get('member'), role=User.Role.MEMBER).first()
+        if not member:
+            return Response(
+                {'error': 'Valid member ID is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if already enrolled
+        existing = BiometricRecord.objects.filter(member=member).first()
+        if existing and existing.status == BiometricRecord.BiometricStatus.ENROLLED:
+            return Response(
+                {'error': 'This member already has an active biometric enrollment.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data['member'] = member.id
+        data['enrolled_by'] = user.id
+        data['enrolled_at'] = timezone.now()
+        if existing:
+            data['status'] = BiometricRecord.BiometricStatus.ENROLLED
+            serializer = BiometricRecordSerializer(existing, data=data, partial=True)
+        else:
+            data['status'] = BiometricRecord.BiometricStatus.ENROLLED
+            serializer = BiometricRecordSerializer(data=data)
+
+        if serializer.is_valid():
+            record = serializer.save()
+            return Response(BiometricRecordSerializer(record).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BiometricRecordDetailView(APIView):
+    """
+    GET/PATCH/DELETE /api/attendance/biometric/<id>/
+    """
+    permission_classes = [IsAnyStaffRole]
+
+    def get(self, request, pk):
+        try:
+            record = BiometricRecord.objects.select_related('member', 'enrolled_by').get(pk=pk)
+        except BiometricRecord.DoesNotExist:
+            return Response({'error': 'Biometric record not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(BiometricRecordSerializer(record).data)
+
+    def patch(self, request, pk):
+        try:
+            record = BiometricRecord.objects.get(pk=pk)
+        except BiometricRecord.DoesNotExist:
+            return Response({'error': 'Biometric record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.data.get('status') == BiometricRecord.BiometricStatus.FAILED:
+            record.enrollment_failed()
+            if 'notes' in request.data:
+                record.notes = request.data['notes']
+                record.save(update_fields=['notes'])
+            return Response(BiometricRecordSerializer(record).data)
+
+        serializer = BiometricRecordSerializer(record, data=request.data, partial=True)
+        if serializer.is_valid():
+            saved = serializer.save()
+            return Response(BiometricRecordSerializer(saved).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        try:
+            record = BiometricRecord.objects.get(pk=pk)
+        except BiometricRecord.DoesNotExist:
+            return Response({'error': 'Biometric record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        record.delete()
+        return Response({'message': 'Biometric enrollment removed.'}, status=status.HTTP_200_OK)
+
+
+class BiometricCheckInView(APIView):
+    """
+    POST /api/attendance/biometric/scan/
+    Open endpoint for biometric scanner devices.
+    Body: { "biometric_id": "...", "device_id": "...", "timestamp": "..." }
+
+    Workflow:
+    1. Scanner sends biometric_id from an enrolled member.
+    2. System finds the corresponding BiometricRecord.
+    3. Records a check-in for that member (creates or updates today's attendance).
+    4. Marks the last_verified_at timestamp.
+    5. Returns the attendance result.
+
+    No JWT auth required — biometric_id is the authentication.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = BiometricAttendanceSerializer(data=request.data)
+        if serializer.is_valid():
+            biometric_record = serializer.context['biometric_record']
+            member = biometric_record.member
+
+            if not member.is_active:
+                return Response(
+                    {'error': 'Member account is inactive.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # Record check-in
+            today = timezone.localdate()
+            now_time = serializer.validated_data.get('timestamp', None)
+            if now_time:
+                now_time = now_time.time() if hasattr(now_time, 'time') else now_time
+            else:
+                now_time = timezone.localtime().time()
+
+            attendance, created = Attendance.objects.get_or_create(
+                user=member,
+                date=today,
+                defaults={
+                    'attendance_type': Attendance.AttendanceType.MEMBER,
+                    'status': Attendance.Status.PRESENT,
+                    'check_in': now_time,
+                },
+            )
+
+            if not created and attendance.check_out is None:
+                attendance.check_out = now_time
+                attendance.save(update_fields=['check_out'])
+                action = 'checked_out'
+            elif not created and attendance.check_out is not None:
+                action = 'already_completed'
+            else:
+                action = 'checked_in'
+
+            # Record biometric verification on the biometric record
+            device_id = serializer.validated_data.get('device_id')
+            biometric_record.record_verification(device_id=device_id)
+
+            return Response({
+                'action': action,
+                'member_name': member.get_full_name(),
+                'display_id': member.display_id,
+                'date': today,
+                'check_in': attendance.check_in,
+                'check_out': attendance.check_out,
+                'duration_minutes': attendance.duration_minutes,
+            })
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BiometricStatsView(APIView):
+    """
+    GET /api/attendance/biometric/stats/
+    Owner/Staff only. Returns biometric enrollment statistics.
+    """
+    permission_classes = [IsAnyStaffRole]
+
+    def get(self, request):
+        total_enrolled = BiometricRecord.objects.filter(
+            status=BiometricRecord.BiometricStatus.ENROLLED
+        ).count()
+        by_type = BiometricRecord.objects.filter(
+            status=BiometricRecord.BiometricStatus.ENROLLED
+        ).values('biometric_type').annotate(count=models.Count('id')).order_by('-count')
+        not_enrolled = BiometricRecord.objects.filter(
+            status=BiometricRecord.BiometricStatus.NOT_ENROLLED
+        ).count()
+        enrolled_today = BiometricRecord.objects.filter(
+            last_verified_at__date=timezone.localdate()
+        ).count()
+
+        return Response({
+            'total_enrolled': total_enrolled,
+            'not_enrolled': not_enrolled,
+            'by_biometric_type': list(by_type),
+            'enrolled_today': enrolled_today,
         })
 
 

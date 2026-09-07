@@ -106,3 +106,87 @@ class QRAttendanceToken(models.Model):
         self.token = secrets.token_urlsafe(48)
         self.save(update_fields=['token', 'updated_at'])
         return self
+
+
+class BiometricRecord(models.Model):
+    """
+    Stores biometric data for members to support fingerprint/face recognition
+    attendance via a separate biometric scanner device.
+
+    The actual biometric template data (fingerprint hash, face encoding) is
+    NOT stored here for security/privacy — this model tracks reference IDs
+    that biometric hardware systems use to link a member to their biometric
+    profile in the scanner's secure store.
+    """
+
+    class BiometricType(models.TextChoices):
+        FINGERPRINT = 'FINGERPRINT', 'Fingerprint'
+        FACE = 'FACE', 'Face Recognition'
+        IRIS = 'IRIS', 'Iris Scan'
+        OTHER = 'OTHER', 'Other'
+
+    class BiometricStatus(models.TextChoices):
+        NOT_ENROLLED = 'NOT_ENROLLED', 'Not Enrolled'
+        ENROLLED = 'ENROLLED', 'Enrolled'
+        FAILED = 'FAILED', 'Enrollment Failed'
+        DISABLED = 'DISABLED', 'Disabled'
+
+    member = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='biometric_records',
+        limit_choices_to={'role': 'MEMBER'},
+    )
+    biometric_type = models.CharField(
+        max_length=15, choices=BiometricType.choices, default=BiometricType.FINGERPRINT
+    )
+    biometric_id = models.CharField(
+        max_length=128,
+        help_text='Device-specific biometric template ID/hash from the scanner hardware',
+    )
+    device_id = models.CharField(
+        max_length=50, blank=True, db_index=True,
+        help_text='Biometric scanner hardware ID that enrolled this member',
+    )
+    enrolled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='biometric_enrollments',
+    )
+    status = models.CharField(
+        max_length=15, choices=BiometricStatus.choices, default=BiometricStatus.ENROLLED
+    )
+    enrolled_at = models.DateTimeField(null=True, blank=True)
+    last_verified_at = models.DateTimeField(null=True, blank=True)
+    last_verified_device = models.CharField(max_length=50, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'biometric_records'
+        verbose_name = 'Biometric Record'
+        verbose_name_plural = 'Biometric Records'
+        ordering = ['member__first_name', 'member__last_name']
+
+    def __str__(self):
+        return f'{self.member.get_full_name()} — {self.get_biometric_type_display()} ({self.get_status_display()})'
+
+    @property
+    def is_verified(self):
+        """Check if this member has a recent successful biometric verification."""
+        return self.last_verified_at is not None
+
+    def record_verification(self, device_id=None):
+        """Mark a successful biometric check-in from a scanner device."""
+        now = timezone.now()
+        self.last_verified_at = now
+        if device_id:
+            self.last_verified_device = device_id
+        self.save(update_fields=['last_verified_at', 'last_verified_device', 'updated_at'])
+
+    def enrollment_failed(self):
+        """Mark that biometric enrollment failed for this member."""
+        self.status = self.BiometricStatus.FAILED
+        self.save(update_fields=['status'])

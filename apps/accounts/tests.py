@@ -5,9 +5,11 @@ Run:  python manage.py test apps.accounts.tests
 """
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 User = get_user_model()
 
@@ -270,6 +272,135 @@ class RBACTests(APITestCase):
         self.assertEqual(response.data['user']['role'], 'MEMBER')
 
 
+class TokenVersionTests(APITestCase):
+    """Instant access-token revocation via the ``token_version`` claim.
+
+    Every issued JWT embeds the user's ``token_version`` at issue time;
+    ``User.set_password`` bumps the DB value, and the authentication class
+    rejects any token whose claim no longer matches — so access tokens die
+    immediately on a password change/reset instead of living out their
+    60-minute expiry.
+    """
+
+    def _login(self):
+        r = self.client.post(reverse('auth-login'), {
+            'email': 'tvuser@gym.com',
+            'password': 'VersionPass@1',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        return r.data['access'], r.data['refresh']
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='tvuser@gym.com', password='VersionPass@1',
+            first_name='TV', last_name='User', role='MEMBER',
+        )
+
+    def test_login_tokens_embed_current_version(self):
+        access, _ = self._login()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+        self.assertEqual(
+            self.client.get(reverse('auth-me')).status_code,
+            status.HTTP_200_OK,
+        )
+
+        import jwt as pyjwt
+        claims = pyjwt.decode(access, options={'verify_signature': False})
+        self.assertEqual(claims['token_version'], self.user.token_version)
+
+    def test_old_access_token_rejected_after_password_change(self):
+        access, _ = self._login()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+        self.assertEqual(
+            self.client.get(reverse('auth-me')).status_code,
+            status.HTTP_200_OK,
+        )
+
+        # Change the password — set_password bumps token_version.
+        self.user.set_password('VersionPass@2')
+        self.user.save()
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+        self.assertEqual(
+            self.client.get(reverse('auth-me')).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+    def test_old_access_token_rejected_after_password_reset(self):
+        access, _ = self._login()
+        self.user.set_password('VersionPass@3')
+        self.user.save()
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+        self.assertEqual(
+            self.client.get(reverse('auth-me')).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+    def test_new_access_token_accepted_after_password_change(self):
+        self.user.set_password('VersionPass@2')
+        self.user.save()
+
+        # Logging in with the NEW password yields working tokens.
+        r = self.client.post(reverse('auth-login'), {
+            'email': 'tvuser@gym.com', 'password': 'VersionPass@2',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
+        self.assertEqual(
+            self.client.get(reverse('auth-me')).status_code,
+            status.HTTP_200_OK,
+        )
+
+    def test_refresh_propagates_current_version(self):
+        """The refresh endpoint copies claims from the refresh token, so a
+        version bump between login and refresh must invalidate the flow."""
+        access, refresh = self._login()
+        self.user.set_password('VersionPass@2')
+        self.user.save()
+
+        r = self.client.post(reverse('auth-token-refresh'),
+                             {'refresh': refresh}, format='json')
+        # The refresh token itself is blacklisted by the password-change
+        # view, but even without that, its derived access token carries the
+        # stale version and must not authenticate.
+        if r.status_code == status.HTTP_200_OK:
+            self.client.credentials(
+                HTTP_AUTHORIZATION=f"Bearer {r.data['access']}"
+            )
+            self.assertEqual(
+                self.client.get(reverse('auth-me')).status_code,
+                status.HTTP_401_UNAUTHORIZED,
+            )
+
+    def test_set_password_bumps_version_each_time(self):
+        # create_user() itself calls set_password, so a fresh account
+        # already carries version 1; what matters is that every subsequent
+        # password change increments it.
+        before = self.user.token_version
+        self.user.set_password('Whatever@1')
+        self.user.save()
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, before + 1)
+        self.user.set_password('Whatever@2')
+        self.user.save()
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, before + 2)
+
+    def test_change_password_endpoint_bumps_version(self):
+        access, _ = self._login()
+        before = self.user.token_version
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+        r = self.client.put(reverse('auth-change-password'), {
+            'old_password': 'VersionPass@1',
+            'new_password': 'VersionPass@2',
+            'new_password2': 'VersionPass@2',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.token_version, before + 1)
+
+
 class ChangePasswordTests(APITestCase):
     """POST /api/auth/change-password/"""
 
@@ -316,6 +447,34 @@ class ChangePasswordTests(APITestCase):
             'new_password2': '123',
         }, format='json')
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_password_change_blacklists_existing_tokens(self):
+        """After a password change, previously issued refresh tokens are
+        blacklisted, so an attacker holding one can no longer mint new
+        access tokens.
+
+        Note: stateless access tokens issued *before* the change remain
+        valid until they expire (60 min) — that is inherent to stateless
+        JWT auth; blacklisting covers the 7-day refresh-token window.
+        """
+        refresh = RefreshToken.for_user(self.user)
+        old_refresh = str(refresh)
+
+        r = self.client.put(self.url, {
+            'old_password': 'OldPass@123',
+            'new_password': 'NewPass@456',
+            'new_password2': 'NewPass@456',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewPass@456'))
+
+        # The old refresh token is blacklisted — using it to get a new
+        # access token must fail.
+        r = self.client.post(reverse('auth-token-refresh'),
+                             {'refresh': old_refresh}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class ForgotPasswordTests(APITestCase):
@@ -406,6 +565,34 @@ class ResetPasswordTests(APITestCase):
         }, format='json')
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_reset_password_blacklists_existing_tokens(self):
+        """After a password reset, previously issued refresh tokens are
+        blacklisted, so an attacker holding one can no longer mint new
+        access tokens.
+
+        Note: stateless access tokens issued *before* the reset remain
+        valid until they expire (60 min) — that is inherent to stateless
+        JWT auth; blacklisting covers the 7-day refresh-token window.
+        """
+        refresh = RefreshToken.for_user(self.user)
+        old_refresh = str(refresh)
+
+        r = self.client.post(self.url, {
+            'token': self.token.token,
+            'new_password': 'ResetPass@456',
+            'new_password2': 'ResetPass@456',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('ResetPass@456'))
+
+        # The old refresh token is blacklisted — using it to get a new
+        # access token must fail.
+        r = self.client.post(reverse('auth-token-refresh'),
+                             {'refresh': old_refresh}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 class UserModelTests(APITestCase):
     def test_display_id_generation(self):
@@ -441,3 +628,44 @@ class UserModelTests(APITestCase):
         self.assertTrue(staff.is_gym_staff)
         self.assertTrue(trainer.is_trainer)
         self.assertTrue(member.is_member)
+
+    def test_display_id_is_unique_per_role(self):
+        """Two members created in the same test should not share a display_id."""
+        u1 = User.objects.create_user(
+            email='dup1@gym.com', password='p',
+            first_name='D', last_name='U', role='MEMBER',
+        )
+        u2 = User.objects.create_user(
+            email='dup2@gym.com', password='p',
+            first_name='D', last_name='U', role='MEMBER',
+        )
+        self.assertNotEqual(u1.display_id, u2.display_id)
+        self.assertTrue(u1.display_id.startswith('MEM-'))
+        self.assertTrue(u2.display_id.startswith('MEM-'))
+
+    def test_concurrent_display_id_draw_does_not_duplicate(self):
+        """Simulate two concurrent creators drawing the next sequence number
+        for the same role. Even if both transactions run back-to-back under
+        the test runner, the second should never reuse the first's id."""
+        from uuid import uuid4
+
+        drawn = []
+
+        def draw_member(i):
+            user = User.objects.create_user(
+                email=f'conc_{uuid4().hex[:8]}@gym.com', password='p',
+                first_name='C', last_name='U', role='MEMBER',
+            )
+            drawn.append(user.display_id)
+            return user
+
+        draw_member(1)
+        draw_member(2)
+
+        self.assertEqual(len(drawn), 2)
+        self.assertNotEqual(drawn[0], drawn[1])
+
+        # The sequence row should have advanced by at least the number of draws.
+        from apps.accounts.models import RoleSequence
+        seq = RoleSequence.objects.get(role='MEMBER')
+        self.assertGreaterEqual(seq.last_value, 2)

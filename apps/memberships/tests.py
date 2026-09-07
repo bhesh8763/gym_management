@@ -23,7 +23,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.memberships.models import FreezeRequest, Membership, MembershipPlan
+from apps.memberships.models import FreezeRequest, Membership, MembershipPlan, Offer, PromoCode, PromoCodeUsage
 
 User = get_user_model()
 
@@ -712,3 +712,396 @@ class ExpiredSyncTestCase(APITestCase):
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         membership.refresh_from_db()
         self.assertEqual(membership.status, Membership.Status.EXPIRED)
+
+
+# ─── Offer CRUD ──────────────────────────────────────────────────────────────
+
+
+class OfferCreateTestCase(APITestCase):
+    """POST /api/memberships/offers/"""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.staff = make_user('staff@gym.com', role=User.Role.STAFF)
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.plan = make_plan()
+        self.now = timezone.now()
+
+    def test_owner_can_create_offer(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/offers/', {
+            'name': 'New Year Sale',
+            'discount_type': 'PERCENTAGE',
+            'discount_value': '20.00',
+            'applicability': 'ALL_PLANS',
+            'max_uses': 100,
+            'max_uses_per_member': 1,
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=30)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Offer.objects.count(), 1)
+
+    def test_staff_can_create_offer(self):
+        self.client.credentials(**auth_headers(self.staff))
+        r = self.client.post('/api/memberships/offers/', {
+            'name': 'Staff Offer',
+            'discount_type': 'FIXED_AMOUNT',
+            'discount_value': '500.00',
+            'applicability': 'ALL_PLANS',
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=7)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+    def test_member_cannot_create_offer(self):
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.post('/api/memberships/offers/', {
+            'name': 'Member Offer',
+            'discount_type': 'PERCENTAGE',
+            'discount_value': '10.00',
+            'applicability': 'ALL_PLANS',
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=7)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_percentage_over_100_rejected(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/offers/', {
+            'name': 'Bad Offer',
+            'discount_type': 'PERCENTAGE',
+            'discount_value': '150.00',
+            'applicability': 'ALL_PLANS',
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=7)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_specific_plans_requires_plans(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/offers/', {
+            'name': 'Specific Plan Offer',
+            'discount_type': 'PERCENTAGE',
+            'discount_value': '10.00',
+            'applicability': 'SPECIFIC_PLANS',
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=7)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_valid_until_before_valid_from_rejected(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/offers/', {
+            'name': 'Bad Dates',
+            'discount_type': 'PERCENTAGE',
+            'discount_value': '10.00',
+            'applicability': 'ALL_PLANS',
+            'valid_from': (self.now + timedelta(days=7)).isoformat(),
+            'valid_until': self.now.isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class OfferListTestCase(APITestCase):
+    """GET /api/memberships/offers/"""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.now = timezone.now()
+        self.offer = Offer.objects.create(
+            name='Test Offer',
+            discount_type='PERCENTAGE',
+            discount_value=Decimal('15.00'),
+            applicability='ALL_PLANS',
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+
+    def test_owner_can_list_offers(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get('/api/memberships/offers/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        results = r.data.get('results', r.data)
+        self.assertEqual(len(results), 1)
+
+
+class OfferValidateTestCase(APITestCase):
+    """POST /api/memberships/offers/validate/"""
+
+    def setUp(self):
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.plan = make_plan(price=Decimal('1000.00'))
+        self.now = timezone.now()
+        self.offer = Offer.objects.create(
+            name='20% Off',
+            discount_type='PERCENTAGE',
+            discount_value=Decimal('20.00'),
+            applicability='ALL_PLANS',
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+        self.promo = PromoCode.objects.create(
+            code='SAVE20',
+            offer=self.offer,
+            max_uses=10,
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+
+    def test_validate_valid_promo_code(self):
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.post('/api/memberships/offers/validate/', {
+            'code': 'SAVE20',
+            'plan_id': self.plan.id,
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['discount_type'], 'PERCENTAGE')
+        self.assertEqual(Decimal(r.data['original_price']), Decimal('1000.00'))
+        self.assertEqual(Decimal(r.data['discount_amount']), Decimal('200.00'))
+        self.assertEqual(Decimal(r.data['final_price']), Decimal('800.00'))
+
+    def test_validate_invalid_promo_code(self):
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.post('/api/memberships/offers/validate/', {
+            'code': 'INVALID',
+            'plan_id': self.plan.id,
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_validate_expired_promo_code(self):
+        self.promo.valid_until = self.now - timedelta(days=1)
+        self.promo.save()
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.post('/api/memberships/offers/validate/', {
+            'code': 'SAVE20',
+            'plan_id': self.plan.id,
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class PromoCodeCreateTestCase(APITestCase):
+    """POST /api/memberships/promo-codes/"""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.now = timezone.now()
+        self.offer = Offer.objects.create(
+            name='Test Offer',
+            discount_type='PERCENTAGE',
+            discount_value=Decimal('10.00'),
+            applicability='ALL_PLANS',
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+
+    def test_owner_can_create_promo_code(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/promo-codes/', {
+            'code': 'WELCOME10',
+            'offer': self.offer.id,
+            'max_uses': 50,
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=30)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(PromoCode.objects.count(), 1)
+        pc = PromoCode.objects.first()
+        self.assertEqual(pc.created_by, self.owner)
+
+    def test_member_cannot_create_promo_code(self):
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.post('/api/memberships/promo-codes/', {
+            'code': 'MEMBER10',
+            'offer': self.offer.id,
+            'max_uses': 10,
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=7)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_duplicate_code_rejected(self):
+        PromoCode.objects.create(
+            code='UNIQUE10', offer=self.offer,
+            valid_from=self.now, valid_until=self.now + timedelta(days=7),
+        )
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/promo-codes/', {
+            'code': 'UNIQUE10',
+            'offer': self.offer.id,
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=7)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_code_is_uppercased(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/promo-codes/', {
+            'code': 'lowercase',
+            'offer': self.offer.id,
+            'valid_from': self.now.isoformat(),
+            'valid_until': (self.now + timedelta(days=7)).isoformat(),
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(PromoCode.objects.first().code, 'LOWERCASE')
+
+
+class MembershipWithPromoCodeTestCase(APITestCase):
+    """Membership creation with promo code discount."""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.plan = make_plan(price=Decimal('1000.00'))
+        self.now = timezone.now()
+        self.offer = Offer.objects.create(
+            name='20% Off',
+            discount_type='PERCENTAGE',
+            discount_value=Decimal('20.00'),
+            applicability='ALL_PLANS',
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+        self.promo = PromoCode.objects.create(
+            code='SAVE20',
+            offer=self.offer,
+            max_uses=10,
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+
+    def test_assign_with_valid_promo_code(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/', {
+            'member': self.member.id,
+            'plan': self.plan.id,
+            'status': 'ACTIVE',
+            'promo_code': 'SAVE20',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        m = Membership.objects.first()
+        # price_paid = 1000 - 20% = 800
+        self.assertEqual(m.price_paid, Decimal('800.00'))
+        self.assertEqual(m.promo_code, self.promo)
+        # Promo code usage recorded
+        usage = PromoCodeUsage.objects.first()
+        self.assertEqual(usage.original_price, Decimal('1000.00'))
+        self.assertEqual(usage.discount_applied, Decimal('200.00'))
+        self.assertEqual(usage.final_price, Decimal('800.00'))
+        # used_count incremented
+        self.promo.refresh_from_db()
+        self.assertEqual(self.promo.used_count, 1)
+
+    def test_assign_with_fixed_amount_promo(self):
+        fixed_offer = Offer.objects.create(
+            name='NPR 300 Off',
+            discount_type='FIXED_AMOUNT',
+            discount_value=Decimal('300.00'),
+            applicability='ALL_PLANS',
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+        fixed_promo = PromoCode.objects.create(
+            code='FLAT300',
+            offer=fixed_offer,
+            max_uses=5,
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/', {
+            'member': self.member.id,
+            'plan': self.plan.id,
+            'status': 'ACTIVE',
+            'promo_code': 'FLAT300',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        m = Membership.objects.first()
+        # price_paid = 1000 - 300 = 700
+        self.assertEqual(m.price_paid, Decimal('700.00'))
+
+    def test_assign_with_invalid_promo_code_ignores_discount(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/', {
+            'member': self.member.id,
+            'plan': self.plan.id,
+            'status': 'ACTIVE',
+            'promo_code': 'NONEXISTENT',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        m = Membership.objects.first()
+        self.assertEqual(m.price_paid, Decimal('1000.00'))  # Invalid promo, defaults to plan.price
+        self.assertIsNone(m.promo_code)
+
+    def test_assign_without_promo_code(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/', {
+            'member': self.member.id,
+            'plan': self.plan.id,
+            'status': 'ACTIVE',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        m = Membership.objects.first()
+        self.assertIsNone(m.promo_code)
+        self.assertFalse(PromoCodeUsage.objects.exists())
+
+    def test_promo_code_exhaustion(self):
+        self.promo.max_uses = 1
+        self.promo.save()
+        # First use succeeds
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.post('/api/memberships/', {
+            'member': self.member.id,
+            'plan': self.plan.id,
+            'status': 'ACTIVE',
+            'promo_code': 'SAVE20',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.promo.refresh_from_db()
+        self.assertEqual(self.promo.status, PromoCode.Status.EXHAUSTED)
+
+
+class PromoCodeUsageListTestCase(APITestCase):
+    """GET /api/memberships/promo-code-usages/"""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.plan = make_plan(price=Decimal('1000.00'))
+        self.now = timezone.now()
+        self.offer = Offer.objects.create(
+            name='Test Offer',
+            discount_type='PERCENTAGE',
+            discount_value=Decimal('10.00'),
+            applicability='ALL_PLANS',
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+        self.promo = PromoCode.objects.create(
+            code='TEST10',
+            offer=self.offer,
+            max_uses=10,
+            valid_from=self.now - timedelta(days=1),
+            valid_until=self.now + timedelta(days=30),
+        )
+        self.usage = PromoCodeUsage.objects.create(
+            promo_code=self.promo,
+            member=self.member,
+            original_price=Decimal('1000.00'),
+            discount_applied=Decimal('100.00'),
+            final_price=Decimal('900.00'),
+        )
+
+    def test_owner_can_list_usages(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get('/api/memberships/promo-code-usages/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        results = r.data.get('results', r.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['original_price'], '1000.00')
+
+    def test_member_cannot_list_usages(self):
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.get('/api/memberships/promo-code-usages/')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)

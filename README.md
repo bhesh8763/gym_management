@@ -6,6 +6,8 @@ A full-stack role-based web application for managing gym operations: memberships
 ![Stack](https://img.shields.io/badge/DRF-3.15-A93C2D?style=flat-square)
 ![Stack](https://img.shields.io/badge/PostgreSQL-14-4169E1?style=flat-square&logo=postgresql)
 ![Stack](https://img.shields.io/badge/JWT-SimpleJWT-green?style=flat-square)
+![Stack](https://img.shields.io/badge/Allauth-65.7-blue?style=flat-square)
+![Stack](https://img.shields.io/badge/Social%20Auth-Google%20%2F%20Facebook-4285F4?style=flat-square)
 
 ---
 
@@ -80,6 +82,17 @@ EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 
 # Frontend URL (for password reset links)
 FRONTEND_URL=http://127.0.0.1:5500
+
+# Social Login (optional)
+# GOOGLE_CLIENT_ID=your-google-client-id
+# GOOGLE_CLIENT_SECRET=your-google-client-secret
+# FACEBOOK_APP_ID=your-facebook-app-id
+# FACEBOOK_APP_SECRET=your-facebook-app-secret
+
+# Payments (sandbox defaults work for dev)
+# KHALTI_SECRET_KEY=
+# ESEWA_MERCHANT_CODE=EPAYTEST
+# ESEWA_SECRET_KEY=8gBm/:&EnhH.1/q
 ```
 
 ### 3. Create database & migrate
@@ -93,9 +106,10 @@ CREATE DATABASE gym_db;
 python manage.py migrate
 ```
 
-### 4. Create the Owner account
+### 4. Create the Owner account & site
 
 ```bash
+python manage.py ensure_site --domain localhost:8000 --name FitCore
 python manage.py createsuperuser
 ```
 
@@ -170,12 +184,20 @@ gym_management/          # Django project settings & URLs
 | `EMAIL_PORT` | ❌ | `587` | SMTP port |
 | `EMAIL_HOST_USER` | ❌ | — | SMTP username |
 | `EMAIL_HOST_PASSWORD` | ❌ | — | SMTP password |
+| `EMAIL_USE_TLS` | ❌ | `True` | Enable TLS for SMTP |
 | `DEFAULT_FROM_EMAIL` | ❌ | `Gym Management <noreply@gym.local>` | Sender address |
 | `FRONTEND_URL` | ❌ | `http://127.0.0.1:5500` | Frontend base URL for reset links |
 | `KHALTI_SECRET_KEY` | ❌ | — | Khalti merchant key |
 | `KHALTI_BASE_URL` | ❌ | `https://dev.khalti.com/api/v2` | Khalti API base |
+| `KHALTI_WEBHOOK_URL` | ❌ | — | Khalti webhook URL for payment verification |
 | `ESEWA_MERCHANT_CODE` | ❌ | `EPAYTEST` | eSewa test merchant code |
 | `ESEWA_SECRET_KEY` | ❌ | `8gBm/:&EnhH.1/q` | eSewa test secret |
+| `ESEWA_BASE_URL` | ❌ | `https://rc-epay.esewa.com.np/api/epay/main/v2/form` | eSewa payment URL |
+| `ESEWA_STATUS_CHECK_URL` | ❌ | `https://rc.esewa.com.np/api/epay/transaction/status/` | eSewa status check URL |
+| `GOOGLE_CLIENT_ID` | ❌ | — | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | ❌ | — | Google OAuth client secret |
+| `FACEBOOK_APP_ID` | ❌ | — | Facebook OAuth app ID |
+| `FACEBOOK_APP_SECRET` | ❌ | — | Facebook OAuth app secret |
 
 ---
 
@@ -196,10 +218,11 @@ gym_management/          # Django project settings & URLs
 | Page | URL | Purpose |
 |------|-----|---------|
 | Landing | `index.html` | Marketing page with features and pricing |
-| Login | `login.html` | JWT login with email + password |
-| Sign Up | `signup.html` | New member registration |
+| Login | `login.html` | JWT login with email + password, Google & Facebook social login |
+| Sign Up | `signup.html` | New member registration with social signup options |
 | Forgot Password | `forgot-password.html` | Request password reset email |
 | Reset Password | `reset-password.html` | Set new password via token |
+| Getting Started | `getting-started.html` | Plan selection page after signup |
 
 #### Member Pages
 | Page | URL | Purpose |
@@ -214,6 +237,7 @@ gym_management/          # Django project settings & URLs
 | My Trainer | `my-trainer.html` | Assigned trainer info |
 | Notifications | `notifications.html` | In-app notification center |
 | Member Card | `member-card.html` | QR code for check-in |
+| My Messages | `my-messages.html` | Direct messaging with staff/trainers |
 
 #### Staff/Admin Pages
 | Page | URL | Purpose |
@@ -232,12 +256,16 @@ gym_management/          # Django project settings & URLs
 | Equipment | `equipment.html` | Equipment inventory & maintenance |
 | Notifications | `notifications.html` | Send/manage notifications |
 | Reports | `reports.html` | Analytics dashboards, CSV/Excel export |
+| Staff Detail | `staff-detail.html` | Individual staff profile drill-down |
+| Messages | `messages.html` | Direct messaging with members/trainers |
 
 #### Trainer Pages
 | Page | URL | Purpose |
 |------|-----|---------|
 | Trainer Dashboard | `trainer-dashboard.html` | Assigned members, stat cards, charts |
 | Trainer Members | `trainer-members.html` | List of assigned members with details |
+| Workout Template Detail | `workout-template-detail.html` | View/edit workout template details |
+| Trainer Messages | `trainer-messages.html` | Direct messaging with members |
 
 ### Common Workflows
 
@@ -269,6 +297,15 @@ gym_management/          # Django project settings & URLs
 2. Plan is assigned to a specific member
 3. Member sees the plan in `my-diet.html` and logs daily meals
 
+#### Social Login (Google/Facebook)
+1. User clicks "Google" or "Facebook" button on `login.html` or `signup.html`
+2. Browser redirects to provider's OAuth consent screen
+3. User authorizes the app on Google/Facebook
+4. Provider redirects back to `/api/auth/<provider>/callback/`
+5. django-allauth creates/links the social account to a FitCore user
+6. User is redirected to `FRONTEND_URL` with JWT tokens
+7. Frontend stores tokens and routes to the appropriate dashboard
+
 ---
 
 ## 🛠️ Developer Guide
@@ -279,7 +316,7 @@ gym_management/          # Django project settings & URLs
 |-------|-----------|
 | Backend | Django 5.2, Django REST Framework 3.15 |
 | Database | PostgreSQL 14+ |
-| Auth | JWT (SimpleJWT) with token blacklist |
+| Auth | JWT (SimpleJWT) with token blacklist, Social login (django-allauth, dj-rest-auth) |
 | Frontend | Vanilla HTML/CSS/JS (no framework) |
 | Payments | eSewa (sandbox), Khalti (sandbox) |
 | Exports | CSV (stdlib), Excel (openpyxl) |
@@ -290,8 +327,9 @@ gym_management/          # Django project settings & URLs
 
 #### `accounts` — Authentication & User Model
 - **Model**: Custom `User` with roles (OWNER, STAFF, TRAINER, MEMBER)
-- **Key features**: JWT login/logout, password reset via email, profile management
+- **Key features**: JWT login/logout, password reset via email, profile management, Google & Facebook social login
 - **Permission classes**: `IsOwner`, `IsStaff`, `IsTrainer`, `IsMember`, `IsOwnerOrStaff`, `IsOwnerOrStaffOrTrainer`
+- **Social auth**: Custom OAuth2 adapters for Google & Facebook with localhost callback support
 
 #### `members` — Member Profiles
 - **Model**: `MemberProfile` (OneToOne with User)
@@ -392,6 +430,11 @@ POST /api/auth/token/refresh/
 
 ### Endpoint Summary
 
+#### Health (`/api/health/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/health/` | ❌ | API health check (DB connectivity) |
+
 #### Auth (`/api/auth/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
@@ -404,6 +447,13 @@ POST /api/auth/token/refresh/
 | POST | `/change-password/` | ✅ | Change password |
 | POST | `/forgot-password/` | ❌ | Request reset email |
 | POST | `/reset-password/` | ❌ | Reset password with token |
+| GET | `/google/login/` | ❌ | Google OAuth login (redirect) |
+| GET | `/google/callback/` | ❌ | Google OAuth callback |
+| GET | `/facebook/login/` | ❌ | Facebook OAuth login (redirect) |
+| GET | `/facebook/callback/` | ❌ | Facebook OAuth callback |
+| GET | `/3rdparty/login/` | ❌ | List available social providers |
+| POST | `/3rdparty/login/` | ❌ | Social account login (allauth) |
+| POST | `/3rdparty/login/callback/` | ❌ | Social account callback (allauth) |
 
 #### Members (`/api/members/`)
 | Method | Endpoint | Auth | Description |
@@ -498,6 +548,7 @@ POST /api/auth/token/refresh/
 | GET | `/equipment/` | Owner | Equipment analytics |
 | GET | `/lockers/` | Owner | Locker analytics |
 | GET | `/staff/` | Owner | Staff analytics |
+| GET | `/retention/` | Owner | Member retention analytics (cohort-based) |
 | GET | `/export/attendance/` | Owner | Export attendance CSV/Excel |
 | GET | `/export/memberships/` | Owner | Export memberships CSV/Excel |
 | GET | `/export/revenue/` | Owner | Export revenue CSV/Excel |
@@ -524,6 +575,18 @@ POST /api/auth/token/refresh/
 | POST | `/read-all/` | ✅ | Mark all as read |
 | GET | `/unread-count/` | ✅ | Unread count |
 
+#### Offers & Promo Codes (`/api/memberships/offers/`, `/api/memberships/promo-codes/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/offers/` | Owner/Staff | List all offers |
+| POST | `/offers/` | Owner/Staff | Create offer |
+| GET/PUT/PATCH/DELETE | `/offers/<id>/` | Owner/Staff | Offer detail |
+| POST | `/offers/validate/` | Member | Validate promo code and get discounted price |
+| GET | `/promo-codes/` | Owner/Staff | List all promo codes |
+| POST | `/promo-codes/` | Owner/Staff | Create promo code |
+| GET/PUT/PATCH/DELETE | `/promo-codes/<id>/` | Owner/Staff | Promo code detail |
+| GET | `/promo-code-usages/` | Owner/Staff | List promo code usage records |
+
 #### Trainers (`/api/trainers/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
@@ -546,6 +609,18 @@ POST /api/auth/token/refresh/
 - Login: 10 requests/hour per IP
 - Register: 10 requests/hour per IP
 - Password reset: 10 requests/hour per IP
+
+**Social Login (Google & Facebook):**
+1. Click "Google" or "Facebook" button on login/signup page
+2. Redirected to provider's OAuth consent screen
+3. After authorization, redirected back to callback URL
+4. django-allauth creates/links the social account
+5. User receives JWT tokens and is logged in
+
+**Setup:**
+1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/) or [Facebook Developers](https://developers.facebook.com/)
+2. Set redirect URI to `http://127.0.0.1:8000/api/auth/<provider>/callback/`
+3. Add client ID and secret to `.env` file
 
 ---
 
@@ -656,7 +731,7 @@ python manage.py test apps.trainers.tests    # 31 tests
 | **reports** | 60 | CSV/Excel header validation, row content parsing, date range filtering, status/plan/member filtering, empty datasets, Content-Disposition, role-based access |
 | **trainers** | 31 | TrainerMemberAssignment CRUD, my-members endpoint, workout/diet/attendance visibility, notification access |
 
-**Total: 212 tests across 5 apps**
+**Total: 212+ tests across 5+ apps**
 
 ### Test Patterns Used
 
@@ -682,6 +757,8 @@ python manage.py test apps.trainers.tests    # 31 tests
 8. **Payment gateways**: Switch Khalti/eSewa to production URLs and keys
 9. **Task scheduler**: Set up cron/Task Scheduler for `send_reminders`
 10. **Logs**: Configure structured logging (consider Sentry for error tracking)
+11. **Site**: Run `python manage.py ensure_site --domain your-domain.com --name FitCore`
+12. **Backups**: Set up `python manage.py backup_db` in cron/Task Scheduler
 
 ### Docker (Not Yet Implemented)
 
@@ -718,7 +795,7 @@ frontend/
 ├── js/
 │   ├── api.js           # API client, auth helpers, dark mode, utilities
 │   └── bottom-tabs.js   # Mobile bottom navigation
-├── *.html               # 32 page files (one per view)
+├── *.html               # 36 page files (one per view)
 └── logo.png             # App logo
 ```
 

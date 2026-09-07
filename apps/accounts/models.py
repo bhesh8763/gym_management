@@ -5,6 +5,7 @@ Roles: Owner, Staff, Trainer, Member
 import secrets
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models, transaction
+from django.db.utils import OperationalError
 from django.utils import timezone
 
 
@@ -45,6 +46,12 @@ class RoleSequence(models.Model):
 
     class Meta:
         db_table = 'role_sequences'
+        # Two concurrent creators should never both succeed at creating the
+        # same role row; the unique constraint makes that a hard error rather
+        # than a silent duplicate.
+        constraints = [
+            models.UniqueConstraint(fields=['role'], name='role_seq_unique')
+        ]
 
     def __str__(self):
         return f'{self.role}: {self.last_value}'
@@ -92,6 +99,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=20, unique=True, editable=False, null=True, blank=True
     )
 
+    # Bumped whenever the password changes. Embedded in issued JWTs; the
+    # authentication class rejects any token whose claim does not match,
+    # so access tokens die instantly on a password change/reset — not just
+    # when their 60-minute expiry runs out.
+    token_version = models.PositiveIntegerField(default=0)
+
     # Django required fields
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)  # Django admin access
@@ -121,6 +134,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         return self.first_name
 
+    def set_password(self, raw_password):
+        """Hash the password and bump ``token_version`` in the same call.
+
+        Every password-change path (user self-service, admin reset, email
+        reset, staff reset) goes through ``set_password``, so one override
+        covers them all — no call site can forget to invalidate sessions.
+        """
+        super().set_password(raw_password)
+        self.token_version = (self.token_version or 0) + 1
+
     def save(self, *args, **kwargs):
         if not self.display_id:
             self.display_id = self._generate_display_id()
@@ -129,9 +152,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     def _generate_display_id(self):
         prefix = self.ROLE_PREFIXES.get(self.role, 'USR')
         with transaction.atomic():
-            seq, _ = RoleSequence.objects.select_for_update().get_or_create(
-                role=self.role
-            )
+            # Prefer the existing row under a hard lock. If none exists yet,
+            # create it inside the same locked transaction so two concurrent
+            # creators can't both allocate the same sequence number.
+            try:
+                seq = RoleSequence.objects.select_for_update(nowait=True).get(role=self.role)
+            except RoleSequence.DoesNotExist:
+                try:
+                    seq = RoleSequence.objects.create(role=self.role, last_value=0)
+                except OperationalError:
+                    # Another transaction created the same role row between our
+                    # get() and create(). Re-read the now-locked row.
+                    seq = RoleSequence.objects.select_for_update().get(role=self.role)
             seq.last_value += 1
             seq.save(update_fields=['last_value'])
             return f'{prefix}-{seq.last_value:04d}'

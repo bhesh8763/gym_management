@@ -3,6 +3,10 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AttendanceViewSet,
+    BiometricCheckInView,
+    BiometricEnrollmentView,
+    BiometricRecordDetailView,
+    BiometricStatsView,
     MemberQRCodeView,
     MemberProfileQRView,
     QRScanCheckInView,
@@ -34,4 +38,10 @@ urlpatterns = [
 
     # Public member profile (open — no auth needed, called when QR is scanned)
     path('member-profile/<int:member_id>/', PublicMemberProfileView.as_view(), name='public-member-profile'),
+
+    # Biometric attendance
+    path('biometric/', BiometricEnrollmentView.as_view(), name='biometric-list-create'),
+    path('biometric/<int:pk>/', BiometricRecordDetailView.as_view(), name='biometric-detail'),
+    path('biometric/scan/', BiometricCheckInView.as_view(), name='biometric-scan'),
+    path('biometric/stats/', BiometricStatsView.as_view(), name='biometric-stats'),
 ] + router.urls
