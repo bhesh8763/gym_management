@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meals – FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="OWNER,STAFF,TRAINER">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta"><div class="profile-name" id="profileName">&mdash;</div><div class="profile-role" id="profileRole">&mdash;</div></span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content"><div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="p-4 flex-grow-1">
+    <h3 class="mb-3 fw-bold">Meals</h3>
+    <p class="text-muted mb-4">Manage standalone meals across all diet plans.</p>
+
+    <!-- Filters -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div class="d-flex gap-2 flex-wrap">
+        <select id="filterDietPlan" class="form-select form-select-sm" style="width:auto;" onchange="loadMeals()">
+          <option value="">All Diet Plans</option>
+        </select>
+        <select id="filterMealType" class="form-select form-select-sm" style="width:auto;" onchange="loadMeals()">
+          <option value="">All Meal Types</option>
+          <option value="BREAKFAST">Breakfast</option>
+          <option value="MID_MORNING">Mid-Morning</option>
+          <option value="LUNCH">Lunch</option>
+          <option value="PRE_WORKOUT">Pre-Workout</option>
+          <option value="POST_WORKOUT">Post-Workout</option>
+          <option value="DINNER">Dinner</option>
+          <option value="EVENING_SNACK">Evening Snack</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openMealModal()"><i class="bi bi-plus-lg me-1"></i> Add Meal</button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr><th>Diet Plan</th><th>Type</th><th>Food</th><th>Portion</th><th>Calories</th><th>Time</th><th data-no-export>Actions</th></tr>
+        </thead>
+        <tbody id="mealsBody">
+          <tr><td colspan="7" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div></div>
+
+<!-- Meal Modal -->
+<div class="modal fade" id="mealModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header p-3">
+        <h5 class="modal-title fw-bold" id="mealModalTitle">Add Meal</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div id="mealError" class="alert alert-danger d-none mb-3"></div>
+        <input type="hidden" id="mealId">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Diet Plan <span class="text-danger">*</span></label>
+            <select id="mealDietPlan" class="form-select" required></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Meal Type <span class="text-danger">*</span></label>
+            <select id="mealType" class="form-select">
+              <option value="BREAKFAST">Breakfast</option>
+              <option value="MID_MORNING">Mid-Morning</option>
+              <option value="LUNCH">Lunch</option>
+              <option value="PRE_WORKOUT">Pre-Workout</option>
+              <option value="POST_WORKOUT">Post-Workout</option>
+              <option value="DINNER">Dinner</option>
+              <option value="EVENING_SNACK">Evening Snack</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Food Name <span class="text-danger">*</span></label>
+            <input type="text" id="mealFoodName" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Portion</label>
+            <input type="text" id="mealPortion" class="form-control" placeholder="e.g. 100g, 1 cup">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Calories</label>
+            <input type="number" min="0" id="mealCalories" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Time Suggestion</label>
+            <input type="time" id="mealTime" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Notes</label>
+            <input type="text" id="mealNotes" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer p-3">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" onclick="submitMeal()">Save Meal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+buildSidebar('diet');
+if (!getAccessToken()) window.location.href = 'login.html';
+
+var allMeals = [];
+var allPlans = [];
+var mealTypes = {
+  BREAKFAST: 'Breakfast', MID_MORNING: 'Mid-Morning', LUNCH: 'Lunch',
+  PRE_WORKOUT: 'Pre-Workout', POST_WORKOUT: 'Post-Workout',
+  DINNER: 'Dinner', EVENING_SNACK: 'Evening Snack'
+};
+
+function mealTypeBadge(type) {
+  var colors = {
+    BREAKFAST: 'warning', MID_MORNING: 'info', LUNCH: 'success',
+    PRE_WORKOUT: 'primary', POST_WORKOUT: 'danger',
+    DINNER: 'secondary', EVENING_SNACK: 'purple'
+  };
+  return '<span class="badge bg-' + (colors[type] || 'secondary') + '">' + (mealTypes[type] || type) + '</span>';
+}
+
+async function loadPlans() {
+  var res = await apiRequest('/diet/diet-plans/');
+  if (!res || !res.ok) return;
+  var data = await res.json();
+  allPlans = data.results || data;
+
+  var filterSel = document.getElementById('filterDietPlan');
+  var currentFilter = filterSel.value;
+  filterSel.innerHTML = '<option value="">All Diet Plans</option>' +
+    allPlans.map(function(p) { return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>'; }).join('');
+  filterSel.value = currentFilter;
+
+  var modalSel = document.getElementById('mealDietPlan');
+  modalSel.innerHTML = allPlans.map(function(p) {
+    return '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>';
+  }).join('');
+}
+
+async function loadMeals() {
+  var planId = document.getElementById('filterDietPlan').value;
+  var mealType = document.getElementById('filterMealType').value;
+  var url = '/diet/meals/';
+  var params = [];
+  if (planId) params.push('diet_plan=' + planId);
+  if (mealType) params.push('meal_type=' + mealType);
+  if (params.length) url += '?' + params.join('&');
+
+  var res = await apiRequest(url);
+  if (!res || !res.ok) {
+    document.getElementById('mealsBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Could not load meals.</td></tr>';
+    return;
+  }
+  var data = await res.json();
+  allMeals = data.results || data;
+
+  var tbody = document.getElementById('mealsBody');
+  if (allMeals.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No meals found. Click "Add Meal" to create one.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = allMeals.map(function(m) {
+    var planName = '--';
+    var plan = allPlans.find(function(p) { return p.id === m.diet_plan; });
+    if (plan) planName = plan.name;
+    return '<tr>' +
+      '<td class="small">' + escapeHtml(planName) + '</td>' +
+      '<td>' + mealTypeBadge(m.meal_type) + '</td>' +
+      '<td class="fw-semibold">' + escapeHtml(m.food_name) + '</td>' +
+      '<td class="small">' + escapeHtml(m.portion || '--') + '</td>' +
+      '<td>' + (m.calories != null ? m.calories + ' kcal' : '--') + '</td>' +
+      '<td class="small">' + (m.time_suggestion || '--') + '</td>' +
+      '<td>' +
+        '<button class="btn btn-sm btn-outline-primary me-1" onclick="editMeal(' + m.id + ')" title="Edit"><i class="bi bi-pencil"></i></button>' +
+        '<button class="btn btn-sm btn-outline-danger" onclick="deleteMeal(' + m.id + ')" title="Delete"><i class="bi bi-trash"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function openMealModal(meal) {
+  document.getElementById('mealError').style.display = 'none';
+  if (meal) {
+    document.getElementById('mealModalTitle').textContent = 'Edit Meal';
+    document.getElementById('mealId').value = meal.id;
+    document.getElementById('mealDietPlan').value = meal.diet_plan;
+    document.getElementById('mealType').value = meal.meal_type;
+    document.getElementById('mealFoodName').value = meal.food_name;
+    document.getElementById('mealPortion').value = meal.portion || '';
+    document.getElementById('mealCalories').value = meal.calories != null ? meal.calories : '';
+    document.getElementById('mealTime').value = meal.time_suggestion ? meal.time_suggestion.substring(0, 5) : '';
+    document.getElementById('mealNotes').value = meal.notes || '';
+  } else {
+    document.getElementById('mealModalTitle').textContent = 'Add Meal';
+    document.getElementById('mealId').value = '';
+    document.getElementById('mealDietPlan').value = allPlans.length ? allPlans[0].id : '';
+    document.getElementById('mealType').value = 'BREAKFAST';
+    document.getElementById('mealFoodName').value = '';
+    document.getElementById('mealPortion').value = '';
+    document.getElementById('mealCalories').value = '';
+    document.getElementById('mealTime').value = '';
+    document.getElementById('mealNotes').value = '';
+  }
+  new bootstrap.Modal(document.getElementById('mealModal')).show();
+}
+
+function editMeal(id) {
+  var m = allMeals.find(function(x) { return x.id === id; });
+  if (m) openMealModal(m);
+}
+
+async function submitMeal() {
+  var errBox = document.getElementById('mealError');
+  errBox.style.display = 'none';
+  var id = document.getElementById('mealId').value;
+  var payload = {
+    diet_plan: parseInt(document.getElementById('mealDietPlan').value),
+    meal_type: document.getElementById('mealType').value,
+    food_name: document.getElementById('mealFoodName').value.trim(),
+    portion: document.getElementById('mealPortion').value.trim(),
+    calories: document.getElementById('mealCalories').value ? parseInt(document.getElementById('mealCalories').value) : null,
+    time_suggestion: document.getElementById('mealTime').value || null,
+    notes: document.getElementById('mealNotes').value.trim(),
+  };
+  if (!payload.food_name) { errBox.textContent = 'Food name is required.'; errBox.style.display = ''; return; }
+
+  var url = id ? '/diet/meals/' + id + '/' : '/diet/meals/';
+  var method = id ? 'PATCH' : 'POST';
+  var res = await apiRequest(url, { method: method, body: JSON.stringify(payload) });
+  if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (res.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('mealModal')).hide();
+    loadMeals();
+  } else {
+    var err = await res.json().catch(function() { return {}; });
+    errBox.textContent = formatApiError(err);
+    errBox.style.display = '';
+  }
+}
+
+async function deleteMeal(id) {
+  if (!(await confirmAction('Delete this meal?', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
+  var res = await apiRequest('/diet/meals/' + id + '/', { method: 'DELETE' });
+  if (res && (res.ok || res.status === 204)) loadMeals();
+}
+
+// Init
+loadPlans().then(loadMeals);
+loadTopbarNotifications();
+</script>
+</body>
+</html>

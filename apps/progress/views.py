@@ -12,17 +12,25 @@ from .models import ProgressEntry, PersonalRecord
 from .serializers import ProgressEntrySerializer, PersonalRecordSerializer
 
 
-def _visible_qs(model, user):
+def _visible_qs(model, user, request=None):
     """Return the queryset a given user is allowed to see for this model."""
     if user.role in ['OWNER', 'STAFF']:
-        return model.objects.all()
-    if user.is_member:
-        return model.objects.filter(member=user)
-    from apps.trainers.models import TrainerMemberAssignment
-    assigned_ids = TrainerMemberAssignment.objects.filter(
-        trainer=user, is_active=True
-    ).values_list('member_id', flat=True)
-    return model.objects.filter(member_id__in=assigned_ids)
+        qs = model.objects.all()
+    elif user.is_member:
+        qs = model.objects.filter(member=user)
+    else:
+        from apps.trainers.models import TrainerMemberAssignment
+        assigned_ids = TrainerMemberAssignment.objects.filter(
+            trainer=user, is_active=True
+        ).values_list('member_id', flat=True)
+        qs = model.objects.filter(member_id__in=assigned_ids)
+
+    # Apply optional ?member= filter for non-member roles
+    if request and user.role in ['OWNER', 'STAFF', 'TRAINER']:
+        member_id = request.query_params.get('member')
+        if member_id:
+            qs = qs.filter(member_id=member_id)
+    return qs
 
 
 class ProgressEntryListCreateView(generics.ListCreateAPIView):
@@ -30,7 +38,7 @@ class ProgressEntryListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return _visible_qs(ProgressEntry, self.request.user)
+        return _visible_qs(ProgressEntry, self.request.user, self.request)
 
     def perform_create(self, serializer):
         save_kwargs = {'recorded_by': self.request.user}
@@ -44,7 +52,7 @@ class ProgressEntryDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return _visible_qs(ProgressEntry, self.request.user)
+        return _visible_qs(ProgressEntry, self.request.user, self.request)
 
 
 class PersonalRecordListCreateView(generics.ListCreateAPIView):
@@ -52,7 +60,7 @@ class PersonalRecordListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return _visible_qs(PersonalRecord, self.request.user)
+        return _visible_qs(PersonalRecord, self.request.user, self.request)
 
     def perform_create(self, serializer):
         save_kwargs = {}
@@ -66,7 +74,7 @@ class PersonalRecordDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return _visible_qs(PersonalRecord, self.request.user)
+        return _visible_qs(PersonalRecord, self.request.user, self.request)
 
 
 class MemberStatsView(APIView):

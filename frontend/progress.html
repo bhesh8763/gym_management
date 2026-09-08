@@ -297,7 +297,7 @@ buildSidebar('progress');
         select.innerHTML = allMembers.map(m => {
             const name = m.full_name || m.name || 'Unnamed member';
             const code = m.member_code || m.code || '';
-            return `<option value="${m.id}">${name}${code ? ' – ' + code : ''}</option>`;
+            return `<option value="${m.user_id}">${name}${code ? ' – ' + code : ''}</option>`;
         }).join('');
 
         onMemberChange();
@@ -335,6 +335,8 @@ buildSidebar('progress');
             renderDelta('weightDelta', latest.weight_kg, previous ? previous.weight_kg : null, 'kg');
             renderDelta('bmiDelta', latest.bmi, previous ? previous.bmi : null, '');
         } else {
+            document.getElementById('latestWeight').textContent = '–';
+            document.getElementById('latestBmi').textContent = '–';
             document.getElementById('weightDelta').textContent = '';
             document.getElementById('bmiDelta').textContent = '';
         }

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Devices – FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="OWNER,STAFF">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta"><div class="profile-name" id="profileName">&mdash;</div><div class="profile-role" id="profileRole">&mdash;</div></span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content"><div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="p-4 flex-grow-1">
+    <h3 class="mb-3 fw-bold">Attendance Devices</h3>
+    <p class="text-muted mb-4">Manage QR codes and biometric enrollment for members.</p>
+
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item"><button class="nav-link active" data-tab="qr" onclick="switchTab('qr')">QR Codes</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="biometric" onclick="switchTab('biometric')">Biometric</button></li>
+    </ul>
+
+    <!-- QR CODES TAB -->
+    <div id="tab-qr">
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-total"><i class="bi bi-qr-code"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Gym Check-in QR</div>
+            <button class="btn btn-sm btn-primary mt-2" onclick="loadCheckinQR()">Generate QR</button>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-active"><i class="bi bi-person-badge"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Member QR</div>
+            <div class="input-group mt-2">
+              <input type="text" id="qrMemberId" class="form-control form-control-sm" placeholder="Member ID">
+              <button class="btn btn-sm btn-primary" onclick="loadMemberQR()">Generate</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-library"><i class="bi bi-person-lines-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Profile QR</div>
+            <div class="input-group mt-2">
+              <input type="text" id="profileMemberId" class="form-control form-control-sm" placeholder="Member ID">
+              <button class="btn btn-sm btn-primary" onclick="loadProfileQR()">Generate</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body text-center" id="qrDisplay" style="min-height:200px;">
+          <div class="text-muted py-5"><i class="bi bi-qr-code display-4 d-block mb-2"></i>Select a QR code type above to generate.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BIOMETRIC TAB -->
+    <div id="tab-biometric" style="display:none;">
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-active"><i class="bi bi-fingerprint"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Enrolled</div>
+            <h3 id="bioEnrolled" class="text-success">–</h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-beginner"><i class="bi bi-clock"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Not Enrolled</div>
+            <h3 id="bioNotEnrolled" class="text-warning">–</h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-total"><i class="bi bi-calendar-check"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Verified Today</div>
+            <h3 id="bioToday">–</h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100 shadow-sm">
+            <div class="stat-icon icon-library"><i class="bi bi-shield-check"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">By Type</div>
+            <div id="bioByType" class="small">–</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Biometric Records</h5>
+        <div class="d-flex gap-2">
+          <select id="bioFilterStatus" class="form-select form-select-sm" style="width:auto;" onchange="loadBiometric()">
+            <option value="">All Status</option>
+            <option value="ENROLLED">Enrolled</option>
+            <option value="NOT_ENROLLED">Not Enrolled</option>
+            <option value="FAILED">Failed</option>
+            <option value="DISABLED">Disabled</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="openEnrollModal()"><i class="bi bi-plus-lg me-1"></i> Enroll Member</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead>
+            <tr><th>Member</th><th>Type</th><th>Biometric ID</th><th>Device</th><th>Status</th><th>Last Verified</th><th data-no-export>Actions</th></tr>
+          </thead>
+          <tbody id="bioBody">
+            <tr><td colspan="7" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- Enroll Biometric Modal -->
+<div class="modal fade" id="enrollModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header p-3">
+        <h5 class="modal-title fw-bold">Enroll Biometric</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div id="enrollError" class="alert alert-danger d-none mb-3"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Member <span class="text-danger">*</span></label>
+          <select id="enrollMember" class="form-select"><option value="">Loading members…</option></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Biometric Type</label>
+          <select id="enrollType" class="form-select">
+            <option value="FINGERPRINT">Fingerprint</option>
+            <option value="FACE">Face Recognition</option>
+            <option value="IRIS">Iris</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Biometric ID <span class="text-danger">*</span></label>
+          <input type="text" id="enrollBioId" class="form-control" placeholder="Template ID from scanner">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Device ID</label>
+          <input type="text" id="enrollDeviceId" class="form-control" placeholder="Scanner hardware ID">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Notes</label>
+          <textarea id="enrollNotes" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer p-3">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" onclick="submitEnroll()">Enroll</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+buildSidebar('attendance-devices');
+if (!getAccessToken()) window.location.href = 'login.html';
+
+var allBioRecords = [];
+
+function switchTab(name) {
+  document.querySelectorAll('.nav-tabs .nav-link').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('.nav-tabs [data-tab="' + name + '"]').classList.add('active');
+  ['qr', 'biometric'].forEach(function(t) {
+    document.getElementById('tab-' + t).style.display = (t === name) ? 'block' : 'none';
+  });
+  if (name === 'biometric') loadBiometric();
+}
+
+function bioStatusBadge(status) {
+  var map = { ENROLLED: 'success', NOT_ENROLLED: 'secondary', FAILED: 'danger', DISABLED: 'dark' };
+  return '<span class="badge bg-' + (map[status] || 'secondary') + '">' + status + '</span>';
+}
+
+// ── QR CODES ──
+async function loadCheckinQR() {
+  var display = document.getElementById('qrDisplay');
+  display.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+  var res = await apiRequest('/attendance/checkin-qr/');
+  if (!res || !res.ok) { display.innerHTML = '<div class="text-danger py-5">Failed to generate QR code.</div>'; return; }
+  var d = await res.json();
+  display.innerHTML = '<div class="py-4">' +
+    '<h5 class="mb-3">Gym Check-in QR Code</h5>' +
+    '<img src="' + d.qr_image_base64 + '" style="max-width:300px;" class="img-fluid border rounded p-2 mb-3">' +
+    '<div class="small text-muted">Members scan this to open the check-in page.</div>' +
+    '<div class="mt-2"><code class="small">' + escapeHtml(d.checkin_url) + '</code></div>' +
+  '</div>';
+}
+
+async function loadMemberQR() {
+  var memberId = document.getElementById('qrMemberId').value.trim();
+  if (!memberId) { alert('Please enter a Member ID.'); return; }
+  var display = document.getElementById('qrDisplay');
+  display.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+  var res = await apiRequest('/attendance/qr/' + memberId + '/');
+  if (!res || !res.ok) { display.innerHTML = '<div class="text-danger py-5">Failed to generate QR code. Check the member ID.</div>'; return; }
+  var d = await res.json();
+  display.innerHTML = '<div class="py-4">' +
+    '<h5 class="mb-3">QR Code for ' + escapeHtml(d.member_name) + ' (' + escapeHtml(d.display_id) + ')</h5>' +
+    '<img src="' + d.qr_image_base64 + '" style="max-width:300px;" class="img-fluid border rounded p-2 mb-3">' +
+    '<div class="small text-muted mb-2">Token: <code>' + escapeHtml(d.token) + '</code></div>' +
+    '<button class="btn btn-sm btn-outline-info" onclick="regenerateQR(' + memberId + ')"><i class="bi bi-arrow-clockwise me-1"></i> Regenerate Token</button>' +
+  '</div>';
+}
+
+async function loadProfileQR() {
+  var memberId = document.getElementById('profileMemberId').value.trim();
+  if (!memberId) { alert('Please enter a Member ID.'); return; }
+  var display = document.getElementById('qrDisplay');
+  display.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+  var res = await apiRequest('/attendance/qr/' + memberId + '/profile/');
+  if (!res || !res.ok) { display.innerHTML = '<div class="text-danger py-5">Failed to generate profile QR. Check the member ID.</div>'; return; }
+  var d = await res.json();
+  display.innerHTML = '<div class="py-4">' +
+    '<h5 class="mb-3">Profile QR for ' + escapeHtml(d.member_name) + '</h5>' +
+    '<img src="' + d.qr_image_base64 + '" style="max-width:300px;" class="img-fluid border rounded p-2 mb-3">' +
+    '<div class="small text-muted mb-2">Profile URL: <code>' + escapeHtml(d.profile_url) + '</code></div>' +
+    '<div class="small text-muted">Scanning opens the member\'s public profile page.</div>' +
+  '</div>';
+}
+
+async function regenerateQR(memberId) {
+  if (!(await confirmAction('Regenerate the QR token for this member? The old token will stop working.', { confirmText: 'Regenerate', variant: 'warning', icon: 'bi-arrow-clockwise' }))) return;
+  var res = await apiRequest('/attendance/qr/' + memberId + '/regenerate/', { method: 'POST' });
+  if (res && res.ok) {
+    var d = await res.json();
+    alert('New token generated: ' + d.new_token);
+    loadMemberQR();
+  } else {
+    alert('Failed to regenerate token.');
+  }
+}
+
+// ── BIOMETRIC ──
+async function loadBiometric() {
+  var filter = document.getElementById('bioFilterStatus').value;
+  var url = '/attendance/biometric/' + (filter ? '?status=' + filter : '');
+  var res = await apiRequest(url);
+  if (!res || !res.ok) {
+    document.getElementById('bioBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Could not load biometric records.</td></tr>';
+    return;
+  }
+  var data = await res.json();
+  allBioRecords = data.results || data;
+
+  // Load stats
+  var statsRes = await apiRequest('/attendance/biometric/stats/');
+  if (statsRes && statsRes.ok) {
+    var stats = await statsRes.json();
+    document.getElementById('bioEnrolled').textContent = stats.total_enrolled || 0;
+    document.getElementById('bioNotEnrolled').textContent = stats.not_enrolled || 0;
+    document.getElementById('bioToday').textContent = stats.enrolled_today || 0;
+    document.getElementById('bioByType').innerHTML = (stats.by_biometric_type || []).map(function(t) {
+      return t.biometric_type + ': <strong>' + t.count + '</strong>';
+    }).join('<br>') || '–';
+  }
+
+  var tbody = document.getElementById('bioBody');
+  if (allBioRecords.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No biometric records found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = allBioRecords.map(function(b) {
+    var lastVerified = b.last_verified_at ? new Date(b.last_verified_at).toLocaleString() : 'Never';
+    return '<tr>' +
+      '<td class="fw-semibold">' + escapeHtml(b.member_name || '--') + '</td>' +
+      '<td>' + b.biometric_type + '</td>' +
+      '<td><code class="small">' + escapeHtml(b.biometric_id) + '</code></td>' +
+      '<td class="small">' + escapeHtml(b.device_id || '--') + '</td>' +
+      '<td>' + bioStatusBadge(b.status) + '</td>' +
+      '<td class="small text-muted">' + lastVerified + '</td>' +
+      '<td>' +
+        '<button class="btn btn-sm btn-outline-danger" onclick="deleteBiometric(' + b.id + ')" title="Remove"><i class="bi bi-trash"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function openEnrollModal() {
+  document.getElementById('enrollError').style.display = 'none';
+  document.getElementById('enrollMember').innerHTML = '<option value="">Loading members…</option>';
+  document.getElementById('enrollBioId').value = '';
+  document.getElementById('enrollDeviceId').value = '';
+  document.getElementById('enrollNotes').value = '';
+  loadMembersIntoSelect('enrollMember');
+  new bootstrap.Modal(document.getElementById('enrollModal')).show();
+}
+
+async function submitEnroll() {
+  var errBox = document.getElementById('enrollError');
+  errBox.style.display = 'none';
+  var payload = {
+    member: parseInt(document.getElementById('enrollMember').value),
+    biometric_type: document.getElementById('enrollType').value,
+    biometric_id: document.getElementById('enrollBioId').value.trim(),
+    device_id: document.getElementById('enrollDeviceId').value.trim(),
+    notes: document.getElementById('enrollNotes').value.trim(),
+  };
+  if (!payload.member || !payload.biometric_id) { errBox.textContent = 'Member and Biometric ID are required.'; errBox.style.display = ''; return; }
+
+  var res = await apiRequest('/attendance/biometric/', { method: 'POST', body: JSON.stringify(payload) });
+  if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (res.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('enrollModal')).hide();
+    loadBiometric();
+  } else {
+    var err = await res.json().catch(function() { return {}; });
+    errBox.textContent = formatApiError(err);
+    errBox.style.display = '';
+  }
+}
+
+async function deleteBiometric(id) {
+  if (!(await confirmAction('Remove this biometric enrollment?', { confirmText: 'Remove', variant: 'danger', icon: 'bi-trash' }))) return;
+  var res = await apiRequest('/attendance/biometric/' + id + '/', { method: 'DELETE' });
+  if (res && (res.ok || res.status === 204)) loadBiometric();
+}
+
+// Init
+loadTopbarNotifications();
+</script>
+</body>
+</html>

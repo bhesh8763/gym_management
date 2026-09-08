@@ -18,11 +18,23 @@ class ProgressEntrySerializer(serializers.ModelSerializer):
         model = ProgressEntry
         fields = "__all__"
         read_only_fields = ["recorded_by"]
+        validators = []  # Disable auto-generated UniqueTogetherValidator
 
     def validate(self, data):
         request = self.context.get('request')
         if request and request.user.role == 'MEMBER':
             data['member'] = request.user
+
+        # Manual unique_together check (replaces auto-generated validator)
+        member = data.get('member')
+        entry_date = data.get('date')
+        if member and entry_date:
+            instance = self.instance
+            qs = ProgressEntry.objects.filter(member=member, date=entry_date)
+            if instance:
+                qs = qs.exclude(pk=instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({'date': 'A progress entry for this member on this date already exists.'})
 
         entry_date = data.get('date')
         if entry_date and entry_date > date.today():
@@ -58,11 +70,24 @@ class PersonalRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = PersonalRecord
         fields = "__all__"
+        validators = []  # Disable auto-generated UniqueTogetherValidator
 
     def validate(self, data):
         request = self.context.get('request')
         if request and request.user.role == 'MEMBER':
             data['member'] = request.user
+
+        # Manual unique check for (member, exercise, date)
+        member = data.get('member')
+        exercise = data.get('exercise')
+        pr_date = data.get('date')
+        if member and exercise and pr_date:
+            instance = self.instance
+            qs = PersonalRecord.objects.filter(member=member, exercise=exercise, date=pr_date)
+            if instance:
+                qs = qs.exclude(pk=instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({'date': 'A personal record for this exercise on this date already exists.'})
 
         pr_date = data.get('date')
         if pr_date and pr_date > date.today():

@@ -375,6 +375,14 @@
             <label class="form-label">Amount Due</label>
             <input type="text" id="payAmountDisplay" class="form-control" disabled>
           </div>
+          <div class="mb-3">
+            <label class="form-label">Promo Code (optional)</label>
+            <div class="input-group">
+              <input type="text" id="payPromoCode" class="form-control text-uppercase" placeholder="Enter promo code">
+              <button type="button" class="btn btn-outline-primary" id="validatePromoBtn" onclick="validatePromoCode()">Apply</button>
+            </div>
+            <div id="promoResult" class="mt-2 small" style="display:none;"></div>
+          </div>
           <div class="mb-2">
             <label class="form-label">Payment Method</label>
             <select id="payMethod" class="form-select" required>
@@ -646,6 +654,9 @@ function openPayModalFromDues(idx) {
   document.getElementById('payForm').reset();
   document.getElementById('payMethod').value = 'KHALTI';
   document.getElementById('paySpinner').classList.add('d-none');
+  document.getElementById('payPromoCode').value = '';
+  document.getElementById('promoResult').style.display = 'none';
+  validatedPromo = null;
   updatePayMethodUI();
   new bootstrap.Modal(document.getElementById('payModal')).show();
 }
@@ -676,6 +687,9 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
     reference_id: selectedDue.reference_id,
     payment_method: document.getElementById('payMethod').value,
   };
+  if (validatedPromo) {
+    payload.promo_code = validatedPromo.promo_code;
+  }
 
   try {
     const res = await apiRequest('/payments/pay/', { method: 'POST', body: JSON.stringify(payload) });
@@ -725,6 +739,64 @@ function submitEsewaForm(actionUrl, fields) {
   });
   document.body.appendChild(form);
   form.submit();
+}
+
+// ─── Promo Code Validation ──────────────────────────────────────────────
+let validatedPromo = null;
+
+async function validatePromoCode() {
+  const code = document.getElementById('payPromoCode').value.trim();
+  const resultEl = document.getElementById('promoResult');
+  const validateBtn = document.getElementById('validatePromoBtn');
+  if (!code) { resultEl.style.display = 'none'; validatedPromo = null; return; }
+
+  validateBtn.disabled = true;
+  validateBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+  // Determine plan_id from selectedDue
+  const planId = selectedDue && selectedDue.reference_id ? selectedDue.reference_id : null;
+  if (!planId) {
+    resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Select a plan first.</span>';
+    resultEl.style.display = '';
+    validateBtn.disabled = false;
+    validateBtn.textContent = 'Apply';
+    return;
+  }
+
+  const res = await apiRequest('/memberships/offers/validate/', {
+    method: 'POST',
+    body: JSON.stringify({ code: code, plan_id: planId }),
+  });
+
+  validateBtn.disabled = false;
+  validateBtn.textContent = 'Apply';
+
+  if (!res) {
+    resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Network error.</span>';
+    resultEl.style.display = '';
+    validatedPromo = null;
+    return;
+  }
+
+  const data = await res.json().catch(() => ({}));
+
+  if (res.ok) {
+    validatedPromo = data;
+    const savingsText = data.discount_type === 'PERCENTAGE'
+      ? data.discount_value + '% off'
+      : 'NPR ' + data.discount_amount + ' off';
+    resultEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i><strong>' +
+      escapeHtml(data.offer_name) + '</strong> — ' + savingsText +
+      ' (Final: NPR ' + data.final_price + ')</span>';
+    resultEl.style.display = '';
+    // Update displayed amount
+    document.getElementById('payAmountDisplay').value = 'NPR ' + data.final_price;
+  } else {
+    validatedPromo = null;
+    resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' +
+      (typeof formatApiError === 'function' ? formatApiError(data) : 'Invalid promo code.') + '</span>';
+    resultEl.style.display = '';
+  }
 }
 
 // ─── Purchase Flow ─────────────────────────────────────────────────────

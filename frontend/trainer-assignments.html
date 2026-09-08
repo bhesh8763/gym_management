@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trainer Assignments – FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="OWNER,STAFF">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta"><div class="profile-name" id="profileName">&mdash;</div><div class="profile-role" id="profileRole">&mdash;</div></span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content"><div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="p-4 flex-grow-1">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="fw-bold mb-0">Trainer Assignments</h3>
+      <button class="btn btn-primary" onclick="openAssignModal()">
+        <i class="bi bi-plus-lg me-1"></i> Assign Member
+      </button>
+    </div>
+    <p class="text-muted mb-4">Assign members to trainers and manage existing assignments.</p>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-total"><i class="bi bi-link-45deg"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Total Assignments</div>
+          <h3 id="statTotal">–</h3>
+        </div>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-active"><i class="bi bi-check-circle"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Active</div>
+          <h3 id="statActive" class="text-success">–</h3>
+        </div>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-beginner"><i class="bi bi-people"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Trainers</div>
+          <h3 id="statTrainers">–</h3>
+        </div>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card h-100 shadow-sm">
+          <div class="stat-icon icon-library"><i class="bi bi-person-check"></i></div>
+          <div class="text-muted small text-uppercase fw-semibold">Members Assigned</div>
+          <h3 id="statMembers">–</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="row g-2 mb-3">
+      <div class="col-auto">
+        <select id="filterStatus" class="form-select" onchange="loadAssignments()">
+          <option value="">All Status</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <select id="filterTrainer" class="form-select" onchange="loadAssignments()">
+          <option value="">All Trainers</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary px-3" onclick="loadAssignments()">Refresh</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>Trainer</th>
+            <th>Member</th>
+            <th>Assigned Date</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th data-no-export>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="assignmentsBody">
+          <tr><td colspan="6" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="emptyState" class="text-center text-muted py-5" style="display:none;">
+      <i class="bi bi-link-45deg display-4 d-block mb-2"></i>
+      <p>No assignments found. Click "Assign Member" to create one.</p>
+    </div>
+  </div>
+</div></div>
+
+<!-- Assign Member Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header p-3">
+        <h5 class="modal-title fw-bold" id="assignModalTitle">Assign Member to Trainer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div id="assignError" class="alert alert-danger d-none mb-3"></div>
+        <div id="assignSuccess" class="alert alert-success d-none mb-3"></div>
+        <form id="assignForm">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Trainer <span class="text-danger">*</span></label>
+            <select id="assignTrainer" class="form-select" required>
+              <option value="">Select a trainer…</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Member <span class="text-danger">*</span></label>
+            <select id="assignMember" class="form-select" required>
+              <option value="">Select a member…</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Notes</label>
+            <textarea id="assignNotes" class="form-control" rows="2" placeholder="Optional notes about this assignment…"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer p-3">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" id="assignBtn" onclick="submitAssignment()">
+          <i class="bi bi-check-lg me-1"></i> Assign
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Assignment Modal -->
+<div class="modal fade" id="editAssignModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header p-3">
+        <h5 class="modal-title fw-bold">Edit Assignment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div id="editAssignError" class="alert alert-danger d-none mb-3"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Trainer</label>
+          <input type="text" id="editAssignTrainer" class="form-control" disabled>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Member</label>
+          <input type="text" id="editAssignMember" class="form-control" disabled>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">End Date</label>
+          <input type="date" id="editAssignEndDate" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Notes</label>
+          <textarea id="editAssignNotes" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Status</label>
+          <select id="editAssignActive" class="form-select">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer p-3">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" onclick="submitEditAssignment()">
+          <i class="bi bi-check-lg me-1"></i> Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+buildSidebar('trainer-assignments');
+if (!getAccessToken()) window.location.href = 'login.html';
+
+var allAssignments = [];
+var allTrainers = [];
+var editingAssignmentId = null;
+
+function statusBadge(isActive) {
+  return isActive
+    ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Active</span>'
+    : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Inactive</span>';
+}
+
+async function loadTrainers() {
+  var res = await apiRequest('/trainers/');
+  if (!res || !res.ok) return;
+  var data = await res.json();
+  allTrainers = data.results || data;
+
+  var filterSel = document.getElementById('filterTrainer');
+  var assignSel = document.getElementById('assignTrainer');
+  filterSel.innerHTML = '<option value="">All Trainers</option>' +
+    allTrainers.map(t => '<option value="' + t.user + '">' + t.full_name + '</option>').join('');
+  assignSel.innerHTML = '<option value="">Select a trainer…</option>' +
+    allTrainers.map(t => '<option value="' + t.user + '">' + t.full_name + ' (' + (t.specializations || []).join(', ') + ')</option>').join('');
+}
+
+async function loadMembersDropdown() {
+  var res = await apiRequest('/members/?is_active=true');
+  if (!res || !res.ok) return;
+  var data = await res.json();
+  var members = data.results || data;
+  document.getElementById('assignMember').innerHTML = '<option value="">Select a member…</option>' +
+    members.map(m => '<option value="' + m.user_id + '">' + m.full_name + ' (' + (m.display_id || m.id) + ')</option>').join('');
+}
+
+async function loadAssignments() {
+  var tbody = document.getElementById('assignmentsBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading…</td></tr>';
+
+  var params = new URLSearchParams();
+  var status = document.getElementById('filterStatus').value;
+  if (status) params.set('is_active', status);
+  var trainer = document.getElementById('filterTrainer').value;
+  if (trainer) params.set('trainer', trainer);
+
+  var res = await apiRequest('/trainers/assignments/?' + params.toString());
+  if (!res || !res.ok) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Could not load assignments.</td></tr>';
+    return;
+  }
+
+  var data = await res.json();
+  allAssignments = data.results || data;
+
+  // Stats
+  var total = allAssignments.length;
+  var active = allAssignments.filter(a => a.is_active).length;
+  var trainerSet = new Set(allAssignments.map(a => a.trainer));
+  var memberSet = new Set(allAssignments.map(a => a.member));
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statActive').textContent = active;
+  document.getElementById('statTrainers').textContent = trainerSet.size;
+  document.getElementById('statMembers').textContent = memberSet.size;
+
+  if (allAssignments.length === 0) {
+    tbody.innerHTML = '';
+    document.getElementById('emptyState').style.display = '';
+    return;
+  }
+  document.getElementById('emptyState').style.display = 'none';
+
+  tbody.innerHTML = allAssignments.map(a => {
+    var date = a.assigned_date ? new Date(a.assigned_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
+    return '<tr>' +
+      '<td><div class="fw-semibold">' + escapeHtml(a.trainer_name) + '</div><div class="text-muted small">' + escapeHtml(a.trainer_display_id) + '</div></td>' +
+      '<td><div class="fw-semibold">' + escapeHtml(a.member_name) + '</div><div class="text-muted small">' + escapeHtml(a.member_display_id) + '</div></td>' +
+      '<td>' + date + '</td>' +
+      '<td>' + statusBadge(a.is_active) + '</td>' +
+      '<td class="text-muted small">' + escapeHtml(a.notes || '-') + '</td>' +
+      '<td>' +
+        '<button class="btn btn-sm btn-outline-primary me-1" onclick="openEditAssignModal(' + a.id + ')" title="Edit"><i class="bi bi-pencil"></i></button>' +
+        '<button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment(' + a.id + ')" title="Deactivate"><i class="bi bi-trash"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function openAssignModal() {
+  document.getElementById('assignForm').reset();
+  document.getElementById('assignError').style.display = 'none';
+  document.getElementById('assignSuccess').style.display = 'none';
+  document.getElementById('assignModalTitle').textContent = 'Assign Member to Trainer';
+  new bootstrap.Modal(document.getElementById('assignModal')).show();
+}
+
+async function submitAssignment() {
+  var trainer = document.getElementById('assignTrainer').value;
+  var member = document.getElementById('assignMember').value;
+  var notes = document.getElementById('assignNotes').value.trim();
+  var errBox = document.getElementById('assignError');
+  var successBox = document.getElementById('assignSuccess');
+  var btn = document.getElementById('assignBtn');
+
+  errBox.style.display = 'none';
+  successBox.style.display = 'none';
+
+  if (!trainer || !member) {
+    errBox.textContent = 'Please select both a trainer and a member.';
+    errBox.style.display = '';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Assigning…';
+
+  var payload = { trainer: parseInt(trainer), member: parseInt(member) };
+  if (notes) payload.notes = notes;
+
+  var res = await apiRequest('/trainers/assignments/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Assign';
+
+  if (!res) {
+    errBox.textContent = 'Network error. Please try again.';
+    errBox.style.display = '';
+    return;
+  }
+
+  if (res.ok) {
+    successBox.textContent = 'Member assigned successfully!';
+    successBox.style.display = '';
+    setTimeout(function() {
+      bootstrap.Modal.getInstance(document.getElementById('assignModal')).hide();
+      loadAssignments();
+    }, 800);
+  } else {
+    var err = await res.json().catch(function() { return { error: 'Could not parse error response' }; });
+    errBox.textContent = formatApiError(err);
+    errBox.style.display = '';
+  }
+}
+
+function openEditAssignModal(id) {
+  var a = allAssignments.find(function(x) { return x.id === id; });
+  if (!a) return;
+
+  editingAssignmentId = id;
+  document.getElementById('editAssignTrainer').value = a.trainer_name + ' (' + a.trainer_display_id + ')';
+  document.getElementById('editAssignMember').value = a.member_name + ' (' + a.member_display_id + ')';
+  document.getElementById('editAssignEndDate').value = a.end_date || '';
+  document.getElementById('editAssignNotes').value = a.notes || '';
+  document.getElementById('editAssignActive').value = a.is_active ? 'true' : 'false';
+  document.getElementById('editAssignError').style.display = 'none';
+
+  new bootstrap.Modal(document.getElementById('editAssignModal')).show();
+}
+
+async function submitEditAssignment() {
+  var errBox = document.getElementById('editAssignError');
+  errBox.style.display = 'none';
+
+  var payload = {
+    is_active: document.getElementById('editAssignActive').value === 'true',
+    notes: document.getElementById('editAssignNotes').value.trim(),
+  };
+  var endDate = document.getElementById('editAssignEndDate').value;
+  if (endDate) payload.end_date = endDate;
+
+  var res = await apiRequest('/trainers/assignments/' + editingAssignmentId + '/', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+
+  if (!res) {
+    errBox.textContent = 'Network error. Please try again.';
+    errBox.style.display = '';
+    return;
+  }
+
+  if (res.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('editAssignModal')).hide();
+    loadAssignments();
+  } else {
+    var err = await res.json().catch(function() { return { error: 'Could not parse error response' }; });
+    errBox.textContent = formatApiError(err);
+    errBox.style.display = '';
+  }
+}
+
+async function deleteAssignment(id) {
+  var ok = await confirmAction('Deactivate this assignment? The member will no longer be assigned to this trainer.', {
+    confirmText: 'Deactivate',
+    variant: 'danger',
+    icon: 'bi-trash',
+  });
+  if (!ok) return;
+
+  var res = await apiRequest('/trainers/assignments/' + id + '/', { method: 'DELETE' });
+  if (res && res.ok) {
+    loadAssignments();
+  }
+}
+
+// Init
+loadTrainers();
+loadMembersDropdown();
+loadAssignments();
+loadTopbarNotifications();
+</script>
+</body>
+</html>

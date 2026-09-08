@@ -135,16 +135,41 @@
     </div>
 
     <div class="row mb-4">
-      <div class="col-md-6 mb-3">
+      <div class="col-md-4 mb-3">
         <div class="card"><div class="card-body">
           <h6 class="card-title">Revenue by Plan</h6>
           <canvas id="planChart" height="120"></canvas>
         </div></div>
       </div>
-      <div class="col-md-6 mb-3">
+      <div class="col-md-4 mb-3">
         <div class="card"><div class="card-body">
           <h6 class="card-title">Staff by Department</h6>
           <canvas id="staffChart" height="120"></canvas>
+        </div></div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Locker Occupancy</h6>
+          <canvas id="lockerChart" height="120"></canvas>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-8 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Member Retention (Last 12 Months)</h6>
+          <canvas id="retentionChart" height="100"></canvas>
+        </div></div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card"><div class="card-body">
+          <h6 class="card-title">Overall Retention</h6>
+          <div class="text-center py-4">
+            <h2 id="retentionRate" class="text-primary">–</h2>
+            <div class="text-muted small">Retention Rate</div>
+            <div class="mt-2 small"><span id="retentionActive" class="fw-semibold">–</span> active of <span id="retentionTotal" class="fw-semibold">–</span> total members</div>
+          </div>
         </div></div>
       </div>
     </div>
@@ -253,7 +278,7 @@ buildSidebar('reports');
   function downloadReport(type) {
     const format = document.getElementById('exportFormat').value;
     const token = getAccessToken();
-    let url = `${API_BASE}/reports/export/${type}/?format=${format}`;
+    let url = `${API_BASE}/reports/export/${type}/?export_format=${format}`;
     // Append date range for attendance and revenue exports
     if (type === 'attendance' || type === 'revenue') {
       const start = document.getElementById('exportStartDate').value;
@@ -407,12 +432,51 @@ buildSidebar('reports');
     });
   }
 
+  async function loadLockers() {
+    const res = await apiRequest('/reports/lockers/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+
+    new Chart(document.getElementById('lockerChart'), {
+      type: 'doughnut',
+      data: {
+        labels: d.by_status.map(r => r.status),
+        datasets: [{ data: d.by_status.map(r => r.count), backgroundColor: PALETTE }],
+      },
+      options: { responsive: true },
+    });
+  }
+
+  async function loadRetention() {
+    const res = await apiRequest('/reports/retention/');
+    if (!res || !res.ok) return;
+    const d = await res.json();
+
+    document.getElementById('retentionRate').textContent = d.overall.overall_retention_rate + '%';
+    document.getElementById('retentionActive').textContent = d.overall.members_with_active_membership;
+    document.getElementById('retentionTotal').textContent = d.overall.total_members;
+
+    new Chart(document.getElementById('retentionChart'), {
+      type: 'bar',
+      data: {
+        labels: d.cohorts.map(c => c.join_month),
+        datasets: [
+          { label: 'Still Active', data: d.cohorts.map(c => c.still_active), backgroundColor: '#59a14f' },
+          { label: 'Churned', data: d.cohorts.map(c => c.churned), backgroundColor: '#e15759' },
+        ],
+      },
+      options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } },
+    });
+  }
+
   loadOverview();
   loadRevenue();
   loadMemberships();
   loadAttendance();
   loadEquipment();
   loadStaff();
+  loadLockers();
+  loadRetention();
 
   loadTopbarNotifications();
 </script>

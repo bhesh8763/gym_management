@@ -273,6 +273,19 @@ function buildSidebar(activePage) {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
 
+  // If the sidebar already has content (preserved across SPA navigation),
+  // just update the active link instead of rebuilding everything — this
+  // keeps the scroll position and badge state intact.
+  if (sidebar.querySelector('.list-group')) {
+    sidebar.querySelectorAll('.list-group-item').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === activePage + '.html');
+    });
+    applySidebarRoleVisibility();
+    return;
+  }
+
+  const savedScroll = sidebar.scrollTop;
+
   const link = (href, icon, label, roles, isActive, badgeHtml) => {
     const roleAttr = roles ? ` data-roles="${roles}"` : '';
     const activeClass = isActive ? ' active' : '';
@@ -294,17 +307,22 @@ function buildSidebar(activePage) {
     ${section('Members')}
     ${link('members.html', 'bi-person-lines-fill', 'Members', 'OWNER,STAFF', a('members'))}
     ${link('memberships.html', 'bi-card-checklist', 'Memberships', 'OWNER,STAFF', a('memberships'))}
+    ${link('offers.html', 'bi-tag', 'Offers & Promo Codes', 'OWNER,STAFF', a('offers'))}
+    ${link('trainer-assignments.html', 'bi-link-45deg', 'Trainer Assignments', 'OWNER,STAFF', a('trainer-assignments'))}
     ${link('trainer-members.html', 'bi-people', 'My Members', 'TRAINER', a('trainer-members'))}
     ${link('attendance.html', 'bi-calendar-check', 'Attendance', 'OWNER,STAFF,TRAINER', a('attendance'))}
+    ${link('attendance-devices.html', 'bi-qr-code', 'Attendance Devices', 'OWNER,STAFF', a('attendance-devices'))}
     ${link('progress.html', 'bi-graph-up', 'Progress Report', 'OWNER,STAFF,TRAINER', a('progress'))}
     ${link('messages.html', 'bi-chat-dots', 'Messages', 'OWNER,STAFF,TRAINER', a('messages'), '<span class="msg-sidebar-badge" style="display:none;"></span>')}
 
     ${section('Staff Management')}
     ${link('staff.html', 'bi-people', 'Staff', 'OWNER', a('staff'))}
+    ${link('trainers.html', 'bi-person-workspace', 'Trainers', 'OWNER,STAFF', a('trainers'))}
 
     ${section('Workout & Diet', 'OWNER,STAFF,TRAINER')}
     ${link('workouts.html', 'bi-heart-pulse', 'Workouts', 'OWNER,STAFF,TRAINER', a('workouts'))}
     ${link('diet.html', 'bi-egg-fried', 'Diet', 'OWNER,STAFF,TRAINER', a('diet'))}
+    ${link('meals.html', 'bi-cup-hot', 'Meals', 'OWNER,STAFF,TRAINER', a('meals'))}
 
     ${section('Payments')}
     ${link('payments.html', 'bi-cash-coin', 'Payments', 'OWNER,STAFF', a('payments'))}
@@ -329,6 +347,8 @@ function buildSidebar(activePage) {
     ${section('System')}
     ${link('notifications.html', 'bi-bell', 'Notifications', '', a('notifications'))}
   </div>`;
+
+  sidebar.scrollTop = savedScroll;
 
   applySidebarRoleVisibility();
   loadSidebarMessageBadge();
@@ -496,10 +516,25 @@ syncSidebarCollapsedState();
 
     if (myToken !== navToken) return; // superseded while scripts were loading
 
+    // Preserve the sidebar element across SPA navigations so its scroll
+    // position, collapsed state, and message badge are not destroyed.
+    const oldSidebar = document.getElementById('sidebar');
+    const savedScroll = oldSidebar ? oldSidebar.scrollTop : 0;
+
     // Replace #page-content entirely (ensures scripts + modals load correctly)
     // The transition:fix on sidebar CSS prevents visual bounce.
     contentEl.innerHTML = newContentEl.innerHTML;
     if (doc.title) document.title = doc.title;
+
+    // Restore the preserved sidebar (with its scroll position and state)
+    // into the new page content, replacing the empty placeholder.
+    if (oldSidebar) {
+      const newSidebar = document.getElementById('sidebar');
+      if (newSidebar && newSidebar.parentNode) {
+        newSidebar.parentNode.replaceChild(oldSidebar, newSidebar);
+        oldSidebar.scrollTop = savedScroll;
+      }
+    }
 
     // SPA modal fix: carry over modals that live outside #page-content.
     // Remove any modals that sit outside #page-content (from previous page),
@@ -764,7 +799,12 @@ function ensureEditProfileModal() {
               </div>
             </div>
             <hr>
-            <p class="text-muted small mb-2">Leave blank to keep your current password.</p>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <p class="text-muted small mb-0">Leave blank to keep your current password.</p>
+              <button type="button" class="btn btn-sm btn-outline-warning" onclick="bootstrap.Modal.getInstance(document.getElementById('editProfileModal')).hide(); setTimeout(function(){ openChangePasswordModal(); }, 300);">
+                <i class="bi bi-key me-1"></i>Change Password
+              </button>
+            </div>
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">New Password</label>
@@ -1057,27 +1097,33 @@ async function showMemberQuickView(memberId) {
 // calls refreshTopbarBell() directly — this function is the equivalent used
 // by every other page.
 async function loadTopbarNotifications() {
-  const res = await apiRequest('/notifications/?is_read=false');
-  if (!res || !res.ok) return;
-  const data = await res.json();
-  const items = data.results || data;
+  // Use dedicated unread-count endpoint for badge (faster than fetching full list)
+  const countRes = await apiRequest('/notifications/unread-count/');
+  let unreadCount = 0;
+  if (countRes && countRes.ok) {
+    const countData = await countRes.json();
+    unreadCount = countData.unread_count || 0;
+  }
 
-  // Badge
   const badge = document.getElementById('notifCount');
   if (badge) {
-    if (items.length > 0) {
+    if (unreadCount > 0) {
       badge.style.display = 'inline-block';
-      badge.textContent = items.length > 99 ? '99+' : items.length;
+      badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
     } else {
       badge.style.display = 'none';
     }
   }
 
-  // Mark-all button — enable only when there are unread items
   const markAllBtn = document.getElementById('notifMarkAllBtn');
-  if (markAllBtn) markAllBtn.disabled = items.length === 0;
+  if (markAllBtn) markAllBtn.disabled = unreadCount === 0;
 
-  // List
+  // Fetch only recent unread items for the dropdown (max 6)
+  const res = await apiRequest('/notifications/?is_read=false');
+  if (!res || !res.ok) return;
+  const data = await res.json();
+  const items = data.results || data;
+
   const listEl = document.getElementById('notifList');
   if (!listEl) return;
   listEl.innerHTML = items.length
@@ -1265,4 +1311,90 @@ function confirmAction(message, options = {}) {
     document.body.appendChild(overlay);
     overlay.focus();
   });
+}
+
+// ── Change Password Modal ──────────────────────────────────────────────────
+function openChangePasswordModal() {
+  if (!document.getElementById('changePasswordModal')) {
+    const html = `
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-key me-2"></i>Change Password</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <form id="changePasswordForm">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Current Password <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input type="password" id="cpOldPassword" class="form-control" required>
+                  <button type="button" class="btn btn-outline-secondary toggle-password" data-target="cpOldPassword" tabindex="-1"><i class="bi bi-eye"></i></button>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">New Password <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input type="password" id="cpNewPassword" class="form-control" required>
+                  <button type="button" class="btn btn-outline-secondary toggle-password" data-target="cpNewPassword" tabindex="-1"><i class="bi bi-eye"></i></button>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Confirm New Password <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input type="password" id="cpNewPassword2" class="form-control" required>
+                  <button type="button" class="btn btn-outline-secondary toggle-password" data-target="cpNewPassword2" tabindex="-1"><i class="bi bi-eye"></i></button>
+                </div>
+              </div>
+              <div class="alert alert-warning small mb-0">
+                <i class="bi bi-exclamation-triangle me-1"></i> You'll be logged out after changing your password.
+              </div>
+              <div id="cpError" class="alert alert-danger d-none mt-3"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i> Change Password
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('cpError');
+      errBox.classList.add('d-none');
+      const oldPw = document.getElementById('cpOldPassword').value;
+      const newPw = document.getElementById('cpNewPassword').value;
+      const newPw2 = document.getElementById('cpNewPassword2').value;
+      if (newPw !== newPw2) {
+        errBox.textContent = 'New passwords do not match.';
+        errBox.classList.remove('d-none');
+        return;
+      }
+      const res = await apiRequest('/auth/change-password/', {
+        method: 'POST',
+        body: JSON.stringify({ old_password: oldPw, new_password: newPw, new_password2: newPw2 }),
+      });
+      if (!res) { errBox.textContent = 'Network error.'; errBox.classList.remove('d-none'); return; }
+      if (res.ok) {
+        alert('Password changed successfully. You will be logged out.');
+        clearTokens();
+        window.location.href = 'login.html';
+      } else {
+        const err = await res.json().catch(() => ({}));
+        errBox.textContent = formatApiError(err);
+        errBox.classList.remove('d-none');
+      }
+    });
+  }
+  document.getElementById('cpOldPassword').value = '';
+  document.getElementById('cpNewPassword').value = '';
+  document.getElementById('cpNewPassword2').value = '';
+  document.getElementById('cpError').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
 }
