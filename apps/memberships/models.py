@@ -112,6 +112,11 @@ class Membership(models.Model):
         verbose_name = 'Membership'
         verbose_name_plural = 'Memberships'
         ordering = ['-start_date']
+        indexes = [
+            models.Index(fields=['member', 'status'], name='idx_membership_member_status'),
+            models.Index(fields=['status', 'end_date'], name='idx_membership_status_enddate'),
+            models.Index(fields=['renewed_from'], name='idx_membership_renewed_from'),
+        ]
 
     def __str__(self):
         return f'{self.member.get_full_name()} — {self.plan.name} ({self.status})'

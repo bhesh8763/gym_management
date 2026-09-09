@@ -12,6 +12,7 @@ Endpoints:
     POST   /api/auth/forgot-password/     - Request password reset email
     POST   /api/auth/reset-password/      - Reset password using token
 """
+import logging
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -37,6 +38,7 @@ from .serializers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger('apps.accounts')
 
 
 class RegisterView(generics.CreateAPIView):
@@ -187,13 +189,22 @@ class ForgotPasswordView(APIView):
             )
 
         # Always respond with 200 to prevent email enumeration
+        success_response = Response(
+            {'message': 'If that email is registered, a reset link has been sent.'}
+        )
+
         User = get_user_model()
         try:
             user = User.objects.get(email=email, is_active=True)
         except User.DoesNotExist:
-            return Response({'message': 'If that email is registered, a reset link has been sent.'})
+            return success_response
 
-        reset_token = PasswordResetToken.create_for_user(user)
+        # Create token
+        try:
+            reset_token = PasswordResetToken.create_for_user(user)
+        except Exception as e:
+            logger.error('Failed to create reset token for %s: %s', email, e)
+            return success_response
 
         # Build reset URL — frontend handles the actual form
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://127.0.0.1:5500')
@@ -216,11 +227,11 @@ class ForgotPasswordView(APIView):
                 [user.email],
                 fail_silently=False,
             )
-        except Exception:
-            # Log but don't expose errors to the client
-            pass
+            logger.info('Password reset email sent to %s', user.email)
+        except Exception as e:
+            logger.error('Failed to send password reset email to %s: %s', user.email, e)
 
-        return Response({'message': 'If that email is registered, a reset link has been sent.'})
+        return success_response
 
 
 class ResetPasswordView(APIView):

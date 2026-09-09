@@ -4,6 +4,7 @@ import base64
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist, SuspiciousFileOperation
 from django.db import models
 from django.utils import timezone
 from rest_framework import viewsets, status
@@ -608,7 +609,7 @@ class PublicMemberProfileView(APIView):
         profile = None
         try:
             profile = member.member_profile
-        except Exception:
+        except ObjectDoesNotExist:
             pass
 
         # Build profile picture URL
@@ -616,7 +617,7 @@ class PublicMemberProfileView(APIView):
         if member.profile_picture:
             try:
                 pic_url = request.build_absolute_uri(member.profile_picture.url)
-            except Exception:
+            except (ValueError, SuspiciousFileOperation):
                 pass
 
         return Response({

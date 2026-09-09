@@ -1,6 +1,7 @@
 """
 URL configuration for gym_management project.
 """
+import logging
 import time
 
 from django.contrib import admin
@@ -25,6 +26,9 @@ google_login = OAuth2LoginView.adapter_view(CustomGoogleOAuth2Adapter)
 google_callback = OAuth2CallbackView.adapter_view(CustomGoogleOAuth2Adapter)
 facebook_login = OAuth2LoginView.adapter_view(CustomFacebookOAuth2Adapter)
 facebook_callback = OAuth2CallbackView.adapter_view(CustomFacebookOAuth2Adapter)
+
+
+logger = logging.getLogger('gym_management')
 
 
 def _build_provider_urls():
@@ -55,8 +59,8 @@ def _build_provider_urls():
         try:
             mod = __import__(cls.get_package() + '.urls', fromlist=['urlpatterns'])
             custom += getattr(mod, 'urlpatterns', [])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning('Could not load URL patterns for social provider %s: %s', cls.id, e)
     return custom
 
 
@@ -66,7 +70,8 @@ def health_check(request):
     try:
         with connection.cursor() as cursor:
             cursor.execute('SELECT 1')
-    except Exception:
+    except Exception as e:
+        logger.error('Health check: database query failed: %s', e)
         db_ok = False
 
     status_code = 200 if db_ok else 503

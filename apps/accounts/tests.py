@@ -3,6 +3,8 @@ Basic API tests for authentication endpoints.
 
 Run:  python manage.py test apps.accounts.tests
 """
+import logging
+from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
@@ -482,11 +484,13 @@ class ForgotPasswordTests(APITestCase):
 
     url = reverse('auth-forgot-password')
 
-    def test_existing_email_returns_200(self):
-        User.objects.create_user(
+    def setUp(self):
+        self.user = User.objects.create_user(
             email='reset@gym.com', password='Pass@123',
-            first_name='R', last_name='U',
+            first_name='Reset', last_name='User',
         )
+
+    def test_existing_email_returns_200(self):
         r = self.client.post(self.url, {'email': 'reset@gym.com'}, format='json')
         self.assertEqual(r.status_code, status.HTTP_200_OK)
 
@@ -501,11 +505,76 @@ class ForgotPasswordTests(APITestCase):
 
     def test_inactive_user_also_returns_200(self):
         """Inactive user should not leak info."""
-        User.objects.create_user(
+        inactive = User.objects.create_user(
             email='inactive@gym.com', password='Pass@123',
             first_name='I', last_name='U', is_active=False,
         )
         r = self.client.post(self.url, {'email': 'inactive@gym.com'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+    @patch('apps.accounts.views.send_mail')
+    def test_send_mail_failure_still_returns_200(self, mock_send_mail):
+        """When send_mail fails, the view still returns 200 to avoid leaking
+        whether the email is registered."""
+        mock_send_mail.side_effect = ConnectionRefusedError('SMTP server down')
+        r = self.client.post(self.url, {'email': 'reset@gym.com'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertIn('If that email is registered', r.data['message'])
+
+    @patch('apps.accounts.views.send_mail')
+    def test_send_mail_failure_logs_error(self, mock_send_mail):
+        """send_mail failure must be logged, not silently swallowed."""
+        mock_send_mail.side_effect = ConnectionRefusedError('SMTP down')
+        with self.assertLogs('apps.accounts', level='ERROR') as cm:
+            self.client.post(self.url, {'email': 'reset@gym.com'}, format='json')
+        self.assertTrue(any('Failed to send password reset email' in m for m in cm.output))
+
+    @patch('apps.accounts.views.send_mail')
+    def test_send_mail_success_logs_info(self, mock_send_mail):
+        """A successful send must be logged at INFO level."""
+        mock_send_mail.return_value = 1
+        with self.assertLogs('apps.accounts', level='INFO') as cm:
+            self.client.post(self.url, {'email': 'reset@gym.com'}, format='json')
+        self.assertTrue(any('Password reset email sent to reset@gym.com' in m for m in cm.output))
+
+    @patch('apps.accounts.views.send_mail')
+    def test_token_created_before_send_mail(self, mock_send_mail):
+        """The reset token is created in the DB *before* send_mail is called,
+        so a DB failure is caught separately from an email failure."""
+        from apps.accounts.models import PasswordResetToken
+        mock_send_mail.side_effect = ConnectionRefusedError('SMTP down')
+        self.client.post(self.url, {'email': 'reset@gym.com'}, format='json')
+        # Token should exist in DB even though email failed
+        self.assertEqual(PasswordResetToken.objects.filter(user=self.user).count(), 1)
+
+    @patch('apps.accounts.views.send_mail')
+    @patch('apps.accounts.models.PasswordResetToken.create_for_user')
+    def test_create_for_user_failure_returns_200(self, mock_create, mock_send_mail):
+        """If PasswordResetToken.create_for_user raises, the view must still
+        return 200 and not leak a 500."""
+        mock_create.side_effect = Exception('DB write failed')
+        r = self.client.post(self.url, {'email': 'reset@gym.com'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertIn('If that email is registered', r.data['message'])
+        # send_mail should never have been reached
+        mock_send_mail.assert_not_called()
+
+    @patch('apps.accounts.models.PasswordResetToken.create_for_user')
+    def test_create_for_user_failure_logs_error(self, mock_create):
+        """Token creation failure must be logged at ERROR level."""
+        mock_create.side_effect = Exception('DB write failed')
+        with self.assertLogs('apps.accounts', level='ERROR') as cm:
+            self.client.post(self.url, {'email': 'reset@gym.com'}, format='json')
+        self.assertTrue(any('Failed to create reset token' in m for m in cm.output))
+
+    def test_email_is_case_insensitive(self):
+        """Email lookup should be case-insensitive (lowercased in the view)."""
+        r = self.client.post(self.url, {'email': 'RESET@GYM.COM'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+
+    def test_email_is_stripped(self):
+        """Leading/trailing whitespace in email should be ignored."""
+        r = self.client.post(self.url, {'email': '  reset@gym.com  '}, format='json')
         self.assertEqual(r.status_code, status.HTTP_200_OK)
 
 

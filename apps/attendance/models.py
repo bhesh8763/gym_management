@@ -54,6 +54,10 @@ class Attendance(models.Model):
         ordering = ['-date', '-check_in']
         # Prevent duplicate check-in for same user on same date
         unique_together = [('user', 'date')]
+        indexes = [
+            models.Index(fields=['date', 'attendance_type'], name='idx_attendance_date_type'),
+            models.Index(fields=['date', 'status'], name='idx_attendance_date_status'),
+        ]
 
     def __str__(self):
         return f'{self.user.get_full_name()} — {self.date}'

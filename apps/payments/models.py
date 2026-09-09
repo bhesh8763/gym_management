@@ -79,6 +79,11 @@ class Payment(models.Model):
         verbose_name = 'Payment'
         verbose_name_plural = 'Payments'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['member', 'status'], name='idx_payment_member_status'),
+            models.Index(fields=['created_at'], name='idx_payment_created_at'),
+            models.Index(fields=['status'], name='idx_payment_status'),
+        ]
 
     def __str__(self):
         return f'#{self.receipt_number} — {self.member.get_full_name()} — NPR {self.amount_paid}'
