@@ -311,13 +311,11 @@ function buildSidebar(activePage) {
     ${link('trainer-assignments.html', 'bi-link-45deg', 'Trainer Assignments', 'OWNER,STAFF', a('trainer-assignments'))}
     ${link('trainer-members.html', 'bi-people', 'My Members', 'TRAINER', a('trainer-members'))}
     ${link('attendance.html', 'bi-calendar-check', 'Attendance', 'OWNER,STAFF,TRAINER', a('attendance'))}
-    ${link('attendance-devices.html', 'bi-qr-code', 'Attendance Devices', 'OWNER,STAFF', a('attendance-devices'))}
     ${link('progress.html', 'bi-graph-up', 'Progress Report', 'OWNER,STAFF,TRAINER', a('progress'))}
     ${link('messages.html', 'bi-chat-dots', 'Messages', 'OWNER,STAFF,TRAINER', a('messages'), '<span class="msg-sidebar-badge" style="display:none;"></span>')}
 
     ${section('Staff Management')}
-    ${link('staff.html', 'bi-people', 'Staff', 'OWNER', a('staff'))}
-    ${link('trainers.html', 'bi-person-workspace', 'Trainers', 'OWNER,STAFF', a('trainers'))}
+    ${link('staff.html', 'bi-people', 'Staff', 'OWNER,STAFF', a('staff'))}
 
     ${section('Workout & Diet', 'OWNER,STAFF,TRAINER')}
     ${link('workouts.html', 'bi-heart-pulse', 'Workouts', 'OWNER,STAFF,TRAINER', a('workouts'))}

@@ -459,9 +459,19 @@
   #leaveModal .btn-close {
     filter: invert(1);
   }
+
+  /* STAFF-as-trainer view: hide checkbox, salary & status columns */
+  body.trainer-view th:nth-child(1),
+  body.trainer-view td:nth-child(1),
+  body.trainer-view th:nth-child(7),
+  body.trainer-view td:nth-child(7),
+  body.trainer-view th:nth-child(8),
+  body.trainer-view td:nth-child(8) {
+    display: none;
+  }
 </style>
 </head>
-<body data-allowed-roles="OWNER">
+<body data-allowed-roles="OWNER,STAFF">
 
 <!-- Toast container for save/update/delete feedback -->
 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
@@ -527,7 +537,7 @@
   <div class="sidebar" id="sidebar"></div>
 
   <div class="p-4 flex-grow-1">
-    <div data-roles="OWNER" id="staffProfilesSection">
+    <div data-roles="OWNER,STAFF" id="staffProfilesSection">
       <h3 class="mb-3 fw-bold">Staff Profiles</h3>
 
       <!-- Staff stat cards -->
@@ -1055,6 +1065,39 @@ buildSidebar('staff');
     }
   });
 
+  // STAFF role: only allow adding trainers
+  if (myRole === 'STAFF') {
+    document.body.classList.add('trainer-view');
+
+    // Set role dropdown to TRAINER and disable it
+    const roleSelect = document.getElementById('department');
+    if (roleSelect) {
+      roleSelect.value = 'TRAINER';
+      roleSelect.disabled = true;
+    }
+
+    // Hide bulk actions and select-all checkbox
+    const bulkActions = document.getElementById('staffBulkActions');
+    if (bulkActions) bulkActions.style.display = 'none';
+    const selectAll = document.getElementById('selectAllStaff');
+    if (selectAll) selectAll.closest('th').style.display = 'none';
+
+    // Hide status filter and export CSV
+    const statusFilter = document.getElementById('staffStatusFilter');
+    if (statusFilter) statusFilter.closest('.col-auto').style.display = 'none';
+    const exportBtn = document.querySelector('button[onclick="exportStaffCsv()"]');
+    if (exportBtn) exportBtn.closest('.col-auto').style.display = 'none';
+
+    // Update headings and buttons for trainer context
+    document.querySelector('h3.mb-3.fw-bold').textContent = 'Trainers';
+    document.querySelector('#staffProfilesSection .d-flex.justify-content-between.align-items-center.mb-3 h5').textContent = 'Trainer Directory';
+    const addBtn = document.querySelector('button[data-bs-target="#profileAddModal"]');
+    if (addBtn) addBtn.innerHTML = '<i class="bi bi-plus-lg"></i> Add Trainer';
+    document.querySelector('#profileAddModal .modal-title').textContent = 'Add Trainer Profile';
+    document.getElementById('profileAddSubmitBtn').textContent = 'Add Trainer';
+    document.title = 'Trainers – FitCore';
+  }
+
   // --- Toast feedback -----------------------------------------------------
   function showToast(message, variant) {
     const toastEl = document.getElementById("appToast");
@@ -1159,6 +1202,11 @@ buildSidebar('staff');
     const data = await res.json();
     staffCache = data.results || [];
 
+    // STAFF role: only show trainers
+    if (myRole === 'STAFF') {
+      staffCache = staffCache.filter(s => s.role === 'TRAINER');
+    }
+
     const total = staffCache.length;
     const active = staffCache.filter(s => s.is_active).length;
     const deactivated = total - active;
@@ -1168,6 +1216,15 @@ buildSidebar('staff');
     document.getElementById('statActiveStaff').textContent = active;
     document.getElementById('statDeactivatedStaff').textContent = deactivated;
     document.getElementById('statDepartments').textContent = roles;
+
+    // STAFF role: hide role filter and pre-filter to TRAINER
+    if (myRole === 'STAFF') {
+      const deptFilter = document.getElementById('staffDeptFilter');
+      if (deptFilter) {
+        deptFilter.value = 'TRAINER';
+        deptFilter.disabled = true;
+      }
+    }
 
     renderStaffPage(1);
   }
