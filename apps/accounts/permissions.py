@@ -73,7 +73,10 @@ class IsOwnerOrStaffOrTrainer(HasRole):
     allowed_roles = [User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER]
     message = 'Access restricted to owners, staff, and trainers.'
 
-
+class IsOwnerOrStaffOrTrainerOrMember(HasRole):
+    """Owners, staff, trainers, and members — for endpoints where each role sees only their own data."""
+    allowed_roles = [User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER, User.Role.MEMBER]
+    message = 'Authentication required.'
 class IsTrainerOrMember(HasRole):
     """Trainers and members."""
     allowed_roles = [User.Role.TRAINER, User.Role.MEMBER]

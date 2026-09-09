@@ -242,7 +242,7 @@ function statusBadge(isActive) {
 }
 
 async function loadTrainers() {
-  var res = await apiRequest('/trainers/');
+  var res = await apiRequest('/trainers/profiles/');
   if (!res || !res.ok) return;
   var data = await res.json();
   allTrainers = data.results || data;
@@ -250,9 +250,9 @@ async function loadTrainers() {
   var filterSel = document.getElementById('filterTrainer');
   var assignSel = document.getElementById('assignTrainer');
   filterSel.innerHTML = '<option value="">All Trainers</option>' +
-    allTrainers.map(t => '<option value="' + t.user + '">' + t.full_name + '</option>').join('');
-  assignSel.innerHTML = '<option value="">Select a trainer…</option>' +
-    allTrainers.map(t => '<option value="' + t.user + '">' + t.full_name + ' (' + (t.specializations || []).join(', ') + ')</option>').join('');
+  allTrainers.map(t => '<option value="' + t.user + '">' + t.full_name + '</option>').join('');
+assignSel.innerHTML = '<option value="">Select a trainer…</option>' +
+  allTrainers.map(t => '<option value="' + t.user + '">' + t.full_name + '</option>').join('');
 }
 
 async function loadMembersDropdown() {
