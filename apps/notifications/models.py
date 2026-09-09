@@ -23,6 +23,7 @@ class Notification(models.Model):
         ANNOUNCEMENT = 'ANNOUNCEMENT', 'Announcement'
         MEMBER_MESSAGE = 'MEMBER_MESSAGE', 'Member Message'
         TRAINER_REPLY = 'TRAINER_REPLY', 'Trainer Reply'
+        TRAINER_ASSIGNED = 'TRAINER_ASSIGNED', 'Trainer Assigned'
 
     sender = models.ForeignKey(
         settings.AUTH_USER_MODEL,

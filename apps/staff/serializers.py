@@ -88,19 +88,26 @@ class StaffCreateSerializer(serializers.Serializer):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('A user with this email already exists.')
         return value
-
+    
     def create(self, validated_data):
-        user_fields = ['email', 'first_name', 'middle_name', 'last_name', 'phone', 'password']
-        user_data = {k: validated_data.pop(k) for k in user_fields if k in validated_data}
-        password = user_data.pop('password')
+      user_fields = ['email', 'first_name', 'middle_name', 'last_name', 'phone', 'password']
+      user_data = {k: validated_data.pop(k) for k in user_fields if k in validated_data}
+      password = user_data.pop('password')
 
-        user = User(role=User.Role.STAFF, **user_data)
-        user.set_password(password)
-        user.save()
+      staff_profile_role = validated_data.get('role', StaffProfile.Role.RECEPTIONIST)
+      user_role = User.Role.TRAINER if staff_profile_role == StaffProfile.Role.TRAINER else User.Role.STAFF
 
-        return StaffProfile.objects.create(user=user, **validated_data)
+      user = User(role=user_role, **user_data)
+      user.set_password(password)
+      user.save()
 
+      staff_profile = StaffProfile.objects.create(user=user, **validated_data)
 
+      if user_role == User.Role.TRAINER:
+        from apps.trainers.models import TrainerProfile
+        TrainerProfile.objects.create(user=user)
+
+      return staff_profile
 class LeaveRequestSerializer(serializers.ModelSerializer):
     requester_name = serializers.CharField(source='requester.get_full_name', read_only=True)
     reviewed_by_name = serializers.CharField(source='reviewed_by.get_full_name', read_only=True)

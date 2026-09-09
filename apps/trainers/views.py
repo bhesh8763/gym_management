@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsOwner, IsOwnerOrStaff, IsTrainer, IsOwnerOrStaffOrTrainer
+from apps.accounts.permissions import IsOwner, IsOwnerOrStaff, IsTrainer, IsOwnerOrStaffOrTrainer, IsOwnerOrStaffOrTrainerOrMember
 
 from .models import TrainerProfile, TrainerMemberAssignment
 from .serializers import (
@@ -73,32 +74,48 @@ class TrainerMemberAssignmentViewSet(viewsets.ModelViewSet):
     serializer_class = TrainerMemberAssignmentSerializer
 
     def get_permissions(self):
-        if self.action in ('create',):
-            permission_classes = [IsOwnerOrStaff]
-        elif self.action in ('destroy',):
-            permission_classes = [IsOwner]
-        elif self.action in ('update', 'partial_update'):
-            permission_classes = [IsOwnerOrStaff]
-        else:
-            permission_classes = [IsOwnerOrStaffOrTrainer]
-        return [p() for p in permission_classes]
+      if self.action in ('create',):
+        permission_classes = [IsOwnerOrStaff]
+      elif self.action in ('destroy',):
+        permission_classes = [IsOwner]
+      elif self.action in ('update', 'partial_update'):
+        permission_classes = [IsOwnerOrStaff]
+      else:
+        permission_classes = [IsOwnerOrStaffOrTrainerOrMember]   # ← changed this line
+      return [p() for p in permission_classes]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.role in (User.Role.OWNER, User.Role.STAFF):
-            return TrainerMemberAssignment.objects.select_related(
-                'trainer', 'member',
-            ).all()
-        elif user.role == User.Role.TRAINER:
-            return TrainerMemberAssignment.objects.select_related(
-                'trainer', 'member',
-            ).filter(trainer=user)
-        return TrainerMemberAssignment.objects.none()
+      user = self.request.user
+      if user.role in (User.Role.OWNER, User.Role.STAFF):
+        return TrainerMemberAssignment.objects.select_related(
+            'trainer', 'member',
+        ).all()
+      elif user.role == User.Role.TRAINER:
+        return TrainerMemberAssignment.objects.select_related(
+            'trainer', 'member',
+        ).filter(trainer=user)
+      elif user.role == User.Role.MEMBER:
+        return TrainerMemberAssignment.objects.select_related(
+            'trainer', 'member',
+        ).filter(member=user)
+      return TrainerMemberAssignment.objects.none()
 
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
             return TrainerMemberAssignmentCreateSerializer
         return TrainerMemberAssignmentSerializer
+
+    def perform_create(self, serializer):
+        assignment = serializer.save()
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            recipient=assignment.member,
+            sender=self.request.user,
+            notification_type=Notification.NotificationType.TRAINER_ASSIGNED,
+            title='Trainer Assigned',
+            message=f'{assignment.trainer.get_full_name()} has been assigned as your trainer.',
+        )
+
 
     def perform_destroy(self, instance):
         # Soft-deactivate the assignment instead of hard-deleting
