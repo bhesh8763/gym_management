@@ -699,6 +699,11 @@ function initProfileHeader() {
   const avatarEl = document.getElementById('profileAvatar');
   if (nameEl) nameEl.textContent = userName;
   if (roleEl) roleEl.textContent = userRole;
+  // Hide search bar for MEMBER role
+  const searchBar = document.querySelector('.topbar-search');
+  if (searchBar && userRole === 'MEMBER') {
+    searchBar.style.display = 'none';
+  }
   if (avatarEl) {
     if (userPicture) {
       avatarEl.style.backgroundImage = `url(${userPicture})`;
