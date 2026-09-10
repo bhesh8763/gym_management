@@ -791,6 +791,11 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
   --shadow-xl:0 20px 48px rgba(0,0,0,0.7);--shadow-glow:0 0 24px rgba(230,57,70,0.3);
   --shadow-card:0 1px 3px rgba(0,0,0,0.3);
   --dark-neutral:#334155;--dark-neutral-hover:#475569;
+  --bs-body-bg:var(--bg-root);--bs-body-color:var(--text-primary);
+  --bs-card-bg:var(--bg-card);--bs-card-color:var(--text-primary);
+  --bs-border-color:var(--border-light);
+  --bs-emphasis-color:var(--text-primary);--bs-secondary-bg:var(--bg-hover);
+  --bs-tertiary-bg:var(--bg-root);
 }
 
 [data-theme="dark"] body{background-color:var(--bg-root) !important;color:var(--text-primary) !important}
@@ -821,7 +826,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 [data-theme="dark"] .stat-icon.icon-advanced{background:#7f1d1d !important;color:#f87171 !important}
 [data-theme="dark"] .stat-icon.icon-library{background:#1e3a5f !important;color:#60a5fa !important}
 [data-theme="dark"] .attention-panel{background:var(--bg-card) !important}
-[data-theme="dark"] .card-body{background:transparent;color:var(--text-primary)}
+[data-theme="dark"] .card-body{background-color:transparent !important;color:var(--text-primary) !important}
 [data-theme="dark"] .fitness-card{background:var(--bg-card) !important;border-color:var(--border-light) !important}
 [data-theme="dark"] .workout-card{background:var(--bg-card) !important;border-color:var(--border-light) !important}
 [data-theme="dark"] .meal-card{background:var(--bg-card) !important;border-color:var(--border-light) !important}

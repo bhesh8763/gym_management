@@ -26,7 +26,7 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('role', User.Role.OWNER)
+        extra_fields.setdefault('role', User.Role.ADMIN)
 
         if not extra_fields.get('is_staff'):
             raise ValueError('Superuser must have is_staff=True.')
@@ -39,7 +39,7 @@ class UserManager(BaseUserManager):
 class RoleSequence(models.Model):
     """
     Tracks the last-used sequence number per role, used to generate
-    human-readable display IDs like MEM-0001, STF-0001, TRN-0001, OWN-0001.
+    human-readable display IDs like MEM-0001, STF-0001, TRN-0001, OWN-0001, ADM-0001.
     """
     role = models.CharField(max_length=10, unique=True)
     last_value = models.PositiveIntegerField(default=0)
@@ -68,12 +68,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         STAFF = 'STAFF', 'Staff'
         TRAINER = 'TRAINER', 'Trainer'
         MEMBER = 'MEMBER', 'Member'
+        ADMIN = 'ADMIN', 'Admin'
 
     ROLE_PREFIXES = {
         Role.OWNER: 'OWN',
         Role.STAFF: 'STF',
         Role.TRAINER: 'TRN',
         Role.MEMBER: 'MEM',
+        Role.ADMIN: 'ADM',
     }
 
     # Core identity

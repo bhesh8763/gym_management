@@ -122,6 +122,19 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
             qs = qs.filter(requester=self.request.user)
         return qs
 
+    def list(self, request, *args, **kwargs):
+        # Auto-reject expired pending leaves on list view only
+        from django.utils import timezone as _tz
+        _today = _tz.now().date()
+        LeaveRequest.objects.filter(
+            status=LeaveRequest.LeaveStatus.PENDING,
+            end_date__lt=_today,
+        ).update(
+            status=LeaveRequest.LeaveStatus.REJECTED,
+            review_note='Auto-rejected: leave end date passed without review.',
+        )
+        return super().list(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         serializer.save(requester=self.request.user)
 

@@ -60,6 +60,12 @@ class IsMember(HasRole):
     message = 'Access restricted to members.'
 
 
+class IsAdmin(HasRole):
+    """Only admins (developers)."""
+    allowed_roles = [User.Role.ADMIN]
+    message = 'Access restricted to admins.'
+
+
 # ─── Combined-Role Permissions ────────────────────────────────────────────────
 
 class IsOwnerOrStaff(HasRole):
@@ -75,7 +81,7 @@ class IsOwnerOrStaffOrTrainer(HasRole):
 
 class IsOwnerOrStaffOrTrainerOrMember(HasRole):
     """Owners, staff, trainers, and members — for endpoints where each role sees only their own data."""
-    allowed_roles = [User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER, User.Role.MEMBER]
+    allowed_roles = [User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER, User.Role.MEMBER, User.Role.ADMIN]
     message = 'Authentication required.'
 class IsTrainerOrMember(HasRole):
     """Trainers and members."""
@@ -85,7 +91,7 @@ class IsTrainerOrMember(HasRole):
 
 class IsAnyStaffRole(HasRole):
     """All non-member roles (owner, staff, trainer)."""
-    allowed_roles = [User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER]
+    allowed_roles = [User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER, User.Role.ADMIN]
     message = 'Access restricted to staff members.'
 
 
@@ -98,7 +104,7 @@ class IsOwnerOrStaffOrMemberReadOnly(BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        if request.user.role in [User.Role.OWNER, User.Role.STAFF]:
+        if request.user.role in [User.Role.OWNER, User.Role.STAFF, User.Role.ADMIN]:
             return True
         if request.user.role == User.Role.MEMBER and request.method in ('GET', 'HEAD', 'OPTIONS'):
             return True
@@ -126,7 +132,7 @@ class IsOwnerOrStaffOrOwnerOfObject(BasePermission):
     message = 'You do not have permission to access this record.'
 
     def has_object_permission(self, request, view, obj):
-        if request.user.role in [User.Role.OWNER, User.Role.STAFF]:
+        if request.user.role in [User.Role.OWNER, User.Role.STAFF, User.Role.ADMIN]:
             return True
         return hasattr(obj, 'user') and obj.user == request.user
 

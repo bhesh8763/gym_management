@@ -320,7 +320,6 @@ function buildSidebar(activePage) {
     ${section('Workout & Diet', 'OWNER,STAFF,TRAINER')}
     ${link('workouts.html', 'bi-heart-pulse', 'Workouts', 'OWNER,STAFF,TRAINER', a('workouts'))}
     ${link('diet.html', 'bi-egg-fried', 'Diet', 'OWNER,STAFF,TRAINER', a('diet'))}
-    ${link('meals.html', 'bi-cup-hot', 'Meals', 'OWNER,STAFF,TRAINER', a('meals'))}
 
     ${section('Payments')}
     ${link('payments.html', 'bi-cash-coin', 'Payments', 'OWNER,STAFF', a('payments'))}
