@@ -702,9 +702,22 @@ buildSidebar('attendance');
     new bootstrap.Modal(document.getElementById('manageAttendanceModal')).show();
   }
 
-  function openEditAttendanceModalFromManage() {
-    openEditAttendanceModal(currentManageAttendanceId);
+ async function openEditAttendanceModalFromManage() {
+  const id = currentManageAttendanceId;
+
+  const manageModalElement = document.getElementById('manageAttendanceModal');
+  const manageModal = bootstrap.Modal.getOrCreateInstance(manageModalElement);
+  if (manageModalElement.classList.contains('show')) {
+    const hidden = new Promise(resolve => {
+      manageModalElement.addEventListener('hidden.bs.modal', resolve, { once: true });
+    });
+
+    manageModal.hide();
+    await hidden;
   }
+
+  openEditAttendanceModal(id);
+}
 
   function deleteAttendanceFromManage() {
     deleteAttendance(currentManageAttendanceId);
@@ -762,18 +775,42 @@ buildSidebar('attendance');
     }
   }
 
-  async function deleteAttendance(id) {
-    if (!(await confirmAction('Delete this attendance record?', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
-    const res = await apiRequest(`/attendance/records/${id}/`, { method: 'DELETE' });
-    if (!res) return;
-    if (res.ok) {
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('manageAttendanceModal')).hide();
-      await loadAttendance();
-      await loadInactiveMembers();
-    } else {
-      alert('Delete failed.');
-    }
+async function deleteAttendance(id) {
+  const modalElement = document.getElementById('manageAttendanceModal');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+
+  
+  if (modalElement.classList.contains('show')) {
+    const hidden = new Promise(resolve => {
+      modalElement.addEventListener('hidden.bs.modal', resolve, { once: true });
+    });
+
+    modal.hide();
+
+    
+    await hidden;
   }
+
+
+  if (!(await confirmAction('Delete this attendance record?', {
+    confirmText: 'Delete',
+    variant: 'danger',
+    icon: 'bi-trash'
+  }))) return;
+
+  const res = await apiRequest(`/attendance/records/${id}/`, {
+    method: 'DELETE'
+  });
+
+  if (!res) return;
+
+  if (res.ok) {
+    await loadAttendance();
+    await loadInactiveMembers();
+  } else {
+    alert('Delete failed.');
+  }
+}
 
   function filterAttendance() {
     const keyword = document.getElementById('searchAttendance').value.toLowerCase();
