@@ -637,7 +637,7 @@ buildSidebar('dashboard');
     // Today's visit
     renderTodayVisit();
     // Workout (Today's Plan)
-    renderWorkout(d.active_workout);
+    renderWorkout(d.active_workouts);
     // Diet (Nutrition)
     renderDiet(d.active_diet_plan);
     // Body metrics (Progress)
@@ -795,10 +795,10 @@ buildSidebar('dashboard');
     detailsEl.innerHTML = details.join('');
   }
 
-  function renderWorkout(workout) {
+  function renderWorkout(workouts) {
     const el = document.getElementById('mTodayWorkout');
     const badgeEl = document.getElementById('mTodayWorkoutBadge');
-    if (!workout) {
+    if (!workouts || workouts.length === 0) {
       el.innerHTML = `
         <div class="d-flex align-items-center gap-3 py-3">
           <div style="width:48px;height:48px;border-radius:12px;background:var(--color-progress-bg);display:flex;align-items:center;justify-content:center;">
@@ -811,26 +811,28 @@ buildSidebar('dashboard');
         </div>`;
       return;
     }
-    const pct = workout.completion_pct || 0;
+    const pct = Math.round(workouts.reduce((s, w) => s + (w.completion_pct || 0), 0) / workouts.length);
     badgeEl.style.display = '';
     badgeEl.textContent = pct + '% complete';
-    el.innerHTML = `
-      <div class="d-flex align-items-center gap-3 mb-3">
-        <div style="width:48px;height:48px;border-radius:12px;background:var(--color-workout-bg);display:flex;align-items:center;justify-content:center;">
-          <i class="bi bi-heart-pulse" style="font-size:1.5rem;color:var(--color-workout);"></i>
-        </div>
-        <div>
-          <div class="fw-bold" style="font-size:1rem;">${escapeHtml(workout.template_name)}</div>
-          <div class="text-muted" style="font-size:0.85rem;">${escapeHtml(workout.goal || 'General')} • ${escapeHtml(workout.difficulty || 'Intermediate')}</div>
-        </div>
-      </div>
-      <div class="progress-fitness mb-2">
-        <div class="progress-bar bg-workout" style="width:${pct}%"></div>
-      </div>
-      <div class="d-flex justify-content-between align-items-center">
-        <span class="text-muted" style="font-size:0.8rem;">${pct}% completed</span>
-        <a href="my-workouts.html" class="spa-link" style="font-size:0.85rem;font-weight:600;">Start Workout →</a>
-      </div>`;
+    let html = '';
+    workouts.forEach(workout => {
+      const p = workout.completion_pct || 0;
+      html += `
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--color-workout-bg);display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-heart-pulse" style="font-size:1.5rem;color:var(--color-workout);"></i>
+          </div>
+          <div style="flex:1;">
+            <div class="fw-bold" style="font-size:1rem;">${escapeHtml(workout.template_name)}</div>
+            <div class="text-muted" style="font-size:0.85rem;">${escapeHtml(workout.goal || 'General')} • ${escapeHtml(workout.difficulty || 'Intermediate')}</div>
+            <div class="progress-fitness mb-1 mt-2">
+              <div class="progress-bar bg-workout" style="width:${p}%"></div>
+            </div>
+            <div class="text-muted" style="font-size:0.8rem;">${p}% completed</div>
+          </div>
+        </div>`;
+    });
+    el.innerHTML = html;
   }
 
   function renderDiet(diet) {
