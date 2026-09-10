@@ -258,7 +258,7 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
     assigned_trainer = serializers.SerializerMethodField()
 
     # Workouts
-    active_workout = serializers.SerializerMethodField()
+    active_workouts = serializers.SerializerMethodField()
 
     # Diet
     active_diet_plan = serializers.SerializerMethodField()
@@ -285,7 +285,7 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
             'active_membership', 'membership_history',
             'attendance_stats',
             'assigned_trainer',
-            'active_workout',
+            'active_workouts',
             'active_diet_plan',
             'latest_progress', 'personal_records',
             'recent_payments', 'payment_dues',
@@ -364,23 +364,23 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
             'experience_years': profile.experience_years if profile else 0,
         }
 
-    def get_active_workout(self, obj):
+    def get_active_workouts(self, obj):
         from apps.workouts.models import WorkoutAssignment
-        assignment = WorkoutAssignment.objects.filter(
+        assignments = WorkoutAssignment.objects.filter(
             member=obj.user, status='ACTIVE'
-        ).select_related('template').first()
-        if not assignment:
-            return None
-        return {
-            'id': assignment.id,
-            'template_name': assignment.template.name,
-            'goal': assignment.template.goal,
-            'difficulty': assignment.template.difficulty,
-            'completion_pct': assignment.completion_pct,
-            'start_date': assignment.start_date,
-            'end_date': assignment.end_date,
-            'goal_note': assignment.goal_note,
-        }
+        ).select_related('template').order_by('-start_date')
+        if not assignments.exists():
+            return []
+        return [{
+            'id': a.id,
+            'template_name': a.template.name,
+            'goal': a.template.goal,
+            'difficulty': a.template.difficulty,
+            'completion_pct': a.completion_pct,
+            'start_date': a.start_date,
+            'end_date': a.end_date,
+            'goal_note': a.goal_note,
+        } for a in assignments]
 
     def get_active_diet_plan(self, obj):
         from apps.diet.models import DietPlan
