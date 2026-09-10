@@ -1081,9 +1081,15 @@
     openEditMembershipModal(currentManageMembershipId);
   }
 
-  function deleteMembershipFromManage() {
-    deleteMembership(currentManageMembershipId);
-  }
+ async function deleteMembershipFromManage() {
+  const modalElement = document.getElementById('manageMembershipModal');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+  modal.hide();
+  await new Promise(resolve => {
+    modalElement.addEventListener('hidden.bs.modal', resolve, { once: true });
+  });
+  deleteMembership(currentManageMembershipId);
+}
 
   let editingMembershipOriginalStatus = null;
 
