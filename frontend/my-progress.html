@@ -669,7 +669,7 @@ buildSidebar('my-progress');
     }
 
     async function deleteEntry(date) {
-        if (!confirm('Delete entry for ' + date + '?')) return;
+        if (!(await confirmAction('Delete this progress entry?', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
         const resp = await apiRequest(`/progress/entries/?date=${date}`);
         if (!resp || !resp.ok) return;
         const data = await resp.json();

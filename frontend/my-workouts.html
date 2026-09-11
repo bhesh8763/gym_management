@@ -1025,7 +1025,7 @@ function toggleProgramMenu(assignmentId) {
 
 async function pauseAssignment(id) {
     document.getElementById('programMenuDropdown').classList.remove('show');
-    if (!confirm('Pause this program? You can resume it later.')) return;
+    if (!(await confirmAction('Pause this program? You can resume it later.', { confirmText: 'Pause', variant: 'warning', icon: 'bi-pause-circle' }))) return;
     const r = await apiRequest(`/workouts/assignments/${id}/pause/`, { method: 'POST' });
     if (r && r.ok) { showToast('Program paused', 'success'); await loadAll(); }
     else if (r) { const e = await r.json(); showToast(e.detail || 'Could not pause', 'error'); }
@@ -1042,7 +1042,7 @@ async function resumeAssignment(id) {
 
 async function cancelAssignment(id) {
     document.getElementById('programMenuDropdown').classList.remove('show');
-    if (!confirm('Cancel this program? This cannot be undone.')) return;
+    if (!(await confirmAction('Cancel this program? This cannot be undone.', { confirmText: 'Cancel', variant: 'danger', icon: 'bi-x-circle' }))) return;
     const r = await apiRequest(`/workouts/assignments/${id}/cancel/`, { method: 'POST' });
     if (r && r.ok) { showToast('Program cancelled', 'success'); await loadAll(); }
     else if (r) { const e = await r.json(); showToast(e.detail || 'Could not cancel', 'error'); }

@@ -739,7 +739,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 }
 
 /* ── Custom Confirm Modal ─────────────────────────────────────────────────── */
-.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:var(--z-modal);display:flex;align-items:center;justify-content:center;animation:fadeIn 0.15s ease}
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.15s ease}
 .confirm-box{background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-xl);padding:0;width:90%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);overflow:hidden;animation:slideDown 0.2s ease}
 .confirm-icon-wrap{display:flex;align-items:center;justify-content:center;padding:1.5rem 1.5rem 0}
 .confirm-icon-circle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem}
@@ -752,7 +752,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .confirm-actions{display:flex;gap:0.5rem;padding:1.25rem 1.5rem 1.5rem;justify-content:center}
 .confirm-actions .btn{min-width:100px;font-weight:600;font-size:var(--text-sm);border-radius:var(--radius-md)}
 .confirm-cancel{background:var(--bg-hover) !important;color:var(--text-primary) !important;border:1px solid var(--border-light) !important}
-.confirm-cancel:hover{background:var(--dark-neutral-hover) !important}
+.confirm-cancel:hover{background:var(--dark-neutral-hover) !important;color:#fff !important}
 .confirm-danger{background:#ef4444 !important;color:#fff !important;border:none !important}
 .confirm-danger:hover{background:#dc2626 !important}
 .confirm-warning{background:#f59e0b !important;color:#fff !important;border:none !important}
@@ -873,7 +873,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 
 /* Buttons */
 [data-theme="dark"] .btn-secondary{background:var(--bg-hover) !important;border-color:var(--border-light) !important;color:var(--text-primary) !important}
-[data-theme="dark"] .btn-secondary:hover{background:var(--dark-neutral-hover) !important}
+[data-theme="dark"] .btn-secondary:hover{background:var(--dark-neutral-hover) !important;color:#fff !important}
 [data-theme="dark"] .btn-outline-secondary{border-color:var(--border-light) !important;color:var(--text-secondary) !important}
 [data-theme="dark"] .btn-outline-secondary:hover{border-color:var(--text-secondary) !important;color:var(--text-primary) !important;background:var(--bg-hover) !important}
 [data-theme="dark"] .btn-outline-dark{color:var(--text-secondary) !important;border-color:var(--border-light) !important}

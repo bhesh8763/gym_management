@@ -1270,9 +1270,14 @@ function confirmAction(message, options = {}) {
     icon = variant === 'danger' ? 'bi-exclamation-triangle' : variant === 'warning' ? 'bi-exclamation-circle' : variant === 'success' ? 'bi-check-circle' : 'bi-info-circle'
   } = options;
 
+  // Track the highest z-index used so overlapping confirm popups stack visibly
+  if (typeof confirmAction._zStack === 'undefined') confirmAction._zStack = 2000;
+  const zIndex = ++confirmAction._zStack;
+
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
+    overlay.style.zIndex = zIndex;
     overlay.innerHTML = `
       <div class="confirm-box">
         <div class="confirm-icon-wrap">
@@ -1291,6 +1296,8 @@ function confirmAction(message, options = {}) {
 
     function cleanup(result) {
       overlay.remove();
+      // Allow z-index to go back down if all popups are closed
+      if (confirmAction._zStack > 2000) confirmAction._zStack--;
       resolve(result);
     }
 

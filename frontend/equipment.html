@@ -1075,7 +1075,7 @@ buildSidebar('equipment');
 
         if (payload.maintenance_type === 'REPLACEMENT') {
           const equip = equipmentCache.find(e => e.id === payload.equipment);
-          if (equip && confirm(`Logged as a Part Replacement. Reduce "${equip.name}" quantity by 1 (currently ${equip.quantity})?`)) {
+          if (equip && await confirmAction(`Logged as a Part Replacement. Reduce "${equip.name}" quantity by 1 (currently ${equip.quantity})?`, { confirmText: 'Log', variant: 'info', icon: 'bi-tools' })) {
             const newQty = Math.max(0, equip.quantity - 1);
             const qtyRes = await apiRequest(`/equipment/equipment/${equip.id}/`, {
               method: "PATCH",

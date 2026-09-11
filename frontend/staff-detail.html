@@ -537,7 +537,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
 
 async function toggleActive(id, activate) {
   var verb = activate ? 'activate' : 'deactivate';
-  if (!confirm(activate ? 'Activate this staff member?' : 'Deactivate this staff member? They will no longer be able to access their account.')) return;
+  if (!(await confirmAction(activate ? 'Activate this staff member?' : 'Deactivate this staff member? They will no longer be able to access their account.', { confirmText: activate ? 'Activate' : 'Deactivate', variant: activate ? 'success' : 'warning', icon: activate ? 'bi-person-check' : 'bi-person-x' }))) return;
   var res = await apiRequest('/staff/profiles/' + id + '/' + verb + '/', { method: 'POST' });
   if (res && res.ok) {
     loadProfile();

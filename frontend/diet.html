@@ -251,8 +251,8 @@
         <div id="createMealsContainer"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" onclick="submitCreatePlan()">
+        <button class="btn confirm-cancel" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn confirm-info" onclick="submitCreatePlan()">
           <i class="bi bi-check-lg me-1"></i>Save Plan
         </button>
       </div>
@@ -332,8 +332,8 @@
         <div id="editMealsContainer"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" onclick="submitEditPlan()">
+        <button class="btn confirm-cancel" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn confirm-danger" onclick="submitEditPlan()">
           <i class="bi bi-check-lg me-1"></i>Save Changes
         </button>
       </div>
@@ -663,12 +663,11 @@
   }
 
   function openEditFromManage() {
-    bootstrap.Modal.getInstance(document.getElementById('manageDietModal')).hide();
     openEditModal(currentManageDietId);
   }
 
   async function deleteFromManage() {
-    if (!confirm('Are you sure you want to delete this diet plan?')) return;
+    if (!(await confirmAction('Delete this diet plan? This cannot be undone.', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
     const res = await apiRequest(`/diet/diet-plans/${currentManageDietId}/`, { method: 'DELETE' });
     if (res && res.ok) {
       bootstrap.Modal.getInstance(document.getElementById('manageDietModal')).hide();
@@ -752,7 +751,26 @@
       rows[i].querySelector('.meal-time').value     = m.time_suggestion || '';
     });
 
-    new bootstrap.Modal(document.getElementById('editPlanModal')).show();
+    const editModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editPlanModal'));
+    const manageModalEl = document.getElementById('manageDietModal');
+
+    if (manageModalEl.classList.contains('show')) {
+      editModal.show();
+      setTimeout(() => {
+        const backends = document.querySelectorAll('#editPlanModal + .modal-backdrop, .modal-backdrop:not(#editPlanModal + .modal-backdrop)');
+        const manageModalEl2 = document.getElementById('manageDietModal');
+        if (manageModalEl2) {
+          const manageBackdrop = manageModalEl2.nextElementSibling;
+          const manageZ = manageModalEl2.style.zIndex || window.getComputedStyle(manageModalEl2).zIndex || '1055';
+          const editBackdrop = document.querySelector('#editPlanModal + .modal-backdrop');
+          if (editBackdrop) { editBackdrop.style.zIndex = parseInt(manageZ) + 10; }
+          if (manageBackdrop) { manageBackdrop.style.zIndex = parseInt(manageZ) - 10; }
+          editModal._element.style.zIndex = parseInt(manageZ) + 10;
+        }
+      });
+    } else {
+      editModal.show();
+    }
   }
 
   async function submitEditPlan() {
