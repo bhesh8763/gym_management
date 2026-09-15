@@ -34,3 +34,5 @@ ipdb>=0.13
 # ─── Development Utilities ───────────────────────────────────────────────────
 django-extensions>=3.2
 django-silk>=5.0
+# ─── PDF Generation ──────────────────────────────────────────
+reportlab==5.0.1

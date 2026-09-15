@@ -436,10 +436,9 @@ buildSidebar('dashboard');
   }
 
   async function loadAdminDashboard() {
-    const [membersRes, expiringRes, paymentsRes] = await Promise.all([
+    const [membersRes, expiringRes] = await Promise.all([
       apiRequest('/members/'),
       apiRequest('/memberships/expiring/'),
-      apiRequest('/payments/?status=PAID'),
     ]);
 
     if (membersRes && membersRes.ok) {
@@ -457,36 +456,39 @@ buildSidebar('dashboard');
     const todayAttendance = await fetchAllPaginated(`/attendance/records/?date=${todayStr()}`);
     document.getElementById('statAttendance').textContent = todayAttendance.length;
 
-    let allPayments = [];
-    if (paymentsRes && paymentsRes.ok) {
-      const data = await paymentsRes.json();
-      allPayments = data.results || data;
-    }
+    // Two small, date-filtered fetches instead of loading ALL payments into the browser.
     const now = new Date();
-    const thisMonthTotal = allPayments
-      .filter(p => {
-        const d = new Date(p.paid_at || p.created_at);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-      })
-      .reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
-    const lastMonthTotal = allPayments
-      .filter(p => {
-        const d = new Date(p.paid_at || p.created_at);
-        const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        return d.getFullYear() === lm.getFullYear() && d.getMonth() === lm.getMonth();
-      })
-      .reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
+    const y = now.getFullYear();
+    const m = now.getMonth();
+
+    // First day of current month
+    const firstThisMonth = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    // Last day of current month (day 0 of next month = last day of this month)
+    const lastThisMonth = `${y}-${String(new Date(y, m + 1, 0).getMonth() + 1).padStart(2, '0')}-${String(new Date(y, m + 1, 0).getDate()).padStart(2, '0')}`;
+
+    // First day of last month
+    const firstLastMonth = `${m === 0 ? y - 1 : y}-${String(m === 0 ? 12 : m).padStart(2, '0')}-01`;
+    // Last day of last month (day 0 of this month = last day of previous month)
+    const lastLastMonthDate = new Date(y, m, 0);
+    const lastLastMonthStr = `${lastLastMonthDate.getFullYear()}-${String(lastLastMonthDate.getMonth() + 1).padStart(2, '0')}-${String(lastLastMonthDate.getDate()).padStart(2, '0')}`;
+
+    const thisMonthPayments = await fetchAllPaginated(
+      `/payments/?status=PAID&start_date=${firstThisMonth}&end_date=${lastThisMonth}`
+    );
+    const lastMonthPayments = await fetchAllPaginated(
+      `/payments/?status=PAID&start_date=${firstLastMonth}&end_date=${lastLastMonthStr}`
+    );
+
+    const thisMonthTotal = thisMonthPayments.reduce((s, p) => s + parseFloat(p.amount_paid || 0), 0);
+    const lastMonthTotal = lastMonthPayments.reduce((s, p) => s + parseFloat(p.amount_paid || 0), 0);
+
     document.getElementById('statRevenue').textContent = 'NPR ' + thisMonthTotal.toLocaleString();
     setDelta('statRevenueDelta', thisMonthTotal, lastMonthTotal);
 
-    const recentPayments = allPayments
-      .slice()
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 6)
-      .map(p => `<li class="list-group-item"><i class="bi bi-cash-coin text-success me-2"></i>${escapeHtml(p.member_name || 'Member')} paid NPR ${escapeHtml(p.amount_paid)} (${escapeHtml(p.payment_for)})</li>`);
-
-    document.getElementById('activityList').innerHTML = recentPayments.length
-      ? recentPayments.join('')
+    // Recent payments — separate small fetch, no date filter needed.
+    const recentPayments = await fetchAllPaginated('/payments/?status=PAID&ordering=-created_at');
+    document.getElementById('activityList').innerHTML = recentPayments.slice(0, 6).length
+      ? recentPayments.slice(0, 6).map(p => `<li class="list-group-item"><i class="bi bi-cash-coin text-success me-2"></i>${escapeHtml(p.member_name || 'Member')} paid NPR ${escapeHtml(p.amount_paid)} (${escapeHtml(p.payment_for)})</li>`).join('')
       : '<li class="list-group-item text-muted">No recent activity yet.</li>';
 
     loadAttentionPanel();

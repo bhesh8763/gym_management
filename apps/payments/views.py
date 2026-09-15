@@ -7,7 +7,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum, Count
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -131,6 +131,17 @@ class PaymentViewSet(viewsets.ModelViewSet):
         member_id = self.request.query_params.get('member')
         if member_id:
             qs = qs.filter(member_id=member_id)
+
+
+        # Optional date-range filters — used by the dashboard to avoid loading
+        # the entire payment history into the browser.
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date:
+            qs = qs.filter(created_at__date__gte=start_date)
+        if end_date:
+            qs = qs.filter(created_at__date__lte=end_date)
+
         return qs
 
     def perform_create(self, serializer):
@@ -625,6 +636,104 @@ class PaymentViewSet(viewsets.ModelViewSet):
         # Otherwise (PENDING/AMBIGUOUS) — leave PENDING, member can retry verification.
 
         return Response(PaymentSerializer(payment).data)
+
+    @action(detail=True, methods=['get'])
+    def receipt(self, request, pk=None):
+        """
+        Generate and return a PDF receipt for a single PAID payment.
+
+        Members may only download their own receipt; Owner/Staff/Trainer/Admin
+        may download any. Unpaid/pending/failed payments are rejected with 400.
+
+        Returns ``Content-Disposition: attachment; filename="receipt-<n>.pdf"``.
+        """
+        payment = self.get_object()  # respects get_queryset() filtering + 404
+
+        if payment.status != Payment.PaymentStatus.PAID:
+            return Response(
+                {'detail': 'A receipt can only be generated for PAID payments.'},
+                status=400,
+            )
+
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+        from io import BytesIO
+
+        buf = BytesIO()
+        c = canvas.Canvas(buf, pagesize=A4)
+        width, height = A4
+
+        c.setFont('Helvetica-Bold', 18)
+        c.drawString(50, height - 60, 'FitCore Gym')
+        c.setFont('Helvetica', 10)
+        c.drawString(50, height - 78, 'Payment Receipt')
+        c.setStrokeColorRGB(0.4, 0.4, 0.4)
+        c.line(50, height - 85, width - 50, height - 85)
+
+        y = height - 120
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(50, y, 'Receipt Number:')
+        c.setFont('Helvetica', 10)
+        c.drawString(200, y, str(payment.receipt_number))
+        y -= 22
+
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(50, y, 'Payment Date:')
+        c.setFont('Helvetica', 10)
+        c.drawString(200, y, payment.paid_at.strftime('%Y-%m-%d %H:%M') if payment.paid_at else '-')
+        y -= 22
+
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(50, y, 'Member:')
+        c.setFont('Helvetica', 10)
+        c.drawString(200, y, str(payment.member.get_full_name() or payment.member.email))
+        y -= 22
+
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(50, y, 'For:')
+        c.setFont('Helvetica', 10)
+        c.drawString(200, y, payment.get_payment_for_display())
+        y -= 22
+
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(50, y, 'Payment Method:')
+        c.setFont('Helvetica', 10)
+        c.drawString(200, y, payment.get_payment_method_display())
+        y -= 22
+
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(50, y, 'Amount:')
+        c.setFont('Helvetica', 10)
+        c.drawString(200, y, f'{payment.amount:.2f} NPR')
+        y -= 22
+
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(50, y, 'Discount:')
+        c.setFont('Helvetica', 10)
+        c.drawString(200, y, f'{payment.discount:.2f} NPR')
+        y -= 22
+
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(50, y, 'Amount Paid:')
+        c.setFont('Helvetica', 10)
+        c.drawString(200, y, f'{payment.amount_paid:.2f} NPR')
+
+        y -= 40
+        c.setStrokeColorRGB(0.6, 0.6, 0.6)
+        c.line(50, y, width - 50, y)
+        y -= 18
+        c.setFont('Helvetica-Oblique', 8)
+        c.setFillColorRGB(0.5, 0.5, 0.5)
+        c.drawString(50, y, 'This is a system-generated receipt.')
+
+        c.showPage()
+        c.save()
+        pdf_bytes = buf.getvalue()
+        buf.close()
+
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="receipt-{payment.receipt_number}.pdf"'
+        return response
 
     @action(detail=False, methods=['get'], permission_classes=[IsOwnerOrStaff])
     def summary(self, request):
