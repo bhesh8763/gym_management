@@ -380,17 +380,23 @@ buildSidebar('payments');
 
   document.getElementById('paymentEditForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('paymentEditForm'), {
+      editAmount: [v => validate.required(v, 'Amount'), v => validate.positive(v, 'Amount')],
+      editDiscount: [v => validate.min(v, 0, 'Discount')],
+      editReceiptNumber: [v => validate.required(v, 'Receipt number'), v => validate.maxLength(v, 50, 'Receipt number'), v => validate.alphanumeric(v, 'Receipt number')],
+      editNotes: [v => validate.maxLength(v, 200, 'Notes'), v => validate.noHtml(v, 'Notes')],
+    })) return;
     const id = document.getElementById('editPaymentId').value;
     const errorBox = document.getElementById('paymentEditError');
     errorBox.classList.add('d-none');
-    const payload = {
+    const payload = sanitizePayload({
       amount: document.getElementById('editAmount').value,
       discount: document.getElementById('editDiscount').value,
       payment_method: document.getElementById('editMethod').value,
       status: document.getElementById('editStatus').value,
       receipt_number: document.getElementById('editReceiptNumber').value,
       notes: document.getElementById('editNotes').value,
-    };
+    });
     const res = await apiRequest(`/payments/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
     if (!res) return;
     if (res.ok) {
@@ -409,10 +415,16 @@ buildSidebar('payments');
 
   document.getElementById('addForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('addForm'), {
+      member: [v => validate.required(v, 'Member')],
+      amount: [v => validate.required(v, 'Amount'), v => validate.positive(v, 'Amount')],
+      discount: [v => validate.min(v, 0, 'Discount')],
+      receiptNumber: [v => validate.required(v, 'Receipt number'), v => validate.maxLength(v, 50, 'Receipt number'), v => validate.alphanumeric(v, 'Receipt number')],
+    })) return;
     const errorBox = document.getElementById('errorBox');
     errorBox.classList.add('d-none');
 
-    const payload = {
+    const payload = sanitizePayload({
       member: parseInt(document.getElementById('member').value),
       payment_for: document.getElementById('paymentFor').value,
       amount: document.getElementById('amount').value,
@@ -420,7 +432,7 @@ buildSidebar('payments');
       payment_method: document.getElementById('method').value,
       status: document.getElementById('status').value,
       receipt_number: document.getElementById('receiptNumber').value,
-    };
+    });
 
     const res = await apiRequest('/payments/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) return;

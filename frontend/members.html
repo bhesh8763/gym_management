@@ -707,6 +707,14 @@ buildSidebar('members');
     document.getElementById('editNotes').value = profile.notes || '';
     document.getElementById('editPanel').classList.remove('d-none');
     document.getElementById('editPanel').scrollIntoView({ behavior: 'smooth' });
+
+    for (const [fieldName, rules] of Object.entries(editFormRules)) {
+      const field = document.getElementById(fieldName);
+      if (field && !field.dataset.vInit) {
+        initFieldValidation(field, rules);
+        field.dataset.vInit = '1';
+      }
+    }
   }
 
   function closeEdit() {
@@ -714,10 +722,21 @@ buildSidebar('members');
     document.getElementById('editPanel').classList.add('d-none');
   }
 
+  const editFormRules = {
+    editHeightCm: [v => validate.min(v, 0, 'Height'), v => validate.max(v, 300, 'Height')],
+    editWeightKg: [v => validate.min(v, 0, 'Weight'), v => validate.max(v, 500, 'Weight')],
+    editEmergencyPhone: [v => validate.phone(v)],
+    editAddress: [v => validate.maxLength(v, 200, 'Address'), v => validate.noHtml(v, 'Address')],
+    editEmergencyName: [v => validate.maxLength(v, 100, 'Emergency contact name'), v => validate.alpha(v, 'Emergency contact name')],
+    editMedical: [v => validate.maxLength(v, 500, 'Medical conditions')],
+    editNotes: [v => validate.maxLength(v, 500, 'Notes')],
+  };
+
   document.getElementById('editForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!editingProfileId) return;
-    const payload = {
+    if (!validateForm(document.getElementById('editForm'), editFormRules)) return;
+    const payload = sanitizePayload({
       gender: document.getElementById('editGender').value,
       date_of_birth: document.getElementById('editDob').value || null,
       height_cm: document.getElementById('editHeightCm').value || null,
@@ -729,7 +748,7 @@ buildSidebar('members');
       emergency_contact_phone: document.getElementById('editEmergencyPhone').value,
       medical_conditions: document.getElementById('editMedical').value,
       notes: document.getElementById('editNotes').value,
-    };
+    });
     const res = await apiRequest(`/members/${editingProfileId}/`, {
       method: 'PATCH', body: JSON.stringify(payload),
     });
@@ -809,7 +828,7 @@ buildSidebar('members');
     const form = document.getElementById('addForm');
     if (!validateForm(form, addMemberRules)) return;
 
-    const payload = {
+    const payload = sanitizePayload({
       first_name: document.getElementById('firstName').value.trim(),
       middle_name: document.getElementById('middleName').value.trim(),
       last_name: document.getElementById('lastName').value.trim(),
@@ -826,7 +845,7 @@ buildSidebar('members');
       emergency_contact_name: document.getElementById('emergencyName').value.trim(),
       emergency_contact_phone: document.getElementById('emergencyPhone').value.trim(),
       medical_conditions: document.getElementById('medical').value.trim(),
-    };
+    });
 
     const res = await apiRequest('/members/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) return;

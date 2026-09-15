@@ -281,6 +281,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('my-diet');
 if (!getAccessToken()) window.location.href = 'login.html';
@@ -632,10 +633,22 @@ function renderRecentLogs() {
     container.innerHTML = html;
 }
 
+var logMealFieldRules = {
+  logFoodName: [v => validate.required(v, 'Food name'), v => validate.maxLength(v, 100, 'Food name'), v => validate.noHtml(v, 'Food name')],
+  logPortion: [v => validate.maxLength(v, 50, 'Portion'), v => validate.noHtml(v, 'Portion')],
+  logCalories: [v => validate.min(v, 0, 'Calories'), v => validate.max(v, 5000, 'Calories')],
+  logProtein: [v => validate.min(v, 0, 'Protein'), v => validate.max(v, 500, 'Protein')],
+  logCarbs: [v => validate.min(v, 0, 'Carbs'), v => validate.max(v, 500, 'Carbs')],
+  logFat: [v => validate.min(v, 0, 'Fat'), v => validate.max(v, 500, 'Fat')],
+  logMealNotes: [v => validate.maxLength(v, 500, 'Notes'), v => validate.noHtml(v, 'Notes')]
+};
+
 async function submitMealLog() {
     const btn = document.getElementById('logMealSubmitBtn');
     const foodName = document.getElementById('logFoodName').value.trim();
     if (!foodName) { showToast('Food name is required.', 'error'); return; }
+
+    if (!validateForm(document.getElementById('logMealModal'), logMealFieldRules)) return;
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
@@ -646,7 +659,7 @@ async function submitMealLog() {
     const fat = parseFloat(document.getElementById('logFat').value) || 0;
     const mealType = document.getElementById('logMealType').value;
 
-    const foodItem = {
+    const foodItem = sanitizePayload({
         name: foodName,
         amount: document.getElementById('logPortion').value.trim(),
         calories: calories,
@@ -654,7 +667,7 @@ async function submitMealLog() {
         carbs: carbs,
         fat: fat,
         meal_type: mealType,
-    };
+    });
 
     const todayStr = new Date().toISOString().slice(0, 10);
     const notes = document.getElementById('logMealNotes').value.trim();

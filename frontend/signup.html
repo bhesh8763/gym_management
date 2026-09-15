@@ -90,7 +90,7 @@
           <label class="login-label">Phone Number</label>
           <div class="login-input-wrapper">
             <i class="bi bi-telephone-fill"></i>
-            <input type="tel" class="login-input" id="phone" name="phone" placeholder="e.g. 9841234567" autocomplete="tel">
+            <input type="tel" class="login-input" id="phone" name="phone" placeholder="e.g. 9841234567" autocomplete="tel" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
         </div>
 

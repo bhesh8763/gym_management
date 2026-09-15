@@ -153,6 +153,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('meals');
 if (!getAccessToken()) window.location.href = 'login.html';
@@ -265,11 +266,20 @@ function editMeal(id) {
   if (m) openMealModal(m);
 }
 
+var mealFieldRules = {
+  mealDietPlan: [v => validate.required(v, 'Diet plan')],
+  mealFoodName: [v => validate.required(v, 'Food name'), v => validate.maxLength(v, 100, 'Food name'), v => validate.noHtml(v, 'Food name')],
+  mealPortion: [v => validate.maxLength(v, 50, 'Portion'), v => validate.noHtml(v, 'Portion')],
+  mealCalories: [v => validate.min(v, 0, 'Calories')],
+  mealNotes: [v => validate.maxLength(v, 200, 'Notes'), v => validate.noHtml(v, 'Notes')]
+};
+
 async function submitMeal() {
   var errBox = document.getElementById('mealError');
   errBox.style.display = 'none';
+  if (!validateForm(document.getElementById('mealModal'), mealFieldRules)) return;
   var id = document.getElementById('mealId').value;
-  var payload = {
+  var payload = sanitizePayload({
     diet_plan: parseInt(document.getElementById('mealDietPlan').value),
     meal_type: document.getElementById('mealType').value,
     food_name: document.getElementById('mealFoodName').value.trim(),
@@ -277,7 +287,7 @@ async function submitMeal() {
     calories: document.getElementById('mealCalories').value ? parseInt(document.getElementById('mealCalories').value) : null,
     time_suggestion: document.getElementById('mealTime').value || null,
     notes: document.getElementById('mealNotes').value.trim(),
-  };
+  });
   if (!payload.food_name) { errBox.textContent = 'Food name is required.'; errBox.style.display = ''; return; }
 
   var url = id ? '/diet/meals/' + id + '/' : '/diet/meals/';

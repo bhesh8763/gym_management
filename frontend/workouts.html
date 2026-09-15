@@ -287,6 +287,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('workouts');
 if (!getAccessToken()) window.location.href = 'login.html';
@@ -396,13 +397,18 @@ function renderTemplates(totalCount) {
 }
 
 async function createTemplate() {
-    const payload = {
+    const modal = document.getElementById('createTemplateModal');
+    if (!validateForm(modal, {
+        tplName: [v => validate.required(v, 'Template name'), v => validate.maxLength(v, 100, 'Template name'), v => validate.noHtml(v, 'Template name')],
+        tplGoal: [v => validate.maxLength(v, 200, 'Goal'), v => validate.noHtml(v, 'Goal')],
+        tplDuration: [v => validate.min(v, 1, 'Duration')],
+    })) return;
+    const payload = sanitizePayload({
         name: document.getElementById('tplName').value,
         goal: document.getElementById('tplGoal').value,
         difficulty: document.getElementById('tplDifficulty').value,
         duration_weeks: parseInt(document.getElementById('tplDuration').value) || 4,
-    };
-    if (!payload.name) { showToast('Template name is required', 'error'); return; }
+    });
     const response = await apiRequest('/workouts/templates/', { method: 'POST', body: JSON.stringify(payload) });
     if (response && response.ok) {
         bootstrap.Modal.getInstance(document.getElementById('createTemplateModal')).hide();
@@ -451,14 +457,18 @@ function openAssignModal(templateId, status) {
     new bootstrap.Modal(document.getElementById('assignModal')).show();
 }
 async function submitAssignment() {
-    const payload = {
+    const modal = document.getElementById('assignModal');
+    if (!validateForm(modal, {
+        assignMember: [v => validate.required(v, 'Member')],
+        assignStartDate: [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+        assignGoalNote: [v => validate.maxLength(v, 500, 'Goal note'), v => validate.noHtml(v, 'Goal note')],
+    })) return;
+    const payload = sanitizePayload({
         template: parseInt(document.getElementById('assignTemplateId').value),
         member: document.getElementById('assignMember').value,
         start_date: document.getElementById('assignStartDate').value,
         goal_note: document.getElementById('assignGoalNote').value,
-    };
-    if (!payload.member) { showToast('Select a member', 'error'); return; }
-    if (!payload.start_date) { showToast('Pick a start date', 'error'); return; }
+    });
     const response = await apiRequest('/workouts/assignments/', { method: 'POST', body: JSON.stringify(payload) });
     if (response && response.ok) {
         bootstrap.Modal.getInstance(document.getElementById('assignModal')).hide();
@@ -544,15 +554,21 @@ function openEditExerciseModal(ex) {
 }
 async function saveExercise() {
     const id = document.getElementById('exId').value;
-    const payload = {
+    const modal = document.getElementById('createExerciseModal');
+    if (!validateForm(modal, {
+        exName: [v => validate.required(v, 'Exercise name'), v => validate.maxLength(v, 100, 'Exercise name'), v => validate.noHtml(v, 'Exercise name')],
+        exEquipment: [v => validate.maxLength(v, 100, 'Equipment'), v => validate.noHtml(v, 'Equipment')],
+        exInstructions: [v => validate.maxLength(v, 1000, 'Instructions'), v => validate.noHtml(v, 'Instructions')],
+        exVideoUrl: [v => validate.url(v, 'Video URL')],
+    })) return;
+    const payload = sanitizePayload({
         name: document.getElementById('exName').value,
         muscle_group: document.getElementById('exMuscle').value,
         exercise_type: document.getElementById('exType').value,
         equipment: document.getElementById('exEquipment').value,
         instructions: document.getElementById('exInstructions').value,
         video_url: document.getElementById('exVideoUrl').value || '',
-    };
-    if (!payload.name) { showToast('Exercise name is required', 'error'); return; }
+    });
     const url = id ? `/workouts/exercises/${id}/` : '/workouts/exercises/';
     const method = id ? 'PATCH' : 'POST';
     const response = await apiRequest(url, { method, body: JSON.stringify(payload) });

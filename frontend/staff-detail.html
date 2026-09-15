@@ -165,7 +165,7 @@
           </div>
           <div>
             <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Phone</label>
-            <input type="tel" id="editPhone" class="form-control form-control-sm" maxlength="10" inputmode="numeric">
+            <input type="tel" id="editPhone" class="form-control form-control-sm" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
           <div>
             <label style="display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:4px;">Date of Birth</label>
@@ -257,6 +257,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('staff');
 if (!getAccessToken()) window.location.href = 'login.html';
@@ -265,6 +266,19 @@ var params = new URLSearchParams(window.location.search);
 var staffId = params.get('id');
 var profileData = null;
 var currentTab = 'personal';
+
+var editValidation = {
+  editEmail: [required('Email'), email()],
+  editPhone: [phone()],
+  editDob: [notFuture('Date of birth')],
+  editNationality: [maxLength(50, 'Nationality'), noHtml('Nationality')],
+  editNotes: [maxLength(500, 'Notes'), noHtml('Notes')],
+  editSalary: [min(0, 'Salary')],
+  editJoinedDate: [notPast('Join date')],
+};
+var resetValidation = {
+  resetPasswordField: [required('Password'), password()],
+};
 
 function showToast(message, variant) {
   // Simple alert fallback for this page
@@ -433,6 +447,8 @@ function previewPhoto(input) {
 }
 
 async function saveEdit() {
+  if (!validateForm(document.getElementById('editForm'), editValidation)) return;
+
   var btn = document.getElementById('editSaveBtn');
   btn.disabled = true; btn.textContent = 'Saving...';
   document.getElementById('editError').style.display = 'none';
@@ -456,7 +472,7 @@ async function saveEdit() {
     fd.append('profile_picture', photoFile);
     res = await apiRequest('/staff/profiles/' + staffId + '/', { method: 'PATCH', body: fd, isFormData: true });
   } else {
-    var payload = {
+    var payload = sanitizePayload({
       email: document.getElementById('editEmail').value,
       user_phone: document.getElementById('editPhone').value,
       role: document.getElementById('editDepartment').value,
@@ -467,7 +483,7 @@ async function saveEdit() {
       gender: document.getElementById('editGender').value || null,
       marital_status: document.getElementById('editMaritalStatus').value || null,
       nationality: document.getElementById('editNationality').value || null,
-    };
+    });
     res = await apiRequest('/staff/profiles/' + staffId + '/', { method: 'PATCH', body: JSON.stringify(payload) });
   }
 
@@ -511,13 +527,14 @@ document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal'
 
 document.getElementById('resetPasswordForm').addEventListener('submit', async function(e) {
   e.preventDefault();
+  if (!validateForm(document.getElementById('resetPasswordForm'), resetValidation)) return;
   var btn = document.getElementById('resetPasswordSubmitBtn');
   if (btn) btn.disabled = true;
   try {
     var id = document.getElementById('resetPasswordStaffId').value;
     var errorBox = document.getElementById('resetPasswordError');
     errorBox.classList.add('d-none');
-    var payload = { new_password: document.getElementById('resetPasswordField').value };
+    var payload = sanitizePayload({ new_password: document.getElementById('resetPasswordField').value });
     var res = await apiRequest('/staff/profiles/' + id + '/reset-password/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) { alert('Request failed to send.'); return; }
     if (res.ok) {

@@ -134,6 +134,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('trainers');
 if (!getAccessToken()) window.location.href = 'login.html';
@@ -223,14 +224,23 @@ function editTrainer(id) {
   if (t) openTrainerModal(t);
 }
 
+var trainerFieldRules = {
+  trainerUser: [v => validate.required(v, 'User')],
+  trainerSpecializations: [v => validate.maxLength(v, 200, 'Specializations'), v => validate.noHtml(v, 'Specializations')],
+  trainerBio: [v => validate.maxLength(v, 1000, 'Bio'), v => validate.noHtml(v, 'Bio')],
+  trainerExperience: [v => validate.min(v, 0, 'Experience')],
+  trainerSalary: [v => validate.min(v, 0, 'Salary')]
+};
+
 async function submitTrainer() {
   var errBox = document.getElementById('trainerError');
   errBox.style.display = 'none';
+  if (!validateForm(document.getElementById('trainerModal'), trainerFieldRules)) return;
   var id = document.getElementById('trainerId').value;
   var specsRaw = document.getElementById('trainerSpecializations').value.trim();
   var specs = specsRaw ? specsRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
 
-  var payload = {
+  var payload = sanitizePayload({
     user: parseInt(document.getElementById('trainerUser').value),
     is_available: document.getElementById('trainerAvailable').value === 'true',
     experience_years: document.getElementById('trainerExperience').value ? parseInt(document.getElementById('trainerExperience').value) : 0,
@@ -238,7 +248,7 @@ async function submitTrainer() {
     joined_date: document.getElementById('trainerJoinedDate').value || null,
     specializations: specs,
     bio: document.getElementById('trainerBio').value.trim(),
-  };
+  });
 
   var url = id ? '/trainers/profiles/' + id + '/' : '/trainers/profiles/';
   var method = id ? 'PATCH' : 'POST';

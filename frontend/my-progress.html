@@ -331,6 +331,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('my-progress');
     let statsData = null;
@@ -635,19 +636,23 @@ buildSidebar('my-progress');
         document.getElementById('prExercise').innerHTML = exercises.map(ex => `<option value="${ex.id}">${ex.name}</option>`).join('');
     }
 
+    const createEntryRules = {
+        entryDate: [v => validate.required(v, 'Date'), v => validate.notFuture(v, 'Date')],
+        entryWeight: [v => validate.min(v, 20, 'Weight'), v => validate.max(v, 300, 'Weight')],
+        entryHeight: [v => validate.min(v, 50, 'Height'), v => validate.max(v, 300, 'Height')],
+        entryBodyFat: [v => validate.min(v, 2, 'Body fat'), v => validate.max(v, 60, 'Body fat')],
+        entryMuscleMass: [v => validate.min(v, 5, 'Muscle mass'), v => validate.max(v, 150, 'Muscle mass')],
+        entryNotes: [v => validate.maxLength(v, 500, 'Notes'), v => validate.noHtml(v, 'Notes')],
+    };
+
     async function createEntry() {
+        if (!validateForm(document.getElementById('createEntryModal'), createEntryRules)) return;
         const date = document.getElementById('entryDate').value;
-        if (!date) { alert('Date is required.'); return; }
-        if (new Date(date) > new Date()) { alert('Cannot log future dates.'); return; }
-        const weight = document.getElementById('entryWeight').value;
-        if (weight && (parseFloat(weight) < 20 || parseFloat(weight) > 300)) { alert('Weight must be between 20-300 kg.'); return; }
-        const bf = document.getElementById('entryBodyFat').value;
-        if (bf && (parseFloat(bf) < 2 || parseFloat(bf) > 60)) { alert('Body fat must be between 2-60%.'); return; }
-        const payload = {
+        const payload = sanitizePayload({
             date,
-            weight_kg: weight || null,
+            weight_kg: document.getElementById('entryWeight').value || null,
             height_cm: document.getElementById('entryHeight').value || null,
-            body_fat_percentage: bf || null,
+            body_fat_percentage: document.getElementById('entryBodyFat').value || null,
             muscle_mass_kg: document.getElementById('entryMuscleMass').value || null,
             chest_cm: document.getElementById('entryChest').value || null,
             waist_cm: document.getElementById('entryWaist').value || null,
@@ -655,7 +660,7 @@ buildSidebar('my-progress');
             bicep_cm: document.getElementById('entryBicep').value || null,
             thigh_cm: document.getElementById('entryThigh').value || null,
             notes: document.getElementById('entryNotes').value,
-        };
+        });
         const resp = await apiRequest('/progress/entries/', { method: 'POST', body: JSON.stringify(payload) });
         if (resp && resp.ok) {
             bootstrap.Modal.getInstance(document.getElementById('createEntryModal')).hide();
@@ -679,18 +684,23 @@ buildSidebar('my-progress');
         if (del && del.ok) loadStats();
     }
 
+    const createPrRules = {
+        prExercise: [v => validate.required(v, 'Exercise')],
+        prDate: [v => validate.required(v, 'Date'), v => validate.notFuture(v, 'Date')],
+        prValue: [v => validate.required(v, 'Value'), v => validate.min(v, 0.1, 'Value')],
+        prNotes: [v => validate.maxLength(v, 200, 'Notes'), v => validate.noHtml(v, 'Notes')],
+    };
+
     async function createPr() {
+        if (!validateForm(document.getElementById('createPrModal'), createPrRules)) return;
         const exercise = document.getElementById('prExercise').value;
         const date = document.getElementById('prDate').value;
         const value = document.getElementById('prValue').value;
-        if (!exercise || !date || !value) { alert('Exercise, date, and value are required.'); return; }
-        if (new Date(date) > new Date()) { alert('Cannot log future dates.'); return; }
-        if (parseFloat(value) <= 0) { alert('Value must be positive.'); return; }
-        const payload = {
+        const payload = sanitizePayload({
             exercise, date, value,
             unit: document.getElementById('prUnit').value || 'kg',
             notes: document.getElementById('prNotes').value,
-        };
+        });
         const resp = await apiRequest('/progress/personal-records/', { method: 'POST', body: JSON.stringify(payload) });
         if (resp && resp.ok) {
             bootstrap.Modal.getInstance(document.getElementById('createPrModal')).hide();

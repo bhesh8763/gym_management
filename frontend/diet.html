@@ -675,6 +675,38 @@
     }
   }
 
+  // -- Validation rules -------------------------------------------------------
+  const createPlanRules = {
+    createMember:   [validate.required('Member')],
+    createName:     [validate.required('Plan name'), validate.maxLength(100, 'Plan name'), validate.noHtml('Plan name')],
+    createCalories: [validate.min(0, 'Calories')],
+    createProtein:  [validate.min(0, 'Protein')],
+    createCarbs:    [validate.min(0, 'Carbs')],
+    createFats:     [validate.min(0, 'Fats')],
+    createStartDate:[validate.notPast('Start date')],
+    createNotes:    [validate.maxLength(500, 'Notes'), validate.noHtml('Notes')],
+  };
+  const editPlanRules = {
+    editName:     [validate.required('Plan name'), validate.maxLength(100, 'Plan name'), validate.noHtml('Plan name')],
+    editCalories: [validate.min(0, 'Calories')],
+    editProtein:  [validate.min(0, 'Protein')],
+    editCarbs:    [validate.min(0, 'Carbs')],
+    editFats:     [validate.min(0, 'Fats')],
+    editNotes:    [validate.maxLength(500, 'Notes'), validate.noHtml('Notes')],
+  };
+  function validateModal(modalId, rules) {
+    const container = document.getElementById(modalId);
+    let firstInvalid = null;
+    for (const [fieldId, fieldRules] of Object.entries(rules)) {
+      const field = document.getElementById(fieldId);
+      if (!field) continue;
+      const error = validateField(field, fieldRules);
+      if (error && !firstInvalid) { firstInvalid = field; }
+    }
+    if (firstInvalid) { firstInvalid.focus(); return false; }
+    return true;
+  }
+
   // -- Create plan ------------------------------------------------------------
   document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
     loadMembersIntoSelect('createMember');
@@ -686,14 +718,11 @@
     const errBox = document.getElementById('createFormError');
     errBox.classList.add('d-none');
 
-    const member = document.getElementById('createMember').value;
-    const name   = document.getElementById('createName').value.trim();
-    if (!member) { showFormError(errBox, 'Please select a member.'); return; }
-    if (!name)   { showFormError(errBox, 'Plan name is required.');   return; }
+    if (!validateModal('createPlanModal', createPlanRules)) return;
 
-    const payload = {
-      member:         parseInt(member),
-      name,
+    const payload = sanitizePayload({
+      member:         parseInt(document.getElementById('createMember').value),
+      name:           document.getElementById('createName').value.trim(),
       goal:           document.getElementById('createGoal').value,
       is_active:      document.getElementById('createStatus').value === 'true',
       daily_calories: parseInt(document.getElementById('createCalories').value) || null,
@@ -704,7 +733,7 @@
       end_date:       document.getElementById('createEndDate').value   || null,
       notes:          document.getElementById('createNotes').value.trim(),
       meals:          collectMeals('createMealsContainer'),
-    };
+    });
 
     const res = await apiRequest('/diet/diet-plans/', { method: 'POST', body: JSON.stringify(payload) });
     if (res && res.ok) {
@@ -776,12 +805,13 @@
   async function submitEditPlan() {
     const errBox = document.getElementById('editFormError');
     errBox.classList.add('d-none');
-    const id   = document.getElementById('editPlanId').value;
-    const name = document.getElementById('editName').value.trim();
-    if (!name) { showFormError(errBox, 'Plan name is required.'); return; }
 
-    const payload = {
-      name,
+    if (!validateModal('editPlanModal', editPlanRules)) return;
+
+    const id = document.getElementById('editPlanId').value;
+
+    const payload = sanitizePayload({
+      name:           document.getElementById('editName').value.trim(),
       goal:           document.getElementById('editGoal').value,
       is_active:      document.getElementById('editStatus').value === 'true',
       daily_calories: parseInt(document.getElementById('editCalories').value) || null,
@@ -792,7 +822,7 @@
       end_date:       document.getElementById('editEndDate').value   || null,
       notes:          document.getElementById('editNotes').value.trim(),
       meals:          collectMeals('editMealsContainer'),
-    };
+    });
 
     const res = await apiRequest(`/diet/diet-plans/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
     if (res && res.ok) {

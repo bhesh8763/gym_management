@@ -538,12 +538,29 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
   buildSidebar('memberships');
   if (!getAccessToken()) window.location.href = 'login.html';
 
   restrictPastDates('assignStart');
 
+  const assignFormRules = {
+    assignMemberSearch: [v => validate.required(v, 'Member')],
+    assignPlan: [v => validate.required(v, 'Plan')],
+    assignStart: [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+    assignPrice: [v => validate.min(v, 0, 'Price')],
+  };
+
+  document.getElementById('assignMembershipModal').addEventListener('shown.bs.modal', () => {
+    for (const [fieldName, rules] of Object.entries(assignFormRules)) {
+      const field = document.getElementById(fieldName);
+      if (field && !field.dataset.vInit) {
+        initFieldValidation(field, rules);
+        field.dataset.vInit = '1';
+      }
+    }
+  });
 
   function pillClassForStatus(status) {
     const map = {
@@ -782,16 +799,34 @@
 
   document.getElementById('planCycle').addEventListener('change', toggleCreateDurationField);
 
+  const editPlanRules = {
+    editPlanName: [v => validate.maxLength(v, 100, 'Plan name'), v => validate.noHtml(v, 'Plan name')],
+    editPlanPrice: [v => validate.min(v, 0, 'Price')],
+    editPlanDescription: [v => validate.maxLength(v, 500, 'Description'), v => validate.noHtml(v, 'Description')],
+  };
+
+  document.getElementById('editPlanModal').addEventListener('shown.bs.modal', () => {
+    for (const [fieldName, rules] of Object.entries(editPlanRules)) {
+      const field = document.getElementById(fieldName);
+      if (field && !field.dataset.vInit) {
+        initFieldValidation(field, rules);
+        field.dataset.vInit = '1';
+      }
+    }
+  });
+
   async function updatePlan() {
+    if (!validateForm(document.getElementById('editPlanModal'), editPlanRules)) return;
+
     const id = document.getElementById('editPlanId').value;
-    const payload = {
+    const payload = sanitizePayload({
       name: document.getElementById('editPlanName').value.trim(),
       billing_cycle: document.getElementById('editPlanCycle').value,
       duration_days: parseInt(document.getElementById('editPlanDuration').value),
       price: document.getElementById('editPlanPrice').value,
       description: document.getElementById('editPlanDescription').value,
       is_active: document.getElementById('editPlanStatus').value === 'true',
-    };
+    });
     const res = await apiRequest(`/memberships/plans/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
     if (!res) {
       alert('Update request failed to send.');
@@ -834,19 +869,38 @@
 
   document.getElementById('planCycle').addEventListener('change', updateDurationField);
 
+  const planFormRules = {
+    planName: [v => validate.required(v, 'Plan name'), v => validate.maxLength(v, 100, 'Plan name'), v => validate.noHtml(v, 'Plan name')],
+    planCycle: [v => validate.required(v, 'Billing cycle')],
+    planPrice: [v => validate.required(v, 'Price'), v => validate.positive(v, 'Price')],
+    planDescription: [v => validate.maxLength(v, 500, 'Description'), v => validate.noHtml(v, 'Description')],
+  };
+
+  document.getElementById('createPlanModal').addEventListener('shown.bs.modal', () => {
+    for (const [fieldName, rules] of Object.entries(planFormRules)) {
+      const field = document.getElementById(fieldName);
+      if (field && !field.dataset.vInit) {
+        initFieldValidation(field, rules);
+        field.dataset.vInit = '1';
+      }
+    }
+  });
+
   // Initialize on modal open
   document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
     updateDurationField();
   });
 
   async function submitPlanForm() {
-    const payload = {
+    if (!validateForm(document.getElementById('planForm'), planFormRules)) return;
+
+    const payload = sanitizePayload({
       name: document.getElementById('planName').value.trim(),
       billing_cycle: document.getElementById('planCycle').value,
       duration_days: parseInt(document.getElementById('planDuration').value),
       price: document.getElementById('planPrice').value,
       description: document.getElementById('planDescription').value,
-    };
+    });
     const res = await apiRequest('/memberships/plans/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) return;
     if (res.ok) {
@@ -1038,12 +1092,33 @@
       document.getElementById('freezeEndDate').value = '';
       document.getElementById('freezeReasonInput').value = '';
       container.classList.remove('d-none');
+
+      initFieldValidation(document.getElementById('freezeStartDate'), [
+        v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')
+      ]);
+      initFieldValidation(document.getElementById('freezeEndDate'), [
+        v => validate.required(v, 'End date'),
+        v => validate.dateAfter(v, document.getElementById('freezeStartDate').value, 'End date', 'Start date')
+      ]);
+      initFieldValidation(document.getElementById('freezeReasonInput'), [
+        v => validate.required(v, 'Reason'), v => validate.maxLength(v, 200, 'Reason'), v => validate.noHtml(v, 'Reason')
+      ]);
     } else {
       container.classList.add('d-none');
     }
   }
 
   async function submitFreezeForm() {
+    const freezeFormRules = {
+      freezeStartDate: [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+      freezeEndDate: [
+        v => validate.required(v, 'End date'),
+        v => validate.dateAfter(v, document.getElementById('freezeStartDate').value, 'End date', 'Start date')
+      ],
+      freezeReasonInput: [v => validate.required(v, 'Reason'), v => validate.maxLength(v, 200, 'Reason'), v => validate.noHtml(v, 'Reason')],
+    };
+    if (!validateForm(document.getElementById('freezeFormContainer'), freezeFormRules)) return;
+
     const freezeStart = document.getElementById('freezeStartDate').value;
     const freezeEnd = document.getElementById('freezeEndDate').value;
     const reason = document.getElementById('freezeReasonInput').value;
@@ -1055,7 +1130,7 @@
 
     const res = await apiRequest(`/memberships/${currentManageMembershipId}/freeze/`, {
       method: 'POST',
-      body: JSON.stringify({ freeze_start: freezeStart, freeze_end: freezeEnd, freeze_reason: reason }),
+      body: JSON.stringify(sanitizePayload({ freeze_start: freezeStart, freeze_end: freezeEnd, freeze_reason: reason })),
     });
 
     if (res && res.ok) {
@@ -1109,6 +1184,15 @@
 
   let editingMembershipOriginalStatus = null;
 
+  const editMembershipRules = {
+    editMembershipStart: [v => validate.required(v, 'Start date')],
+    editMembershipEnd: [
+      v => validate.required(v, 'End date'),
+      v => validate.dateAfter(v, document.getElementById('editMembershipStart').value, 'End date', 'Start date')
+    ],
+    editMembershipPrice: [v => validate.min(v, 0, 'Price')],
+  };
+
   function openEditMembershipModal(id) {
     const m = findMembership(id);
     if (!m) return;
@@ -1118,6 +1202,14 @@
     document.getElementById('editMembershipStart').value = m.start_date;
     document.getElementById('editMembershipEnd').value = m.end_date;
     document.getElementById('editMembershipPrice').value = m.price_paid;
+
+    for (const [fieldName, rules] of Object.entries(editMembershipRules)) {
+      const field = document.getElementById(fieldName);
+      if (field && !field.dataset.vInit) {
+        initFieldValidation(field, rules);
+        field.dataset.vInit = '1';
+      }
+    }
 
     const editModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('editMembershipModal'));
     const manageModalEl = document.getElementById('manageMembershipModal');
@@ -1202,11 +1294,13 @@
         }
       }
 
-      const payload = {
+      if (!validateForm(document.getElementById('editMembershipModal'), editMembershipRules)) return;
+
+      const payload = sanitizePayload({
         start_date: document.getElementById('editMembershipStart').value,
         end_date: document.getElementById('editMembershipEnd').value,
         price_paid: document.getElementById('editMembershipPrice').value,
-      };
+      });
       if (statusOverride) payload.status = statusOverride;
 
       const res = await apiRequest(`/memberships/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -1244,26 +1338,21 @@
     const errorBox = document.getElementById('errorBox');
     errorBox.classList.add('d-none');
 
+    if (!validateForm(document.getElementById('assignForm'), assignFormRules)) return;
+
     const memberId = document.getElementById('assignMember').value;
     if (!memberId) {
       errorBox.textContent = 'Please search and select a member from the list before assigning.';
       errorBox.classList.remove('d-none');
       return;
     }
-    if (!document.getElementById('assignPlan').value) {
-      errorBox.textContent = 'Please select a plan.';
-      errorBox.classList.remove('d-none');
-      return;
-    }
 
-    const payload = {
+    const payload = sanitizePayload({
       member: parseInt(memberId),
       plan: parseInt(document.getElementById('assignPlan').value),
-    };
-    const start = document.getElementById('assignStart').value;
-    if (start) payload.start_date = start;
-    const price = document.getElementById('assignPrice').value;
-    if (price) payload.price_paid = price;
+      start_date: document.getElementById('assignStart').value || undefined,
+      price_paid: document.getElementById('assignPrice').value || undefined,
+    });
 
     const res = await apiRequest('/memberships/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) return;

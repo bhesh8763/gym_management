@@ -177,9 +177,20 @@
               </tbody>
             </table>
           </div>
-          <div id="paginationControls" class="d-flex justify-content-between align-items-center mt-3">
-            <small class="text-muted" id="paginationInfo"></small>
-            <nav><ul class="pagination pagination-sm mb-0" id="paginationBtns"></ul></nav>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <div class="d-flex align-items-center gap-2">
+              <label class="form-label mb-0 small text-muted">Rows per page</label>
+              <select id="attendPageSize" class="form-select form-select-sm" style="width:auto;" onchange="historyPage=1; renderHistoryPage()">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+            <small class="text-muted" id="attendPageInfo">Showing 0 of 0</small>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary me-1" id="attendPrevPageBtn" disabled onclick="historyPage--; renderHistoryPage()">Previous</button>
+              <button class="btn btn-sm btn-outline-secondary" id="attendNextPageBtn" disabled onclick="historyPage++; renderHistoryPage()">Next</button>
+            </div>
           </div>
 
         </div>
@@ -188,13 +199,13 @@
 </div>
 
 <script src="js/api.js"></script>
+
 <script>
 buildSidebar('my-attendance');
 
 let recordsCache = [];
 let todayRecord = null;
-let historyPage = 1;
-const PAGE_SIZE = 10;
+var historyPage = 1;
 
 function showToast(message, variant) {
     const toastEl = document.getElementById("appToast");
@@ -412,16 +423,21 @@ function renderCalendarHeatmap() {
 
 function renderHistoryPage() {
     const tbody = document.getElementById('historyTableBody');
+    const pageSize = parseInt(document.getElementById('attendPageSize').value, 10) || 10;
+    const totalPages = Math.max(1, Math.ceil(recordsCache.length / pageSize));
+    historyPage = Math.min(Math.max(1, historyPage), totalPages);
+
     if (!recordsCache.length) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No attendance records yet — check in above to get started.</td></tr>';
-        document.getElementById('paginationControls').style.display = 'none';
+        document.getElementById('attendPageInfo').textContent = 'Showing 0 of 0';
+        document.getElementById('attendPrevPageBtn').disabled = true;
+        document.getElementById('attendNextPageBtn').disabled = true;
         return;
     }
-    const totalPages = Math.ceil(recordsCache.length / PAGE_SIZE);
-    if (historyPage > totalPages) historyPage = totalPages;
-    const start = (historyPage - 1) * PAGE_SIZE;
-    const slice = recordsCache.slice(start, start + PAGE_SIZE);
-    tbody.innerHTML = slice.map(r => `
+
+    const start = (historyPage - 1) * pageSize;
+    const pageRows = recordsCache.slice(start, start + pageSize);
+    tbody.innerHTML = pageRows.map(r => `
         <tr>
           <td>${new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
           <td>${formatTime(r.check_in)}</td>
@@ -430,24 +446,11 @@ function renderHistoryPage() {
           <td>${statusBadge(r.status)}</td>
         </tr>`).join('');
 
-    const controls = document.getElementById('paginationControls');
-    const info = document.getElementById('paginationInfo');
-    const btns = document.getElementById('paginationBtns');
-    controls.style.display = 'flex';
-    info.textContent = `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, recordsCache.length)} of ${recordsCache.length}`;
-
-    let html = `<li class="page-item${historyPage <= 1 ? ' disabled' : ''}"><a class="page-link" href="#" onclick="goPage(${historyPage - 1});return false;"><i class="bi bi-chevron-left"></i></a></li>`;
-    for (let p = 1; p <= totalPages; p++) {
-        html += `<li class="page-item${p === historyPage ? ' active' : ''}"><a class="page-link" href="#" onclick="goPage(${p});return false;">${p}</a></li>`;
-    }
-    html += `<li class="page-item${historyPage >= totalPages ? ' disabled' : ''}"><a class="page-link" href="#" onclick="goPage(${historyPage + 1});return false;"><i class="bi bi-chevron-right"></i></a></li>`;
-    btns.innerHTML = html;
-}
-
-function goPage(p) {
-    historyPage = p;
-    renderHistoryPage();
-    document.getElementById('historyTableBody').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('attendPageInfo').textContent = recordsCache.length
+        ? `Showing ${start + 1}–${Math.min(start + pageSize, recordsCache.length)} of ${recordsCache.length}`
+        : 'Showing 0 of 0';
+    document.getElementById('attendPrevPageBtn').disabled = historyPage <= 1;
+    document.getElementById('attendNextPageBtn').disabled = historyPage >= totalPages;
 }
 
 async function loadHistory() {

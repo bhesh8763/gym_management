@@ -2,14 +2,61 @@
  * FitCore — Client-Side Form Validation Library
  *
  * Provides reusable validation functions, real-time field-level feedback,
- * and form-level validation for all frontend forms.
+ * form-level validation, and XSS sanitization for all frontend forms.
  *
  * Usage:
  *   1. Include <script src="js/validate.js"></script> after api.js
  *   2. Call initFormValidation(formEl) on any <form> to auto-validate on submit
  *   3. Call initFieldValidation(inputEl, rules) for individual fields
  *   4. Use validate.email(val), validate.required(val), etc. for standalone checks
+ *   5. Use sanitize.html(val) or sanitize.text(val) to strip XSS payloads
  */
+
+const sanitize = {
+  /** Strip all HTML tags — returns plain text safe for textContent/innerText */
+  html(val) {
+    if (val == null) return '';
+    const div = document.createElement('div');
+    div.textContent = String(val);
+    return div.innerHTML;
+  },
+
+  /** Strip HTML tags and trim — safe for plain-text fields */
+  text(val) {
+    if (val == null) return '';
+    return String(val).replace(/<[^>]*>/g, '').trim();
+  },
+
+  /** Strip dangerous characters for attribute contexts (quotes, angle brackets) */
+  attr(val) {
+    if (val == null) return '';
+    return String(val)
+      .replace(/&/g, '&amp;')
+      .replace(/'/g, '&#39;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  },
+
+  /** Sanitize a value for safe JSON payload insertion — escapes control chars */
+  json(val) {
+    if (val == null) return '';
+    return String(val)
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t')
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e');
+  },
+
+  /** Trim and collapse multiple whitespace to single space */
+  collapseWhitespace(val) {
+    if (val == null) return '';
+    return String(val).replace(/\s+/g, ' ').trim();
+  },
+};
 
 const validate = {
   /** Returns true if value is empty (null, undefined, or whitespace-only string) */
@@ -25,7 +72,7 @@ const validate = {
 
   /** Email format */
   email(val) {
-    if (this.isEmpty(val)) return null; // use required() for mandatory
+    if (this.isEmpty(val)) return null;
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!re.test(val)) return 'Please enter a valid email address.';
     return null;
@@ -84,6 +131,22 @@ const validate = {
     return null;
   },
 
+  /** Maximum numeric value */
+  max(val, maxVal, fieldName = 'This field') {
+    if (this.isEmpty(val)) return null;
+    const num = Number(val);
+    if (isNaN(num) || num > maxVal) return `${fieldName} must be at most ${maxVal}.`;
+    return null;
+  },
+
+  /** Positive number (> 0) */
+  positive(val, fieldName = 'This field') {
+    if (this.isEmpty(val)) return null;
+    const num = Number(val);
+    if (isNaN(num) || num <= 0) return `${fieldName} must be greater than 0.`;
+    return null;
+  },
+
   /** Date must not be in the future */
   notFuture(val, fieldName = 'This field') {
     if (this.isEmpty(val)) return null;
@@ -103,7 +166,83 @@ const validate = {
     if (date < today) return `${fieldName} cannot be in the past.`;
     return null;
   },
+
+  /** End date must be after start date */
+  dateAfter(val, startDateVal, fieldName = 'End date', startFieldName = 'Start date') {
+    if (this.isEmpty(val) || this.isEmpty(startDateVal)) return null;
+    const end = new Date(val);
+    const start = new Date(startDateVal);
+    if (end <= start) return `${fieldName} must be after ${startFieldName}.`;
+    return null;
+  },
+
+  /** URL format */
+  url(val, fieldName = 'URL') {
+    if (this.isEmpty(val)) return null;
+    try {
+      const u = new URL(val);
+      if (!['http:', 'https:'].includes(u.protocol)) return `${fieldName} must be http or https.`;
+    } catch {
+      return `Please enter a valid ${fieldName.toLowerCase()}.`;
+    }
+    return null;
+  },
+
+  /** Letters and spaces only */
+  alpha(val, fieldName = 'This field') {
+    if (this.isEmpty(val)) return null;
+    if (!/^[A-Za-z\s]+$/.test(val)) return `${fieldName} must contain only letters and spaces.`;
+    return null;
+  },
+
+  /** Alphanumeric (letters, digits, spaces, hyphens, underscores) */
+  alphanumeric(val, fieldName = 'This field') {
+    if (this.isEmpty(val)) return null;
+    if (!/^[A-Za-z0-9\s\-_]+$/.test(val)) return `${fieldName} must contain only letters, numbers, spaces, hyphens, or underscores.`;
+    return null;
+  },
+
+  /** No HTML tags (XSS prevention) */
+  noHtml(val, fieldName = 'This field') {
+    if (this.isEmpty(val)) return null;
+    if (/<[^>]*>/.test(val)) return `${fieldName} must not contain HTML tags.`;
+    return null;
+  },
+
+  /** File validation: accepted types and max size in MB */
+  file(val, opts = {}, fieldName = 'File') {
+    if (!val || !val.name) return null;
+    if (opts.accept) {
+      const accepted = Array.isArray(opts.accept) ? opts.accept : [opts.accept];
+      const ext = val.name.split('.').pop().toLowerCase();
+      const mime = val.type;
+      const match = accepted.some(a => {
+        if (a.startsWith('.')) return ext === a.slice(1).toLowerCase();
+        if (a.includes('*')) return mime.startsWith(a.replace('*', ''));
+        return mime === a;
+      });
+      if (!match) return `${fieldName} must be one of: ${accepted.join(', ')}`;
+    }
+    if (opts.maxSizeMB) {
+      const maxBytes = opts.maxSizeMB * 1024 * 1024;
+      if (val.size > maxBytes) return `${fieldName} must be less than ${opts.maxSizeMB} MB.`;
+    }
+    return null;
+  },
+
+  /** Validates that a select has a non-default value (not empty string) */
+  selected(val, fieldName = 'Please select') {
+    if (this.isEmpty(val)) return `${fieldName} is required.`;
+    return null;
+  },
 };
+
+/**
+ * Find a field inside a container by name or id.
+ */
+function _findField(container, fieldName) {
+  return container.querySelector(`[name="${fieldName}"], #${fieldName}`);
+}
 
 /**
  * Show an error message under a field and mark it invalid.
@@ -111,17 +250,16 @@ const validate = {
  * @param {string} message - Error message to display
  */
 function showFieldError(field, message) {
-  // Remove existing error
   clearFieldError(field);
-
   field.classList.add('is-invalid');
   field.classList.remove('is-valid');
 
+  const group = field.closest('.input-group') || field.parentNode;
   const feedback = document.createElement('div');
   feedback.className = 'invalid-feedback';
   feedback.textContent = message;
   feedback.style.display = 'block';
-  field.parentNode.appendChild(feedback);
+  group.appendChild(feedback);
 }
 
 /**
@@ -131,7 +269,6 @@ function showFieldError(field, message) {
 function showFieldValid(field) {
   clearFieldError(field);
   if (!field.hasAttribute('required') && validate.isEmpty(field.value)) {
-    // Don't mark optional empty fields as valid
     return;
   }
   field.classList.remove('is-invalid');
@@ -144,7 +281,8 @@ function showFieldValid(field) {
  */
 function clearFieldError(field) {
   field.classList.remove('is-invalid', 'is-valid');
-  const existingFeedback = field.parentNode.querySelector('.invalid-feedback');
+  const group = field.closest('.input-group') || field.parentNode;
+  const existingFeedback = group.querySelector('.invalid-feedback');
   if (existingFeedback) existingFeedback.remove();
 }
 
@@ -169,16 +307,16 @@ function validateField(field, rules) {
 
 /**
  * Validate an entire form. Shows errors on each invalid field.
- * @param {HTMLFormElement} formEl - The form element
+ * @param {HTMLFormElement|HTMLElement} containerEl - The form or container element
  * @param {Object} fieldRules - Map of field name/id to array of validator functions
  * @returns {boolean} True if all fields are valid
  */
-function validateForm(formEl, fieldRules) {
+function validateForm(containerEl, fieldRules) {
   let firstInvalid = null;
   let allValid = true;
 
   for (const [fieldName, rules] of Object.entries(fieldRules)) {
-    const field = formEl.querySelector(`[name="${fieldName}"], #${fieldName}`);
+    const field = _findField(containerEl, fieldName);
     if (!field) continue;
     const error = validateField(field, rules);
     if (error && !firstInvalid) {
@@ -212,16 +350,45 @@ function initFieldValidation(field, rules) {
  * @param {Function} onSubmit - Async function called when form is valid (receives form element)
  */
 function initFormValidation(formEl, fieldRules, onSubmit) {
-  // Set up real-time validation for each field
   for (const [fieldName, rules] of Object.entries(fieldRules)) {
-    const field = formEl.querySelector(`[name="${fieldName}"], #${fieldName}`);
+    const field = _findField(formEl, fieldName);
     if (field) initFieldValidation(field, rules);
   }
 
-  // Validate on submit
   formEl.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(formEl, fieldRules)) return;
     if (onSubmit) await onSubmit(formEl);
   });
+}
+
+/**
+ * Sanitize all text-like inputs in a form/container before submission.
+ * Strips HTML tags from text, email, tel, url, search, textarea fields.
+ * @param {HTMLElement} containerEl - Form or container with inputs
+ */
+function sanitizeFormInputs(containerEl) {
+  const fields = containerEl.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input[type="search"], textarea');
+  fields.forEach(field => {
+    if (field.value && !field.readOnly && !field.disabled) {
+      field.value = sanitize.text(field.value);
+    }
+  });
+}
+
+/**
+ * Sanitize a payload object — strips HTML from all string values.
+ * @param {Object} payload - Key-value pairs to sanitize
+ * @returns {Object} Sanitized payload
+ */
+function sanitizePayload(payload) {
+  const clean = {};
+  for (const [key, val] of Object.entries(payload)) {
+    if (typeof val === 'string') {
+      clean[key] = sanitize.text(val);
+    } else {
+      clean[key] = val;
+    }
+  }
+  return clean;
 }

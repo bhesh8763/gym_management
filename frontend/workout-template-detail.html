@@ -173,6 +173,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('workout-template-detail');
 if (!getAccessToken()) window.location.href = 'login.html';
@@ -367,9 +368,21 @@ function editExercise(dayId, ex) {
     new bootstrap.Modal(document.getElementById('exModal')).show();
 }
 
+var exerciseFieldRules = {
+  exSets: [v => validate.min(v, 1, 'Sets')],
+  exReps: [v => validate.maxLength(v, 20, 'Reps')],
+  exDuration: [v => validate.min(v, 0, 'Duration')],
+  exRest: [v => validate.min(v, 0, 'Rest')],
+  exTempo: [v => validate.maxLength(v, 20, 'Tempo'), v => validate.noHtml(v, 'Tempo')],
+  exRpe: [v => validate.min(v, 1, 'RPE'), v => validate.max(v, 10, 'RPE')],
+  exWeight: [v => validate.maxLength(v, 20, 'Weight'), v => validate.noHtml(v, 'Weight')],
+  exNotes: [v => validate.maxLength(v, 500, 'Notes'), v => validate.noHtml(v, 'Notes')]
+};
+
 async function saveExercise() {
+    if (!validateForm(document.getElementById('exModal'), exerciseFieldRules)) return;
     const editId = document.getElementById('exEditId').value;
-    const payload = {
+    const payload = sanitizePayload({
         workout_day: parseInt(document.getElementById('exTargetDayId').value),
         exercise: parseInt(document.getElementById('exChosenId').value),
         sets: document.getElementById('exSets').value || null,
@@ -380,7 +393,7 @@ async function saveExercise() {
         rpe: document.getElementById('exRpe').value || null,
         weight_kg: document.getElementById('exWeight').value || null,
         notes: document.getElementById('exNotes').value,
-    };
+    });
     const url = editId ? `/workouts/day-exercises/${editId}/` : '/workouts/day-exercises/';
     const method = editId ? 'PATCH' : 'POST';
     const r = await apiRequest(url, { method, body: JSON.stringify(payload) });

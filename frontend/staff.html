@@ -1056,6 +1056,30 @@ buildSidebar('staff');
 
   restrictPastDates('joinedDate');
 
+  const profileRules = {
+    firstName: [v => validate.required(v, 'First name'), v => validate.alpha(v, 'First name'), v => validate.maxLength(v, 50, 'First name')],
+    lastName:  [v => validate.required(v, 'Last name'),  v => validate.alpha(v, 'Last name'),  v => validate.maxLength(v, 50, 'Last name')],
+    email:     [v => validate.required(v, 'Email'), v => validate.email(v)],
+    phone:     [v => validate.phone(v)],
+    password:  [v => validate.required(v, 'Password'), v => validate.password(v)],
+    department:[v => validate.required(v, 'Department')],
+    joinedDate:[v => validate.required(v, 'Join date'), v => validate.notPast(v, 'Join date')],
+    salary:    [v => validate.required(v, 'Salary'), v => validate.positive(v, 'Salary')],
+    dob:       [v => validate.notFuture(v, 'Date of birth')],
+    nationality:[v => validate.maxLength(v, 50, 'Nationality'), v => validate.noHtml(v, 'Nationality')],
+    aboutMe:   [v => validate.maxLength(v, 500, 'About me'), v => validate.noHtml(v, 'About me')],
+  };
+
+  const leaveRules = {
+    startDate: [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+    endDate:   [v => validate.required(v, 'End date'), v => validate.dateAfter(v, document.getElementById('startDate').value, 'End date', 'Start date')],
+    reason:    [v => validate.required(v, 'Reason'), v => validate.maxLength(v, 500, 'Reason'), v => validate.noHtml(v, 'Reason')],
+  };
+
+  const resetPasswordRules = {
+    resetPasswordField: [v => validate.required(v, 'Password'), v => validate.password(v)],
+  };
+
   const myRole = localStorage.getItem('user_role');
 
   // Role-based section visibility
@@ -1403,6 +1427,7 @@ buildSidebar('staff');
 
   document.getElementById('profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateForm(e.target, profileRules)) return;
     const btn = document.getElementById('profileAddSubmitBtn');
     if (btn) btn.disabled = true;
     try {
@@ -1412,7 +1437,7 @@ buildSidebar('staff');
       const middleNameVal = document.getElementById('middleName').value.trim();
       const combinedFirstName = middleNameVal ? `${firstNameVal} ${middleNameVal}` : firstNameVal;
 
-      const payload = {
+      const payload = sanitizePayload({
         first_name: combinedFirstName,
         last_name: document.getElementById('lastName').value,
         email: document.getElementById('email').value,
@@ -1426,7 +1451,7 @@ buildSidebar('staff');
         marital_status: document.getElementById('maritalStatus').value || null,
         nationality: document.getElementById('nationality').value || null,
         notes: document.getElementById('aboutMe').value || null,
-      };
+      });
       const res = await apiRequest('/staff/profiles/', { method: 'POST', body: JSON.stringify(payload) });
       if (!res) {
         alert('Add request failed to send. Check your connection or session.');
@@ -1478,13 +1503,14 @@ buildSidebar('staff');
 
   document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateForm(e.target, resetPasswordRules)) return;
     const btn = document.getElementById('resetPasswordSubmitBtn');
     if (btn) btn.disabled = true;
     try {
       const id = document.getElementById('resetPasswordStaffId').value;
       const errorBox = document.getElementById('resetPasswordError');
       errorBox.classList.add('d-none');
-      const payload = { new_password: document.getElementById('resetPasswordField').value };
+      const payload = sanitizePayload({ new_password: document.getElementById('resetPasswordField').value });
       const res = await apiRequest(`/staff/profiles/${id}/reset-password/`, { method: 'POST', body: JSON.stringify(payload) });
       if (!res) {
         alert('Reset request failed to send. Check your connection or session.');
@@ -1722,6 +1748,7 @@ buildSidebar('staff');
 
   document.getElementById('leaveForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateForm(e.target, leaveRules)) return;
     const btn = document.getElementById('leaveSubmitBtn');
     if (btn) btn.disabled = true;
     try {
@@ -1735,12 +1762,12 @@ buildSidebar('staff');
         return;
       }
       const leaveType = document.querySelector('input[name="leaveTypeRadio"]:checked').value;
-      const payload = {
+      const payload = sanitizePayload({
         leave_type: leaveType,
         start_date: startVal,
         end_date:   endVal,
         reason:     document.getElementById('reason').value,
-      };
+      });
       const editId = document.getElementById('editLeaveId').value;
       const isEdit = !!editId;
       const url    = isEdit ? `/staff/leave-requests/${editId}/` : '/staff/leave-requests/';

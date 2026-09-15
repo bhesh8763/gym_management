@@ -228,7 +228,7 @@
           </div>
           <div>
             <label style="display:block;font-size:.75rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Emergency Contact Phone</label>
-            <input type="tel" id="editEmPhone" class="form-control form-control-sm" maxlength="10">
+            <input type="tel" id="editEmPhone" class="form-control form-control-sm" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
           </div>
           <div style="grid-column:1/-1;">
             <label style="display:block;font-size:.75rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Medical Conditions</label>
@@ -250,12 +250,29 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('member-detail');
 if (!getAccessToken()) window.location.href = 'login.html';
 var params = new URLSearchParams(window.location.search);
 var memberId = params.get('id');
 var profileData = null;
+
+var editFieldRules = {
+  editHeight: [function(v){return validate.min(v,0,'Height');},function(v){return validate.max(v,300,'Height');}],
+  editWeight: [function(v){return validate.min(v,0,'Weight');},function(v){return validate.max(v,500,'Weight');}],
+  editEmPhone: [function(v){return validate.phone(v);}],
+  editAddress: [function(v){return validate.maxLength(v,200,'Address');},function(v){return validate.noHtml(v,'Address');}],
+  editEmName: [function(v){return validate.maxLength(v,100,'Emergency contact name');},function(v){return validate.alpha(v,'Emergency contact name');}],
+  editMedical: [function(v){return validate.maxLength(v,500,'Medical conditions');}],
+  editNotes: [function(v){return validate.maxLength(v,500,'Notes');}]
+};
+function setupEditFieldValidation(){
+  Object.keys(editFieldRules).forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) initFieldValidation(el,editFieldRules[id]);
+  });
+}
 
 function bmiCat(bmi){
   if(!bmi)return{l:'Unknown',c:'bmi-unknown',clr:'#6b7280'};
@@ -329,6 +346,10 @@ async function saveEdit(){
   document.getElementById('editError').style.display='none';
   document.getElementById('editSuccess').style.display='none';
 
+  if(!validateForm(document.getElementById('editForm'),editFieldRules)){
+    btn.disabled=false;btn.textContent='Save Changes';return;
+  }
+
   // Check if user selected a new photo
   var photoFile=document.getElementById('photoInput').files[0];
   var res;
@@ -356,19 +377,19 @@ async function saveEdit(){
     if(level) fd.append('fitness_level', level);
 
     var address = document.getElementById('editAddress').value;
-    if(address) fd.append('address', address);
+    if(address) fd.append('address', sanitize.text(address));
 
     var emName = document.getElementById('editEmName').value;
-    if(emName) fd.append('emergency_contact_name', emName);
+    if(emName) fd.append('emergency_contact_name', sanitize.text(emName));
 
     var emPhone = document.getElementById('editEmPhone').value;
     if(emPhone) fd.append('emergency_contact_phone', emPhone);
 
     var medical = document.getElementById('editMedical').value;
-    if(medical) fd.append('medical_conditions', medical);
+    if(medical) fd.append('medical_conditions', sanitize.text(medical));
 
     var notes = document.getElementById('editNotes').value;
-    if(notes) fd.append('notes', notes);
+    if(notes) fd.append('notes', sanitize.text(notes));
 
     fd.append('profile_picture', photoFile);
     res = await apiRequest('/members/'+memberId+'/',{method:'PATCH',body:fd,isFormData:true});
@@ -387,7 +408,7 @@ async function saveEdit(){
       medical_conditions:document.getElementById('editMedical').value,
       notes:document.getElementById('editNotes').value
     };
-    res = await apiRequest('/members/'+memberId+'/',{method:'PATCH',body:JSON.stringify(payload)});
+    res = await apiRequest('/members/'+memberId+'/',{method:'PATCH',body:JSON.stringify(sanitizePayload(payload))});
   }
 
   btn.disabled=false;btn.textContent='Save Changes';
@@ -539,6 +560,7 @@ async function loadProfile(){
     '</div></div></div>';
 }
 loadProfile().then(function(){setTimeout(function(){toggleAcc('history');},50);});
+setupEditFieldValidation();
 
   loadTopbarNotifications();
 </script>

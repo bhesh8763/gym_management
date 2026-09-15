@@ -131,6 +131,22 @@
       </table>
     </div>
 
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small text-muted">Rows per page</label>
+        <select id="attPageSize" class="form-select form-select-sm" style="width:auto;" onchange="attPage=1; renderAttendance(allAttendance)">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+      <small class="text-muted" id="attPageInfo">Showing 0 of 0</small>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary me-1" id="attPrevPageBtn" onclick="attPage--; renderAttendance(allAttendance)" disabled>Previous</button>
+        <button class="btn btn-sm btn-outline-secondary" id="attNextPageBtn" onclick="attPage++; renderAttendance(allAttendance)" disabled>Next</button>
+      </div>
+    </div>
+
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h5 class="mb-0">Inactive Members</h5>
       <small class="text-muted">No visit in 14+ days</small>
@@ -143,6 +159,22 @@
         </thead>
         <tbody id="inactiveTable"></tbody>
       </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 small text-muted">Rows per page</label>
+        <select id="inactivePageSize" class="form-select form-select-sm" style="width:auto;" onchange="inactivePage=1; renderInactiveMembers()">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+      <small class="text-muted" id="inactivePageInfo">Showing 0 of 0</small>
+      <div>
+        <button class="btn btn-sm btn-outline-secondary me-1" id="inactivePrevPageBtn" onclick="inactivePage--; renderInactiveMembers()" disabled>Previous</button>
+        <button class="btn btn-sm btn-outline-secondary" id="inactiveNextPageBtn" onclick="inactivePage++; renderInactiveMembers()" disabled>Next</button>
+      </div>
     </div>
 
     <!-- -------------- MY LEAVE (staff / trainer only) -------------- -->
@@ -208,6 +240,22 @@
             </td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small text-muted">Rows per page</label>
+          <select id="leavePageSize" class="form-select form-select-sm" style="width:auto;" onchange="leavePage=1; renderMyLeave()">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+        <small class="text-muted" id="leavePageInfo">Showing 0 of 0</small>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary me-1" id="leavePrevPageBtn" onclick="leavePage--; renderMyLeave()" disabled>Previous</button>
+          <button class="btn btn-sm btn-outline-secondary" id="leaveNextPageBtn" onclick="leavePage++; renderMyLeave()" disabled>Next</button>
+        </div>
       </div>
     </div>
 
@@ -463,6 +511,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
+
 <script>
 buildSidebar('attendance');
   if (!getAccessToken()) window.location.href = 'login.html';
@@ -534,6 +584,12 @@ buildSidebar('attendance');
 
   let allAttendance = [];
   let membersCache = [];
+  let inactiveMembersCache = [];
+  let attPage = 1;
+  let inactivePage = 1;
+  let leavePage = 1;
+
+
 
   // -- Members --------------------------------------------------------------
   // The shared loadMembersIntoSelect() in api.js only populates the <select>
@@ -593,13 +649,23 @@ buildSidebar('attendance');
   }
 
   function renderAttendance(records) {
+    const pageSize = parseInt(document.getElementById('attPageSize').value, 10) || 10;
+    const totalPages = Math.max(1, Math.ceil(records.length / pageSize));
+    attPage = Math.min(Math.max(1, attPage), totalPages);
+
+    const start = (attPage - 1) * pageSize;
+    const pageRows = records.slice(start, start + pageSize);
+
     const tbody = document.getElementById('attTableBody');
-    if (records.length === 0) {
+    if (pageRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No attendance records found.</td></tr>`;
+      document.getElementById('attPageInfo').textContent = 'Showing 0 of 0';
+      document.getElementById('attPrevPageBtn').disabled = true;
+      document.getElementById('attNextPageBtn').disabled = true;
       return;
     }
     const idByUser = memberIdLookup();
-    tbody.innerHTML = records.map(record => `
+    tbody.innerHTML = pageRows.map(record => `
       <tr>
         <td>${record.id}</td>
         <td>
@@ -613,6 +679,12 @@ buildSidebar('attendance');
           <button class="manage-btn btn btn-sm" onclick="openAttendanceManage(${record.id})">Manage</button>
         </td>
       </tr>`).join('');
+
+    document.getElementById('attPageInfo').textContent = records.length
+      ? `Showing ${start + 1}\u2013${Math.min(start + pageSize, records.length)} of ${records.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('attPrevPageBtn').disabled = attPage <= 1;
+    document.getElementById('attNextPageBtn').disabled = attPage >= totalPages;
   }
 
   let currentManageAttendanceId = null;
@@ -763,12 +835,18 @@ buildSidebar('attendance');
   }
 
   async function updateAttendance() {
+    if (!validateForm(document.getElementById('editAttendanceModal'), {
+      editAttendanceDate:   [v => validate.required(v, 'Date')],
+      editAttendanceStatus: [v => validate.required(v, 'Status')],
+      editAttendanceNotes:  [v => validate.maxLength(v, 200, 'Notes'), v => validate.noHtml(v, 'Notes')],
+    })) return;
+
     const id = document.getElementById('editAttendanceId').value;
-    const payload = {
+    const payload = sanitizePayload({
       date: document.getElementById('editAttendanceDate').value,
       status: document.getElementById('editAttendanceStatus').value,
       notes: document.getElementById('editAttendanceNotes').value.trim(),
-    };
+    });
     const res = await apiRequest(`/attendance/records/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
     if (!res) {
       alert('Update request failed to send. Check your connection or session.');
@@ -862,10 +940,21 @@ buildSidebar('attendance');
       .sort((a, b) => (b.daysInactive ?? 9999) - (a.daysInactive ?? 9999));
 
     document.getElementById('inactiveMembers').textContent = inactive.length;
+    inactiveMembersCache = inactive;
+    renderInactiveMembers();
+  }
+
+  function renderInactiveMembers() {
+    const pageSize = parseInt(document.getElementById('inactivePageSize').value, 10) || 10;
+    const totalPages = Math.max(1, Math.ceil(inactiveMembersCache.length / pageSize));
+    inactivePage = Math.min(Math.max(1, inactivePage), totalPages);
+
+    const start = (inactivePage - 1) * pageSize;
+    const pageRows = inactiveMembersCache.slice(start, start + pageSize);
 
     const tbody = document.getElementById('inactiveTable');
-    tbody.innerHTML = inactive.length
-      ? inactive.map(m => `
+    tbody.innerHTML = pageRows.length
+      ? pageRows.map(m => `
           <tr>
             <td>
               <div class="member-name">${m.name}</div>
@@ -882,6 +971,12 @@ buildSidebar('attendance');
             </td>
           </tr>`).join('')
       : `<tr><td colspan="4" class="text-center text-muted py-4">No inactive members ??</td></tr>`;
+
+    document.getElementById('inactivePageInfo').textContent = inactiveMembersCache.length
+      ? `Showing ${start + 1}\u2013${Math.min(start + pageSize, inactiveMembersCache.length)} of ${inactiveMembersCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('inactivePrevPageBtn').disabled = inactivePage <= 1;
+    document.getElementById('inactiveNextPageBtn').disabled = inactivePage >= totalPages;
   }
 
   function quickMarkAttendance(memberId) {
@@ -893,28 +988,24 @@ buildSidebar('attendance');
 
   // -- Add Attendance Form --------------------------------------------------
   async function submitAttendanceForm() {
+    if (!validateForm(document.getElementById('addForm'), {
+      memberSelect:       [v => validate.required(v, 'Member')],
+      attDate:            [v => validate.required(v, 'Date'), v => validate.notPast(v, 'Date')],
+      attendanceStatus:   [v => validate.required(v, 'Status')],
+    })) return;
+
     const errorBox = document.getElementById('errorBox');
     errorBox.classList.add('d-none');
 
     const memberId = document.getElementById('memberSelect').value;
-    if (!memberId) {
-      errorBox.textContent = 'Please select a member.';
-      errorBox.classList.remove('d-none');
-      return;
-    }
-    if (!document.getElementById('attDate').value) {
-      errorBox.textContent = 'Please select a date.';
-      errorBox.classList.remove('d-none');
-      return;
-    }
 
-    const payload = {
+    const payload = sanitizePayload({
       user: parseInt(memberId),
       attendance_type: 'MEMBER',
       date: document.getElementById('attDate').value,
       status: document.getElementById('attendanceStatus').value,
       notes: document.getElementById('attNotes').value.trim(),
-    };
+    });
 
     const res = await apiRequest('/attendance/records/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) {
@@ -980,13 +1071,27 @@ buildSidebar('attendance');
     document.getElementById('myStat_rejected').textContent  = counts.REJECTED;
     document.getElementById('myStat_cancelled').textContent = counts.CANCELLED;
 
+    renderMyLeave();
+  }
+
+  function renderMyLeave() {
+    const pageSize = parseInt(document.getElementById('leavePageSize').value, 10) || 10;
+    const totalPages = Math.max(1, Math.ceil(leaveCache.length / pageSize));
+    leavePage = Math.min(Math.max(1, leavePage), totalPages);
+
+    const start = (leavePage - 1) * pageSize;
+    const pageRows = leaveCache.slice(start, start + pageSize);
+
     const tbody = document.getElementById('myLeaveTableBody');
-    if (!leaveCache.length) {
+    if (!pageRows.length) {
       tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">You have no leave requests yet.</td></tr>';
+      document.getElementById('leavePageInfo').textContent = 'Showing 0 of 0';
+      document.getElementById('leavePrevPageBtn').disabled = true;
+      document.getElementById('leaveNextPageBtn').disabled = true;
       return;
     }
 
-    tbody.innerHTML = leaveCache.map(row => {
+    tbody.innerHTML = pageRows.map(row => {
       const reviewNote = row.review_note
         ? `<span class="text-muted small">${row.review_note}</span>`
         : '<span class="text-muted"></span>';
@@ -1008,6 +1113,12 @@ buildSidebar('attendance');
           </td>
         </tr>`;
     }).join('');
+
+    document.getElementById('leavePageInfo').textContent = leaveCache.length
+      ? `Showing ${start + 1}\u2013${Math.min(start + pageSize, leaveCache.length)} of ${leaveCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('leavePrevPageBtn').disabled = leavePage <= 1;
+    document.getElementById('leaveNextPageBtn').disabled = leavePage >= totalPages;
   }
 
   function leaveTypeBadge(type) {
@@ -1194,6 +1305,13 @@ buildSidebar('attendance');
   if (leaveFormEl) {
     leaveFormEl.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      if (!validateForm(leaveFormEl, {
+        leaveStartDate: [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+        leaveEndDate:   [v => validate.required(v, 'End date'), v => validate.dateAfter(v, leaveStartDateEl.value, 'End date', 'Start date')],
+        leaveReason:    [v => validate.required(v, 'Reason'), v => validate.maxLength(v, 500, 'Reason'), v => validate.noHtml(v, 'Reason')],
+      })) return;
+
       const errorBox = document.getElementById('leaveFormError');
       if (errorBox) errorBox.classList.add('d-none');
 
@@ -1205,12 +1323,12 @@ buildSidebar('attendance');
       }
 
       const checkedType = document.querySelector('input[name="leaveTypeRadio"]:checked');
-      const payload = {
+      const payload = sanitizePayload({
         leave_type: checkedType ? checkedType.value : 'SICK',
         start_date: start,
         end_date:   end,
         reason:     (document.getElementById('leaveReason') || {}).value?.trim() || '',
-      };
+      });
 
       const editId = document.getElementById('editLeaveId').value;
       const isEdit = !!editId;

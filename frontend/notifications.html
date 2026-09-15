@@ -58,8 +58,6 @@
     color: #fff !important;
   }
 
-  /* Pagination bar visibility */
-  #paginationBar { display: flex !important; }
 </style>
 </head>
 <body>
@@ -160,15 +158,19 @@
       </div>
 
       <!-- Pagination -->
-      <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light" id="paginationBar" style="display:none!important;">
-        <span class="small text-muted" id="paginationInfo"></span>
-        <div class="d-flex gap-1">
-          <button class="btn btn-sm btn-outline-secondary" id="prevPageBtn" onclick="changePage(-1)" disabled>
-            <i class="bi bi-chevron-left"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" onclick="changePage(1)" disabled>
-            <i class="bi bi-chevron-right"></i>
-          </button>
+      <div class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3">
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small text-muted">Rows per page</label>
+          <select id="notifPageSize" class="form-select form-select-sm" style="width:auto;" onchange="currentPage=1; renderList()">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+        <small class="text-muted" id="notifPageInfo">Showing 0 of 0</small>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary me-1" id="notifPrevPageBtn" onclick="currentPage--; renderList()" disabled>Previous</button>
+          <button class="btn btn-sm btn-outline-secondary" id="notifNextPageBtn" onclick="currentPage++; renderList()" disabled>Next</button>
         </div>
       </div>
     </div>
@@ -233,6 +235,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
   buildSidebar('notifications');
   if (!getAccessToken()) window.location.href = 'login.html';
@@ -241,7 +244,6 @@
   let allNotifications = [];   // full local cache (current filter page)
   let currentFilter    = 'all';
   let currentPage      = 1;
-  const PAGE_SIZE      = 20;
 
   // ── Type meta ────────────────────────────────────────────────────────────
   const TYPE_META = {
@@ -318,9 +320,12 @@
   }
 
   function renderList() {
-    const total = allNotifications.length;
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const page  = allNotifications.slice(start, start + PAGE_SIZE);
+    const pageSize = parseInt(document.getElementById('notifPageSize').value, 10) || 10;
+    const totalPages = Math.max(1, Math.ceil(allNotifications.length / pageSize));
+    currentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+    const start = (currentPage - 1) * pageSize;
+    const pageRows = allNotifications.slice(start, start + pageSize);
     const unreadCount = allNotifications.filter(n => !n.is_read).length;
 
     // Mark-all button
@@ -329,17 +334,21 @@
 
     const listEl = document.getElementById('notifPageList');
 
-    if (!page.length) {
+    if (!pageRows.length) {
       listEl.innerHTML = `
         <div class="text-center py-5 text-muted">
           <i class="bi bi-bell-slash" style="font-size:2.5rem;opacity:.35;"></i>
           <div class="mt-2">No notifications here.</div>
         </div>`;
-      document.getElementById('paginationBar').style.display = 'none';
+      document.getElementById('notifPageInfo').textContent = allNotifications.length
+        ? `Showing ${start + 1}\u2013${Math.min(start + pageSize, allNotifications.length)} of ${allNotifications.length}`
+        : 'Showing 0 of 0';
+      document.getElementById('notifPrevPageBtn').disabled = currentPage <= 1;
+      document.getElementById('notifNextPageBtn').disabled = currentPage >= totalPages;
       return;
     }
 
-    listEl.innerHTML = page.map(n => {
+    listEl.innerHTML = pageRows.map(n => {
       const meta = typeMeta(n.notification_type);
       const unreadClass = n.is_read ? '' : 'unread';
       const dot = n.is_read ? '' : '<div class="unread-dot"></div>';
@@ -368,18 +377,12 @@
         </div>`;
     }).join('');
 
-    // Pagination bar
-    const totalPages = Math.ceil(total / PAGE_SIZE);
-    const paginationBar = document.getElementById('paginationBar');
-    if (totalPages > 1) {
-      paginationBar.style.display = 'flex';
-      document.getElementById('paginationInfo').textContent =
-        `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total}`;
-      document.getElementById('prevPageBtn').disabled = currentPage <= 1;
-      document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
-    } else {
-      paginationBar.style.display = 'none';
-    }
+    // Update pagination controls
+    document.getElementById('notifPageInfo').textContent = allNotifications.length
+      ? `Showing ${start + 1}\u2013${Math.min(start + pageSize, allNotifications.length)} of ${allNotifications.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('notifPrevPageBtn').disabled = currentPage <= 1;
+    document.getElementById('notifNextPageBtn').disabled = currentPage >= totalPages;
   }
 
   function updateSummary() {
@@ -390,13 +393,6 @@
                  : currentFilter.replace(/_/g, ' ').toLowerCase();
     document.getElementById('notifSummary').textContent =
       `${total} ${label} · ${unread} unread`;
-  }
-
-  function changePage(dir) {
-    const totalPages = Math.ceil(allNotifications.length / PAGE_SIZE);
-    currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
-    renderList();
-    window.scrollTo(0, 0);
   }
 </script>
 
@@ -507,12 +503,20 @@
       select.innerHTML = '<option disabled>Could not load members</option>';
     }
 
+    const pushRules = {
+      pushTitle:   [v => validate.required(v, 'Title'), v => validate.maxLength(v, 200, 'Title'), v => validate.noHtml(v, 'Title')],
+      pushMessage: [v => validate.required(v, 'Message'), v => validate.maxLength(v, 2000, 'Message'), v => validate.noHtml(v, 'Message')],
+      pushType:    [v => validate.required(v, 'Notification type')],
+    };
+
     document.getElementById('pushNotifForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const errBox = document.getElementById('pushNotifError');
       const okBox  = document.getElementById('pushNotifSuccess');
       errBox.classList.add('d-none');
       okBox.classList.add('d-none');
+
+      if (!validateForm(document.getElementById('pushNotifForm'), pushRules)) return;
 
       const selectedOptions = Array.from(document.getElementById('pushRecipients').selectedOptions);
       if (!selectedOptions.length) {
@@ -521,12 +525,12 @@
         return;
       }
 
-      const payload = {
+      const payload = sanitizePayload({
         recipients:        selectedOptions.map(o => parseInt(o.value)),
         notification_type: document.getElementById('pushType').value,
         title:             document.getElementById('pushTitle').value.trim(),
         message:           document.getElementById('pushMessage').value.trim(),
-      };
+      });
 
       const res = await apiRequest('/notifications/', {
         method: 'POST',

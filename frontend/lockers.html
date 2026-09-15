@@ -358,6 +358,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('lockers');
   if (!getAccessToken()) window.location.href = 'login.html';
@@ -506,18 +507,23 @@ buildSidebar('lockers');
 
   document.getElementById('lockerEditForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('lockerEditForm'), {
+      editLockerNumber:   [v => validate.required(v, 'Locker number'), v => validate.maxLength(v, 20, 'Locker number'), v => validate.noHtml(v, 'Locker number')],
+      editLockerLocation: [v => validate.required(v, 'Location'), v => validate.maxLength(v, 100, 'Location'), v => validate.noHtml(v, 'Location')],
+      editLockerFee:      [v => validate.required(v, 'Monthly fee'), v => validate.min(v, 0, 'Monthly fee')],
+    })) return;
     const btn = document.getElementById('lockerEditSubmitBtn');
     if (btn) btn.disabled = true;
     try {
       const id = document.getElementById('editLockerId').value;
       const errorBox = document.getElementById('lockerEditError');
       errorBox.classList.add('d-none');
-      const payload = {
+      const payload = sanitizePayload({
         locker_number: document.getElementById('editLockerNumber').value,
         location: document.getElementById('editLockerLocation').value,
         status: document.getElementById('editLockerStatus').value,
         monthly_fee: document.getElementById('editLockerFee').value,
-      };
+      });
       const res = await apiRequest(`/lockers/lockers/${id}/`, { method: 'PATCH', body: JSON.stringify(payload) });
       if (!res) {
         alert('Update request failed to send. Check your connection or session.');
@@ -556,16 +562,21 @@ buildSidebar('lockers');
 
   document.getElementById('lockerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('lockerForm'), {
+      lockerNumber: [v => validate.required(v, 'Locker number'), v => validate.maxLength(v, 20, 'Locker number'), v => validate.noHtml(v, 'Locker number')],
+      location:     [v => validate.required(v, 'Location'), v => validate.maxLength(v, 100, 'Location'), v => validate.noHtml(v, 'Location')],
+      monthlyFee:   [v => validate.required(v, 'Monthly fee'), v => validate.min(v, 0, 'Monthly fee')],
+    })) return;
     const btn = document.getElementById('lockerAddSubmitBtn');
     if (btn) btn.disabled = true;
     try {
       const errorBox = document.getElementById('lockerError');
       errorBox.classList.add('d-none');
-      const payload = {
+      const payload = sanitizePayload({
         locker_number: document.getElementById('lockerNumber').value,
         location: document.getElementById('location').value,
         monthly_fee: document.getElementById('monthlyFee').value,
-      };
+      });
       const res = await apiRequest('/lockers/lockers/', { method: 'POST', body: JSON.stringify(payload) });
       if (!res) {
         alert('Add request failed to send. Check your connection or session.');
@@ -725,6 +736,12 @@ buildSidebar('lockers');
 
   document.getElementById('assignForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('assignForm'), {
+      assignLockerId:     [v => validate.required(v, 'Locker')],
+      assignMemberSearch: [v => validate.required(v, 'Member')],
+      assignStart:        [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+      assignEnd:          [v => validate.required(v, 'End date'), v => validate.dateAfter(v, document.getElementById('assignStart').value, 'End date', 'Start date')],
+    })) return;
     const btn = document.getElementById('assignSubmitBtn');
     if (btn) btn.disabled = true;
     try {
@@ -747,13 +764,13 @@ buildSidebar('lockers');
         return;
       }
 
-      const payload = {
+      const payload = sanitizePayload({
         locker: lockerId,
         member: parseInt(memberId),
         start_date: startVal,
         end_date: endVal,
         is_active: true,
-      };
+      });
       const res = await apiRequest('/lockers/assignments/', { method: 'POST', body: JSON.stringify(payload) });
       if (!res) {
         alert('Assign request failed to send. Check your connection or session.');

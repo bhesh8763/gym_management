@@ -502,6 +502,37 @@ buildSidebar('equipment');
 
   restrictPastDates('purchaseDate', 'scheduledDate');
 
+  // --- Validation rules ---------------------------------------------------
+  const validationRules = {
+    equipForm: {
+      name: [validate.required('Equipment name'), validate.maxLength(100, 'Equipment name'), validate.noHtml('Equipment name')],
+      category: [validate.required('Category'), validate.maxLength(50, 'Category'), validate.noHtml('Category')],
+      brand: [validate.maxLength(100, 'Brand'), validate.noHtml('Brand')],
+      quantity: [validate.required('Quantity'), validate.min(1, 'Quantity')],
+      purchaseDate: [validate.notFuture('Purchase date')],
+      purchasePrice: [validate.min(0, 'Purchase price')],
+      location: [validate.maxLength(100, 'Location'), validate.noHtml('Location')],
+    },
+    equipEditForm: {
+      editName: [validate.required('Equipment name'), validate.maxLength(100, 'Equipment name'), validate.noHtml('Equipment name')],
+      editCategory: [validate.required('Category'), validate.maxLength(50, 'Category'), validate.noHtml('Category')],
+      editBrand: [validate.maxLength(100, 'Brand'), validate.noHtml('Brand')],
+      editQuantity: [validate.required('Quantity'), validate.min(1, 'Quantity')],
+      editLocation: [validate.maxLength(100, 'Location'), validate.noHtml('Location')],
+    },
+    maintForm: {
+      maintEquipId: [validate.required('Equipment')],
+      scheduledDate: [validate.required('Scheduled date'), validate.notPast('Scheduled date')],
+      cost: [validate.min(0, 'Cost')],
+      description: [validate.required('Description'), validate.maxLength(500, 'Description'), validate.noHtml('Description')],
+    },
+    maintEditForm: {
+      editMaintCost: [validate.min(0, 'Cost')],
+      editPerformedBy: [validate.maxLength(100, 'Performed by'), validate.noHtml('Performed by')],
+      editMaintDescription: [validate.maxLength(500, 'Description'), validate.noHtml('Description')],
+    },
+  };
+
   // Topbar profile (name, role, avatar) is handled by initProfileHeader() in api.js
 
   // Adjust this if a different low-stock cutoff makes more sense for your inventory.
@@ -816,20 +847,21 @@ buildSidebar('equipment');
 
   document.getElementById("equipEditForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('equipEditForm'), validationRules.equipEditForm)) return;
     const btn = document.getElementById("equipEditSubmitBtn");
     if (btn) btn.disabled = true;
     try {
       const id = document.getElementById("editEquipId").value;
       const errorBox = document.getElementById("equipEditError");
       errorBox.classList.add("d-none");
-      const payload = {
+      const payload = sanitizePayload({
         name: document.getElementById("editName").value,
         category: document.getElementById("editCategory").value,
         brand: document.getElementById("editBrand").value,
         quantity: document.getElementById("editQuantity").value,
         condition: document.getElementById("editCondition").value,
         location: document.getElementById("editLocation").value,
-      };
+      });
       const res = await apiRequest(`/equipment/equipment/${id}/`, {
         method: "PATCH",
         body: JSON.stringify(payload),
@@ -873,12 +905,13 @@ buildSidebar('equipment');
 
   document.getElementById("equipForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('equipForm'), validationRules.equipForm)) return;
     const btn = document.getElementById("equipAddSubmitBtn");
     if (btn) btn.disabled = true;
     try {
       const errorBox = document.getElementById("equipError");
       errorBox.classList.add("d-none");
-      const payload = {
+      const payload = sanitizePayload({
         name: document.getElementById("name").value,
         category: document.getElementById("category").value,
         brand: document.getElementById("brand").value,
@@ -886,7 +919,7 @@ buildSidebar('equipment');
         purchase_date: document.getElementById("purchaseDate").value || null,
         purchase_price: document.getElementById("purchasePrice").value || null,
         location: document.getElementById("location").value,
-      };
+      });
       const res = await apiRequest("/equipment/equipment/", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -999,19 +1032,20 @@ buildSidebar('equipment');
 
   document.getElementById("maintEditForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('maintEditForm'), validationRules.maintEditForm)) return;
     const btn = document.getElementById("maintEditSubmitBtn");
     if (btn) btn.disabled = true;
     try {
       const id = document.getElementById("editMaintId").value;
       const errorBox = document.getElementById("maintEditError");
       errorBox.classList.add("d-none");
-      const payload = {
+      const payload = sanitizePayload({
         status: document.getElementById("editMaintStatus").value,
         completed_date: document.getElementById("editCompletedDate").value || null,
         cost: document.getElementById("editMaintCost").value,
         performed_by: document.getElementById("editPerformedBy").value,
         description: document.getElementById("editMaintDescription").value,
-      };
+      });
       const res = await apiRequest(`/equipment/maintenance/${id}/`, {
         method: "PATCH",
         body: JSON.stringify(payload),
@@ -1048,18 +1082,19 @@ buildSidebar('equipment');
 
   document.getElementById("maintForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (!validateForm(document.getElementById('maintForm'), validationRules.maintForm)) return;
     const btn = document.getElementById("maintLogSubmitBtn");
     if (btn) btn.disabled = true;
     try {
       const errorBox = document.getElementById("maintError");
       errorBox.classList.add("d-none");
-      const payload = {
+      const payload = sanitizePayload({
         equipment: parseInt(document.getElementById("maintEquipId").value),
         maintenance_type: document.getElementById("maintType").value,
         scheduled_date: document.getElementById("scheduledDate").value,
         cost: document.getElementById("cost").value,
         description: document.getElementById("description").value,
-      };
+      });
       const res = await apiRequest("/equipment/maintenance/", {
         method: "POST",
         body: JSON.stringify(payload),

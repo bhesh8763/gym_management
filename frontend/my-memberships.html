@@ -449,6 +449,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/api.js"></script>
+<script src="js/validate.js"></script>
 <script>
 buildSidebar('my-memberships');
 if (!getAccessToken()) window.location.href = 'login.html';
@@ -673,8 +674,13 @@ function updatePayMethodUI() {
 
 document.getElementById('payMethod').addEventListener('change', updatePayMethodUI);
 
+const payFormRules = {
+  payMethod: [v => validate.required(v, 'Payment method')],
+};
+
 document.getElementById('payForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (!validateForm(document.getElementById('payForm'), payFormRules)) return;
   if (!selectedDue) return;
   const errorBox = document.getElementById('payError');
   errorBox.classList.add('d-none');
@@ -683,7 +689,7 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
   submitBtn.disabled = true;
   spinner.classList.remove('d-none');
 
-  const payload = {
+  let payload = {
     payment_for: selectedDue.payment_for,
     reference_id: selectedDue.reference_id,
     payment_method: document.getElementById('payMethod').value,
@@ -691,6 +697,7 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
   if (validatedPromo) {
     payload.promo_code = validatedPromo.promo_code;
   }
+  payload = sanitizePayload(payload);
 
   try {
     const res = await apiRequest('/payments/pay/', { method: 'POST', body: JSON.stringify(payload) });
@@ -968,6 +975,12 @@ function openFreezeModal(membershipId) {
   new bootstrap.Modal(document.getElementById('freezeModal')).show();
 }
 
+const freezeFormRules = {
+  freezeStartDate: [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+  freezeEndDate: [v => validate.required(v, 'End date'), v => validate.dateAfter(v, document.getElementById('freezeStartDate').value, 'End date', 'Start date')],
+  freezeReason: [v => validate.required(v, 'Reason'), v => validate.maxLength(v, 500, 'Reason'), v => validate.noHtml(v, 'Reason')],
+};
+
 async function submitFreezeRequest() {
   const membershipId = document.getElementById('freezeMembershipId').value;
   const freezeStart = document.getElementById('freezeStartDate').value;
@@ -979,16 +992,7 @@ async function submitFreezeRequest() {
 
   errorBox.classList.add('d-none');
 
-  if (!freezeStart || !freezeEnd || !reason) {
-    errorBox.textContent = 'All fields are required.';
-    errorBox.classList.remove('d-none');
-    return;
-  }
-  if (freezeEnd < freezeStart) {
-    errorBox.textContent = 'End date must be on or after start date.';
-    errorBox.classList.remove('d-none');
-    return;
-  }
+  if (!validateForm(document.getElementById('freezeModal'), freezeFormRules)) return;
 
   btn.disabled = true;
   spinner.classList.remove('d-none');
@@ -996,12 +1000,12 @@ async function submitFreezeRequest() {
   try {
     const res = await apiRequest('/memberships/freeze-requests/', {
       method: 'POST',
-      body: JSON.stringify({
+      body: JSON.stringify(sanitizePayload({
         membership: parseInt(membershipId),
         freeze_start: freezeStart,
         freeze_end: freezeEnd,
         reason,
-      }),
+      })),
     });
 
     if (!res) {
