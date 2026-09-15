@@ -1288,9 +1288,6 @@ buildSidebar('staff');
         const statusBadge = row.is_active
           ? '<span class="badge bg-success">Active</span>'
           : '<span class="badge bg-secondary">Deactivated</span>';
-        const toggleBtn = row.is_active
-          ? `<button class="btn btn-sm btn-outline-danger" onclick="toggleStaffActive(${row.id}, false)" title="Deactivate"><i class="bi bi-person-x"></i></button>`
-          : `<button class="btn btn-sm btn-outline-success" onclick="toggleStaffActive(${row.id}, true)" title="Activate"><i class="bi bi-person-check"></i></button>`;
         return `
       <tr>
         <td><input type="checkbox" class="form-check-input staff-row-cb" value="${row.id}" onchange="updateBulkBar()"></td>
