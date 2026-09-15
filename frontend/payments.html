@@ -295,6 +295,36 @@ buildSidebar('payments');
   var paymentCache = [];
   var currentPage = 1;
 
+  async function downloadReceipt(paymentId) {
+    // apiRequest() always assumes a JSON response and returns the raw
+    // fetch Response object; callers call .json() on it. For a PDF we
+    // need the raw bytes, so we use a plain fetch() here, replicating
+    // the same auth-header pattern apiRequest() uses (Bearer token from
+    // localStorage) rather than trying to force a blob through apiRequest.
+    const token = localStorage.getItem('access_token');
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    const res = await fetch(`${API_BASE}/payments/${paymentId}/receipt/`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!res.ok) {
+      console.error('Receipt download failed:', res.status, res.statusText);
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = ''; // browser uses Content-Disposition filename
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function renderPage(page) {
     const pageSize = parseInt(document.getElementById('pageSize').value, 10);
     const totalPages = Math.max(1, Math.ceil(paymentCache.length / pageSize));
@@ -329,6 +359,7 @@ buildSidebar('payments');
             <td>${row.collected_by_name || '-'}</td>
             <td>
               <button class="btn btn-sm btn-outline-primary" onclick="openPaymentEdit(${row.id})"><i class="bi bi-pencil"></i></button>
+              ${row.status === 'PAID' ? `<button class="btn btn-sm btn-outline-success ms-1" onclick="downloadReceipt(${row.id})"><i class="bi bi-receipt"></i></button>` : ''}
             </td>
           </tr>`;
       });
