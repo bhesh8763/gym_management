@@ -17,7 +17,7 @@ function injectBottomTabBar() {
   const tabs = [
     { href: 'dashboard.html', icon: 'bi-house-fill', label: 'Home' },
     { href: 'my-workouts.html', icon: 'bi-heart-pulse', label: 'Workouts' },
-    { href: 'messages.html', icon: 'bi-chat-dots', label: 'Messages' },
+    { href: 'my-messages.html', icon: 'bi-chat-dots', label: 'Messages' },
     { href: 'my-progress.html', icon: 'bi-graph-up', label: 'Progress' },
     { href: 'my-memberships.html', icon: 'bi-person', label: 'More' },
   ];
