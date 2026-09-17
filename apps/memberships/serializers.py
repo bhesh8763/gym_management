@@ -121,8 +121,12 @@ class MembershipCreateSerializer(serializers.ModelSerializer):
         plan = validated_data['plan']
         start_date = validated_data.get('start_date') or timezone.now().date()
         end_date = start_date + timedelta(days=plan.duration_days)
-        price_paid = validated_data.get('price_paid', plan.price)
         membership_status = validated_data.get('status', Membership.Status.PENDING)
+        # PENDING = payment not made yet (self-purchase). Only default to
+        # "fully paid" when the membership is created as ACTIVE (staff
+        # recording an already-collected payment).
+        default_price_paid = plan.price if membership_status == Membership.Status.ACTIVE else Decimal('0')
+        price_paid = validated_data.get('price_paid', default_price_paid)
 
         # Apply promo code discount if provided
         promo_code_obj = None
