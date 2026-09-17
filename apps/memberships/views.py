@@ -330,9 +330,9 @@ class MembershipRenewView(APIView):
         today = timezone.now().date()
         start_date = data.get('start_date') or max(old.end_date + timedelta(days=1), today)
         end_date = start_date + timedelta(days=old.plan.duration_days)
-        price_paid = data.get('price_paid', old.plan.price)
-
         new_status = Membership.Status.PENDING if is_self_renewal else Membership.Status.ACTIVE
+        default_price_paid = old.plan.price if new_status == Membership.Status.ACTIVE else Decimal('0')
+        price_paid = data.get('price_paid', default_price_paid)
 
         new_membership = Membership.objects.create(
             member=old.member,
