@@ -321,10 +321,15 @@ function statusBadge(status) {
     const label = { DRAFT: 'Draft', IN_REVIEW: 'In review', APPROVED: 'Approved', ARCHIVED: 'Archived' };
     return `<span class="badge-status badge-${map[status] || 'draft'}">${label[status] || status}</span>`;
 }
+// Deprecated: kept only for backward compatibility, not used in new markup.
 function difficultyBadge(d) {
+    return difficultyLabel(d);
+}
+
+function difficultyLabel(d) {
     const map = { BEGINNER: 'beginner', INTERMEDIATE: 'intermediate', ADVANCED: 'advanced' };
     const label = { BEGINNER: 'Beginner', INTERMEDIATE: 'Intermediate', ADVANCED: 'Advanced' };
-    return `<span class="badge-difficulty badge-${map[d] || 'beginner'}">${label[d] || d || '–'}</span>`;
+    return `<div class="difficulty-label difficulty-${map[d] || 'beginner'}">${label[d] || d || '–'}</div>`;
 }
 
 function assignmentStatusBadge(status) {
@@ -375,10 +380,14 @@ function renderTemplates(totalCount) {
 
     document.getElementById('templatesTable').innerHTML = allTemplates.map(t => `
         <tr>
-            <td>
-                <a href="workout-template-detail.html?id=${t.id}" class="fw-semibold text-decoration-none">${t.name}</a>
-                <div class="text-muted small">${difficultyBadge(t.difficulty)}</div>
-            </td>
+      <td>
+    <div class="plan-cell">
+        <div class="workout-title">
+            <a href="workout-template-detail.html?id=${t.id}" class="fw-semibold text-decoration-none">${t.name}</a>
+        </div>
+        ${difficultyLabel(t.difficulty)}
+    </div>
+</td>
             <td class="cell-center">${t.goal || '–'}</td>
             <td>${t.duration_weeks} wk</td>
             <td>${t.assigned_member_count} ${t.assigned_member_count === 1 ? 'member' : 'members'}</td>

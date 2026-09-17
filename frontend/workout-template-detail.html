@@ -237,7 +237,7 @@ function renderHeader() {
     const actions = [];
     if (t.status === 'DRAFT') actions.push(`<button class="btn btn-outline-warning btn-sm" onclick="submitForReview()"><i class="bi bi-send"></i> Submit for Review</button>`);
     if (t.status === 'IN_REVIEW') actions.push(`<button class="btn btn-success btn-sm" onclick="approveTemplate()"><i class="bi bi-check2-circle"></i> Approve</button>`);
-    actions.push(`<button class="btn btn-outline-secondary btn-sm" onclick="duplicateTemplate()"><i class="bi bi-copy"></i> Duplicate</button>`);
+    actions.push(`<button class="btn btn-outline-danger btn-sm" onclick="deleteTemplate()"><i class="bi bi-trash"></i> Delete</button>`);
     if (t.status !== 'ARCHIVED') actions.push(`<button class="btn btn-outline-dark btn-sm" onclick="archiveTemplate()"><i class="bi bi-archive"></i> Archive</button>`);
     actions.push(`<button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignModal"><i class="bi bi-person-plus"></i> Assign</button>`);
     document.getElementById('tActions').innerHTML = actions.join('');
@@ -256,13 +256,15 @@ async function archiveTemplate() {
     const r = await apiRequest(`/workouts/templates/${templateId}/archive/`, { method: 'POST' });
     if (r && r.ok) { showToast('Archived'); loadTemplate(); } else showToast('Failed', 'error');
 }
-async function duplicateTemplate() {
-    const r = await apiRequest(`/workouts/templates/${templateId}/duplicate/`, { method: 'POST', body: JSON.stringify({}) });
-    if (r && r.ok) {
-        const clone = await r.json();
-        showToast('Duplicated – opening the copy');
-        window.location.href = `workout-template-detail.html?id=${clone.id}`;
-    } else showToast('Failed', 'error');
+async function deleteTemplate() {
+    if (!(await confirmAction('Delete this template? This cannot be undone.', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
+    const r = await apiRequest(`/workouts/templates/${templateId}/`, { method: 'DELETE' });
+    if (r && (r.ok || r.status === 204)) {
+        showToast('Template deleted');
+        window.location.href = 'workouts.html';
+    } else {
+        showToast('Could not delete template', 'error');
+    }
 }
 
 function renderDays() {

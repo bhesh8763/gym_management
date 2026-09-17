@@ -4,7 +4,9 @@ from apps.accounts.models import User
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrMemberReadOnly
 from .models import Locker, LockerAssignment
 from .serializers import LockerSerializer, LockerAssignmentSerializer
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class LockerViewSet(viewsets.ModelViewSet):
     """Owner/Staff manage the physical locker inventory."""
