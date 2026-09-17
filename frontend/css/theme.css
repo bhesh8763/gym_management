@@ -156,7 +156,7 @@ html{scroll-behavior:smooth}
 
 h1,h2,h3,h4,h5,h6{font-family:var(--font-display);font-weight:700;color:var(--text-primary);letter-spacing:-0.01em;transition:color var(--duration-base) var(--ease-in-out)}
 
-a{color:var(--brand-red);text-decoration:none;transition:color var(--duration-fast) var(--ease-in-out)}
+a{color:var(--brand-black);text-decoration:none;transition:color var(--duration-fast) var(--ease-in-out)}
 a:hover{color:var(--brand-red-dark)}
 
 /* ── Topbar ───────────────────────────────────────────────────────────────── */
@@ -627,10 +627,22 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .pill-info{background:var(--color-info-bg);color:var(--color-info)}
 .pill-dark{background:#f3f4f6;color:#4b5563}
 .pill-muted{background:#f3f4f6;color:var(--text-muted)}
-.badge-difficulty{font-weight:600;padding:4px 10px;border-radius:var(--radius-sm);font-size:0.75rem}
-.badge-beginner{background:var(--color-success-bg);color:#059669}
-.badge-intermediate{background:var(--color-warning-bg);color:#d97706}
-.badge-advanced{background:var(--color-danger-bg);color:var(--color-danger)}
+.difficulty-label{font-weight:600;padding:4px 10px;border-radius:var(--radius-sm);font-size:0.75rem}
+.difficulty-label.beginner{background:var(--color-success-bg);color:#059669}
+.difficulty-label.intermediate{background:var(--color-warning-bg);color:#d97706}
+.difficulty-label{
+  display:inline-block;
+  margin-top:4px;
+  padding:3px 10px;
+  border-radius:var(--radius-full);
+  font-size:0.7rem;
+  font-weight:700;
+  color:#fff;
+  line-height:1.4;
+}
+.difficulty-beginner{background:#198754}
+.difficulty-intermediate{background:#b58105}
+.difficulty-advanced{background:#dc3545}
 .badge-status{font-weight:600;padding:4px 10px;border-radius:var(--radius-sm);font-size:0.75rem}
 .badge-draft{background:#f3f4f6;color:#6b7280}
 .badge-pending{background:var(--color-warning-bg);color:#d97706}
@@ -1194,3 +1206,4 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .skeleton-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+
