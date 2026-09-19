@@ -9,8 +9,375 @@
   <link href="css/theme.css" rel="stylesheet">
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  #trainerProfilesSection,
+  #leaveRequestsSection {
+    padding-bottom: var(--sp-8);
+  }
+  #trainerProfilesSection {
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: var(--sp-6);
+  }
+  #leaveRequestsSection {
+    padding-top: var(--sp-4);
+  }
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: var(--sp-8) 0 var(--sp-6);
+    opacity: 0.5;
+  }
+  .section-label {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: var(--sp-3);
+  }
+  .stat-card {
+    min-height: 144px;
+    padding: var(--sp-5) var(--sp-4);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .stat-card .stat-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    font-size: 1.5rem;
+    margin-bottom: var(--sp-3);
+  }
+  .stat-card h3 {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+  .stat-card .text-muted.small {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: var(--sp-1);
+  }
+  .modal-body .form-control,
+  .modal-body .form-select {
+    padding: 10px 14px;
+    font-size: var(--text-sm);
+    border-radius: var(--radius-md);
+  }
+  .modal-body .form-control.form-control-lg,
+  .modal-body .form-select.form-control-lg {
+    padding: 12px 16px;
+    font-size: var(--text-base);
+  }
+  #profileForm .row.g-3 > .col-md-4:first-child,
+  #profileForm .row.g-3 > .col-md-4:nth-child(2),
+  #profileForm .row.g-3 > .col-md-4:nth-child(3) {
+    padding-right: var(--sp-2);
+    padding-left: var(--sp-2);
+  }
+  .input-group .form-control {
+    padding-right: var(--sp-3);
+  }
+  .input-group .btn {
+    padding: 8px 12px;
+    font-size: var(--text-sm);
+  }
+  .input-group .btn i {
+    font-size: 1rem;
+  }
+  .modal-body .form-label {
+    margin-bottom: var(--sp-1);
+    font-size: var(--text-sm);
+  }
+  #leaveForm .form-label {
+    margin-bottom: var(--sp-1);
+  }
+  #leaveForm .row.g-3 > div {
+    margin-bottom: 0;
+  }
+  .leave-type-card {
+    padding: var(--sp-4) var(--sp-3) !important;
+    border-radius: var(--radius-md) !important;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+  }
+  .leave-type-card i {
+    font-size: 2rem !important;
+    line-height: 1;
+  }
+  #leaveDurationPreview {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .table-responsive {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-card);
+    overflow: hidden;
+    background: var(--bg-card);
+  }
+  .table thead th {
+    background: var(--bg-topbar) !important;
+    color: rgba(255,255,255,0.85) !important;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 12px var(--sp-4);
+    border: none !important;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .table tbody td {
+    padding: 12px var(--sp-4);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-light) !important;
+    vertical-align: middle;
+  }
+  .table tbody tr:last-child td {
+    border-bottom: none !important;
+  }
+  .table-hover tbody tr:hover {
+    background: var(--brand-red-50);
+  }
+  .table .badge {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+  }
+  .table .badge.bg-primary,
+  .table .badge.bg-success,
+  .table .badge.bg-warning,
+  .table .badge.bg-info,
+  .table .badge.bg-secondary {
+    padding: 4px 10px;
+    font-size: var(--text-xs);
+    border-radius: var(--radius-full);
+    font-weight: 600;
+  }
+  #profileAddModal .modal-header,
+  #resetPasswordModal .modal-header,
+  #reviewModal .modal-header {
+    background: linear-gradient(135deg, var(--bg-topbar), #1a1b23);
+    border-bottom: 2px solid var(--brand-red);
+    color: #fff;
+    padding: var(--sp-4) var(--sp-5);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  #profileAddModal .modal-title,
+  #resetPasswordModal .modal-title,
+  #reviewModal .modal-title {
+    font-weight: 700;
+    font-size: var(--text-lg);
+    color: #fff !important;
+  }
+  #profileAddModal .btn-close,
+  #resetPasswordModal .btn-close,
+  #reviewModal .btn-close {
+    filter: invert(1);
+    opacity: 0.7;
+  }
+  #profileAddModal .btn-close:hover,
+  #resetPasswordModal .btn-close:hover,
+  #reviewModal .btn-close:hover {
+    opacity: 1;
+  }
+  #profileAddModal .modal-body,
+  #resetPasswordModal .modal-body,
+  #reviewModal .modal-body,
+  #leaveModal .modal-body {
+    padding: var(--sp-5);
+  }
+  #profileAddModal .modal-footer,
+  #resetPasswordModal .modal-footer,
+  #reviewModal .modal-footer,
+  #leaveModal .modal-footer {
+    padding: var(--sp-4) var(--sp-5);
+    border-top: 1px solid var(--border-light);
+    background: var(--bg-card);
+  }
+  .d-flex .btn-sm {
+    padding: 6px 12px;
+    font-size: var(--text-sm);
+    border-radius: var(--radius-md);
+  }
+  .leaveTypeBadge {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+  }
+  @media (max-width: 700px) {
+    #profileTable thead, #leaveTable thead { display: none; }
+    #profileTable, #profileTable tbody, #profileTable tr, #profileTable td,
+    #leaveTable, #leaveTable tbody, #leaveTable tr, #leaveTable td {
+      display: block;
+      width: 100%;
+    }
+    #profileTable tr, #leaveTable tr {
+      margin-bottom: var(--sp-4);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--bg-card);
+      box-shadow: var(--shadow-xs);
+    }
+    #profileTable td, #leaveTable td {
+      border: none;
+      padding: var(--sp-1) 0;
+      text-align: left !important;
+    }
+    #profileTable td:not(:last-child)::before,
+    #leaveTable td:not(:last-child)::before {
+      content: attr(data-label);
+      display: block;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .row.mb-4.g-3 > .col-md-3,
+    #leaveStatsRow > .col-6 {
+      width: 100%;
+      max-width: 100%;
+    }
+    .row.mb-4.g-3,
+    #leaveStatsRow {
+      flex-direction: column;
+    }
+    .modal-body .row.g-3 > div {
+      width: 100% !important;
+      max-width: 100% !important;
+      flex: 0 0 100% !important;
+    }
+    #leaveTypeCards > div {
+      width: 50% !important;
+      max-width: 50% !important;
+    }
+    .table td:last-child .manage-btn {
+      width: 100%;
+      height: auto;
+      padding: 8px 12px;
+      justify-content: center;
+    }
+    h3.fw-bold, h5.fw-bold {
+      font-size: var(--text-lg);
+    }
+  }
+  [data-theme="dark"] {
+    .table thead th {
+      background: var(--bg-topbar) !important;
+    }
+    .table tbody td {
+      color: var(--text-primary) !important;
+      border-bottom-color: var(--border-light) !important;
+    }
+    .table-hover tbody tr:hover {
+      background: var(--bg-hover) !important;
+    }
+    #profileTable tr, #leaveTable tr {
+      background: var(--bg-card) !important;
+      border-color: var(--border-light) !important;
+      box-shadow: var(--shadow-xs) !important;
+    }
+    #profileTable td:not(:last-child)::before,
+    #leaveTable td:not(:last-child)::before {
+      color: var(--text-muted) !important;
+    }
+  }
+  .modal-content {
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+  }
+  .modal-content .form-control,
+  .modal-content .form-select {
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+  }
+  .modal-content .form-control:hover:not(:focus):not(:disabled),
+  .modal-content .form-select:hover:not(:focus):not(:disabled) {
+    border-color: var(--text-muted);
+  }
+  .modal-content .form-control:focus,
+  .modal-content .form-select:focus {
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 3px rgba(230,57,70,0.1);
+    outline: none;
+  }
+  .modal-content .form-control::placeholder {
+    color: var(--text-muted);
+  }
+  .modal-content .input-group-text {
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-root);
+    color: var(--text-muted);
+  }
+  .modal-content .input-group .btn {
+    border: 1.5px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-root);
+    color: var(--text-secondary);
+  }
+  .modal-content .input-group .btn:hover {
+    border-color: var(--brand-red);
+    color: var(--brand-red);
+  }
+  .modal-content .input-group .btn:focus {
+    box-shadow: none;
+  }
+  .modal-content .input-group > .form-control:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .modal-content .input-group > .btn:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .modal-content .input-group > .form-control:not(:last-child),
+  .modal-content .input-group > .btn:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  #leaveModal .modal-header {
+    background: linear-gradient(135deg, var(--brand-red), var(--brand-red-dark)) !important;
+    border: none;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  #leaveModal .btn-close {
+    filter: invert(1);
+  }
+</style>
 </head>
-<body data-allowed-roles="OWNER,STAFF">
+<body data-allowed-roles="STAFF">
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
 
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
@@ -23,8 +390,12 @@
     <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
     <div class="topbar-search-results" id="globalSearchResults"></div>
   </div>
+
   <div class="position-relative">
-    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
     <div class="dropdown-panel" id="notifPanel">
       <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
         <span class="fw-semibold small">Notifications</span>
@@ -38,241 +409,1093 @@
       </div>
     </div>
   </div>
+
   <div class="position-relative">
     <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
       <span class="profile-avatar" id="profileAvatar">?</span>
-      <span class="profile-meta"><div class="profile-name" id="profileName">&mdash;</div><div class="profile-role" id="profileRole">&mdash;</div></span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">–</div>
+        <div class="profile-role" id="profileRole">–</div>
+      </span>
       <i class="bi bi-chevron-down text-white-50"></i>
     </button>
     <div class="dropdown-panel profile-menu" id="profilePanel">
       <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
-      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
     </div>
   </div>
 </nav>
 
-<div id="page-content"><div class="d-flex">
+<div id="page-content">
+
+<div class="d-flex">
   <div class="sidebar" id="sidebar"></div>
 
   <div class="p-4 flex-grow-1">
-    <h3 class="mb-3 fw-bold">Trainers</h3>
-    <p class="text-muted mb-4">Manage trainer profiles, specializations, and availability.</p>
+    <div id="trainerProfilesSection">
+      <h3 class="mb-3 fw-bold">Trainers</h3>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="mb-0">Trainer Profiles</h5>
-      <button class="btn btn-primary" onclick="openTrainerModal()"><i class="bi bi-plus-lg me-1"></i> Add Trainer</button>
-    </div>
-
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead>
-          <tr><th>Name</th><th>ID</th><th>Specializations</th><th>Experience</th><th>Assigned</th><th>Available</th><th data-no-export>Actions</th></tr>
-        </thead>
-        <tbody id="trainersBody">
-          <tr><td colspan="7" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div></div>
-
-<!-- Trainer Modal -->
-<div class="modal fade" id="trainerModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header p-3">
-        <h5 class="modal-title fw-bold" id="trainerModalTitle">Add Trainer</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body p-4">
-        <div id="trainerError" class="alert alert-danger d-none mb-3"></div>
-        <input type="hidden" id="trainerId">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">User Account <span class="text-danger">*</span></label>
-            <select id="trainerUser" class="form-select"></select>
-            <div class="form-text">Select a user with TRAINER role.</div>
+      <div class="row mb-4 g-3" role="list">
+        <div class="col-md-3">
+          <div class="card stat-card h-100" role="listitem">
+            <div class="stat-icon icon-total"><i class="bi bi-people-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Total Trainers</div>
+            <h3 id="statTotalTrainers">-</h3>
           </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Availability</label>
-            <select id="trainerAvailable" class="form-select">
-              <option value="true">Available</option>
-              <option value="false">Not Available</option>
-            </select>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100" role="listitem">
+            <div class="stat-icon icon-active"><i class="bi bi-person-check-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Active</div>
+            <h3 id="statActiveTrainers">-</h3>
           </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Experience (years)</label>
-            <input type="number" min="0" id="trainerExperience" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100" role="listitem">
+            <div class="stat-icon icon-advanced"><i class="bi bi-person-x-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Deactivated</div>
+            <h3 id="statDeactivatedTrainers">-</h3>
           </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Salary (NPR)</label>
-            <input type="number" step="0.01" min="0" id="trainerSalary" class="form-control">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Joined Date</label>
-            <input type="date" id="trainerJoinedDate" class="form-control">
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-semibold">Specializations</label>
-            <input type="text" id="trainerSpecializations" class="form-control" placeholder="e.g. Strength Training, HIIT, Yoga (comma-separated)">
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-semibold">Bio</label>
-            <textarea id="trainerBio" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100" role="listitem">
+            <div class="stat-icon icon-beginner"><i class="bi bi-diagram-3-fill"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Specializations</div>
+            <h3 id="statSpecializations">-</h3>
           </div>
         </div>
       </div>
-      <div class="modal-footer p-3">
-        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary px-4" onclick="submitTrainer()">Save Trainer</button>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Trainer Directory</h5>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#profileAddModal">
+          <i class="bi bi-plus-lg"></i> Add Trainer
+        </button>
+      </div>
+
+      <!-- Add Trainer Profile Modal -->
+      <div class="modal fade" id="profileAddModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Add Trainer Profile</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="profileForm" autocomplete="off">
+              <div class="modal-body">
+                <h6 class="text-uppercase text-secondary small fw-bold mb-2">Personal Info</h6>
+                <div class="row g-3 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label">First Name</label>
+                    <input type="text" id="firstName" class="form-control form-control-lg" autocomplete="off" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Middle Name <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" id="middleName" class="form-control form-control-lg" autocomplete="off">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" id="lastName" class="form-control form-control-lg" autocomplete="off" required>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="email" class="form-control form-control-lg" autocomplete="off" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" id="phone" class="form-control form-control-lg" autocomplete="off" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" title="Enter exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Date of Birth</label>
+                    <input type="date" id="dob" class="form-control">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Gender</label>
+                    <select id="gender" class="form-select">
+                      <option value="">--</option><option value="M">Male</option><option value="F">Female</option><option value="O">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Marital Status</label>
+                    <select id="maritalStatus" class="form-select">
+                      <option value="">--</option><option value="SINGLE">Single</option><option value="MARRIED">Married</option><option value="DIVORCED">Divorced</option><option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Nationality</label>
+                    <input type="text" id="nationality" class="form-control" autocomplete="off">
+                  </div>
+                  <div class="col-md-8">
+                    <label class="form-label">About Me</label>
+                    <textarea id="aboutMe" class="form-control" rows="2"></textarea>
+                  </div>
+                </div>
+                <hr class="section-divider my-3">
+
+                <h6 class="text-uppercase text-secondary small fw-bold mb-2">Account</h6>
+                <div class="row g-3 mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Password</label>
+                    <div class="input-group">
+                      <input type="password" id="password" class="form-control form-control-lg" autocomplete="new-password" required>
+                      <button type="button" class="btn btn-outline-secondary" id="generatePasswordBtn" onclick="generateStaffPassword()" title="Generate a random password">
+                        <i class="bi bi-shuffle"></i> Generate
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary toggle-password" data-target="password" tabindex="-1">
+                        <i class="bi bi-eye"></i>
+                      </button>
+                    </div>
+                    <div class="form-text">Click Generate for a random secure password, then the eye icon to reveal and share it.</div>
+                  </div>
+                </div>
+                <hr class="section-divider my-3">
+
+                <h6 class="text-uppercase text-secondary small fw-bold mb-2">Employment Details</h6>
+                <div class="row g-3 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Role</label>
+                    <input type="text" class="form-control" value="Trainer" disabled>
+                    <input type="hidden" id="department" value="TRAINER">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Joined Date</label>
+                    <input type="date" id="joinedDate" class="form-control" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Salary</label>
+                    <input type="number" step="0.01" min="0" id="salary" class="form-control" required>
+                  </div>
+                </div>
+                <div id="profileError" class="alert alert-danger d-none mt-3"></div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="profileAddSubmitBtn">Add Trainer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col">
+          <input type="text" id="staffSearch" class="form-control form-control-lg" placeholder="Search name, email, or trainer ID" oninput="onStaffSearchInput()">
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small text-muted">Rows per page</label>
+          <select id="staffPageSize" class="form-select form-select-sm form-control-lg" style="width:auto;" onchange="renderStaffPage(1)">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover mb-2" id="profileTable">
+          <thead>
+            <tr><th>Trainer ID</th><th>Name</th><th>Email</th><th>Joined</th><th class="text-end">Salary</th><th>Status</th><th data-no-export>Actions</th></tr>
+          </thead>
+          <tbody id="profileTableBody">
+            <tr><td colspan="7" class="text-center text-muted py-4">Loading trainers...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <small class="text-muted" id="staffPageInfo">Showing 0 of 0</small>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary" id="prevStaffPageBtn" onclick="renderStaffPage(currentStaffPage - 1)">Previous</button>
+          <button class="btn btn-sm btn-outline-secondary" id="nextStaffPageBtn" onclick="renderStaffPage(currentStaffPage + 1)">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <hr class="section-divider" aria-hidden="true">
+
+    <!-- LEAVE REQUESTS SECTION -->
+    <div id="leaveRequestsSection">
+      <div class="section-label" aria-hidden="true">Leave Management</div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-calendar2-x me-2 text-danger"></i>Leave Requests</h5>
+        <button type="button" class="btn btn-danger" id="submitLeaveBtn"
+                data-bs-toggle="modal" data-bs-target="#leaveModal">
+          <i class="bi bi-plus-lg"></i> Submit Leave Request
+        </button>
+      </div>
+
+      <div class="row g-3 mb-4" id="leaveStatsRow" role="list">
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100" role="listitem">
+            <div class="stat-icon icon-beginner"><i class="bi bi-hourglass-split"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Pending</div>
+            <h3 id="statPending"></h3>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100" role="listitem">
+            <div class="stat-icon icon-active"><i class="bi bi-check-circle"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Approved</div>
+            <h3 id="statApproved"></h3>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100" role="listitem">
+            <div class="stat-icon icon-advanced"><i class="bi bi-x-circle"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Rejected</div>
+            <h3 id="statRejected"></h3>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100" role="listitem">
+            <div class="stat-icon icon-total"><i class="bi bi-slash-circle"></i></div>
+            <div class="text-muted small text-uppercase fw-semibold">Cancelled</div>
+            <h3 id="statCancelled"></h3>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col">
+          <input type="text" id="leaveSearch" class="form-control form-control-lg" placeholder="Search requester or reason" oninput="onLeaveSearchInput()">
+        </div>
+        <div class="col-auto">
+          <select id="leaveStatusFilter" class="form-select form-control-lg" onchange="renderLeavePage(1)">
+            <option value="">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select id="leaveTypeFilter" class="form-select form-control-lg" onchange="renderLeavePage(1)">
+            <option value="">All Types</option>
+            <option value="SICK">Sick</option>
+            <option value="CASUAL">Casual</option>
+            <option value="ANNUAL">Annual</option>
+            <option value="UNPAID">Unpaid</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small text-muted">Rows per page</label>
+          <select id="leavePageSize" class="form-select form-select-sm form-control-lg" style="width:auto;" onchange="renderLeavePage(1)">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-2" id="leaveTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Requester</th>
+              <th>Type</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Days</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th>Reviewed By</th>
+              <th data-no-export>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leaveTableBody">
+            <tr><td colspan="10" class="text-center text-muted py-4">Loading leave requests...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <small class="text-muted" id="leavePageInfo">Showing 0 of 0</small>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary" id="prevLeavePageBtn" onclick="renderLeavePage(currentLeavePage - 1)">Previous</button>
+          <button class="btn btn-sm btn-outline-secondary" id="nextLeavePageBtn" onclick="renderLeavePage(currentLeavePage + 1)">Next</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-</div>
+  <!-- LEAVE REQUEST MODAL -->
+  <div class="modal fade" id="leaveModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="leaveModalTitle"><i class="bi bi-calendar2-x me-2"></i>Submit Leave Request</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="leaveForm">
+          <input type="hidden" id="editLeaveId" value="">
+          <div class="modal-body">
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Leave Type</label>
+              <div class="row g-2" id="leaveTypeCards">
+                <div class="col-6 col-md-4">
+                  <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_sick" value="SICK" checked>
+                  <label class="btn btn-outline-danger w-100 leave-type-card position-relative" for="lt_sick">
+                    <i class="bi bi-thermometer-high d-block fs-4 mb-1"></i>
+                    Sick Leave
+                    <span class="badge bg-danger position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_SICK"></span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_casual" value="CASUAL">
+                  <label class="btn btn-outline-primary w-100 leave-type-card position-relative" for="lt_casual">
+                    <i class="bi bi-emoji-smile d-block fs-4 mb-1"></i>
+                    Casual Leave
+                    <span class="badge bg-primary position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_CASUAL"></span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_annual" value="ANNUAL">
+                  <label class="btn btn-outline-success w-100 leave-type-card position-relative" for="lt_annual">
+                    <i class="bi bi-calendar-heart d-block fs-4 mb-1"></i>
+                    Annual Leave
+                    <span class="badge bg-success position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_ANNUAL"></span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_unpaid" value="UNPAID">
+                  <label class="btn btn-outline-warning w-100 leave-type-card position-relative" for="lt_unpaid">
+                    <i class="bi bi-cash-stack d-block fs-4 mb-1"></i>
+                    Unpaid Leave
+                    <span class="badge bg-warning text-dark position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_UNPAID"></span>
+                  </label>
+                </div>
+                <div class="col-6 col-md-4">
+                  <input type="radio" class="btn-check" name="leaveTypeRadio" id="lt_other" value="OTHER">
+                  <label class="btn btn-outline-secondary w-100 leave-type-card position-relative" for="lt_other">
+                    <i class="bi bi-three-dots d-block fs-4 mb-1"></i>
+                    Other
+                    <span class="badge bg-secondary position-absolute top-0 end-0 translate-middle d-none" id="pendingBadge_OTHER"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-5">
+                <label class="form-label fw-semibold">Start Date</label>
+                <input type="date" id="startDate" class="form-control form-control-lg" required>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-semibold">End Date</label>
+                <input type="date" id="endDate" class="form-control form-control-lg" required>
+              </div>
+              <div class="col-md-2 d-flex flex-column justify-content-end">
+                <div class="card border-0 bg-light text-center py-2">
+                  <div class="fw-bold fs-5" id="leaveDurationPreview">–</div>
+                  <div class="small text-muted">days</div>
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Reason</label>
+              <textarea id="reason" class="form-control form-control-lg" rows="3"
+                        placeholder="Briefly describe your reason for leave..." required></textarea>
+            </div>
+            <div id="leaveError" class="alert alert-danger d-none"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger" id="leaveSubmitBtn">
+              <i class="bi bi-send me-1" id="leaveSubmitIcon"></i>
+              <span id="leaveSubmitLabel">Submit Request</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESET PASSWORD MODAL -->
+  <div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-key me-2"></i>Reset Password</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="resetPasswordForm" autocomplete="off">
+          <div class="modal-body">
+            <input type="hidden" id="resetPasswordStaffId">
+            <p class="text-muted small mb-3">Setting a new password for <strong id="resetPasswordStaffName"></strong>.</p>
+            <label class="form-label">New Password</label>
+            <div class="input-group">
+              <input type="password" id="resetPasswordField" class="form-control form-control-lg" autocomplete="new-password" required>
+              <button type="button" class="btn btn-outline-secondary" onclick="generateStaffPassword('resetPasswordField')" title="Generate a random password">
+                <i class="bi bi-shuffle"></i> Generate
+              </button>
+              <button type="button" class="btn btn-outline-secondary toggle-password" data-target="resetPasswordField" tabindex="-1">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="form-text">Share this with the trainer directly – it won't be shown again after you close this window.</div>
+            <div id="resetPasswordError" class="alert alert-danger d-none mt-3"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-warning" id="resetPasswordSubmitBtn"><i class="bi bi-key me-1"></i> Set New Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEW MODAL -->
+  <div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Review Leave Request</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="reviewLeaveId">
+          <p id="reviewLeaveInfo" class="text-muted small mb-3"></p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Decision</label>
+            <div class="d-flex gap-2">
+              <button class="btn btn-success flex-grow-1" id="approveBtn" onclick="submitReview('APPROVED')">
+                <i class="bi bi-check-lg me-1"></i> Approve
+              </button>
+              <button class="btn btn-danger flex-grow-1" id="rejectBtn" onclick="submitReview('REJECTED')">
+                <i class="bi bi-x-lg me-1"></i> Reject
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Review Note <span class="text-muted fw-normal">(optional)</span></label>
+            <textarea id="reviewNote" class="form-control" rows="2" placeholder="Add a note for the trainer..."></textarea>
+          </div>
+          <div id="reviewError" class="alert alert-danger d-none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</div>
+
 <script src="js/api.js"></script>
 <script src="js/validate.js"></script>
 <script>
 buildSidebar('trainers');
-if (!getAccessToken()) window.location.href = 'login.html';
+  if (!getAccessToken()) window.location.href = 'login.html';
 
-var allTrainers = [];
-var allUsers = [];
-var isOwner = localStorage.getItem('user_role') === 'OWNER';
+  restrictPastDates('joinedDate');
 
-async function loadTrainers() {
-  var res = await apiRequest('/trainers/profiles/');
-  if (!res || !res.ok) {
-    document.getElementById('trainersBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Could not load trainers.</td></tr>';
-    return;
-  }
-  var data = await res.json();
-  allTrainers = data.results || data;
+  const profileRules = {
+    firstName: [v => validate.required(v, 'First name'), v => validate.alpha(v, 'First name'), v => validate.maxLength(v, 50, 'First name')],
+    lastName:  [v => validate.required(v, 'Last name'),  v => validate.alpha(v, 'Last name'),  v => validate.maxLength(v, 50, 'Last name')],
+    email:     [v => validate.required(v, 'Email'), v => validate.email(v)],
+    phone:     [v => validate.phone(v)],
+    password:  [v => validate.required(v, 'Password'), v => validate.password(v)],
+    joinedDate:[v => validate.required(v, 'Join date'), v => validate.notPast(v, 'Join date')],
+    salary:    [v => validate.required(v, 'Salary'), v => validate.positive(v, 'Salary')],
+    dob:       [v => validate.notFuture(v, 'Date of birth')],
+    nationality:[v => validate.maxLength(v, 50, 'Nationality'), v => validate.noHtml(v, 'Nationality')],
+    aboutMe:   [v => validate.maxLength(v, 500, 'About me'), v => validate.noHtml(v, 'About me')],
+  };
 
-  var tbody = document.getElementById('trainersBody');
-  if (allTrainers.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No trainers found. Click "Add Trainer" to create one.</td></tr>';
-    return;
-  }
+  const leaveRules = {
+    startDate: [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+    endDate:   [v => validate.required(v, 'End date'), v => validate.dateAfter(v, document.getElementById('startDate').value, 'End date', 'Start date')],
+    reason:    [v => validate.required(v, 'Reason'), v => validate.maxLength(v, 500, 'Reason'), v => validate.noHtml(v, 'Reason')],
+  };
 
-  tbody.innerHTML = allTrainers.map(function(t) {
-    var specs = (t.specializations || []).join(', ') || '--';
-    var actions = '';
-    if (isOwner) {
-      actions = '<button class="btn btn-sm btn-outline-primary me-1" onclick="editTrainer(' + t.id + ')" title="Edit"><i class="bi bi-pencil"></i></button>' +
-        '<button class="btn btn-sm btn-outline-danger" onclick="deleteTrainer(' + t.id + ')" title="Deactivate"><i class="bi bi-trash"></i></button>';
+  const resetPasswordRules = {
+    resetPasswordField: [v => validate.required(v, 'Password'), v => validate.password(v)],
+  };
+
+  const myRole = localStorage.getItem('user_role');
+
+  function showToast(message, variant) {
+    const toastEl = document.getElementById("appToast");
+    const bodyEl = document.getElementById("appToastBody");
+    if (!toastEl || !bodyEl) {
+      console.warn("Toast element missing from page – skipping toast:", message);
+      return;
     }
-    return '<tr>' +
-      '<td class="fw-semibold">' + escapeHtml(t.full_name || '--') + '</td>' +
-      '<td class="small"><code>' + escapeHtml(t.display_id || '--') + '</code></td>' +
-      '<td class="small">' + escapeHtml(specs) + '</td>' +
-      '<td>' + (t.experience_years || 0) + ' yrs</td>' +
-      '<td>' + (t.assigned_members_count || 0) + '</td>' +
-      '<td>' + (t.is_available ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>') + '</td>' +
-      '<td>' + actions + '</td>' +
-    '</tr>';
-  }).join('');
-}
-
-async function loadTrainerUsers() {
-  var res = await apiRequest('/accounts/users/?role=TRAINER');
-  if (!res || !res.ok) return;
-  var data = await res.json();
-  allUsers = data.results || data;
-}
-
-function openTrainerModal(trainer) {
-  document.getElementById('trainerError').style.display = 'none';
-  if (trainer) {
-    document.getElementById('trainerModalTitle').textContent = 'Edit Trainer';
-    document.getElementById('trainerId').value = trainer.id;
-    document.getElementById('trainerUser').value = trainer.user;
-    document.getElementById('trainerUser').disabled = true;
-    document.getElementById('trainerAvailable').value = trainer.is_available ? 'true' : 'false';
-    document.getElementById('trainerExperience').value = trainer.experience_years || '';
-    document.getElementById('trainerSalary').value = trainer.salary || '';
-    document.getElementById('trainerJoinedDate').value = trainer.joined_date || '';
-    document.getElementById('trainerSpecializations').value = (trainer.specializations || []).join(', ');
-    document.getElementById('trainerBio').value = trainer.bio || '';
-  } else {
-    document.getElementById('trainerModalTitle').textContent = 'Add Trainer';
-    document.getElementById('trainerId').value = '';
-    document.getElementById('trainerUser').disabled = false;
-    document.getElementById('trainerAvailable').value = 'true';
-    document.getElementById('trainerExperience').value = '';
-    document.getElementById('trainerSalary').value = '';
-    document.getElementById('trainerJoinedDate').value = '';
-    document.getElementById('trainerSpecializations').value = '';
-    document.getElementById('trainerBio').value = '';
+    toastEl.classList.remove("bg-success", "bg-danger");
+    toastEl.classList.add(variant === "error" ? "bg-danger" : "bg-success");
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 }).show();
   }
 
-  var userSel = document.getElementById('trainerUser');
-  userSel.innerHTML = allUsers.map(function(u) {
-    var name = (u.first_name || '') + ' ' + (u.last_name || '');
-    return '<option value="' + u.id + '">' + escapeHtml(name.trim() || u.email) + ' (' + escapeHtml(u.email) + ')</option>';
-  }).join('');
-  if (trainer) userSel.value = trainer.user;
+  const AVATAR_COLORS = ['#0d6efd', '#198754', '#fd7e14', '#6f42c1', '#d63384', '#20c997', '#dc3545'];
 
-  new bootstrap.Modal(document.getElementById('trainerModal')).show();
-}
+  function staffAvatar(name) {
+    const clean = (name || '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0])
+      : (clean.slice(0, 2) || '?');
+    let hash = 0;
+    for (let i = 0; i < clean.length; i++) hash = clean.charCodeAt(i) + ((hash << 5) - hash);
+    const color = AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+    return `<span class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-semibold"
+                  style="width:28px;height:28px;font-size:0.7rem;background:${color};flex-shrink:0;">
+              ${initials.toUpperCase()}
+            </span>`;
+  }
 
-function editTrainer(id) {
-  var t = allTrainers.find(function(x) { return x.id === id; });
-  if (t) openTrainerModal(t);
-}
+  function formatSalary(value) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return value || '-';
+    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
-var trainerFieldRules = {
-  trainerUser: [v => validate.required(v, 'User')],
-  trainerSpecializations: [v => validate.maxLength(v, 200, 'Specializations'), v => validate.noHtml(v, 'Specializations')],
-  trainerBio: [v => validate.maxLength(v, 1000, 'Bio'), v => validate.noHtml(v, 'Bio')],
-  trainerExperience: [v => validate.min(v, 0, 'Experience')],
-  trainerSalary: [v => validate.min(v, 0, 'Salary')]
-};
+  let staffCache = [];
+  let staffFilteredCache = [];
+  let currentStaffPage = 1;
+  let staffSearchDebounce = null;
 
-async function submitTrainer() {
-  var errBox = document.getElementById('trainerError');
-  errBox.style.display = 'none';
-  if (!validateForm(document.getElementById('trainerModal'), trainerFieldRules)) return;
-  var id = document.getElementById('trainerId').value;
-  var specsRaw = document.getElementById('trainerSpecializations').value.trim();
-  var specs = specsRaw ? specsRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+  function onStaffSearchInput() {
+    clearTimeout(staffSearchDebounce);
+    staffSearchDebounce = setTimeout(() => renderStaffPage(1), 300);
+  }
 
-  var payload = sanitizePayload({
-    user: parseInt(document.getElementById('trainerUser').value),
-    is_available: document.getElementById('trainerAvailable').value === 'true',
-    experience_years: document.getElementById('trainerExperience').value ? parseInt(document.getElementById('trainerExperience').value) : 0,
-    salary: document.getElementById('trainerSalary').value || null,
-    joined_date: document.getElementById('trainerJoinedDate').value || null,
-    specializations: specs,
-    bio: document.getElementById('trainerBio').value.trim(),
+  async function loadProfiles() {
+    const res = await apiRequest('/staff/profiles/');
+    if (!res) return;
+    if (!res.ok) {
+      document.getElementById('profileTableBody').innerHTML =
+        `<tr><td colspan="7" class="text-center text-danger py-4">Failed to load trainers.</td></tr>`;
+      return;
+    }
+    const data = await res.json();
+    staffCache = (data.results || []).filter(s => s.role === 'TRAINER');
+
+    const total = staffCache.length;
+    const active = staffCache.filter(s => s.is_active).length;
+    const deactivated = total - active;
+    const specs = new Set();
+    staffCache.forEach(s => { (s.specializations || []).forEach(sp => specs.add(sp)); });
+
+    document.getElementById('statTotalTrainers').textContent = total;
+    document.getElementById('statActiveTrainers').textContent = active;
+    document.getElementById('statDeactivatedTrainers').textContent = deactivated;
+    document.getElementById('statSpecializations').textContent = specs.size || '-';
+
+    renderStaffPage(1);
+  }
+
+  function renderStaffPage(page) {
+    const search = document.getElementById('staffSearch').value.trim().toLowerCase();
+
+    staffFilteredCache = staffCache.filter(row => {
+      const idStr = (row.user_display_id || String(row.id)).toLowerCase();
+      const matchesSearch = !search ||
+        (row.user_name || '').toLowerCase().includes(search) ||
+        (row.user_email || '').toLowerCase().includes(search) ||
+        idStr.includes(search);
+      return matchesSearch;
+    });
+
+    const pageSize = parseInt(document.getElementById('staffPageSize').value, 10);
+    const totalPages = Math.max(1, Math.ceil(staffFilteredCache.length / pageSize));
+    currentStaffPage = Math.min(Math.max(1, page), totalPages);
+    const start = (currentStaffPage - 1) * pageSize;
+    const pageRows = staffFilteredCache.slice(start, start + pageSize);
+
+    const tbody = document.getElementById('profileTableBody');
+
+    if (pageRows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No trainers found.</td></tr>`;
+    } else {
+      tbody.innerHTML = pageRows.map(row => {
+        const statusBadge = row.is_active
+          ? '<span class="badge bg-success">Active</span>'
+          : '<span class="badge bg-secondary">Deactivated</span>';
+        return `
+      <tr>
+        <td data-label="Trainer ID">${row.user_display_id || row.id}</td>
+        <td data-label="Name">
+          <div class="d-flex align-items-center gap-2">
+            ${staffAvatar(row.user_name)}
+            <span>${row.user_name}</span>
+          </div>
+        </td>
+        <td data-label="Email">${row.user_email}</td>
+        <td data-label="Joined">${row.joined_date}</td>
+        <td data-label="Salary" class="text-end">${formatSalary(row.salary)}</td>
+        <td data-label="Status">${statusBadge}</td>
+        <td>
+          <button class="manage-btn btn btn-sm" onclick="window.location.href='staff-detail.html?id='+${row.id}">
+            Manage
+          </button>
+        </td>
+      </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('staffPageInfo').textContent = staffFilteredCache.length
+      ? `Showing ${start + 1}-${Math.min(start + pageSize, staffFilteredCache.length)} of ${staffFilteredCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('prevStaffPageBtn').disabled = currentStaffPage === 1;
+    document.getElementById('nextStaffPageBtn').disabled = currentStaffPage === totalPages;
+  }
+
+  document.getElementById('profileAddModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('profileError').classList.add('d-none');
+    const passwordField = document.getElementById('password');
+    passwordField.type = 'password';
+    const toggleIcon = document.querySelector('.toggle-password[data-target="password"] i');
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-eye-slash');
+      toggleIcon.classList.add('bi-eye');
+    }
   });
 
-  var url = id ? '/trainers/profiles/' + id + '/' : '/trainers/profiles/';
-  var method = id ? 'PATCH' : 'POST';
-  var res = await apiRequest(url, { method: method, body: JSON.stringify(payload) });
-  if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
-  if (res.ok) {
-    bootstrap.Modal.getInstance(document.getElementById('trainerModal')).hide();
-    loadTrainers();
-  } else {
-    var err = await res.json().catch(function() { return {}; });
-    errBox.textContent = formatApiError(err);
-    errBox.style.display = '';
+  function generateStaffPassword(fieldId) {
+    fieldId = fieldId || 'password';
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnopqrstuvwxyz';
+    const digits = '23456789';
+    const symbols = '!@#$%&*';
+    const all = upper + lower + digits + symbols;
+
+    let pwd = [
+      upper[Math.floor(Math.random() * upper.length)],
+      lower[Math.floor(Math.random() * lower.length)],
+      digits[Math.floor(Math.random() * digits.length)],
+      symbols[Math.floor(Math.random() * symbols.length)],
+    ];
+    for (let i = pwd.length; i < 12; i++) {
+      pwd.push(all[Math.floor(Math.random() * all.length)]);
+    }
+    for (let i = pwd.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+    }
+    const passwordField = document.getElementById(fieldId);
+    passwordField.value = pwd.join('');
+    passwordField.type = 'text';
+    const toggleIcon = document.querySelector(`.toggle-password[data-target="${fieldId}"] i`);
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-eye');
+      toggleIcon.classList.add('bi-eye-slash');
+    }
   }
-}
 
-async function deleteTrainer(id) {
-  if (!(await confirmAction('Deactivate this trainer? This will disable their login.', { confirmText: 'Deactivate', variant: 'danger', icon: 'bi-trash' }))) return;
-  var res = await apiRequest('/trainers/profiles/' + id + '/', { method: 'DELETE' });
-  if (res && (res.ok || res.status === 204)) loadTrainers();
-}
+  document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validateForm(e.target, profileRules)) return;
+    const btn = document.getElementById('profileAddSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const errorBox = document.getElementById('profileError');
+      errorBox.classList.add('d-none');
+      const firstNameVal = document.getElementById('firstName').value.trim();
+      const middleNameVal = document.getElementById('middleName').value.trim();
+      const combinedFirstName = middleNameVal ? `${firstNameVal} ${middleNameVal}` : firstNameVal;
 
-// Init
-loadTrainerUsers().then(loadTrainers);
-loadTopbarNotifications();
+      const payload = sanitizePayload({
+        first_name: combinedFirstName,
+        last_name: document.getElementById('lastName').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        password: document.getElementById('password').value,
+        role: 'TRAINER',
+        joined_date: document.getElementById('joinedDate').value,
+        salary: document.getElementById('salary').value,
+        date_of_birth: document.getElementById('dob').value || null,
+        gender: document.getElementById('gender').value || null,
+        marital_status: document.getElementById('maritalStatus').value || null,
+        nationality: document.getElementById('nationality').value || null,
+        notes: document.getElementById('aboutMe').value || null,
+      });
+      const res = await apiRequest('/staff/profiles/', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Add request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        document.getElementById('profileForm').reset();
+        try {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('profileAddModal')).hide();
+        } catch (e) {
+          console.error('Could not close Add Trainer modal:', e);
+        }
+        loadProfiles();
+        showToast('Trainer added.');
+      }
+      else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Add trainer failed:', err);
+      alert('Something went wrong adding this trainer: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  function openResetPassword(id, name) {
+    document.getElementById('resetPasswordStaffId').value = id;
+    document.getElementById('resetPasswordStaffName').textContent = name;
+    document.getElementById('resetPasswordField').value = '';
+    document.getElementById('resetPasswordError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+  }
+
+  document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', () => {
+    const field = document.getElementById('resetPasswordField');
+    field.value = '';
+    field.type = 'password';
+    const toggleIcon = document.querySelector('.toggle-password[data-target="resetPasswordField"] i');
+    if (toggleIcon) {
+      toggleIcon.classList.remove('bi-eye-slash');
+      toggleIcon.classList.add('bi-eye');
+    }
+    document.getElementById('resetPasswordError').classList.add('d-none');
+  });
+
+  document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validateForm(e.target, resetPasswordRules)) return;
+    const btn = document.getElementById('resetPasswordSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const id = document.getElementById('resetPasswordStaffId').value;
+      const errorBox = document.getElementById('resetPasswordError');
+      errorBox.classList.add('d-none');
+      const payload = sanitizePayload({ new_password: document.getElementById('resetPasswordField').value });
+      const res = await apiRequest(`/staff/profiles/${id}/reset-password/`, { method: 'POST', body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Reset request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        try {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('resetPasswordModal')).hide();
+        } catch (e) {
+          console.error('Could not close Reset Password modal:', e);
+        }
+        showToast('Password reset. Share the new password with the trainer.');
+      } else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Reset password failed:', err);
+      alert('Something went wrong resetting this password: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  // LEAVE REQUESTS
+  let leaveCache = [];
+  let leaveFilteredCache = [];
+  let currentLeavePage = 1;
+  let leaveSearchDebounce = null;
+
+  function onLeaveSearchInput() {
+    clearTimeout(leaveSearchDebounce);
+    leaveSearchDebounce = setTimeout(() => renderLeavePage(1), 300);
+  }
+
+  async function loadLeaves() {
+    document.getElementById('leaveTableBody').innerHTML =
+      `<tr><td colspan="10" class="text-center text-muted py-4">Loading leave requests...</td></tr>`;
+
+    const res = await apiRequest('/staff/leave-requests/');
+    if (!res) return;
+    if (!res.ok) {
+      document.getElementById('leaveTableBody').innerHTML =
+        `<tr><td colspan="10" class="text-center text-danger py-4">Failed to load leave requests.</td></tr>`;
+      return;
+    }
+    const data = await res.json();
+    leaveCache = data.results || [];
+
+    const counts = { PENDING: 0, APPROVED: 0, REJECTED: 0, CANCELLED: 0 };
+    leaveCache.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+    document.getElementById('statPending').textContent   = counts.PENDING;
+    document.getElementById('statApproved').textContent  = counts.APPROVED;
+    document.getElementById('statRejected').textContent  = counts.REJECTED;
+    document.getElementById('statCancelled').textContent = counts.CANCELLED;
+
+    renderLeavePage(1);
+  }
+
+  function renderLeavePage(page) {
+    const search = document.getElementById('leaveSearch').value.trim().toLowerCase();
+    const statusFilter = document.getElementById('leaveStatusFilter').value;
+    const typeFilter = document.getElementById('leaveTypeFilter').value;
+
+    leaveFilteredCache = leaveCache.filter(row => {
+      const matchesSearch = !search ||
+        (row.requester_name || '').toLowerCase().includes(search) ||
+        (row.reason || '').toLowerCase().includes(search);
+      const matchesStatus = !statusFilter || row.status === statusFilter;
+      const matchesType = !typeFilter || row.leave_type === typeFilter;
+      return matchesSearch && matchesStatus && matchesType;
+    });
+
+    const pageSize = parseInt(document.getElementById('leavePageSize').value, 10);
+    const totalPages = Math.max(1, Math.ceil(leaveFilteredCache.length / pageSize));
+    currentLeavePage = Math.min(Math.max(1, page), totalPages);
+    const start = (currentLeavePage - 1) * pageSize;
+    const pageRows = leaveFilteredCache.slice(start, start + pageSize);
+
+    const tbody = document.getElementById('leaveTableBody');
+    if (pageRows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No leave requests found for this filter.</td></tr>';
+    } else {
+      const userId = parseInt(localStorage.getItem('user_id'));
+      tbody.innerHTML = pageRows.map(row => {
+        const isMine    = Number(row.requester) === userId;
+        const canEdit   = isMine  && row.status === 'PENDING';
+        const canCancel = isMine  && row.status === 'PENDING';
+
+        let actions = [];
+        if (canEdit)    actions.push(`<button class="btn btn-sm btn-outline-primary" onclick="openEditLeave(${row.id})" title="Edit"><i class="bi bi-pencil"></i> Edit</button>`);
+        if (canCancel)  actions.push(`<button class="btn btn-sm btn-outline-danger"  onclick="cancelLeave(${row.id})"><i class="bi bi-x-circle"></i> Cancel</button>`);
+        if (!actions.length) actions.push('<span class="text-muted cell-center">–</span>');
+
+        return `
+          <tr>
+            <td data-label="#" class="text-muted small">#${row.id}</td>
+            <td data-label="Requester">${row.requester_name}</td>
+            <td data-label="Type">${leaveTypeBadge(row.leave_type)}</td>
+            <td data-label="Start">${row.start_date}</td>
+            <td data-label="End">${row.end_date}</td>
+            <td data-label="Days"><span class="badge bg-light text-dark border">${row.duration_days}d</span></td>
+            <td data-label="Reason" class="small" style="max-width:180px;white-space:normal">${row.reason}</td>
+            <td data-label="Status">${leaveStatusBadge(row.status)}</td>
+            <td data-label="Reviewed By" class="small text-muted cell-center">${row.reviewed_by_name || '–'}</td>
+            <td><div class="d-flex gap-1">${actions.join('')}</div></td>
+          </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('leavePageInfo').textContent = leaveFilteredCache.length
+      ? `Showing ${start + 1}-${Math.min(start + pageSize, leaveFilteredCache.length)} of ${leaveFilteredCache.length}`
+      : 'Showing 0 of 0';
+    document.getElementById('prevLeavePageBtn').disabled = currentLeavePage === 1;
+    document.getElementById('nextLeavePageBtn').disabled = currentLeavePage === totalPages;
+  }
+
+  function leaveTypeBadge(type) {
+    const map = {
+      SICK:    ['danger',    'thermometer-high', 'Sick'],
+      CASUAL:  ['primary',   'emoji-smile',      'Casual'],
+      ANNUAL:  ['success',   'calendar-heart',   'Annual'],
+      UNPAID:  ['warning',   'cash-stack',       'Unpaid'],
+      OTHER:   ['secondary', 'three-dots',       'Other'],
+    };
+    const [color, icon, label] = map[type] || ['secondary', 'question', type];
+    return `<span class="badge bg-${color}"><i class="bi bi-${icon} me-1"></i>${label}</span>`;
+  }
+
+  function leaveStatusBadge(s) {
+    const map = { APPROVED: 'success', PENDING: 'warning text-dark', REJECTED: 'danger', CANCELLED: 'secondary' };
+    return `<span class="badge bg-${map[s] || 'secondary'}">${s}</span>`;
+  }
+
+  function openReviewModal(id, name, type, start, end) {
+    document.getElementById('reviewLeaveId').value = id;
+    document.getElementById('reviewLeaveInfo').textContent =
+      `${name} – ${type} leave from ${start} to ${end}`;
+    document.getElementById('reviewNote').value = '';
+    document.getElementById('reviewError').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('reviewModal')).show();
+  }
+
+  async function submitReview(decision) {
+    const id   = document.getElementById('reviewLeaveId').value;
+    const note = document.getElementById('reviewNote').value;
+    const errorBox = document.getElementById('reviewError');
+    errorBox.classList.add('d-none');
+    const res = await apiRequest(`/staff/leave-requests/${id}/review/`, {
+      method: 'POST',
+      body: JSON.stringify({ status: decision, review_note: note }),
+    });
+    if (res && res.ok) {
+      try {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModal')).hide();
+      } catch (e) {
+        console.error('Could not close Review modal:', e);
+      }
+      loadLeaves();
+      showToast(`Leave request ${decision.toLowerCase()}.`);
+    } else {
+      errorBox.textContent = res ? formatApiError(await res.json()) : 'Request failed.';
+      errorBox.classList.remove('d-none');
+    }
+  }
+
+  function openEditLeave(id) {
+    const row = leaveCache.find(r => r.id === id);
+    if (!row) return;
+
+    document.getElementById('editLeaveId').value = id;
+    document.getElementById('leaveModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Leave Request';
+    document.getElementById('leaveSubmitIcon').className = 'bi bi-check-lg me-1';
+    document.getElementById('leaveSubmitLabel').textContent = 'Save Changes';
+
+    const radio = document.querySelector(`input[name="leaveTypeRadio"][value="${row.leave_type}"]`);
+    if (radio) radio.checked = true;
+
+    document.getElementById('startDate').value = row.start_date;
+    document.getElementById('startDate').min   = row.start_date;
+    document.getElementById('endDate').value   = row.end_date;
+    document.getElementById('endDate').min     = row.start_date;
+    updateDurationPreview();
+
+    document.getElementById('reason').value = row.reason;
+
+    document.getElementById('leaveError').classList.add('d-none');
+    updatePendingTypeBadges();
+    new bootstrap.Modal(document.getElementById('leaveModal')).show();
+  }
+
+  async function cancelLeave(id) {
+    if (!(await confirmAction('Cancel this leave request?', { confirmText: 'Cancel Request', variant: 'warning', icon: 'bi-x-circle' }))) return;
+    const res = await apiRequest(`/staff/leave-requests/${id}/cancel/`, { method: 'POST' });
+    if (res && res.ok) {
+      loadLeaves();
+      showToast('Leave request cancelled.');
+    }
+    else alert('Could not cancel the request.');
+  }
+
+  function updateDurationPreview() {
+    const start = document.getElementById('startDate').value;
+    const end   = document.getElementById('endDate').value;
+    const el    = document.getElementById('leaveDurationPreview');
+    if (start && end && end >= start) {
+      const days = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+      el.textContent = days;
+      el.classList.remove('text-danger');
+    } else if (start && end && end < start) {
+      el.textContent = '!';
+      el.classList.add('text-danger');
+    } else {
+      el.textContent = '–';
+      el.classList.remove('text-danger');
+    }
+  }
+
+  document.getElementById('startDate').addEventListener('change', function () {
+    document.getElementById('endDate').min = this.value;
+    updateDurationPreview();
+  });
+  document.getElementById('endDate').addEventListener('change', updateDurationPreview);
+
+  document.getElementById('leaveForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validateForm(e.target, leaveRules)) return;
+    const btn = document.getElementById('leaveSubmitBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const errorBox = document.getElementById('leaveError');
+      errorBox.classList.add('d-none');
+      const startVal = document.getElementById('startDate').value;
+      const endVal   = document.getElementById('endDate').value;
+      if (endVal < startVal) {
+        errorBox.textContent = 'End date cannot be before start date.';
+        errorBox.classList.remove('d-none');
+        return;
+      }
+      const leaveType = document.querySelector('input[name="leaveTypeRadio"]:checked').value;
+      const payload = sanitizePayload({
+        leave_type: leaveType,
+        start_date: startVal,
+        end_date:   endVal,
+        reason:     document.getElementById('reason').value,
+      });
+      const editId = document.getElementById('editLeaveId').value;
+      const isEdit = !!editId;
+      const url    = isEdit ? `/staff/leave-requests/${editId}/` : '/staff/leave-requests/';
+      const method = isEdit ? 'PATCH' : 'POST';
+      const res = await apiRequest(url, { method, body: JSON.stringify(payload) });
+      if (!res) {
+        alert('Request failed to send. Check your connection or session.');
+        return;
+      }
+      if (res.ok) {
+        document.getElementById('leaveForm').reset();
+        document.getElementById('leaveDurationPreview').textContent = '–';
+        try {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('leaveModal')).hide();
+        } catch (e) {
+          console.error('Could not close Leave Request modal:', e);
+        }
+        loadLeaves();
+        showToast(isEdit ? 'Leave request updated.' : 'Leave request submitted.');
+      } else {
+        const err = await res.json();
+        errorBox.textContent = formatApiError(err);
+        errorBox.classList.remove('d-none');
+      }
+    } catch (err) {
+      console.error('Submit leave failed:', err);
+      alert('Something went wrong submitting the leave request: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  document.getElementById('leaveModal').addEventListener('show.bs.modal', () => {
+    if (!document.getElementById('editLeaveId').value) {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('startDate').min = today;
+      document.getElementById('endDate').min   = today;
+    }
+    updatePendingTypeBadges();
+  });
+
+  document.getElementById('leaveModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('editLeaveId').value = '';
+    document.getElementById('leaveModalTitle').innerHTML = '<i class="bi bi-calendar2-x me-2"></i>Submit Leave Request';
+    document.getElementById('leaveSubmitIcon').className = 'bi bi-send me-1';
+    document.getElementById('leaveSubmitLabel').textContent = 'Submit Request';
+    document.getElementById('leaveError').classList.add('d-none');
+    document.getElementById('leaveDurationPreview').textContent = '–';
+  });
+
+  function updatePendingTypeBadges() {
+    const userId = parseInt(localStorage.getItem('user_id'));
+    const counts = {};
+    leaveCache.forEach(r => {
+      if (r.status === 'PENDING' && r.requester === userId) {
+        counts[r.leave_type] = (counts[r.leave_type] || 0) + 1;
+      }
+    });
+    ['SICK', 'CASUAL', 'ANNUAL', 'UNPAID', 'OTHER'].forEach(type => {
+      const badge = document.getElementById(`pendingBadge_${type}`);
+      if (!badge) return;
+      const count = counts[type] || 0;
+      if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('d-none');
+      } else {
+        badge.classList.add('d-none');
+      }
+    });
+  }
+
+  loadProfiles();
+  loadLeaves();
+
+  loadTopbarNotifications();
 </script>
 </body>
 </html>

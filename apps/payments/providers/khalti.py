@@ -35,16 +35,19 @@ def _headers():
     }
 
 
-def initiate_payment(payment):
+def initiate_payment(payment, return_url=None):
     """
     Starts a Khalti checkout for the given Payment instance.
+
+    *return_url* overrides the default redirect after checkout.  When
+    ``None``, falls back to ``FRONTEND_URL/my-payments.html``.
 
     Returns {"pidx": "...", "payment_url": "..."} on success.
     Raises KhaltiError on any failure (network, bad request, missing config).
     """
     member = payment.member
     payload = {
-        'return_url': f'{settings.FRONTEND_URL}/my-payments.html',
+        'return_url': return_url or f'{settings.FRONTEND_URL}/my-payments.html',
         'website_url': settings.FRONTEND_URL,
         # Khalti wants amount in paisa (NPR * 100), as a whole number.
         'amount': int(payment.amount * 100),
@@ -84,6 +87,13 @@ def initiate_payment(payment):
     payment_url = data.get('payment_url')
     if not pidx or not payment_url:
         raise KhaltiError(f'Unexpected Khalti response: {data}')
+
+    # Khalti's sandbox API returns a checkout URL on dev.khalti.com, but the
+    # actual test payment page lives on test-pay.khalti.com.
+    payment_url = payment_url.replace(
+        'https://dev.khalti.com/api/v2/checkout',
+        'https://test-pay.khalti.com',
+    )
 
     return {'pidx': pidx, 'payment_url': payment_url}
 

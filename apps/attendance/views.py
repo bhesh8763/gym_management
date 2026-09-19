@@ -156,6 +156,27 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             )
         return Response(AttendanceSerializer(attendance).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['get'], url_path='current-occupancy')
+    def current_occupancy(self, request):
+        """
+        GET /api/attendance/records/current-occupancy/
+        Returns the count of members currently in the gym
+        (checked in today but not yet checked out).
+        """
+        today = timezone.localdate()
+        currently_in = Attendance.objects.filter(
+            date=today,
+            check_in__isnull=False,
+            check_out__isnull=True,
+        ).select_related('user').values(
+            'user__id', 'user__first_name', 'user__last_name', 'check_in'
+        )
+        members_list = list(currently_in)
+        return Response({
+            'count': len(members_list),
+            'members': members_list,
+        })
+
     @action(detail=False, methods=['post'], url_path='check-out')
     def check_out(self, request):
         """

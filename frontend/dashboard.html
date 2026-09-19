@@ -74,6 +74,26 @@
     <!-- ═══ ADMIN / STAFF / TRAINER DASHBOARD ═══════════════════════════════ -->
     <div id="adminDashboard">
 
+    <!-- Live Occupancy (admin/staff/trainer) -->
+    <div class="row g-3 mb-3">
+      <div class="col-12">
+        <div class="card stat-card h-100" style="border-left:4px solid #10b981;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon" style="background:#10b98115;color:#10b981;width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-person-walking" style="font-size:1.5rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small text-uppercase fw-semibold">Live Occupancy</div>
+              <div class="d-flex align-items-baseline gap-2">
+                <h3 id="statOccupancy" class="mb-0" style="color:#10b981;">–</h3>
+                <small class="text-muted">members in gym now</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Greeting header + quick actions -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
       <div>
@@ -123,6 +143,8 @@
         </a>
       </div>
     </div>
+
+
 
     <!-- Needs Attention -->
     <div class="row g-3 mt-1">
@@ -178,6 +200,26 @@
           <a href="my-attendance.html" class="quick-action-btn spa-link"><i class="bi bi-qr-code"></i> Scan QR</a>
           <a href="my-workouts.html" class="quick-action-btn spa-link" style="border-color:var(--color-workout);color:var(--color-workout);"><i class="bi bi-play-circle"></i> Start Workout</a>
           <a href="my-diet.html" class="quick-action-btn spa-link" style="border-color:var(--color-nutrition);color:var(--color-nutrition);"><i class="bi bi-plus-circle"></i> Log Meal</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Occupancy (member) -->
+    <div class="row g-3 mb-3">
+      <div class="col-12">
+        <div class="card stat-card h-100" style="border-left:4px solid #10b981;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon" style="background:#10b98115;color:#10b981;width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-person-walking" style="font-size:1.5rem;"></i>
+            </div>
+            <div>
+              <div class="text-muted small text-uppercase fw-semibold">Live Occupancy</div>
+              <div class="d-flex align-items-baseline gap-2">
+                <h3 id="memberStatOccupancy" class="mb-0" style="color:#10b981;">–</h3>
+                <small class="text-muted">members in gym now</small>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -904,6 +946,28 @@ buildSidebar('dashboard');
   }
 
   loadNotifications();
+
+  // === Live Occupancy ===
+  let occupancyInterval = null;
+
+  async function loadOccupancy() {
+    try {
+      const res = await apiRequest('/attendance/records/current-occupancy/');
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      const el = document.getElementById('statOccupancy');
+      if (el) el.textContent = data.count;
+      const memberEl = document.getElementById('memberStatOccupancy');
+      if (memberEl) memberEl.textContent = data.count;
+    } catch (err) {
+      console.error('Failed to load occupancy:', err);
+    }
+  }
+
+  // Auto-refresh occupancy every 30 seconds
+  loadOccupancy();
+  if (occupancyInterval) clearInterval(occupancyInterval);
+  occupancyInterval = setInterval(loadOccupancy, 30000);
 </script>
 <script src="js/bottom-tabs.js"></script>
 </body>

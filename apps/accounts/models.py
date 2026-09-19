@@ -65,7 +65,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Role(models.TextChoices):
         OWNER = 'OWNER', 'Owner'
-        STAFF = 'STAFF', 'Staff'
+        STAFF = 'STAFF', 'Receptionist'
         TRAINER = 'TRAINER', 'Trainer'
         MEMBER = 'MEMBER', 'Member'
         ADMIN = 'ADMIN', 'Admin'

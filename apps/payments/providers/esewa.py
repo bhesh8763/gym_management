@@ -60,10 +60,13 @@ def _sign(message, secret_key):
     return base64.b64encode(digest).decode('utf-8')
 
 
-def build_form_fields(payment):
+def build_form_fields(payment, return_url=None):
     """
     Builds the signed field set the FRONTEND must POST as a hidden HTML
     form directly to settings.ESEWA_BASE_URL (eSewa's form action URL).
+
+    *return_url* overrides the default redirect after checkout.  When
+    ``None``, falls back to ``FRONTEND_URL/my-payments.html``.
 
     Returns a dict of form field name -> value, e.g.:
     {
@@ -88,6 +91,9 @@ def build_form_fields(payment):
     # own duplicate-transaction_uuid rejection.
     transaction_uuid = f'GYM-PAY-{payment.id}-{payment.transaction_id or _short_uuid()}'
 
+    fallback_url = f'{settings.FRONTEND_URL}/my-payments.html'
+    redirect_url = return_url or fallback_url
+
     fields = {
         'amount': total_amount,
         'tax_amount': '0',
@@ -96,8 +102,8 @@ def build_form_fields(payment):
         'product_code': merchant_code,
         'product_service_charge': '0',
         'product_delivery_charge': '0',
-        'success_url': f'{settings.FRONTEND_URL}/my-payments.html',
-        'failure_url': f'{settings.FRONTEND_URL}/my-payments.html',
+        'success_url': redirect_url,
+        'failure_url': redirect_url,
         'signed_field_names': ','.join(SIGNED_FIELD_NAMES),
     }
 

@@ -57,25 +57,29 @@ def _notify_payment_received(payment):
     )
 
 
-def _initiate_khalti_payment(payment):
+def _initiate_khalti_payment(payment, return_url=None):
     """Start a Khalti checkout for `payment` and attach the transaction id.
+
+    *return_url* overrides where Khalti redirects the member after checkout.
 
     Returns (payment, payment_url) on success. Raises KhaltiError on failure.
     On failure the caller is expected to mark the payment FAILED.
     """
-    result = khalti.initiate_payment(payment)
+    result = khalti.initiate_payment(payment, return_url=return_url)
     payment.transaction_id = result['pidx']
     payment.save(update_fields=['transaction_id'])
     return payment, result['payment_url']
 
 
-def _initiate_esewa_payment(payment):
+def _initiate_esewa_payment(payment, return_url=None):
     """Build eSewa form fields for `payment` and attach the transaction uuid.
+
+    *return_url* overrides where eSewa redirects the member after checkout.
 
     Returns (payment, action_url, form_fields) on success. Raises EsewaError
     on failure. On failure the caller is expected to mark the payment FAILED.
     """
-    form_fields = esewa.build_form_fields(payment)
+    form_fields = esewa.build_form_fields(payment, return_url=return_url)
     payment.transaction_id = form_fields['transaction_uuid']
     payment.save(update_fields=['transaction_id'])
     return payment, settings.ESEWA_BASE_URL, form_fields
@@ -267,6 +271,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         payment_for = request.data.get('payment_for')
         reference_id = request.data.get('reference_id')
         payment_method = request.data.get('payment_method') or Payment.PaymentMethod.OTHER
+        return_url = request.data.get('return_url')  # optional override for Khalti redirect
         if payment_method not in Payment.PaymentMethod.values:
             raise ValidationError({'payment_method': 'Not a valid payment method.'})
 
@@ -321,24 +326,34 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
                     if dup.payment_method == payment_method:
                         # Same method → reuse the existing payment.
-                        if payment_method == Payment.PaymentMethod.KHALTI and dup.transaction_id:
-                            # Mark all OTHER pending as FAILED, keep dup
+                        if payment_method == Payment.PaymentMethod.KHALTI:
+                            # (Re-)initiate Khalti checkout for this pending
+                            # payment — works whether it already has a pidx or
+                            # was created without one (e.g. staff-recorded).
                             pending_dups.exclude(id=dup.id).update(
                                 status=Payment.PaymentStatus.FAILED,
                                 notes='Superseded by newer payment attempt',
                             )
+                            try:
+                                dup, payment_url = _initiate_khalti_payment(
+                                    dup, return_url=return_url,
+                                )
+                            except KhaltiError as exc:
+                                dup.status = Payment.PaymentStatus.FAILED
+                                dup.notes = f'Khalti re-initiate failed: {exc}'
+                                dup.save()
+                                raise ValidationError({
+                                    'detail': f'Could not start Khalti checkout: {exc}'
+                                })
                             data = PaymentSerializer(dup).data
-                            data['payment_url'] = (
-                                f'{settings.KHALTI_BASE_URL}/checkout'
-                                f'?pidx={dup.transaction_id}'
-                            )
+                            data['payment_url'] = payment_url
                             return Response(data, status=200)
                         if payment_method == Payment.PaymentMethod.ESEWA:
                             # Re-sign fresh form fields (eSewa rejects stale
                             # submissions) and return them for the existing
                             # payment.  Mark all OTHER pending as FAILED.
                             try:
-                                form_fields = esewa.build_form_fields(dup)
+                                form_fields = esewa.build_form_fields(dup, return_url=return_url)
                             except EsewaError as exc:
                                 raise ValidationError({
                                     'detail': f'Could not prepare eSewa checkout: {exc}'
@@ -382,7 +397,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         if payment_method == Payment.PaymentMethod.KHALTI:
             try:
-                payment, payment_url = _initiate_khalti_payment(payment)
+                payment, payment_url = _initiate_khalti_payment(payment, return_url=return_url)
             except KhaltiError as exc:
                 logger.error('Khalti initiate failed for payment %s: %s', payment.id, exc)
                 payment.status = Payment.PaymentStatus.FAILED
@@ -398,7 +413,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         if payment_method == Payment.PaymentMethod.ESEWA:
             try:
-                payment, action_url, form_fields = _initiate_esewa_payment(payment)
+                payment, action_url, form_fields = _initiate_esewa_payment(payment, return_url=return_url)
             except EsewaError as exc:
                 logger.error('eSewa build_form_fields failed for payment %s: %s', payment.id, exc)
                 payment.status = Payment.PaymentStatus.FAILED
@@ -466,11 +481,23 @@ class PaymentViewSet(viewsets.ModelViewSet):
             status=Payment.PaymentStatus.PENDING,
         )
 
+        # If no Khalti checkout was ever started (e.g. staff-recorded
+        # payment), initiate one now so the member can actually pay.
         if not payment.transaction_id:
-            return Response(
-                {'detail': 'No Khalti transaction associated with this payment.'},
-                status=400,
-            )
+            return_url = request.data.get('return_url')
+            try:
+                payment, payment_url = _initiate_khalti_payment(
+                    payment, return_url=return_url,
+                )
+            except KhaltiError as exc:
+                logger.error('Khalti initiate failed for retry payment %s: %s', payment.id, exc)
+                return Response(
+                    {'detail': f'Could not start Khalti checkout: {exc}'},
+                    status=502,
+                )
+            data = PaymentSerializer(payment).data
+            data['payment_url'] = payment_url
+            return Response(data, status=200)
 
         try:
             result = khalti.lookup_payment(payment.transaction_id)

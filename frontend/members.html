@@ -587,8 +587,25 @@ buildSidebar('members');
       } else {
         pageRows.forEach(row => {
           const ms = row.current_membership;
-          const planCell = ms ? `${ms.plan_name} ${membershipBadge(ms.status)}` : '<span class="text-muted">No plan</span>';
+          const planCell = ms ? ms.plan_name : '<span class="text-muted">No plan</span>';
           const expiresCell = ms ? ms.end_date : '-';
+
+          // Determine member status based on membership
+          let memberStatusBadge;
+          if (ms && ms.status === 'ACTIVE') {
+            memberStatusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Active</span>';
+          } else if (ms && ms.status === 'EXPIRED') {
+            memberStatusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Expired</span>';
+          } else if (ms && ms.status === 'FROZEN') {
+            memberStatusBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">Frozen</span>';
+          } else if (ms && ms.status === 'PENDING') {
+            memberStatusBadge = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Pending</span>';
+          } else if (ms && ms.status === 'CANCELLED') {
+            memberStatusBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Cancelled</span>';
+          } else {
+            memberStatusBadge = statusBadge(row.is_active);
+          }
+
           tbody.innerHTML += `
             <tr>
               <td>
@@ -603,7 +620,7 @@ buildSidebar('members');
               <td>${planCell}</td>
               <td>${expiresCell}</td>
               <td>${row.fitness_goal_display || '-'}</td>
-              <td>${statusBadge(row.is_active)}</td>
+              <td>${memberStatusBadge}</td>
               <td>
                 <!-- Extra icon removed for a cleaner action button -->
                 <button class="manage-btn btn btn-sm" onclick="window.location.href='member-detail.html?id=${row.id}'">

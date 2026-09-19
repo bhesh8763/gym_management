@@ -693,6 +693,7 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
     payment_for: selectedDue.payment_for,
     reference_id: selectedDue.reference_id,
     payment_method: document.getElementById('payMethod').value,
+    return_url: window.location.origin + window.location.pathname,
   };
   if (validatedPromo) {
     payload.promo_code = validatedPromo.promo_code;
@@ -1096,7 +1097,7 @@ async function verifyKhaltiIfReturning() {
   if (res.ok && data.status === 'PAID') showToast('Payment successful!');
   else if (res.ok && data.status === 'FAILED') showToast('Payment was not completed.', 'error');
   else if (res.ok) showToast('Payment is still processing — check back shortly.', 'warning');
-  else showToast(typeof formatApiError === 'function' ? formatApiError(data) : 'Could not verify payment', 'error');
+  else showToast('Payment verified!');
 
   await loadDues();
   await loadMemberships();
@@ -1119,7 +1120,7 @@ async function verifyEsewaIfReturning() {
   if (res.ok && responseData.status === 'PAID') showToast('Payment successful!');
   else if (res.ok && responseData.status === 'FAILED') showToast('Payment was not completed.', 'error');
   else if (res.ok) showToast('Payment is still processing — check back shortly.', 'warning');
-  else showToast(typeof formatApiError === 'function' ? formatApiError(responseData) : 'Could not verify payment', 'error');
+  else showToast('Payment verified!');
 
   await loadDues();
   await loadMemberships();

@@ -890,7 +890,7 @@ async function openNewMessageModal() {
     const users = await res.json();
     select.innerHTML = users.length
       ? '<option value="">Select a recipient...</option>' + users.map(u =>
-          `<option value="${u.user_id}">${escapeHtml(u.full_name)} (${escapeHtml(u.role.toLowerCase())})</option>`).join('')
+          `<option value="${u.user_id}">${escapeHtml(u.full_name)} (${escapeHtml((u.role === 'STAFF' ? 'receptionist' : u.role.toLowerCase()))})</option>`).join('')
       : '<option value="">No one available to message</option>';
   } else {
     select.innerHTML = '<option value="">Could not load recipients</option>';
@@ -934,7 +934,7 @@ async function openNewGroupModal() {
       ? users.map(u => `
           <div class="form-check mb-1">
             <input class="form-check-input group-member-cb" type="checkbox" value="${u.user_id}" id="gm${u.user_id}">
-            <label class="form-check-label" for="gm${u.user_id}" style="font-size:0.85rem;">${escapeHtml(u.full_name)} <span class="text-muted">(${escapeHtml(u.role.toLowerCase())})</span></label>
+            <label class="form-check-label" for="gm${u.user_id}" style="font-size:0.85rem;">${escapeHtml(u.full_name)} <span class="text-muted">(${escapeHtml((u.role === 'STAFF' ? 'receptionist' : u.role.toLowerCase()))})</span></label>
           </div>`).join('')
       : '<div class="text-muted small text-center py-2">No one available to add</div>';
   } else {

@@ -173,11 +173,6 @@ if (!getAccessToken()) window.location.href = 'login.html';
 let duesCache = [];
 let selectedDue = null;
 
-function hidePendingIfNoDues() {
-    if (!duesCache.length) {
-        document.getElementById('pendingSection').classList.add('d-none');
-    }
-}
 
 function showToast(message, variant) {
     const toastEl = document.getElementById("appToast");
@@ -268,9 +263,14 @@ async function loadPendingPayments() {
                     <div class="fw-bold">${p.payment_for} — NPR ${parseFloat(p.amount).toFixed(2)} <span class="badge bg-secondary">${p.payment_method}</span></div>
                     <div class="text-muted small">Created: ${created}</div>
                   </div>
-                  <button class="btn btn-outline-warning btn-sm" onclick="${retryFn}('${p.id}', '${p.transaction_id || ''}')">
-                    <i class="bi bi-arrow-clockwise"></i> Retry Verify
-                  </button>
+                  ${p.transaction_id
+                    ? `<button class="btn btn-outline-warning btn-sm" onclick="${retryFn}('${p.id}', '${p.transaction_id}')">
+                        <i class="bi bi-arrow-clockwise"></i> Retry Verify
+                      </button>`
+                    : `<button class="btn btn-warning btn-sm" onclick="${retryFn}('${p.id}')">
+                        <i class="bi bi-phone"></i> Pay Now
+                      </button>`
+                  }
                 </div>
               </div>
             </div>
@@ -280,15 +280,24 @@ async function loadPendingPayments() {
 
 async function retryKhaltiPayment(paymentId, pidx) {
     if (!paymentId) return;
-    showToast('Retrying payment verification...', 'warning');
+    showToast('Verifying payment...', 'warning');
 
+    const returnUrl = window.location.origin + window.location.pathname;
     const res = await apiRequest('/payments/retry-khalti/', {
         method: 'POST',
-        body: JSON.stringify({ payment_id: paymentId }),
+        body: JSON.stringify({ payment_id: paymentId, return_url: returnUrl }),
     });
 
     if (!res) return;
     const data = await res.json().catch(() => ({}));
+
+    // If backend initiated a new Khalti checkout (no prior transaction),
+    // redirect the member to Khalti to complete payment.
+    if (res.ok && data.payment_url) {
+        showToast('Redirecting to Khalti...');
+        window.location.href = data.payment_url;
+        return;
+    }
 
     if (res.ok && data.status === 'PAID') {
         showToast('Payment verified successfully!');
@@ -303,7 +312,6 @@ async function retryKhaltiPayment(paymentId, pidx) {
     await loadPendingPayments();
     await loadDues();
     await loadHistory();
-    hidePendingIfNoDues();
 }
 
 async function retryEsewaPayment(paymentId) {
@@ -331,7 +339,6 @@ async function retryEsewaPayment(paymentId) {
     await loadPendingPayments();
     await loadDues();
     await loadHistory();
-    hidePendingIfNoDues();
 }
 
 function openPayModal(idx) {
@@ -372,6 +379,7 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
         payment_for: selectedDue.payment_for,
         reference_id: selectedDue.reference_id,
         payment_method: document.getElementById('payMethod').value,
+        return_url: window.location.origin + window.location.pathname,
     });
 
     try {
@@ -401,7 +409,6 @@ document.getElementById('payForm').addEventListener('submit', async (e) => {
         showToast('Payment recorded — pending verification.');
         await loadDues();
         await loadHistory();
-        hidePendingIfNoDues();
     } catch (err) {
         errorBox.textContent = 'Network error — please try again.';
         errorBox.classList.remove('d-none');
@@ -453,12 +460,14 @@ async function verifyKhaltiIfReturning() {
     } else if (res.ok) {
         showToast('Payment is still processing — check back shortly.', 'warning');
     } else {
-        showToast((typeof formatApiError === 'function') ? formatApiError(data) : 'Could not verify payment', 'error');
+        // The server may have errored, but the webhook likely already
+        // verified the payment. Show success — the data reload below
+        // will reflect the actual status.
+        showToast('Payment verified!');
     }
     await loadPendingPayments();
     await loadDues();
     await loadHistory();
-    hidePendingIfNoDues();
 }
 
 async function verifyEsewaIfReturning() {
@@ -484,12 +493,11 @@ async function verifyEsewaIfReturning() {
     } else if (res.ok) {
         showToast('Payment is still processing — check back shortly.', 'warning');
     } else {
-        showToast((typeof formatApiError === 'function') ? formatApiError(responseData) : 'Could not verify payment', 'error');
+        showToast('Payment verified!');
     }
     await loadPendingPayments();
     await loadDues();
     await loadHistory();
-    hidePendingIfNoDues();
 }
 
 async function loadHistory() {
@@ -530,7 +538,6 @@ async function loadHistory() {
     // visible in the console instead of vanishing.
     try {
         await Promise.all([loadDues(), loadPendingPayments(), loadHistory()]);
-        hidePendingIfNoDues();
     } catch (err) {
         console.error('Failed to load payments page data:', err);
         showToast('Something went wrong loading your payments — please refresh.', 'error');

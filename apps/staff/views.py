@@ -9,9 +9,9 @@ from .serializers import StaffProfileSerializer, StaffCreateSerializer, LeaveReq
 
 
 class StaffProfileViewSet(viewsets.ModelViewSet):
-    """Owner manages staff profiles."""
+    """Owner manages staff profiles; staff (receptionists) can list/view trainers."""
     serializer_class = StaffProfileSerializer
-    permission_classes = [IsOwner]
+    permission_classes = [IsOwnerOrStaff]
     queryset = StaffProfile.objects.select_related('user').all()
 
     def get_serializer_class(self):
@@ -116,15 +116,8 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAnyStaffRole]
 
     def get_queryset(self):
-        qs = LeaveRequest.objects.select_related('requester', 'reviewed_by').all()
-        # Non-owner/staff only see their own requests
-        if self.request.user.role not in ('OWNER', 'STAFF'):
-            qs = qs.filter(requester=self.request.user)
-        return qs
-
-    def list(self, request, *args, **kwargs):
-        # Auto-reject expired pending leaves on list view only
         from django.utils import timezone as _tz
+        # Auto-reject expired pending leaves before any query
         _today = _tz.now().date()
         LeaveRequest.objects.filter(
             status=LeaveRequest.LeaveStatus.PENDING,
@@ -133,6 +126,25 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
             status=LeaveRequest.LeaveStatus.REJECTED,
             review_note='Auto-rejected: leave end date passed without review.',
         )
+
+        qs = LeaveRequest.objects.select_related('requester', 'reviewed_by').all()
+        if self.request.user.role == 'OWNER':
+            pass  # Owners see all
+        elif self.request.user.role == 'STAFF':
+            # Receptionists only see leave requests from trainers
+            qs = qs.filter(requester__role='TRAINER')
+        else:
+            # Trainers only see their own requests
+            qs = qs.filter(requester=self.request.user)
+
+        # Support ?status=PENDING etc. (no django-filter installed)
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+
+        return qs
+
+    def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):

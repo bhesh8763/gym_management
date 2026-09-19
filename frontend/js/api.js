@@ -315,7 +315,8 @@ function buildSidebar(activePage) {
     ${link('messages.html', 'bi-chat-dots', 'Messages', 'OWNER,STAFF,TRAINER', a('messages'), '<span class="msg-sidebar-badge" style="display:none;"></span>')}
 
     ${section('Staff Management')}
-    ${link('staff.html', 'bi-people', 'Staff', 'OWNER,STAFF', a('staff'))}
+    ${link('staff.html', 'bi-people', 'Staff', 'OWNER', a('staff'))}
+    ${link('trainers.html', 'bi-person-workspace', 'Trainers', 'STAFF', a('trainers'))}
 
     ${section('Workout & Diet', 'OWNER,STAFF,TRAINER')}
     ${link('workouts.html', 'bi-heart-pulse', 'Workouts', 'OWNER,STAFF,TRAINER', a('workouts'))}
@@ -697,7 +698,8 @@ function initProfileHeader() {
   const roleEl = document.getElementById('profileRole');
   const avatarEl = document.getElementById('profileAvatar');
   if (nameEl) nameEl.textContent = userName;
-  if (roleEl) roleEl.textContent = userRole;
+  const roleDisplayMap = { STAFF: 'RECEPTIONIST' };
+  if (roleEl) roleEl.textContent = roleDisplayMap[userRole] || userRole;
   // Hide search bar for MEMBER role
   const searchBar = document.querySelector('.topbar-search');
   if (searchBar && userRole === 'MEMBER') {
@@ -1117,14 +1119,17 @@ async function loadTopbarNotifications() {
     }
   }
 
-  const markAllBtn = document.getElementById('notifMarkAllBtn');
-  if (markAllBtn) markAllBtn.disabled = unreadCount === 0;
-
   // Fetch only recent unread items for the dropdown (max 6)
   const res = await apiRequest('/notifications/?is_read=false');
   if (!res || !res.ok) return;
   const data = await res.json();
   const items = data.results || data;
+
+  // Use actual items count as fallback when unread-count endpoint fails
+  const effectiveCount = unreadCount || items.length;
+
+  const markAllBtn = document.getElementById('notifMarkAllBtn');
+  if (markAllBtn) markAllBtn.disabled = effectiveCount === 0;
 
   const listEl = document.getElementById('notifList');
   if (!listEl) return;
