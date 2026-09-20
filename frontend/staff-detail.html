@@ -268,16 +268,16 @@ var profileData = null;
 var currentTab = 'personal';
 
 var editValidation = {
-  editEmail: [required('Email'), email()],
-  editPhone: [phone()],
-  editDob: [notFuture('Date of birth')],
-  editNationality: [maxLength(50, 'Nationality'), noHtml('Nationality')],
-  editNotes: [maxLength(500, 'Notes'), noHtml('Notes')],
-  editSalary: [min(0, 'Salary')],
-  editJoinedDate: [notPast('Join date')],
+  editEmail: [v => validate.required(v, 'Email'), v => validate.email(v)],
+  editPhone: [v => validate.phone(v)],
+  editDob: [v => validate.notFuture(v, 'Date of birth')],
+  editNationality: [v => validate.maxLength(v, 50, 'Nationality'), v => validate.noHtml(v, 'Nationality')],
+  editNotes: [v => validate.maxLength(v, 500, 'Notes'), v => validate.noHtml(v, 'Notes')],
+  editSalary: [v => validate.min(v, 0, 'Salary')],
+  editJoinedDate: [v => validate.notPast(v, 'Join date')],
 };
 var resetValidation = {
-  resetPasswordField: [required('Password'), password()],
+  resetPasswordField: [v => validate.required(v, 'Password'), v => validate.password(v)],
 };
 
 function showToast(message, variant) {
