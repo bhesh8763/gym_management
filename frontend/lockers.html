@@ -269,7 +269,7 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Edit Locker</h5>
+            <h5 class="modal-title">Manage Locker</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <form id="lockerEditForm">
@@ -299,6 +299,7 @@
               <div id="lockerEditError" class="alert alert-danger d-none"></div>
             </div>
             <div class="modal-footer">
+              <button type="button" class="btn btn-outline-danger me-auto" id="lockerDeleteBtn" onclick="deleteLockerFromModal()"><i class="bi bi-trash"></i> Delete</button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
               <button type="submit" class="btn btn-primary" id="lockerEditSubmitBtn">Save Changes</button>
             </div>
@@ -539,8 +540,7 @@ buildSidebar('lockers');
           <td data-label="ID">${row.id}</td><td data-label="Number">${row.locker_number}</td><td data-label="Location">${row.location}</td>
           <td data-label="Status">${lockerStatusBadge(row.status)}</td><td data-label="Fee">${row.monthly_fee}</td>
           <td>
-            <button class="btn btn-sm btn-outline-primary" onclick="openLockerEdit(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteLocker(${row.id})" title="Delete"><i class="bi bi-trash"></i></button>
+            <button class="manage-btn btn btn-sm" onclick="openLockerEdit(${row.id})">Manage</button>
           </td>
         </tr>`).join('');
     }
@@ -622,15 +622,25 @@ buildSidebar('lockers');
     }
   });
 
-  async function deleteLocker(id) {
+  async function deleteLockerFromModal() {
+    const id = document.getElementById('editLockerId').value;
+    if (!id) return;
     if (!(await confirmAction('Delete this locker? This cannot be undone.', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
+    const errorBox = document.getElementById('lockerEditError');
+    errorBox.classList.add('d-none');
     const res = await apiRequest(`/lockers/lockers/${id}/`, { method: 'DELETE' });
     if (res && (res.ok || res.status === 204)) {
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('lockerEditModal')).hide();
       loadLockers();
       loadAssignments();
       showToast('Locker deleted.');
     }
-    else if (res) alert('Could not delete this locker. It may have assignment history.');
+    else if (res) {
+      let msg = 'Could not delete this locker. It may have assignment history.';
+      try { msg = formatApiError(await res.json()); } catch (e) {}
+      errorBox.textContent = msg;
+      errorBox.classList.remove('d-none');
+    }
   }
 
   document.getElementById('lockerAddModal').addEventListener('hidden.bs.modal', () => {
