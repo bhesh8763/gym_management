@@ -1267,7 +1267,7 @@
           toggleFreezeForm(true);
           return;
         } else if (newStatus === 'CANCELLED') {
-          if (!(await confirmAction('Cancel this membership? This cannot be undone.', { confirmText: 'Cancel', variant: 'danger', icon: 'bi-x-circle' }))) return;
+          if (!(await confirmAction('Cancel this membership? This cannot be undone.', { confirmText: 'Cancel Membership', cancelText: 'Keep Membership', variant: 'danger', icon: 'bi-x-circle' }))) return;
           statusRes = await apiRequest(`/memberships/${id}/`, { method: 'DELETE' });
         } else if (newStatus === 'ACTIVE' && oldStatus === 'FROZEN') {
           statusRes = await apiRequest(`/memberships/${id}/unfreeze/`, { method: 'POST', body: JSON.stringify({}) });
