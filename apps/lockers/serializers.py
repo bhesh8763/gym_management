@@ -11,6 +11,14 @@ class LockerSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def validate_status(self, value):
+        if value == Locker.LockerStatus.OCCUPIED and self.instance and self.instance.status != Locker.LockerStatus.OCCUPIED:
+            raise serializers.ValidationError(
+                'Cannot set status to OCCUPIED directly. '
+                'Create a locker assignment instead.'
+            )
+        return value
+
 
 class LockerAssignmentSerializer(serializers.ModelSerializer):
     member_name = serializers.CharField(source='member.get_full_name', read_only=True)
