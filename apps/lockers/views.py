@@ -1,10 +1,13 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from apps.accounts.models import User
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrMemberReadOnly
 from .models import Locker, LockerAssignment
 from .serializers import LockerSerializer, LockerAssignmentSerializer
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 User = get_user_model()
 
@@ -20,6 +23,97 @@ class LockerViewSet(viewsets.ModelViewSet):
         if status_:
             qs = qs.filter(status=status_)
         return qs
+
+    @action(detail=False, methods=['post'], url_path='bulk-create')
+    def bulk_create(self, request):
+        prefix = (request.data.get('prefix') or '').strip()
+        start = request.data.get('start')
+        end = request.data.get('end')
+
+        # --- Validate range fields ---
+        errors = {}
+        try:
+            start = int(start)
+        except (TypeError, ValueError):
+            errors['start'] = ['Start must be an integer.']
+        try:
+            end = int(end)
+        except (TypeError, ValueError):
+            errors['end'] = ['End must be an integer.']
+        if errors:
+            raise ValidationError(errors)
+
+        if start < 0:
+            raise ValidationError({'start': ['Start must be >= 0.']})
+        if end < start:
+            raise ValidationError({'end': ['End must be >= start.']})
+        count = end - start + 1
+        if count > 200:
+            raise ValidationError({'end': ['Range cannot exceed 200 lockers.']})
+
+        # --- Validate generated number fits max_length ---
+        pad_width = max(len(str(end)), 2)
+        max_number_len = Locker.locker_number.field.max_length  # 20
+        if len(prefix) + pad_width > max_number_len:
+            raise ValidationError({
+                'prefix': [f'Prefix + number must fit in {max_number_len} characters. '
+                           f'Current: {len(prefix)} + {pad_width} = {len(prefix) + pad_width}.']
+            })
+
+        # --- Validate shared fields via serializer ---
+        # Use a placeholder locker_number to satisfy the serializer's required
+        # field + uniqueness check without colliding with real numbers.
+        data = request.data.copy()
+        data.setdefault('locker_number', '__bulk_placeholder__')
+        ser = LockerSerializer(data=data)
+        ser.is_valid(raise_exception=True)
+        shared_fields = {
+            k: v for k, v in ser.validated_data.items()
+            if k != 'locker_number'
+        }
+
+        with transaction.atomic():
+            # Gather all generated numbers
+            numbers = [
+                f'{prefix}{str(i).zfill(pad_width)}' for i in range(start, end + 1)
+            ]
+            # Find existing ones to skip
+            existing = set(
+                Locker.objects.filter(locker_number__in=numbers)
+                .values_list('locker_number', flat=True)
+            )
+            to_create = [
+                Locker(locker_number=num, **shared_fields)
+                for num in numbers if num not in existing
+            ]
+            Locker.objects.bulk_create(to_create)
+            skipped = [num for num in numbers if num in existing]
+
+        created_count = len(to_create)
+        return Response(
+            {
+                'created': created_count,
+                'skipped': skipped,
+                'total_requested': count,
+            },
+            status=status.HTTP_201_CREATED if created_count else status.HTTP_200_OK,
+        )
+
+
+def _sync_locker_status(locker):
+    """Set locker to OCCUPIED if it has any active assignment, else AVAILABLE.
+
+    Does NOT override non-OCCUPIED/AVAILABLE statuses (MAINTENANCE, RESERVED).
+    """
+    if locker.status not in (Locker.LockerStatus.OCCUPIED, Locker.LockerStatus.AVAILABLE):
+        return
+    has_active = LockerAssignment.objects.filter(
+        locker=locker, is_active=True,
+    ).exists()
+    new_status = Locker.LockerStatus.OCCUPIED if has_active else Locker.LockerStatus.AVAILABLE
+    if locker.status != new_status:
+        locker.status = new_status
+        locker.save(update_fields=['status'])
 
 
 class LockerAssignmentViewSet(viewsets.ModelViewSet):
@@ -46,9 +140,9 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
 
     def _release_expired_assignments(self):
         """
-        Lazily deactivate any active assignment whose end_date has passed,
-        and free the locker back to AVAILABLE. Runs on every list/retrieve
-        so expired rentals don't sit as OCCUPIED indefinitely.
+        Lazily deactivate any active assignment whose end_date has passed.
+        Runs on every list/retrieve so expired rentals don't sit as OCCUPIED
+        indefinitely.
         """
         from django.utils import timezone
         today = timezone.now().date()
@@ -58,12 +152,14 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
         for assignment in expired:
             assignment.is_active = False
             assignment.save(update_fields=['is_active'])
-            assignment.locker.status = Locker.LockerStatus.AVAILABLE
-            assignment.locker.save(update_fields=['status'])
+            _sync_locker_status(assignment.locker)
 
     def perform_create(self, serializer):
         locker = serializer.validated_data.get('locker')
         member = serializer.validated_data.get('member')
+
+        _sync_locker_status(locker)
+        locker.refresh_from_db()
 
         if locker.status != Locker.LockerStatus.AVAILABLE:
             raise ValidationError(
@@ -76,15 +172,23 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
             )
 
         assignment = serializer.save(assigned_by=self.request.user)
-        # Auto-flip the locker's status to OCCUPIED when assigned
-        assignment.locker.status = Locker.LockerStatus.OCCUPIED
-        assignment.locker.save(update_fields=['status'])
+        _sync_locker_status(assignment.locker)
 
     def perform_update(self, serializer):
-        was_active = serializer.instance.is_active
-        assignment = serializer.save()
-        # If the assignment just got deactivated (e.g. member gave up the
-        # locker), free the locker back up so it can be assigned again.
-        if was_active and not assignment.is_active:
-            assignment.locker.status = Locker.LockerStatus.AVAILABLE
-            assignment.locker.save(update_fields=['status'])
+        with transaction.atomic():
+            old_locker = serializer.instance.locker
+            was_active = serializer.instance.is_active
+            assignment = serializer.save()
+            new_locker = assignment.locker
+
+            if old_locker.pk != new_locker.pk:
+                _sync_locker_status(old_locker)
+                _sync_locker_status(new_locker)
+            elif was_active != assignment.is_active:
+                _sync_locker_status(new_locker)
+
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            locker = instance.locker
+            instance.delete()
+            _sync_locker_status(locker)

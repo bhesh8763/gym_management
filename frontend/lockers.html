@@ -159,10 +159,42 @@
           </div>
           <form id="lockerForm">
             <div class="modal-body">
-              <div class="mb-2">
-                <label class="form-label">Locker Number</label>
-                <input type="text" id="lockerNumber" class="form-control" required>
+              <!-- Single / Bulk toggle -->
+              <div class="btn-group w-100 mb-3" role="group">
+                <input type="radio" class="btn-check" name="lockerMode" id="lockerModeSingle" value="single" checked>
+                <label class="btn btn-outline-primary" for="lockerModeSingle">Single</label>
+                <input type="radio" class="btn-check" name="lockerMode" id="lockerModeBulk" value="bulk">
+                <label class="btn btn-outline-primary" for="lockerModeBulk">Bulk</label>
               </div>
+
+              <!-- Single mode fields -->
+              <div id="singleFields">
+                <div class="mb-2">
+                  <label class="form-label">Locker Number</label>
+                  <input type="text" id="lockerNumber" class="form-control" required>
+                </div>
+              </div>
+
+              <!-- Bulk mode fields -->
+              <div id="bulkFields" style="display:none;">
+                <div class="row g-2 mb-2">
+                  <div class="col">
+                    <label class="form-label">Prefix <span class="text-muted small">(optional)</span></label>
+                    <input type="text" id="bulkPrefix" class="form-control" maxlength="18" placeholder="e.g. A-">
+                  </div>
+                  <div class="col">
+                    <label class="form-label">From</label>
+                    <input type="number" id="bulkFrom" class="form-control" min="0" value="1" required>
+                  </div>
+                  <div class="col">
+                    <label class="form-label">To</label>
+                    <input type="number" id="bulkTo" class="form-control" min="0" value="10" required>
+                  </div>
+                </div>
+                <div id="bulkPreview" class="small text-muted mb-2" style="min-height:1.2em;"></div>
+              </div>
+
+              <!-- Shared fields -->
               <div class="mb-2">
                 <label class="form-label">Location</label>
                 <input type="text" id="location" class="form-control" required>
@@ -419,6 +451,30 @@ buildSidebar('lockers');
     return '';
   }
 
+  // --- Paginated fetch helper -------------------------------------------
+  async function fetchAllPaginated(path) {
+    let all = [];
+    while (path) {
+      const res = await apiRequest(path);
+      if (!res || !res.ok) {
+        const status = res ? res.status : 'network error';
+        throw new Error(`fetchAllPaginated failed on ${path} (HTTP ${status})`);
+      }
+      const data = await res.json();
+      const results = data.results || data;
+      all = all.concat(results);
+      if (data.next) {
+        if (!data.next.startsWith(API_BASE)) {
+          throw new Error(`Unexpected next URL (does not start with ${API_BASE}): ${data.next}`);
+        }
+        path = data.next.replace(API_BASE, '');
+      } else {
+        path = null;
+      }
+    }
+    return all;
+  }
+
   // --- Lockers: load + stats ----------------------------------------------
   let lockerCache = [];
   let lockerFilteredCache = [];
@@ -431,15 +487,14 @@ buildSidebar('lockers');
   }
 
   async function loadLockers() {
-    const res = await apiRequest('/lockers/lockers/');
-    if (!res) return;
-    if (!res.ok) {
+    try {
+      lockerCache = await fetchAllPaginated('/lockers/lockers/');
+    } catch (err) {
+      console.error(err);
       document.getElementById('lockerTableBody').innerHTML =
         `<tr><td colspan="6" class="text-center text-danger py-4">Failed to load lockers.</td></tr>`;
       return;
     }
-    const data = await res.json();
-    lockerCache = data.results || [];
 
     const total = lockerCache.length;
     const occupied = lockerCache.filter(l => l.status === 'OCCUPIED').length;
@@ -580,6 +635,7 @@ buildSidebar('lockers');
 
   document.getElementById('lockerAddModal').addEventListener('hidden.bs.modal', () => {
     document.getElementById('lockerError').classList.add('d-none');
+    resetLockerModal();
   });
 
   document.getElementById('assignLockerModal').addEventListener('hidden.bs.modal', () => {
@@ -588,42 +644,113 @@ buildSidebar('lockers');
 
   document.getElementById('lockerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!validateForm(document.getElementById('lockerForm'), {
-      lockerNumber: [v => validate.required(v, 'Locker number'), v => validate.maxLength(v, 20, 'Locker number'), v => validate.noHtml(v, 'Locker number')],
-      location:     [v => validate.required(v, 'Location'), v => validate.maxLength(v, 100, 'Location'), v => validate.noHtml(v, 'Location')],
-      monthlyFee:   [v => validate.required(v, 'Monthly fee'), v => validate.min(v, 0, 'Monthly fee')],
-    })) return;
-    const btn = document.getElementById('lockerAddSubmitBtn');
-    if (btn) btn.disabled = true;
-    try {
-      const errorBox = document.getElementById('lockerError');
-      errorBox.classList.add('d-none');
-      const payload = sanitizePayload({
-        locker_number: document.getElementById('lockerNumber').value,
-        location: document.getElementById('location').value,
-        monthly_fee: document.getElementById('monthlyFee').value,
-      });
-      const res = await apiRequest('/lockers/lockers/', { method: 'POST', body: JSON.stringify(payload) });
-      if (!res) {
-        alert('Add request failed to send. Check your connection or session.');
+    const isBulk = document.getElementById('lockerModeBulk').checked;
+    const errorBox = document.getElementById('lockerError');
+    errorBox.classList.add('d-none');
+
+    if (isBulk) {
+      // --- Bulk submit ---
+      if (!validateForm(document.getElementById('lockerForm'), {
+        bulkFrom:     [v => validate.required(v, 'From'), v => validate.numeric(v, 'From')],
+        bulkTo:       [v => validate.required(v, 'To'), v => validate.numeric(v, 'To')],
+        location:     [v => validate.required(v, 'Location'), v => validate.maxLength(v, 100, 'Location'), v => validate.noHtml(v, 'Location')],
+        monthlyFee:   [v => validate.required(v, 'Monthly fee'), v => validate.min(v, 0, 'Monthly fee')],
+      })) return;
+
+      const fromVal = parseInt(document.getElementById('bulkFrom').value, 10);
+      const toVal = parseInt(document.getElementById('bulkTo').value, 10);
+      if (isNaN(fromVal) || isNaN(toVal)) {
+        errorBox.textContent = 'From and To must be valid numbers.';
+        errorBox.classList.remove('d-none');
         return;
       }
-      if (res.ok) {
-        document.getElementById('lockerForm').reset();
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('lockerAddModal')).hide();
-        loadLockers();
-        showToast('Locker added.');
-      }
-      else {
-        const err = await res.json();
-        errorBox.textContent = formatApiError(err);
+      if (toVal < fromVal) {
+        errorBox.textContent = 'To must be greater than or equal to From.';
         errorBox.classList.remove('d-none');
+        return;
       }
-    } catch (err) {
-      console.error('Add locker failed:', err);
-      alert('Something went wrong adding the locker: ' + err.message);
-    } finally {
-      if (btn) btn.disabled = false;
+      if (toVal - fromVal + 1 > 200) {
+        errorBox.textContent = 'Cannot create more than 200 lockers at once.';
+        errorBox.classList.remove('d-none');
+        return;
+      }
+
+      const btn = document.getElementById('lockerAddSubmitBtn');
+      if (btn) btn.disabled = true;
+      try {
+        const payload = sanitizePayload({
+          prefix: document.getElementById('bulkPrefix').value,
+          start: fromVal,
+          end: toVal,
+          location: document.getElementById('location').value,
+          monthly_fee: document.getElementById('monthlyFee').value,
+        });
+        const res = await apiRequest('/lockers/lockers/bulk-create/', { method: 'POST', body: JSON.stringify(payload) });
+        if (!res) {
+          alert('Request failed to send. Check your connection or session.');
+          return;
+        }
+        if (res.ok || res.status === 201) {
+          const data = await res.json();
+          document.getElementById('lockerForm').reset();
+          document.getElementById('lockerModeSingle').checked = true;
+          toggleLockerMode('single');
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('lockerAddModal')).hide();
+          loadLockers();
+          const parts = [];
+          if (data.created) parts.push(`Created ${data.created} locker${data.created !== 1 ? 's' : ''}`);
+          if (data.skipped && data.skipped.length) {
+            parts.push(`Skipped ${data.skipped.length} (already exist): ${data.skipped.join(', ')}`);
+          }
+          showToast(parts.join('. ') + '.', data.created ? 'success' : 'error');
+        } else {
+          const err = await res.json();
+          errorBox.textContent = formatApiError(err);
+          errorBox.classList.remove('d-none');
+        }
+      } catch (err) {
+        console.error('Bulk create lockers failed:', err);
+        alert('Something went wrong: ' + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    } else {
+      // --- Single submit (existing behavior) ---
+      if (!validateForm(document.getElementById('lockerForm'), {
+        lockerNumber: [v => validate.required(v, 'Locker number'), v => validate.maxLength(v, 20, 'Locker number'), v => validate.noHtml(v, 'Locker number')],
+        location:     [v => validate.required(v, 'Location'), v => validate.maxLength(v, 100, 'Location'), v => validate.noHtml(v, 'Location')],
+        monthlyFee:   [v => validate.required(v, 'Monthly fee'), v => validate.min(v, 0, 'Monthly fee')],
+      })) return;
+      const btn = document.getElementById('lockerAddSubmitBtn');
+      if (btn) btn.disabled = true;
+      try {
+        const payload = sanitizePayload({
+          locker_number: document.getElementById('lockerNumber').value,
+          location: document.getElementById('location').value,
+          monthly_fee: document.getElementById('monthlyFee').value,
+        });
+        const res = await apiRequest('/lockers/lockers/', { method: 'POST', body: JSON.stringify(payload) });
+        if (!res) {
+          alert('Add request failed to send. Check your connection or session.');
+          return;
+        }
+        if (res.ok) {
+          document.getElementById('lockerForm').reset();
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('lockerAddModal')).hide();
+          loadLockers();
+          showToast('Locker added.');
+        }
+        else {
+          const err = await res.json();
+          errorBox.textContent = formatApiError(err);
+          errorBox.classList.remove('d-none');
+        }
+      } catch (err) {
+        console.error('Add locker failed:', err);
+        alert('Something went wrong adding the locker: ' + err.message);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
   });
 
@@ -685,15 +812,14 @@ buildSidebar('lockers');
   let currentAssignPage = 1;
 
   async function loadAssignments() {
-    const res = await apiRequest('/lockers/assignments/');
-    if (!res) return;
-    if (!res.ok) {
+    try {
+      assignmentCache = await fetchAllPaginated('/lockers/assignments/');
+    } catch (err) {
+      console.error(err);
       document.getElementById('assignTableBody').innerHTML =
         `<tr><td colspan="7" class="text-center text-danger py-4">Failed to load assignments.</td></tr>`;
       return;
     }
-    const data = await res.json();
-    assignmentCache = data.results || [];
     renderAssignmentPage(1);
   }
 
@@ -823,6 +949,65 @@ buildSidebar('lockers');
       if (btn) btn.disabled = false;
     }
   });
+
+  // --- Locker modal: Single / Bulk toggle + preview ----------------------
+  function toggleLockerMode(mode) {
+    const isBulk = mode === 'bulk';
+    document.getElementById('singleFields').style.display = isBulk ? 'none' : '';
+    document.getElementById('bulkFields').style.display = isBulk ? '' : 'none';
+    document.getElementById('lockerNumber').required = !isBulk;
+    if (isBulk) updateBulkPreview();
+    else document.getElementById('lockerAddSubmitBtn').disabled = false;
+  }
+
+  document.getElementById('lockerModeSingle').addEventListener('change', () => toggleLockerMode('single'));
+  document.getElementById('lockerModeBulk').addEventListener('change', () => toggleLockerMode('bulk'));
+
+  function updateBulkPreview() {
+    const prefix = document.getElementById('bulkPrefix').value;
+    const fromVal = parseInt(document.getElementById('bulkFrom').value, 10);
+    const toVal = parseInt(document.getElementById('bulkTo').value, 10);
+    const el = document.getElementById('bulkPreview');
+    const errorBox = document.getElementById('lockerError');
+    const submitBtn = document.getElementById('lockerAddSubmitBtn');
+    if (isNaN(fromVal) || isNaN(toVal) || fromVal < 0) {
+      el.innerHTML = '';
+      submitBtn.disabled = false;
+      return;
+    }
+    if (toVal < fromVal) {
+      el.innerHTML = '<span class="text-danger">To must be greater than or equal to From.</span>';
+      submitBtn.disabled = true;
+      return;
+    }
+    const count = toVal - fromVal + 1;
+    if (count > 200) {
+      el.innerHTML = '<span class="text-danger">Cannot create more than 200 lockers at once.</span>';
+      submitBtn.disabled = true;
+      return;
+    }
+    const padWidth = Math.max(String(toVal).length, 2);
+    const first = prefix + String(fromVal).padStart(padWidth, '0');
+    const last = prefix + String(toVal).padStart(padWidth, '0');
+    el.innerHTML = count === 1
+      ? `Will create <strong>${first}</strong>`
+      : `Will create <strong>${first}</strong> … <strong>${last}</strong> (${count} lockers)`;
+    submitBtn.disabled = false;
+  }
+
+  document.getElementById('bulkPrefix').addEventListener('input', updateBulkPreview);
+  document.getElementById('bulkFrom').addEventListener('input', updateBulkPreview);
+  document.getElementById('bulkTo').addEventListener('input', updateBulkPreview);
+
+  function resetLockerModal() {
+    document.getElementById('lockerModeSingle').checked = true;
+    toggleLockerMode('single');
+    document.getElementById('bulkPrefix').value = '';
+    document.getElementById('bulkFrom').value = '1';
+    document.getElementById('bulkTo').value = '10';
+    document.getElementById('bulkPreview').innerHTML = '';
+    document.getElementById('lockerAddSubmitBtn').disabled = false;
+  }
 
   loadLockers();
   loadAssignments();
