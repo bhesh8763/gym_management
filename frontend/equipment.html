@@ -236,6 +236,7 @@
         <option value="OUT_OF_SERVICE">Out of Service</option>
       </select>
       <button class="btn btn-sm btn-primary" id="equipBulkApplyBtn" onclick="applyBulkCondition()">Set Condition</button>
+      <button class="btn btn-sm btn-danger" id="equipBulkDeleteBtn" onclick="bulkDeleteEquipment()"><i class="bi bi-trash"></i> Delete</button>
       <button class="btn btn-sm btn-outline-secondary" onclick="clearEquipSelection()">Cancel</button>
     </div>
 
@@ -677,6 +678,46 @@ buildSidebar('equipment');
     }
   }
 
+  async function bulkDeleteEquipment() {
+    const ids = Array.from(selectedEquipIds);
+    if (ids.length === 0) return;
+    if (!(await confirmAction(`Delete ${ids.length} selected equipment item(s)? This cannot be undone.`, { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
+
+    const btn = document.getElementById("equipBulkDeleteBtn");
+    if (btn) btn.disabled = true;
+    try {
+      const failed = [];
+      let deleted = 0;
+      for (const id of ids) {
+        try {
+          const res = await apiRequest(`/equipment/equipment/${id}/`, { method: "DELETE" });
+          if (res && (res.ok || res.status === 204)) {
+            deleted++;
+            selectedEquipIds.delete(id);
+            if (maintEquipFilterId === id) clearEquipMaintFilter();
+          } else {
+            const row = equipmentCache.find(e => e.id === id);
+            failed.push(row ? `${row.name} (#${id})` : `#${id}`);
+          }
+        } catch (err) {
+          console.error(`Delete failed for equipment #${id}:`, err);
+          const row = equipmentCache.find(e => e.id === id);
+          failed.push(row ? `${row.name} (#${id})` : `#${id}`);
+        }
+      }
+      await loadEquipment();
+      await loadMaintenance();
+      if (failed.length) {
+        showToast(`Deleted ${deleted} of ${ids.length} item(s); ${failed.length} failed.`, "error");
+        alert(`Could not delete: ${failed.join(', ')}. These items may be referenced by other records.`);
+      } else {
+        showToast(`Deleted ${ids.length} item(s).`);
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   // --- Maintenance history filter (triggered from an equipment row) -------
   function filterMaintenanceByEquipment(id, name) {
     maintEquipFilterId = id;
@@ -807,7 +848,6 @@ buildSidebar('equipment');
           <td>
             <button class="btn btn-sm btn-outline-secondary" onclick="filterMaintenanceByEquipment(${row.id}, '${safeName}')" title="View maintenance history"><i class="bi bi-clock-history"></i></button>
             <button class="btn btn-sm btn-outline-primary" onclick="openEquipEdit(${row.id})" title="Edit"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteEquipment(${row.id})" title="Delete"><i class="bi bi-trash"></i></button>
           </td>
         </tr>`;
   }
@@ -885,19 +925,6 @@ buildSidebar('equipment');
       if (btn) btn.disabled = false;
     }
   });
-
-  async function deleteEquipment(id) {
-    if (!(await confirmAction('Delete this equipment item? This cannot be undone.', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
-    const res = await apiRequest(`/equipment/equipment/${id}/`, { method: "DELETE" });
-    if (res && (res.ok || res.status === 204)) {
-      if (maintEquipFilterId === id) clearEquipMaintFilter();
-      loadEquipment();
-      loadMaintenance();
-      showToast("Equipment deleted.");
-    } else if (res) {
-      alert("Could not delete this item. It may be referenced by other records.");
-    }
-  }
 
   document.getElementById("equipAddModal").addEventListener("hidden.bs.modal", () => {
     document.getElementById("equipError").classList.add("d-none");
