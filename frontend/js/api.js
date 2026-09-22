@@ -1,5 +1,13 @@
 const API_BASE = window.FITCORE_API_BASE || 'http://localhost:8000/api';
 
+// Global fallback for __isPageAlive — always returns true on direct page loads
+// (no SPA navigation has occurred, so the page is always "alive").
+// When a page is loaded via the SPA router, runInlineScript injects a scoped
+// version that checks the navToken instead of this fallback.
+if (typeof window.__isPageAlive === 'undefined') {
+  window.__isPageAlive = function() { return true; };
+}
+
 // ── Skeleton loading helpers ──────────────────────────────────────────────
 // Reusable functions that return HTML strings for skeleton placeholders.
 // Call these to replace spinner-border / "Loading..." text while data loads.
@@ -462,9 +470,35 @@ syncSidebarCollapsedState();
      const names = new Set();
      let m;
      while ((m = fnNamePattern.exec(code))) names.add(m[1]);
+
+     // Expose each page function to window so onclick handlers can call them.
+     // Each exposure is wrapped in a __isPageAlive() guard so stale onclick
+     // handlers silently no-op after navigation instead of crashing on missing DOM.
      const exposures = Array.from(names).map(n => `window.${n} = ${n};`).join('\n');
 
-     const wrapped = `(function(){\ntry {\n${code}\n${exposures}\n} catch (err) {\nconsole.error('SPA page script threw — code after the error point did not run:', err);\n}\n})();`;
+     // Capture the navToken at the moment this script runs. Any async function
+     // that checks __isPageAlive() after an await will bail out silently if the
+     // user has already navigated away, preventing stale-DOM writes.
+     const token = navToken;
+     const contentEl = getContentEl(document);
+     if (contentEl) contentEl.dataset.spaToken = token;
+
+     const wrapped = `(function(){
+const __pageToken = ${token};
+function __isPageAlive() {
+  const el = document.getElementById('page-content');
+  return el && el.dataset.spaToken == __pageToken;
+}
+// Update the global fallback so async callbacks that reference window.__isPageAlive
+// (or just __isPageAlive via scope chain on direct load) use this page's token.
+window.__isPageAlive = __isPageAlive;
+try {
+${code}
+${exposures}
+} catch (err) {
+console.error('SPA page script threw — code after the error point did not run:', err);
+}
+})();`;
 
      const s = document.createElement('script');
      s.textContent = wrapped;
@@ -522,6 +556,7 @@ syncSidebarCollapsedState();
     // Replace #page-content entirely (ensures scripts + modals load correctly)
     // The transition:fix on sidebar CSS prevents visual bounce.
     contentEl.innerHTML = newContentEl.innerHTML;
+    contentEl.dataset.spaToken = myToken;
     if (doc.title) document.title = doc.title;
 
     // Restore the preserved sidebar (with its scroll position and state)

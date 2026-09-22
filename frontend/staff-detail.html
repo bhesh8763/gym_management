@@ -301,6 +301,7 @@ async function loadProfile() {
       '<div style="text-align:center;color:#dc2626;"><i class="bi bi-exclamation-circle" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>Could not load staff profile.</div>';
     return;
   }
+  if (!__isPageAlive()) return;
   var d = await res.json();
   profileData = d;
   document.getElementById('profileLoading').style.display = 'none';
@@ -513,7 +514,7 @@ function openResetPassword(id, name) {
   new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
 }
 
-document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', function() {
+document.getElementById('resetPasswordModal')?.addEventListener('hidden.bs.modal', function() {
   var field = document.getElementById('resetPasswordField');
   field.value = '';
   field.type = 'password';
@@ -525,7 +526,7 @@ document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal'
   document.getElementById('resetPasswordError').classList.add('d-none');
 });
 
-document.getElementById('resetPasswordForm').addEventListener('submit', async function(e) {
+document.getElementById('resetPasswordForm')?.addEventListener('submit', async function(e) {
   e.preventDefault();
   if (!validateForm(document.getElementById('resetPasswordForm'), resetValidation)) return;
   var btn = document.getElementById('resetPasswordSubmitBtn');
@@ -537,6 +538,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', async fu
     var payload = sanitizePayload({ new_password: document.getElementById('resetPasswordField').value });
     var res = await apiRequest('/staff/profiles/' + id + '/reset-password/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) { alert('Request failed to send.'); return; }
+    if (!__isPageAlive()) return;
     if (res.ok) {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('resetPasswordModal')).hide();
       alert('Password reset successfully.');

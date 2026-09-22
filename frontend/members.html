@@ -509,6 +509,7 @@ buildSidebar('members');
     while (path) {
       const res = await apiRequest(path);
       if (!res || !res.ok) return all;
+      if (!__isPageAlive()) return all;
       const data = await res.json();
       const results = data.results || data;
       all = all.concat(results);
@@ -530,6 +531,7 @@ buildSidebar('members');
 
   async function loadMembers() {
     const tbody = document.getElementById('memberTableBody');
+    if (!tbody) return;
     tbody.innerHTML = Array(5).fill(null).map(() => `<tr><td colspan="7" style="padding:12px 0;"><div class="skeleton-table-row"><div style="flex:2;"><div class="skeleton-text" style="width:60%;"></div></div><div><div class="skeleton-text" style="width:70%;"></div></div><div><div class="skeleton-text" style="width:50%;"></div></div><div><div class="skeleton-text" style="width:65%;"></div></div><div><div class="skeleton-text" style="width:40%;"></div></div><div><div class="skeleton-text" style="width:55%;"></div></div><div><div class="skeleton-text" style="width:30%;"></div></div></div></td></tr>`).join('');
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
@@ -542,6 +544,7 @@ buildSidebar('members');
     if (active) params.set('is_active', active);
 
     allMembers = await fetchAllPaginated('/members/?' + params.toString());
+    if (!__isPageAlive()) return;
 
     let activeCount = 0, bmiSum = 0, bmiCount = 0, expiringCount = 0;
     const weekFromNow = new Date();
@@ -707,6 +710,7 @@ buildSidebar('members');
   async function openEdit(profileId) {
     const res = await apiRequest(`/members/${profileId}/`);
     if (!res || !res.ok) { alert('Could not load member profile.'); return; }
+    if (!__isPageAlive()) return;
     const profile = await res.json();
 
     editingProfileId = profileId;
@@ -749,7 +753,7 @@ buildSidebar('members');
     editNotes: [v => validate.maxLength(v, 500, 'Notes')],
   };
 
-  document.getElementById('editForm').addEventListener('submit', async (e) => {
+  document.getElementById('editForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!editingProfileId) return;
     if (!validateForm(document.getElementById('editForm'), editFormRules)) return;
@@ -796,6 +800,7 @@ buildSidebar('members');
     }
 
     if (!res) return;
+    if (!__isPageAlive()) return;
     if (res.ok) {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('manageMemberModal')).hide();
       loadMembers();
@@ -828,7 +833,7 @@ buildSidebar('members');
   };
 
   // Set up real-time validation on the Add Member form fields
-  document.getElementById('addMemberModal').addEventListener('shown.bs.modal', () => {
+  document.getElementById('addMemberModal')?.addEventListener('shown.bs.modal', () => {
     for (const [fieldName, rules] of Object.entries(addMemberRules)) {
       const field = document.getElementById(fieldName);
       if (field && !field.dataset.vInit) {
@@ -866,6 +871,7 @@ buildSidebar('members');
 
     const res = await apiRequest('/members/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) return;
+    if (!__isPageAlive()) return;
 
     if (res.ok) {
       document.getElementById('addForm').reset();
@@ -879,7 +885,7 @@ buildSidebar('members');
     }
   }
 
-  document.getElementById('addMemberModal').addEventListener('hidden.bs.modal', () => {
+  document.getElementById('addMemberModal')?.addEventListener('hidden.bs.modal', () => {
     document.getElementById('errorBox').classList.add('d-none');
     document.getElementById('addForm').reset();
     resetHeightUnit();
@@ -887,17 +893,22 @@ buildSidebar('members');
 
   // --- Manage Member Modal -----------------------------------------
   function openManageModal(profileId) {
+    if (!__isPageAlive()) return;
     const row = allMembers.find(m => m.id === profileId);
     if (!row) return;
+    const manageModalEl = document.getElementById('manageMemberModal');
+    if (!manageModalEl) return;
 
-    document.getElementById('manageAvatar').textContent = row.full_name.charAt(0).toUpperCase();
-    document.getElementById('manageName').textContent = row.full_name;
-    document.getElementById('manageSub').textContent = `${row.display_id || row.id}`;
-    document.getElementById('managePhone').textContent = row.phone || '-';
-    document.getElementById('manageGoal').textContent = row.fitness_goal_display || '-';
+    const set = (id, prop, val) => { const el = document.getElementById(id); if (el) el[prop] = val; };
+
+    set('manageAvatar', 'textContent', row.full_name.charAt(0).toUpperCase());
+    set('manageName', 'textContent', row.full_name);
+    set('manageSub', 'textContent', `${row.display_id || row.id}`);
+    set('managePhone', 'textContent', row.phone || '-');
+    set('manageGoal', 'textContent', row.fitness_goal_display || '-');
 
     const ms = row.current_membership;
-    document.getElementById('manageMembershipBody').innerHTML = ms
+    set('manageMembershipBody', 'innerHTML', ms
       ? `<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
            <div>
              <div class="fw-semibold fs-6 text-dark">${ms.plan_name}</div>
@@ -905,35 +916,28 @@ buildSidebar('members');
            </div>
            ${membershipBadge(ms.status)}
          </div>`
-      : `<div class="text-muted small">No membership plan assigned.</div>`;
+      : `<div class="text-muted small">No membership plan assigned.</div>`);
 
-    const manageModalEl = document.getElementById('manageMemberModal');
+    const manageEditBtn = document.getElementById('manageEditBtn');
+    if (manageEditBtn) manageEditBtn.onclick = () => { bootstrap.Modal.getInstance(manageModalEl).hide(); openEdit(profileId); };
+    const manageViewBtn = document.getElementById('manageViewBtn');
+    if (manageViewBtn) manageViewBtn.onclick = () => { bootstrap.Modal.getInstance(manageModalEl).hide(); viewMember(profileId); };
 
-    document.getElementById('manageEditBtn').onclick = () => {
-      bootstrap.Modal.getInstance(manageModalEl).hide();
-      openEdit(profileId);
-    };
-    document.getElementById('manageViewBtn').onclick = () => {
-      bootstrap.Modal.getInstance(manageModalEl).hide();
-      viewMember(profileId);
-    };
-    document.getElementById('manageAttendanceLink').href = `attendance.html?search=${encodeURIComponent(row.full_name)}`;
-    document.getElementById('managePaymentsLink').href = `payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}`;
+    set('manageAttendanceLink', 'href', `attendance.html?search=${encodeURIComponent(row.full_name)}`);
+    set('managePaymentsLink', 'href', `payments.html?member=${row.user_id}&name=${encodeURIComponent(row.full_name)}`);
+    set('manageStatusPill', 'innerHTML', statusBadge(row.is_active));
 
-    document.getElementById('manageStatusPill').innerHTML = statusBadge(row.is_active);
     const statusBtn = document.getElementById('manageStatusBtn');
-    if (row.is_active) {
-      statusBtn.textContent = 'Deactivate Member';
-      statusBtn.className = 'btn btn-outline-danger btn-sm px-3 fw-medium';
-      statusBtn.onclick = () => {
-        toggleMemberStatus(profileId, false);
-      };
-    } else {
-      statusBtn.textContent = 'Activate Member';
-      statusBtn.className = 'btn btn-outline-success btn-sm px-3 fw-medium';
-      statusBtn.onclick = () => {
-        toggleMemberStatus(profileId, true);
-      };
+    if (statusBtn) {
+      if (row.is_active) {
+        statusBtn.textContent = 'Deactivate Member';
+        statusBtn.className = 'btn btn-outline-danger btn-sm px-3 fw-medium';
+        statusBtn.onclick = () => { toggleMemberStatus(profileId, false); };
+      } else {
+        statusBtn.textContent = 'Activate Member';
+        statusBtn.className = 'btn btn-outline-success btn-sm px-3 fw-medium';
+        statusBtn.onclick = () => { toggleMemberStatus(profileId, true); };
+      }
     }
 
     new bootstrap.Modal(manageModalEl).show();

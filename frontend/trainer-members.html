@@ -104,6 +104,7 @@ async function loadMyMembers() {
   containerEl.style.display = 'none';
 
   const res = await apiRequest('/trainers/my-members/');
+  if (!__isPageAlive()) return;
   loadingEl.style.display = 'none';
 
   if (!res || !res.ok) {

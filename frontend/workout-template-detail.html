@@ -219,6 +219,7 @@ function difficultyBadge(d) {
 async function loadTemplate() {
     const response = await apiRequest(`/workouts/templates/${templateId}/`);
     if (!response || !response.ok) { showToast('Could not load template', 'error'); return; }
+    if (!__isPageAlive()) return;
     currentTemplate = await response.json();
     renderHeader();
     renderDays();
@@ -434,6 +435,7 @@ async function deleteDay(dayId) {
 async function loadProgressTab() {
     const r = await apiRequest(`/workouts/assignments/?template=${templateId}`);
     if (!r || !r.ok) return;
+    if (!__isPageAlive()) return;
     const data = await r.json();
     const assignments = data.results || data;
 
@@ -471,6 +473,7 @@ async function loadProgressTab() {
 async function loadHistoryTab() {
     const r = await apiRequest(`/workouts/templates/${templateId}/versions/`);
     if (!r || !r.ok) { document.getElementById('historyContainer').innerHTML = '<div class="alert alert-secondary">Could not load history.</div>'; return; }
+    if (!__isPageAlive()) return;
     const data = await r.json();
     const versions = data.results || data;
     const reasonLabel = { submitted_for_review: 'Submitted for review', approved: 'Approved', manual: 'Manual snapshot' };
@@ -495,6 +498,7 @@ async function restoreVersion(versionId) {
 async function loadMembersTab() {
     const r = await apiRequest(`/workouts/assignments/?template=${templateId}`);
     if (!r || !r.ok) return;
+    if (!__isPageAlive()) return;
     const data = await r.json();
     const assignments = data.results || data;
     document.getElementById('membersContainer').innerHTML = assignments.map(a => `
@@ -505,7 +509,7 @@ async function loadMembersTab() {
     `).join('') || '<div class="alert alert-secondary">No members assigned yet.</div>';
 }
 
-document.getElementById('assignModal').addEventListener('show.bs.modal', () => loadMembersIntoSelect('assignMember'));
+document.getElementById('assignModal')?.addEventListener('show.bs.modal', () => loadMembersIntoSelect('assignMember'));
 async function submitAssignment() {
     const payload = {
         template: parseInt(templateId),

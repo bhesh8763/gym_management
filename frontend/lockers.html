@@ -496,6 +496,7 @@ buildSidebar('lockers');
         `<tr><td colspan="6" class="text-center text-danger py-4">Failed to load lockers.</td></tr>`;
       return;
     }
+    if (!__isPageAlive()) return;
 
     const total = lockerCache.length;
     const occupied = lockerCache.filter(l => l.status === 'OCCUPIED').length;
@@ -564,6 +565,8 @@ buildSidebar('lockers');
   function openLockerEdit(id) {
     const row = lockerCache.find(l => l.id === id);
     if (!row) return;
+    if (!__isPageAlive()) return;
+    if (!document.getElementById('editLockerId')) return;
     document.getElementById('editLockerId').value = row.id;
     document.getElementById('editLockerNumber').value = row.locker_number;
     document.getElementById('editLockerLocation').value = row.location || '';
@@ -582,7 +585,7 @@ buildSidebar('lockers');
     loadLockers();
   }
 
-  document.getElementById('lockerEditForm').addEventListener('submit', async (e) => {
+  document.getElementById('lockerEditForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('lockerEditForm'), {
       editLockerNumber:   [v => validate.required(v, 'Locker number'), v => validate.maxLength(v, 20, 'Locker number'), v => validate.noHtml(v, 'Locker number')],
@@ -643,16 +646,16 @@ buildSidebar('lockers');
     }
   }
 
-  document.getElementById('lockerAddModal').addEventListener('hidden.bs.modal', () => {
+  document.getElementById('lockerAddModal')?.addEventListener('hidden.bs.modal', () => {
     document.getElementById('lockerError').classList.add('d-none');
     resetLockerModal();
   });
 
-  document.getElementById('assignLockerModal').addEventListener('hidden.bs.modal', () => {
+  document.getElementById('assignLockerModal')?.addEventListener('hidden.bs.modal', () => {
     document.getElementById('assignError').classList.add('d-none');
   });
 
-  document.getElementById('lockerForm').addEventListener('submit', async (e) => {
+  document.getElementById('lockerForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const isBulk = document.getElementById('lockerModeBulk').checked;
     const errorBox = document.getElementById('lockerError');
@@ -768,15 +771,17 @@ buildSidebar('lockers');
   let memberSearchTimer = null;
 
   function closeMemberResults() {
-    document.getElementById('assignMemberResults').classList.remove('show');
+    document.getElementById('assignMemberResults')?.classList.remove('show');
   }
 
   async function searchMembers(term) {
     const box = document.getElementById('assignMemberResults');
+    if (!box) return;
     if (!term) { box.innerHTML = ''; closeMemberResults(); return; }
 
     const res = await apiRequest(`/members/?search=${encodeURIComponent(term)}&is_active=true`);
     if (!res || !res.ok) { closeMemberResults(); return; }
+    if (!__isPageAlive()) return;
     const data = await res.json();
     const results = (data.results || []).slice(0, 8);
 
@@ -799,18 +804,19 @@ buildSidebar('lockers');
     closeMemberResults();
   }
 
-  document.getElementById('assignMemberSearch').addEventListener('input', (e) => {
+  document.getElementById('assignMemberSearch')?.addEventListener('input', (e) => {
     document.getElementById('assignMemberId').value = '';
     clearTimeout(memberSearchTimer);
     const term = e.target.value.trim();
     memberSearchTimer = setTimeout(() => searchMembers(term), 250);
   });
 
-  document.getElementById('assignMemberSearch').addEventListener('focus', (e) => {
+  document.getElementById('assignMemberSearch')?.addEventListener('focus', (e) => {
     if (e.target.value.trim()) searchMembers(e.target.value.trim());
   });
 
   document.addEventListener('click', (e) => {
+    if (!__isPageAlive()) return;
     if (!e.target.closest('#assignMemberSearch') && !e.target.closest('#assignMemberResults')) {
       closeMemberResults();
     }
@@ -830,6 +836,7 @@ buildSidebar('lockers');
         `<tr><td colspan="7" class="text-center text-danger py-4">Failed to load assignments.</td></tr>`;
       return;
     }
+    if (!__isPageAlive()) return;
     renderAssignmentPage(1);
   }
 
@@ -896,7 +903,7 @@ buildSidebar('lockers');
     else if (res) alert('Could not delete this record.');
   }
 
-  document.getElementById('assignForm').addEventListener('submit', async (e) => {
+  document.getElementById('assignForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('assignForm'), {
       assignLockerId:     [v => validate.required(v, 'Locker')],
@@ -970,8 +977,8 @@ buildSidebar('lockers');
     else document.getElementById('lockerAddSubmitBtn').disabled = false;
   }
 
-  document.getElementById('lockerModeSingle').addEventListener('change', () => toggleLockerMode('single'));
-  document.getElementById('lockerModeBulk').addEventListener('change', () => toggleLockerMode('bulk'));
+  document.getElementById('lockerModeSingle')?.addEventListener('change', () => toggleLockerMode('single'));
+  document.getElementById('lockerModeBulk')?.addEventListener('change', () => toggleLockerMode('bulk'));
 
   function updateBulkPreview() {
     const prefix = document.getElementById('bulkPrefix').value;
@@ -1005,9 +1012,9 @@ buildSidebar('lockers');
     submitBtn.disabled = false;
   }
 
-  document.getElementById('bulkPrefix').addEventListener('input', updateBulkPreview);
-  document.getElementById('bulkFrom').addEventListener('input', updateBulkPreview);
-  document.getElementById('bulkTo').addEventListener('input', updateBulkPreview);
+  document.getElementById('bulkPrefix')?.addEventListener('input', updateBulkPreview);
+  document.getElementById('bulkFrom')?.addEventListener('input', updateBulkPreview);
+  document.getElementById('bulkTo')?.addEventListener('input', updateBulkPreview);
 
   function resetLockerModal() {
     document.getElementById('lockerModeSingle').checked = true;
@@ -1021,7 +1028,7 @@ buildSidebar('lockers');
 
   loadLockers();
   loadAssignments();
-  document.getElementById('assignStart').addEventListener('change', function() {
+  document.getElementById('assignStart')?.addEventListener('change', function() {
     document.getElementById('assignEnd').min = this.value;
   });
 

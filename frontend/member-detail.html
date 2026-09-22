@@ -430,6 +430,7 @@ async function loadProfile(){
   if(!memberId){window.location.href='members.html';return;}
   var res=await apiRequest('/members/'+memberId+'/profile-detail/');
   if(!res||!res.ok){document.getElementById('profileLoading').innerHTML='<div style="text-align:center;color:#dc2626;"><i class="bi bi-exclamation-circle" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>Could not load member profile.</div>';return;}
+  if(!__isPageAlive()) return;
   var d=await res.json();
   profileData=d;
   document.getElementById('profileLoading').style.display='none';

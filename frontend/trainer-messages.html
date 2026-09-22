@@ -232,6 +232,7 @@ function formatDateDivider(dateStr) {
 async function loadMessages() {
   const res = await apiRequest('/workouts/trainer-messages/');
   if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
   allMessages = await res.json();
   groupConversations();
   renderConversationList();
@@ -457,7 +458,7 @@ function handleReplyKeydown(e) {
   document.getElementById('sendBtn').disabled = !e.target.value.trim();
 }
 
-document.getElementById('replyInput').addEventListener('input', function() {
+document.getElementById('replyInput')?.addEventListener('input', function() {
   document.getElementById('sendBtn').disabled = !this.value.trim();
   // Auto-resize textarea
   this.style.height = 'auto';

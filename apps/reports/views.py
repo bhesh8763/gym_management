@@ -348,7 +348,7 @@ def staff_report(request):
     Headcount by department and pending leave request count.
     """
     by_department = (
-        StaffProfile.objects.values('department')
+        StaffProfile.objects.values('role')
         .annotate(count=Count('id'))
         .order_by('-count')
     )

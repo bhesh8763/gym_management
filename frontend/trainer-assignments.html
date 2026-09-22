@@ -252,6 +252,7 @@ function statusBadge(isActive) {
 async function loadTrainers() {
   var res = await apiRequest('/trainers/profiles/');
   if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
   var data = await res.json();
   allTrainers = data.results || data;
 
@@ -266,6 +267,7 @@ assignSel.innerHTML = '<option value="">Select a trainer…</option>' +
 async function loadMembersDropdown() {
   var res = await apiRequest('/members/?is_active=true');
   if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
   var data = await res.json();
   var members = data.results || data;
   document.getElementById('assignMember').innerHTML = '<option value="">Select a member…</option>' +
@@ -274,6 +276,7 @@ async function loadMembersDropdown() {
 
 async function loadAssignments() {
   var tbody = document.getElementById('assignmentsBody');
+  if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading…</td></tr>';
 
   var params = new URLSearchParams();
@@ -287,6 +290,7 @@ async function loadAssignments() {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Could not load assignments.</td></tr>';
     return;
   }
+  if (!__isPageAlive()) return;
 
   var data = await res.json();
   allAssignments = data.results || data;

@@ -202,6 +202,7 @@ async function loadDues() {
     const res = await apiRequest('/payments/my-dues/');
     if (!res) return;
     if (!res.ok) { showToast('Could not load your dues', 'error'); return; }
+    if (!__isPageAlive()) return;
     const data = await res.json();
     duesCache = data.dues || [];
 
@@ -237,6 +238,7 @@ async function loadDues() {
 async function loadPendingPayments() {
     const res = await apiRequest('/payments/?status=PENDING');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const data = await res.json();
     const pending = (data.results || []).filter(p => p.payment_method === 'KHALTI' || p.payment_method === 'ESEWA');
 
@@ -289,6 +291,7 @@ async function retryKhaltiPayment(paymentId, pidx) {
     });
 
     if (!res) return;
+    if (!__isPageAlive()) return;
     const data = await res.json().catch(() => ({}));
 
     // If backend initiated a new Khalti checkout (no prior transaction),
@@ -324,6 +327,7 @@ async function retryEsewaPayment(paymentId) {
     });
 
     if (!res) return;
+    if (!__isPageAlive()) return;
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.status === 'PAID') {
@@ -362,9 +366,9 @@ function updatePayMethodUI() {
     if (submitLabel) submitLabel.textContent = `Pay with ${gatewayName}`;
 }
 
-document.getElementById('payMethod').addEventListener('change', updatePayMethodUI);
+document.getElementById('payMethod')?.addEventListener('change', updatePayMethodUI);
 
-document.getElementById('payForm').addEventListener('submit', async (e) => {
+document.getElementById('payForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('payForm'), { payMethod: [(v) => validate.required(v, 'Payment method')] })) return;
     if (!selectedDue) return;
@@ -451,6 +455,7 @@ async function verifyKhaltiIfReturning() {
         body: JSON.stringify({ pidx }),
     });
     if (!res) return;
+    if (!__isPageAlive()) return;
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.status === 'PAID') {
@@ -484,6 +489,7 @@ async function verifyEsewaIfReturning() {
         body: JSON.stringify({ data: dataParam }),
     });
     if (!res) return;
+    if (!__isPageAlive()) return;
     const responseData = await res.json().catch(() => ({}));
 
     if (res.ok && responseData.status === 'PAID') {
@@ -512,6 +518,7 @@ async function loadHistory() {
     }
 
     const tbody = document.getElementById('historyTableBody');
+    if (!__isPageAlive()) return;
     if (!all.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No payment records yet.</td></tr>';
         return;
@@ -542,8 +549,10 @@ async function loadHistory() {
         console.error('Failed to load payments page data:', err);
         showToast('Something went wrong loading your payments — please refresh.', 'error');
     } finally {
-        document.getElementById('loadingState').style.display = 'none';
-        document.getElementById('pageBody').style.display = '';
+        if (__isPageAlive()) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('pageBody').style.display = '';
+        }
     }
 
     try {

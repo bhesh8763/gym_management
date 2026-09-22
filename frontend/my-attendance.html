@@ -285,6 +285,7 @@ async function doCheckIn() {
     const res = await apiRequest('/attendance/records/check-in/', { method: 'POST' });
     btn.disabled = false;
     if (!res) return;
+    if (!__isPageAlive()) return;
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
         showToast('Checked in — have a great workout!');
@@ -303,6 +304,7 @@ async function doCheckOut() {
     const res = await apiRequest('/attendance/records/check-out/', { method: 'POST' });
     btn.disabled = false;
     if (!res) return;
+    if (!__isPageAlive()) return;
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
         showToast('Checked out — see you next time!');
@@ -464,6 +466,7 @@ async function loadHistory() {
         path = data.next ? data.next.replace(API_BASE, '') : null;
     }
     recordsCache = all.sort((a, b) => b.date.localeCompare(a.date));
+    if (!__isPageAlive()) return;
     historyPage = 1;
     todayRecord = recordsCache.find(r => r.date === todayISO()) || null;
     renderTodayCard();
@@ -472,6 +475,7 @@ async function loadHistory() {
 
 (async () => {
     await loadHistory();
+    if (!__isPageAlive()) return;
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('pageBody').style.display = '';
 })();

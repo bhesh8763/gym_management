@@ -178,6 +178,7 @@ function mealTypeBadge(type) {
 async function loadPlans() {
   var res = await apiRequest('/diet/diet-plans/');
   if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
   var data = await res.json();
   allPlans = data.results || data;
 
@@ -194,6 +195,7 @@ async function loadPlans() {
 }
 
 async function loadMeals() {
+  if (!document.getElementById('filterDietPlan')) return;
   var planId = document.getElementById('filterDietPlan').value;
   var mealType = document.getElementById('filterMealType').value;
   var url = '/diet/meals/';
@@ -207,6 +209,7 @@ async function loadMeals() {
     document.getElementById('mealsBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Could not load meals.</td></tr>';
     return;
   }
+  if (!__isPageAlive()) return;
   var data = await res.json();
   allMeals = data.results || data;
 
@@ -236,6 +239,7 @@ async function loadMeals() {
 }
 
 function openMealModal(meal) {
+  if (!__isPageAlive()) return;
   document.getElementById('mealError').style.display = 'none';
   if (meal) {
     document.getElementById('mealModalTitle').textContent = 'Edit Meal';
@@ -294,6 +298,7 @@ async function submitMeal() {
   var method = id ? 'PATCH' : 'POST';
   var res = await apiRequest(url, { method: method, body: JSON.stringify(payload) });
   if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (!__isPageAlive()) return;
   if (res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('mealModal')).hide();
     loadMeals();

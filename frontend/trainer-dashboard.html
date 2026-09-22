@@ -336,6 +336,7 @@ buildSidebar('trainer-dashboard');
     while (path) {
       const res = await apiRequest(path);
       if (!res || !res.ok) return all;
+      if (!__isPageAlive()) return all;
       const data = await res.json();
       const results = data.results || data;
       all = all.concat(results);
@@ -352,6 +353,7 @@ buildSidebar('trainer-dashboard');
       fetchAllPaginated('/diet/diet-plans/'),
       fetchAllPaginated('/trainers/assignments/?is_active=true'),
     ]);
+    if (!__isPageAlive()) return;
 
     // ── Stat cards ───────────────────────────────────────────────────────
     const memberList = (members && members.ok) ? await members.json() : [];
@@ -571,6 +573,7 @@ buildSidebar('trainer-dashboard');
       counts.push(myMembers.length);
     }
     if (attendanceChartInstance) attendanceChartInstance.destroy();
+    if (!__isPageAlive()) return;
     attendanceChartInstance = new Chart(document.getElementById('attendanceChart'), {
       type: 'bar',
       data: {
@@ -657,6 +660,7 @@ buildSidebar('trainer-dashboard');
   async function loadMessages() {
     const res = await apiRequest('/workouts/trainer-messages/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     allMessages = await res.json();
     groupConversations();
     renderMessages();
@@ -740,6 +744,7 @@ buildSidebar('trainer-dashboard');
 
     const res = await apiRequest(`/notifications/${id}/read/`, { method: 'PATCH' });
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
 
     msg.is_read = true;
     if (el) {

@@ -969,6 +969,7 @@ buildSidebar('trainers');
   async function loadProfiles() {
     const res = await apiRequest('/staff/profiles/');
     if (!res) return;
+    if (!__isPageAlive()) return;
     if (!res.ok) {
       document.getElementById('profileTableBody').innerHTML =
         `<tr><td colspan="7" class="text-center text-danger py-4">Failed to load trainers.</td></tr>`;
@@ -1047,7 +1048,7 @@ buildSidebar('trainers');
     document.getElementById('nextStaffPageBtn').disabled = currentStaffPage === totalPages;
   }
 
-  document.getElementById('profileAddModal').addEventListener('hidden.bs.modal', () => {
+  document.getElementById('profileAddModal')?.addEventListener('hidden.bs.modal', () => {
     document.getElementById('profileError').classList.add('d-none');
     const passwordField = document.getElementById('password');
     passwordField.type = 'password';
@@ -1089,7 +1090,7 @@ buildSidebar('trainers');
     }
   }
 
-  document.getElementById('profileForm').addEventListener('submit', async (e) => {
+  document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(e.target, profileRules)) return;
     const btn = document.getElementById('profileAddSubmitBtn');
@@ -1146,13 +1147,14 @@ buildSidebar('trainers');
 
   function openResetPassword(id, name) {
     document.getElementById('resetPasswordStaffId').value = id;
+    if (!__isPageAlive()) return;
     document.getElementById('resetPasswordStaffName').textContent = name;
     document.getElementById('resetPasswordField').value = '';
     document.getElementById('resetPasswordError').classList.add('d-none');
     new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
   }
 
-  document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', () => {
+  document.getElementById('resetPasswordModal')?.addEventListener('hidden.bs.modal', () => {
     const field = document.getElementById('resetPasswordField');
     field.value = '';
     field.type = 'password';
@@ -1164,7 +1166,7 @@ buildSidebar('trainers');
     document.getElementById('resetPasswordError').classList.add('d-none');
   });
 
-  document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+  document.getElementById('resetPasswordForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(e.target, resetPasswordRules)) return;
     const btn = document.getElementById('resetPasswordSubmitBtn');
@@ -1211,11 +1213,14 @@ buildSidebar('trainers');
   }
 
   async function loadLeaves() {
-    document.getElementById('leaveTableBody').innerHTML =
+    const leaveSkeletonEl = document.getElementById('leaveTableBody');
+    if (!leaveSkeletonEl) return;
+    leaveSkeletonEl.innerHTML =
       `<tr><td colspan="10" class="text-center text-muted py-4">Loading leave requests...</td></tr>`;
 
     const res = await apiRequest('/staff/leave-requests/');
     if (!res) return;
+    if (!__isPageAlive()) return;
     if (!res.ok) {
       document.getElementById('leaveTableBody').innerHTML =
         `<tr><td colspan="10" class="text-center text-danger py-4">Failed to load leave requests.</td></tr>`;
@@ -1393,13 +1398,13 @@ buildSidebar('trainers');
     }
   }
 
-  document.getElementById('startDate').addEventListener('change', function () {
+  document.getElementById('startDate')?.addEventListener('change', function () {
     document.getElementById('endDate').min = this.value;
     updateDurationPreview();
   });
-  document.getElementById('endDate').addEventListener('change', updateDurationPreview);
+  document.getElementById('endDate')?.addEventListener('change', updateDurationPreview);
 
-  document.getElementById('leaveForm').addEventListener('submit', async (e) => {
+  document.getElementById('leaveForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(e.target, leaveRules)) return;
     const btn = document.getElementById('leaveSubmitBtn');
@@ -1453,7 +1458,7 @@ buildSidebar('trainers');
     }
   });
 
-  document.getElementById('leaveModal').addEventListener('show.bs.modal', () => {
+  document.getElementById('leaveModal')?.addEventListener('show.bs.modal', () => {
     if (!document.getElementById('editLeaveId').value) {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('startDate').min = today;
@@ -1462,7 +1467,7 @@ buildSidebar('trainers');
     updatePendingTypeBadges();
   });
 
-  document.getElementById('leaveModal').addEventListener('hidden.bs.modal', () => {
+  document.getElementById('leaveModal')?.addEventListener('hidden.bs.modal', () => {
     document.getElementById('editLeaveId').value = '';
     document.getElementById('leaveModalTitle').innerHTML = '<i class="bi bi-calendar2-x me-2"></i>Submit Leave Request';
     document.getElementById('leaveSubmitIcon').className = 'bi bi-send me-1';

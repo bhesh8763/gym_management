@@ -441,6 +441,7 @@ buildSidebar('dashboard');
     while (path) {
       const res = await apiRequest(path);
       if (!res || !res.ok) return all;
+      if (!__isPageAlive()) return all;
       const data = await res.json();
       const results = data.results || data;
       all = all.concat(results);
@@ -465,6 +466,7 @@ buildSidebar('dashboard');
   // ═══ ADMIN DASHBOARD ══════════════════════════════════════════════════════
   function setDelta(elId, current, previous) {
     const el = document.getElementById(elId);
+    if (!el) return;
     if (previous == null || previous === 0) { el.textContent = ''; return; }
     const diff = current - previous;
     const pct = Math.round((diff / previous) * 100);
@@ -482,21 +484,25 @@ buildSidebar('dashboard');
       apiRequest('/members/'),
       apiRequest('/memberships/expiring/'),
     ]);
+    if (!__isPageAlive()) return;
 
     if (membersRes && membersRes.ok) {
       const data = await membersRes.json();
       const list = data.results || data;
-      document.getElementById('statMembers').textContent = data.count ?? list.length;
+      const el = document.getElementById('statMembers');
+      if (el) el.textContent = data.count ?? list.length;
     }
 
     if (expiringRes && expiringRes.ok) {
       const data = await expiringRes.json();
       const list = data.results || data;
-      document.getElementById('statExpiring').textContent = data.count ?? list.length;
+      const el = document.getElementById('statExpiring');
+      if (el) el.textContent = data.count ?? list.length;
     }
 
     const todayAttendance = await fetchAllPaginated(`/attendance/records/?date=${todayStr()}`);
-    document.getElementById('statAttendance').textContent = todayAttendance.length;
+    const statAttendanceEl = document.getElementById('statAttendance');
+    if (statAttendanceEl) statAttendanceEl.textContent = todayAttendance.length;
 
     // Two small, date-filtered fetches instead of loading ALL payments into the browser.
     const now = new Date();
@@ -520,18 +526,24 @@ buildSidebar('dashboard');
     const lastMonthPayments = await fetchAllPaginated(
       `/payments/?status=PAID&start_date=${firstLastMonth}&end_date=${lastLastMonthStr}`
     );
+    if (!__isPageAlive()) return;
 
-    const thisMonthTotal = thisMonthPayments.reduce((s, p) => s + parseFloat(p.amount_paid || 0), 0);
-    const lastMonthTotal = lastMonthPayments.reduce((s, p) => s + parseFloat(p.amount_paid || 0), 0);
+    const thisMonthTotal = (thisMonthPayments || []).reduce((s, p) => s + parseFloat(p.amount_paid || 0), 0);
+    const lastMonthTotal = (lastMonthPayments || []).reduce((s, p) => s + parseFloat(p.amount_paid || 0), 0);
 
-    document.getElementById('statRevenue').textContent = 'NPR ' + thisMonthTotal.toLocaleString();
+    if (!__isPageAlive()) return;
+    const statRevenueEl = document.getElementById('statRevenue');
+    if (statRevenueEl) statRevenueEl.textContent = 'NPR ' + thisMonthTotal.toLocaleString();
     setDelta('statRevenueDelta', thisMonthTotal, lastMonthTotal);
 
     // Recent payments — separate small fetch, no date filter needed.
     const recentPayments = await fetchAllPaginated('/payments/?status=PAID&ordering=-created_at');
-    document.getElementById('activityList').innerHTML = recentPayments.slice(0, 6).length
-      ? recentPayments.slice(0, 6).map(p => `<li class="list-group-item"><i class="bi bi-cash-coin text-success me-2"></i>${escapeHtml(p.member_name || 'Member')} paid NPR ${escapeHtml(p.amount_paid)} (${escapeHtml(p.payment_for)})</li>`).join('')
-      : '<li class="list-group-item text-muted">No recent activity yet.</li>';
+    const activityListEl = document.getElementById('activityList');
+    if (activityListEl) {
+      activityListEl.innerHTML = recentPayments.slice(0, 6).length
+        ? recentPayments.slice(0, 6).map(p => `<li class="list-group-item"><i class="bi bi-cash-coin text-success me-2"></i>${escapeHtml(p.member_name || 'Member')} paid NPR ${escapeHtml(p.amount_paid)} (${escapeHtml(p.payment_for)})</li>`).join('')
+        : '<li class="list-group-item text-muted">No recent activity yet.</li>';
+    }
 
     loadAttentionPanel();
     loadAttendanceChart();
@@ -544,6 +556,7 @@ buildSidebar('dashboard');
       apiRequest('/equipment/maintenance/?status=SCHEDULED'),
       apiRequest('/staff/leave-requests/?status=PENDING'),
     ]);
+    if (!__isPageAlive()) return;
 
     const items = [];
     const today = todayStr();
@@ -602,6 +615,7 @@ buildSidebar('dashboard');
     }
 
     const listEl = document.getElementById('attentionList');
+    if (!listEl) return;
     if (!items.length) {
       listEl.innerHTML = '<div class="attention-empty"><i class="bi bi-check-circle text-success d-block mb-1" style="font-size:1.4rem;"></i>Nothing needs your attention right now.</div>';
       return;
@@ -629,7 +643,9 @@ buildSidebar('dashboard');
       counts.push(records.length);
     }
     if (attendanceChartInstance) { attendanceChartInstance.destroy(); attendanceChartInstance = null; }
-    attendanceChartInstance = new Chart(document.getElementById('attendanceChart'), {
+    const attendanceChartEl = document.getElementById('attendanceChart');
+    if (!attendanceChartEl || !__isPageAlive()) return;
+    attendanceChartInstance = new Chart(attendanceChartEl, {
       type: 'bar',
       data: { labels, datasets: [{ label: 'Check-ins', data: counts, backgroundColor: '#e63946' }] },
       options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
@@ -644,6 +660,7 @@ buildSidebar('dashboard');
       console.error('Could not load member profile');
       return;
     }
+    if (!__isPageAlive()) return;
     const meData = await meRes.json();
     const profileId = meData.id;
 
@@ -711,11 +728,13 @@ buildSidebar('dashboard');
   async function renderTodayVisit() {
     const el = document.getElementById('mTodayVisit');
     const statusEl = document.getElementById('mVisitStatus');
+    if (!el) return;
     const res = await apiRequest('/attendance/qr/my/');
     if (!res || !res.ok) {
       el.innerHTML = '<div class="text-muted" style="font-size:0.85rem;">Could not load check-in status</div>';
       return;
     }
+    if (!__isPageAlive()) return;
     const qr = await res.json();
 
     // Check today's attendance
@@ -954,6 +973,7 @@ buildSidebar('dashboard');
     try {
       const res = await apiRequest('/attendance/records/current-occupancy/');
       if (!res || !res.ok) return;
+      if (!__isPageAlive()) return;
       const data = await res.json();
       const el = document.getElementById('statOccupancy');
       if (el) el.textContent = data.count;

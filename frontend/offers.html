@@ -291,6 +291,7 @@ function togglePlanSelect() {
 async function loadPlans() {
   var res = await apiRequest('/memberships/plans/?is_active=true');
   if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
   var data = await res.json();
   allPlans = data.results || data;
 
@@ -312,6 +313,7 @@ async function loadOffers() {
     document.getElementById('offersBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Could not load offers.</td></tr>';
     return;
   }
+  if (!__isPageAlive()) return;
   var data = await res.json();
   allOffers = data.results || data;
 
@@ -343,6 +345,7 @@ async function loadOffers() {
 }
 
 function openOfferModal(offer) {
+  if (!__isPageAlive()) return;
   document.getElementById('offerError').style.display = 'none';
   if (offer) {
     document.getElementById('offerModalTitle').textContent = 'Edit Offer';
@@ -413,6 +416,7 @@ async function submitOffer() {
   var method = id ? 'PATCH' : 'POST';
   var res = await apiRequest(url, { method: method, body: JSON.stringify(payload) });
   if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (!__isPageAlive()) return;
   if (res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('offerModal')).hide();
     loadOffers();
@@ -436,6 +440,7 @@ async function loadPromoCodes() {
     document.getElementById('promoBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Could not load promo codes.</td></tr>';
     return;
   }
+  if (!__isPageAlive()) return;
   var data = await res.json();
   var promos = data.results || data;
 
@@ -516,6 +521,7 @@ async function submitPromo() {
   var method = id ? 'PATCH' : 'POST';
   var res = await apiRequest(url, { method: method, body: JSON.stringify(payload) });
   if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (!__isPageAlive()) return;
   if (res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('promoModal')).hide();
     loadPromoCodes();

@@ -102,6 +102,7 @@ async function loadMyTrainer() {
 
   // Get trainer-member assignments where this user is the member
   const res = await apiRequest('/trainers/assignments/?member=' + userId);
+  if (!__isPageAlive()) return;
   loadingEl.style.display = 'none';
 
   if (!res || !res.ok) {

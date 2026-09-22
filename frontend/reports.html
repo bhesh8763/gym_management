@@ -316,6 +316,7 @@ buildSidebar('reports');
   async function loadOverview() {
     const res = await apiRequest('/reports/overview/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const d = await res.json();
     document.getElementById('kpiRevenue').textContent = 'NPR ' + Number(d.revenue_this_month).toLocaleString();
     document.getElementById('kpiMemberships').textContent = d.active_memberships;
@@ -326,6 +327,7 @@ buildSidebar('reports');
   async function loadRevenue() {
     const res = await apiRequest('/reports/revenue/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const d = await res.json();
 
     new Chart(document.getElementById('revenueChart'), {
@@ -357,6 +359,7 @@ buildSidebar('reports');
   async function loadMemberships() {
     const res = await apiRequest('/reports/memberships/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const d = await res.json();
 
     new Chart(document.getElementById('membershipChart'), {
@@ -391,6 +394,7 @@ buildSidebar('reports');
   async function loadAttendance() {
     const res = await apiRequest('/reports/attendance/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const d = await res.json();
 
     new Chart(document.getElementById('attendanceChart'), {
@@ -406,6 +410,7 @@ buildSidebar('reports');
   async function loadEquipment() {
     const res = await apiRequest('/reports/equipment/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const d = await res.json();
 
     new Chart(document.getElementById('equipmentChart'), {
@@ -421,12 +426,13 @@ buildSidebar('reports');
   async function loadStaff() {
     const res = await apiRequest('/reports/staff/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const d = await res.json();
 
     new Chart(document.getElementById('staffChart'), {
       type: 'bar',
       data: {
-        labels: d.by_department.map(r => r.department),
+        labels: d.by_department.map(r => r.role),
         datasets: [{ label: 'Headcount', data: d.by_department.map(r => r.count), backgroundColor: '#af7aa1' }],
       },
       options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } },
@@ -436,6 +442,7 @@ buildSidebar('reports');
   async function loadLockers() {
     const res = await apiRequest('/reports/lockers/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const d = await res.json();
 
     new Chart(document.getElementById('lockerChart'), {
@@ -451,6 +458,7 @@ buildSidebar('reports');
   async function loadRetention() {
     const res = await apiRequest('/reports/retention/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const d = await res.json();
 
     document.getElementById('retentionRate').textContent = d.overall.overall_retention_rate + '%';

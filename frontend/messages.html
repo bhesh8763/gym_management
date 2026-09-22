@@ -264,6 +264,7 @@ async function loadMessages() {
     apiRequest('/workouts/message-groups/'),
     apiRequest('/workouts/message-pins/'),
   ]);
+  if (!__isPageAlive()) return;
   if (res && res.ok) allMessages = await res.json();
   if (groupRes && groupRes.ok) groups = await groupRes.json();
   if (pinRes && pinRes.ok) {
@@ -466,6 +467,7 @@ function selectGroup(id) {
 async function loadGroupMessages(id) {
   const res = await apiRequest(`/workouts/message-groups/${id}/`);
   if (res && res.ok) {
+    if (!__isPageAlive()) return;
     groupMessagesCache[id] = await res.json();
     if (selectedKind === 'group' && selectedGroupId == id) renderGroupChat();
   }
@@ -751,6 +753,7 @@ async function deleteMessage(id) {
     res = await apiRequest(`/workouts/messages/direct/${id}/`, { method: 'DELETE' });
   }
   if (!res) { showToast('Could not delete message', 'error'); return; }
+  if (!__isPageAlive()) return;
   if (!res.ok) {
     const err = await res.json();
     showToast(err.detail || 'Could not delete message', 'error');

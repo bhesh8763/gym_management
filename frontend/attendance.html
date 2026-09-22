@@ -603,6 +603,7 @@ buildSidebar('attendance');
       document.getElementById('totalMembers').textContent = '-';
       return;
     }
+    if (!__isPageAlive()) return;
     const data = await res.json();
     membersCache = data.results || data;
     document.getElementById('totalMembers').textContent = membersCache.length;
@@ -620,6 +621,7 @@ buildSidebar('attendance');
     while (path) {
       const res = await apiRequest(path);
       if (!res || !res.ok) return null;
+      if (!__isPageAlive()) return null;
       const data = await res.json();
       all = all.concat(data.results);
       path = data.next ? data.next.replace(API_BASE, '') : null;
@@ -636,6 +638,7 @@ buildSidebar('attendance');
         'Could not load attendance records. You may not have permission to view all records.</td></tr>';
       return;
     }
+    if (!__isPageAlive()) return;
     allAttendance = data;
     window.allAttendance = allAttendance;
     renderAttendance(allAttendance);
@@ -752,6 +755,7 @@ buildSidebar('attendance');
   function openAttendanceManage(id) {
     // Ensure modal exists
     ensureAttendanceManageModal();
+    if (!__isPageAlive()) return;
 
     const allData = window.allAttendance || allAttendance;
     const record = allData ? allData.find(r => r.id === id) : null;
@@ -885,6 +889,7 @@ buildSidebar('attendance');
   });
 
   if (!res) return;
+  if (!__isPageAlive()) return;
 
   if (res.ok) {
     await loadAttendance();
@@ -939,12 +944,15 @@ buildSidebar('attendance');
       .filter(m => m.daysInactive === null || m.daysInactive >= 14)
       .sort((a, b) => (b.daysInactive ?? 9999) - (a.daysInactive ?? 9999));
 
-    document.getElementById('inactiveMembers').textContent = inactive.length;
+    const inactiveMembersEl = document.getElementById('inactiveMembers');
+    if (!inactiveMembersEl) return;
+    inactiveMembersEl.textContent = inactive.length;
     inactiveMembersCache = inactive;
     renderInactiveMembers();
   }
 
   function renderInactiveMembers() {
+    if (!document.getElementById('inactivePageSize')) return;
     const pageSize = parseInt(document.getElementById('inactivePageSize').value, 10) || 10;
     const totalPages = Math.max(1, Math.ceil(inactiveMembersCache.length / pageSize));
     inactivePage = Math.min(Math.max(1, inactivePage), totalPages);
@@ -1035,8 +1043,11 @@ buildSidebar('attendance');
 
   (async () => {
     await loadMembersIntoSelect('memberSelect');
+    if (!__isPageAlive()) return;
     await loadMembersCacheAndStats();
+    if (!__isPageAlive()) return;
     await loadAttendance();
+    if (!__isPageAlive()) return;
     await loadInactiveMembers();
 
 
@@ -1061,6 +1072,7 @@ buildSidebar('attendance');
   async function loadMyLeaves() {
     const res = await apiRequest('/staff/leave-requests/');
     if (!res) return;
+    if (!__isPageAlive()) return;
     const data = await res.json();
     leaveCache = data.results || [];
 

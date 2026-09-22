@@ -358,6 +358,7 @@ function renderMacroRing(label, consumed, goal, unit, color) {
 }
 
 async function loadDietData() {
+    if (!document.getElementById('loadingState')) return;
     document.getElementById('loadingState').style.display = '';
     document.getElementById('dietContent').style.display = 'none';
     document.getElementById('noPlanState').style.display = 'none';
@@ -369,6 +370,7 @@ async function loadDietData() {
         apiRequest('/diet/meal-logs/?date=' + todayStr),
         apiRequest('/diet/meal-logs/weekly-summary/'),
     ]);
+    if (!__isPageAlive()) return;
 
     document.getElementById('loadingState').style.display = 'none';
 
@@ -592,6 +594,7 @@ function renderWeeklyChart(data) {
 async function loadRecentLogs() {
     const res = await apiRequest('/diet/meal-logs/');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const data = await res.json();
     recentLogs = (data.results || data).slice(0, 20);
     renderRecentLogs();

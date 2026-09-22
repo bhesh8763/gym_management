@@ -402,17 +402,21 @@ buildSidebar('payments');
     while (path) {
       const res = await apiRequest(path);
       if (!res) return;
+      if (!__isPageAlive()) return;
       const data = await res.json();
       all = all.concat(data.results);
       path = data.next ? data.next.replace(API_BASE, '') : null;
     }
 
     paymentCache = all;
+    if (!__isPageAlive()) return;
     renderPage(1);
 }
   function openPaymentEdit(id) {
     const row = paymentCache.find(p => p.id === id);
     if (!row) return;
+    if (!__isPageAlive()) return;
+    if (!document.getElementById('editPaymentId')) return;
     document.getElementById('editPaymentId').value = row.id;
     document.getElementById('editAmount').value = row.amount;
     document.getElementById('editDiscount').value = row.discount;
@@ -425,7 +429,7 @@ buildSidebar('payments');
     new bootstrap.Modal(document.getElementById('paymentEditModal')).show();
   }
 
-  document.getElementById('paymentEditForm').addEventListener('submit', async (e) => {
+  document.getElementById('paymentEditForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('paymentEditForm'), {
       editAmount: [v => validate.required(v, 'Amount'), v => validate.positive(v, 'Amount')],
@@ -456,11 +460,11 @@ buildSidebar('payments');
     }
   });
 
-  document.getElementById('paymentAddModal').addEventListener('hidden.bs.modal', () => {
+  document.getElementById('paymentAddModal')?.addEventListener('hidden.bs.modal', () => {
     document.getElementById('errorBox').classList.add('d-none');
   });
 
-  document.getElementById('addForm').addEventListener('submit', async (e) => {
+  document.getElementById('addForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('addForm'), {
       member: [v => validate.required(v, 'Member')],
@@ -504,6 +508,7 @@ showFilterBanner();
 async function loadPaymentSummary() {
   const res = await apiRequest('/payments/summary/');
   if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
   const data = await res.json();
   document.getElementById('statCollected').textContent = 'NPR ' + data.total_collected.toFixed(2);
   document.getElementById('statPending').textContent   = 'NPR ' + data.total_pending.toFixed(2);

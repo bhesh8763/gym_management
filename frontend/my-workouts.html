@@ -1738,6 +1738,7 @@ let allPRs = [];
 async function loadPersonalRecords() {
     const r = await apiRequest('/progress/personal-records/');
     if (r && r.ok) {
+        if (!__isPageAlive()) return;
         const data = await r.json();
         allPRs = data.results || data;
     }
@@ -1771,6 +1772,8 @@ function showPRTrophy() {
 }
 
 async function loadAll() {
+    if (!document.getElementById('loadingState')) return;
+    if (!document.getElementById('loadingState')) return;
     document.getElementById('noAssignmentsState').style.display = 'none';
     document.getElementById('errorState').style.display = 'none';
     document.getElementById('loadingState').style.display = 'block';
@@ -1781,6 +1784,7 @@ async function loadAll() {
         apiRequest('/workouts/assignments/'),
         apiRequest('/workouts/completion-logs/')
     ]);
+    if (!__isPageAlive()) return;
 
     document.getElementById('loadingState').style.display = 'none';
 

@@ -347,6 +347,7 @@ function debouncedTemplateSearch() {
 }
 
 async function loadTemplates(url) {
+    if (!document.getElementById('templateStatusFilter')) return;
     const statusFilter = document.getElementById('templateStatusFilter').value;
     const search = document.getElementById('searchTemplate').value.trim();
     let requestUrl = url;
@@ -358,6 +359,7 @@ async function loadTemplates(url) {
     }
     const response = await apiRequest(requestUrl);
     if (!response || !response.ok) { showToast('Could not load templates', 'error'); return; }
+    if (!__isPageAlive()) return;
     const data = await response.json();
     allTemplates = data.results || data;
     templatesNextUrl = data.next ? data.next.replace(/^.*\/api/, '') : null;
@@ -495,6 +497,7 @@ async function submitAssignment() {
 async function loadAssignments() {
     const response = await apiRequest('/workouts/assignments/');
     if (!response || !response.ok) return;
+    if (!__isPageAlive()) return;
     const data = await response.json();
     allAssignments = data.results || data;
     document.getElementById('assignmentCountBadge').textContent = allAssignments.length;
@@ -522,6 +525,7 @@ async function updateAssignmentStatus(id, status) {
 async function loadExercises() {
     const response = await apiRequest('/workouts/exercises/');
     if (!response || !response.ok) return;
+    if (!__isPageAlive()) return;
     const data = await response.json();
     allExercises = data.results || data;
     document.getElementById('exerciseCountBadge').textContent = allExercises.length;
@@ -606,6 +610,7 @@ loadActiveAssignmentCount();
 async function loadActiveAssignmentCount() {
     const response = await apiRequest('/workouts/assignments/?status=ACTIVE&page_size=1');
     if (!response || !response.ok) return;
+    if (!__isPageAlive()) return;
     const data = await response.json();
     document.getElementById('statAssignments').textContent = data.count ?? '0';
 }

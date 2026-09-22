@@ -538,7 +538,8 @@ buildSidebar('equipment');
 
   // Adjust this if a different low-stock cutoff makes more sense for your inventory.
   const LOW_STOCK_THRESHOLD = 2;
-  document.getElementById("lowStockLabel").textContent = `Low Stock (=${LOW_STOCK_THRESHOLD})`;
+  const lowStockLabelEl = document.getElementById("lowStockLabel");
+  if (lowStockLabelEl) lowStockLabelEl.textContent = `Low Stock (=${LOW_STOCK_THRESHOLD})`;
 
   // --- Toast feedback -----------------------------------------------------
   function showToast(message, variant) {
@@ -742,6 +743,7 @@ buildSidebar('equipment');
   async function loadEquipment() {
     const res = await apiRequest("/equipment/equipment/");
     if (!res) return;
+    if (!__isPageAlive()) return;
     if (!res.ok) {
       document.getElementById("equipTableBody").innerHTML =
         `<tr><td colspan="8" class="text-center text-danger py-4">Failed to load equipment.</td></tr>`;
@@ -865,6 +867,8 @@ buildSidebar('equipment');
   function openEquipEdit(id) {
     const row = equipmentCache.find(e => e.id === id);
     if (!row) return;
+    if (!__isPageAlive()) return;
+    if (!document.getElementById("editEquipId")) return;
     document.getElementById("editEquipId").value = row.id;
     document.getElementById("editName").value = row.name;
     document.getElementById("editCategory").value = row.category || "";
@@ -885,7 +889,7 @@ buildSidebar('equipment');
     loadEquipment();
   }
 
-  document.getElementById("equipEditForm").addEventListener("submit", async (e) => {
+  document.getElementById("equipEditForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('equipEditForm'), validationRules.equipEditForm)) return;
     const btn = document.getElementById("equipEditSubmitBtn");
@@ -926,11 +930,24 @@ buildSidebar('equipment');
     }
   });
 
-  document.getElementById("equipAddModal").addEventListener("hidden.bs.modal", () => {
+  async function deleteEquipment(id) {
+    if (!(await confirmAction('Delete this equipment item? This cannot be undone.', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
+    const res = await apiRequest(`/equipment/equipment/${id}/`, { method: "DELETE" });
+    if (res && (res.ok || res.status === 204)) {
+      if (maintEquipFilterId === id) clearEquipMaintFilter();
+      loadEquipment();
+      loadMaintenance();
+      showToast("Equipment deleted.");
+    } else if (res) {
+      alert("Could not delete this item. It may be referenced by other records.");
+    }
+  }
+
+  document.getElementById("equipAddModal")?.addEventListener("hidden.bs.modal", () => {
     document.getElementById("equipError").classList.add("d-none");
   });
 
-  document.getElementById("equipForm").addEventListener("submit", async (e) => {
+  document.getElementById("equipForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('equipForm'), validationRules.equipForm)) return;
     const btn = document.getElementById("equipAddSubmitBtn");
@@ -981,6 +998,7 @@ buildSidebar('equipment');
   async function loadMaintenance() {
     const res = await apiRequest("/equipment/maintenance/");
     if (!res) return;
+    if (!__isPageAlive()) return;
     if (!res.ok) {
       document.getElementById("maintTableBody").innerHTML =
         `<tr><td colspan="8" class="text-center text-danger py-4">Failed to load maintenance records.</td></tr>`;
@@ -1038,6 +1056,8 @@ buildSidebar('equipment');
   function openMaintEdit(id) {
     const row = maintenanceCache.find(m => m.id === id);
     if (!row) return;
+    if (!__isPageAlive()) return;
+    if (!document.getElementById("editMaintId")) return;
     document.getElementById("editMaintId").value = row.id;
     document.getElementById("editMaintStatus").value = row.status;
     document.getElementById("editCompletedDate").value = row.completed_date || "";
@@ -1057,7 +1077,7 @@ buildSidebar('equipment');
     loadMaintenance();
   }
 
-  document.getElementById("maintEditForm").addEventListener("submit", async (e) => {
+  document.getElementById("maintEditForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('maintEditForm'), validationRules.maintEditForm)) return;
     const btn = document.getElementById("maintEditSubmitBtn");
@@ -1107,7 +1127,7 @@ buildSidebar('equipment');
     else if (res) alert("Could not delete this record.");
   }
 
-  document.getElementById("maintForm").addEventListener("submit", async (e) => {
+  document.getElementById("maintForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!validateForm(document.getElementById('maintForm'), validationRules.maintForm)) return;
     const btn = document.getElementById("maintLogSubmitBtn");

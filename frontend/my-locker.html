@@ -249,6 +249,7 @@ buildSidebar('my-locker');
             show('noAssignmentState');
             return;
         }
+        if (!__isPageAlive()) return;
 
         hide('loadingState');
 
@@ -366,7 +367,7 @@ buildSidebar('my-locker');
     async function loadLockerHistory() {
         const res = await apiRequest('/lockers/assignments/');
         if (!res || !res.ok) return;
-
+        if (!__isPageAlive()) return;
         const data = await res.json();
         const all = data.results || data;
 

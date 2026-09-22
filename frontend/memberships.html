@@ -552,7 +552,7 @@
     assignPrice: [v => validate.min(v, 0, 'Price')],
   };
 
-  document.getElementById('assignMembershipModal').addEventListener('shown.bs.modal', () => {
+  document.getElementById('assignMembershipModal')?.addEventListener('shown.bs.modal', () => {
     for (const [fieldName, rules] of Object.entries(assignFormRules)) {
       const field = document.getElementById(fieldName);
       if (field && !field.dataset.vInit) {
@@ -579,6 +579,7 @@
     while (path) {
       const res = await apiRequest(path);
       if (!res || !res.ok) return null;
+      if (!__isPageAlive()) return null;
       const data = await res.json();
       all = all.concat(data.results);
       path = data.next ? data.next.replace(API_BASE, '') : null;
@@ -595,15 +596,17 @@
   let memberSearchTimer = null;
 
   function closeMemberResults() {
-    document.getElementById('assignMemberResults').classList.remove('show');
+    document.getElementById('assignMemberResults')?.classList.remove('show');
   }
 
   async function searchMembers(term) {
     const box = document.getElementById('assignMemberResults');
+    if (!box) return;
     if (!term) { box.innerHTML = ''; closeMemberResults(); return; }
 
     const res = await apiRequest(`/members/?search=${encodeURIComponent(term)}&is_active=true`);
     if (!res || !res.ok) { closeMemberResults(); return; }
+    if (!__isPageAlive()) return;
     const data = await res.json();
     const results = (data.results || []).slice(0, 8);
 
@@ -626,18 +629,19 @@
     closeMemberResults();
   }
 
-  document.getElementById('assignMemberSearch').addEventListener('input', (e) => {
+  document.getElementById('assignMemberSearch')?.addEventListener('input', (e) => {
     document.getElementById('assignMember').value = '';
     clearTimeout(memberSearchTimer);
     const term = e.target.value.trim();
     memberSearchTimer = setTimeout(() => searchMembers(term), 250);
   });
 
-  document.getElementById('assignMemberSearch').addEventListener('focus', (e) => {
+  document.getElementById('assignMemberSearch')?.addEventListener('focus', (e) => {
     if (e.target.value.trim()) searchMembers(e.target.value.trim());
   });
 
   document.addEventListener('click', (e) => {
+    if (!__isPageAlive()) return;
     if (!e.target.closest('#assignMemberSearch') && !e.target.closest('#assignMemberResults')) {
       closeMemberResults();
     }
@@ -647,6 +651,7 @@
   async function loadPlans() {
     const plans = await fetchAll('/memberships/plans/?is_active=true');
     if (!plans) return;
+    if (!__isPageAlive()) return;
     plansCache = plans;
 
     const tbody = document.getElementById('planTableBody');
@@ -680,6 +685,8 @@
   function openPlanManage(id) {
     const p = findPlan(id);
     if (!p) return;
+    if (!__isPageAlive()) return;
+    if (!document.getElementById('planManageAvatar')) return;
     currentManagePlanId = id;
     document.getElementById('planManageAvatar').textContent = p.name.charAt(0).toUpperCase();
     document.getElementById('planManageName').textContent = p.name;
@@ -702,6 +709,7 @@
     if (!(await confirmAction('Delete this plan? Existing memberships will keep it, but it will no longer be assignable.', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
     const res = await apiRequest(`/memberships/plans/${id}/`, { method: 'DELETE' });
     if (!res) return;
+    if (!__isPageAlive()) return;
     if (res.ok) {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('managePlanModal')).hide();
       loadPlans();
@@ -770,7 +778,7 @@
   }
 
   // Add event listener for billing cycle changes
-  document.getElementById('editPlanCycle').addEventListener('change', toggleDurationField);
+  document.getElementById('editPlanCycle')?.addEventListener('change', toggleDurationField);
 
   // Add same logic for create plan modal
   function toggleCreateDurationField() {
@@ -797,7 +805,7 @@
     }
   }
 
-  document.getElementById('planCycle').addEventListener('change', toggleCreateDurationField);
+  document.getElementById('planCycle')?.addEventListener('change', toggleCreateDurationField);
 
   const editPlanRules = {
     editPlanName: [v => validate.maxLength(v, 100, 'Plan name'), v => validate.noHtml(v, 'Plan name')],
@@ -805,7 +813,7 @@
     editPlanDescription: [v => validate.maxLength(v, 500, 'Description'), v => validate.noHtml(v, 'Description')],
   };
 
-  document.getElementById('editPlanModal').addEventListener('shown.bs.modal', () => {
+  document.getElementById('editPlanModal')?.addEventListener('shown.bs.modal', () => {
     for (const [fieldName, rules] of Object.entries(editPlanRules)) {
       const field = document.getElementById(fieldName);
       if (field && !field.dataset.vInit) {
@@ -867,7 +875,7 @@
     }
   }
 
-  document.getElementById('planCycle').addEventListener('change', updateDurationField);
+  document.getElementById('planCycle')?.addEventListener('change', updateDurationField);
 
   const planFormRules = {
     planName: [v => validate.required(v, 'Plan name'), v => validate.maxLength(v, 100, 'Plan name'), v => validate.noHtml(v, 'Plan name')],
@@ -876,7 +884,7 @@
     planDescription: [v => validate.maxLength(v, 500, 'Description'), v => validate.noHtml(v, 'Description')],
   };
 
-  document.getElementById('createPlanModal').addEventListener('shown.bs.modal', () => {
+  document.getElementById('createPlanModal')?.addEventListener('shown.bs.modal', () => {
     for (const [fieldName, rules] of Object.entries(planFormRules)) {
       const field = document.getElementById(fieldName);
       if (field && !field.dataset.vInit) {
@@ -887,7 +895,7 @@
   });
 
   // Initialize on modal open
-  document.getElementById('createPlanModal').addEventListener('show.bs.modal', () => {
+  document.getElementById('createPlanModal')?.addEventListener('show.bs.modal', () => {
     updateDurationField();
   });
 
@@ -903,6 +911,7 @@
     });
     const res = await apiRequest('/memberships/plans/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) return;
+    if (!__isPageAlive()) return;
     if (res.ok) {
       document.getElementById('planForm').reset();
       bootstrap.Modal.getOrCreateInstance(document.getElementById('createPlanModal')).hide();
@@ -924,6 +933,7 @@
   }
 
   async function loadMemberships() {
+    if (!document.getElementById('filterSearch')) return;
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
     if (search) params.set('search', search);
@@ -932,6 +942,7 @@
 
     const all = await fetchAll('/memberships/?' + params.toString());
     if (all === null) { alert('Failed to load memberships.'); return; }
+    if (!__isPageAlive()) return;
 
     const visible = status === 'CANCELLED' ? all : all.filter(m => m.status !== 'CANCELLED');
     membershipsCache = visible;
@@ -1025,6 +1036,8 @@
   function openMembershipManage(id) {
     const m = findMembership(id);
     if (!m) return;
+    if (!__isPageAlive()) return;
+    if (!document.getElementById('membershipManageAvatar')) return;
     currentManageMembershipId = id;
 
     // Set Header
@@ -1326,6 +1339,7 @@
     if (!(await confirmAction('Delete this membership? This cannot be undone.', { confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }))) return;
     const res = await apiRequest(`/memberships/${id}/`, { method: 'DELETE' });
     if (!res) return;
+    if (!__isPageAlive()) return;
     if (res.ok) {
       bootstrap.Modal.getOrCreateInstance(document.getElementById('manageMembershipModal')).hide();
       loadMemberships();
@@ -1356,6 +1370,7 @@
 
     const res = await apiRequest('/memberships/', { method: 'POST', body: JSON.stringify(payload) });
     if (!res) return;
+    if (!__isPageAlive()) return;
 
     if (res.ok) {
       document.getElementById('assignForm').reset();
@@ -1370,7 +1385,7 @@
     }
   }
 
-  document.getElementById('assignMembershipModal').addEventListener('hidden.bs.modal', () => {
+  document.getElementById('assignMembershipModal')?.addEventListener('hidden.bs.modal', () => {
     document.getElementById('errorBox').classList.add('d-none');
   });
 
@@ -1393,14 +1408,17 @@
   async function loadFreezeRequests() {
     const res = await apiRequest('/memberships/freeze-requests/?status=PENDING');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const data = await res.json();
     freezeRequestsCache = data.results || data;
     const badge = document.getElementById('freezeRequestsBadge');
-    if (freezeRequestsCache.length > 0) {
-      badge.textContent = freezeRequestsCache.length;
-      badge.style.display = '';
-    } else {
-      badge.style.display = 'none';
+    if (badge) {
+      if (freezeRequestsCache.length > 0) {
+        badge.textContent = freezeRequestsCache.length;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
     }
     renderFreezeRequests();
   }
@@ -1471,7 +1489,9 @@
 
   (async () => {
     await loadPlans();
+    if (!__isPageAlive()) return;
     await loadMemberships();
+    if (!__isPageAlive()) return;
     await loadFreezeRequests();
   })();
 

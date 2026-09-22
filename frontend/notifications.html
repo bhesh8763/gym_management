@@ -286,7 +286,9 @@
 
   // ── Fetch + render ───────────────────────────────────────────────────────
   async function loadNotifications() {
-    document.getElementById('notifPageList').innerHTML = `
+    const notifPageListEl = document.getElementById('notifPageList');
+    if (!notifPageListEl) return;
+    notifPageListEl.innerHTML = `
       <div class="text-center py-5 text-muted">
         <div class="skeleton-avatar lg mx-auto mb-3"></div>
         <div class="skeleton-text mx-auto" style="width:120px;margin-bottom:4px;"></div>
@@ -315,6 +317,7 @@
     }
 
     allNotifications = results;
+    if (!__isPageAlive()) return;
     renderList();
     updateSummary();
   }
@@ -405,6 +408,7 @@
 
     const res = await apiRequest(`/notifications/${id}/read/`, { method: 'PATCH' });
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
 
     // Update local cache optimistically
     n.is_read = true;
@@ -465,16 +469,21 @@
   async function refreshTopbarBell() {
     const res = await apiRequest('/notifications/?is_read=false');
     if (!res || !res.ok) return;
+    if (!__isPageAlive()) return;
     const data = await res.json();
     const items = data.results || data;
     const badge = document.getElementById('notifCount');
-    if (items.length > 0) {
-      badge.style.display = 'inline-block';
-      badge.textContent   = items.length > 99 ? '99+' : items.length;
-    } else {
-      badge.style.display = 'none';
+    if (badge) {
+      if (items.length > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent   = items.length > 99 ? '99+' : items.length;
+      } else {
+        badge.style.display = 'none';
+      }
     }
-    document.getElementById('notifList').innerHTML = items.length
+    const notifListEl = document.getElementById('notifList');
+    if (!notifListEl) return;
+    notifListEl.innerHTML = items.length
       ? items.slice(0, 5).map(n => `
           <div class="notif-item ${n.is_read ? '' : 'fw-semibold'}" onclick="markRead(${n.id})" style="cursor:pointer;">
             <div>${escapeHtml(n.title)}</div>
@@ -509,7 +518,7 @@
       pushType:    [v => validate.required(v, 'Notification type')],
     };
 
-    document.getElementById('pushNotifForm').addEventListener('submit', async (e) => {
+    document.getElementById('pushNotifForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const errBox = document.getElementById('pushNotifError');
       const okBox  = document.getElementById('pushNotifSuccess');

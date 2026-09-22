@@ -490,6 +490,7 @@ async function fetchAll(path) {
   while (path) {
     const res = await apiRequest(path);
     if (!res || !res.ok) return null;
+    if (!__isPageAlive()) return null;
     const data = await res.json();
     all = all.concat(data.results);
     path = data.next ? data.next.replace(API_BASE, '') : null;
@@ -501,6 +502,7 @@ async function fetchAll(path) {
 async function loadPlans() {
   const plans = await fetchAll('/memberships/plans/?is_active=true');
   if (!plans) return;
+  if (!__isPageAlive()) return;
   plansCache = plans;
   renderPlans();
 }
@@ -544,6 +546,7 @@ function renderPlans() {
 async function loadMemberships() {
   const all = await fetchAll('/memberships/');
   if (all === null) return;
+  if (!__isPageAlive()) return;
   membershipsCache = all;
   renderCurrentMembership();
   renderHistory();
@@ -608,6 +611,7 @@ function renderCurrentMembership() {
 async function loadDues() {
   const res = await apiRequest('/payments/my-dues/');
   if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
   const data = await res.json();
   duesCache = data.dues || [];
   renderDues();
@@ -672,13 +676,13 @@ function updatePayMethodUI() {
   if (submitLabel) submitLabel.textContent = `Pay with ${gw}`;
 }
 
-document.getElementById('payMethod').addEventListener('change', updatePayMethodUI);
+document.getElementById('payMethod')?.addEventListener('change', updatePayMethodUI);
 
 const payFormRules = {
   payMethod: [v => validate.required(v, 'Payment method')],
 };
 
-document.getElementById('payForm').addEventListener('submit', async (e) => {
+document.getElementById('payForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!validateForm(document.getElementById('payForm'), payFormRules)) return;
   if (!selectedDue) return;
@@ -838,6 +842,7 @@ async function confirmPurchase() {
     });
 
     if (!res) return;
+    if (!__isPageAlive()) return;
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -896,6 +901,7 @@ async function confirmRenew() {
     });
 
     if (!res) return;
+    if (!__isPageAlive()) return;
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -1038,6 +1044,7 @@ async function submitFreezeRequest() {
 async function loadFreezeRequests() {
   const res = await apiRequest('/memberships/freeze-requests/');
   if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
   const data = await res.json();
   freezeRequestsCache = data.results || data;
   renderFreezeRequests();
@@ -1092,6 +1099,7 @@ async function verifyKhaltiIfReturning() {
     body: JSON.stringify({ pidx }),
   });
   if (!res) return;
+  if (!__isPageAlive()) return;
   const data = await res.json().catch(() => ({}));
 
   if (res.ok && data.status === 'PAID') showToast('Payment successful!');
@@ -1115,6 +1123,7 @@ async function verifyEsewaIfReturning() {
     body: JSON.stringify({ data: dataParam }),
   });
   if (!res) return;
+  if (!__isPageAlive()) return;
   const responseData = await res.json().catch(() => ({}));
 
   if (res.ok && responseData.status === 'PAID') showToast('Payment successful!');
@@ -1134,8 +1143,10 @@ async function verifyEsewaIfReturning() {
     console.error('Failed to load membership page:', err);
     showToast('Something went wrong — please refresh.', 'error');
   } finally {
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('pageBody').style.display = '';
+    if (__isPageAlive()) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('pageBody').style.display = '';
+    }
   }
 
   try {

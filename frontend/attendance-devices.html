@@ -237,6 +237,7 @@ async function loadCheckinQR() {
   display.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
   var res = await apiRequest('/attendance/checkin-qr/');
   if (!res || !res.ok) { display.innerHTML = '<div class="text-danger py-5">Failed to generate QR code.</div>'; return; }
+  if (!__isPageAlive()) return;
   var d = await res.json();
   display.innerHTML = '<div class="py-4">' +
     '<h5 class="mb-3">Gym Check-in QR Code</h5>' +
@@ -253,6 +254,7 @@ async function loadMemberQR() {
   display.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
   var res = await apiRequest('/attendance/qr/' + memberId + '/');
   if (!res || !res.ok) { display.innerHTML = '<div class="text-danger py-5">Failed to generate QR code. Check the member ID.</div>'; return; }
+  if (!__isPageAlive()) return;
   var d = await res.json();
   display.innerHTML = '<div class="py-4">' +
     '<h5 class="mb-3">QR Code for ' + escapeHtml(d.member_name) + ' (' + escapeHtml(d.display_id) + ')</h5>' +
@@ -269,6 +271,7 @@ async function loadProfileQR() {
   display.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
   var res = await apiRequest('/attendance/qr/' + memberId + '/profile/');
   if (!res || !res.ok) { display.innerHTML = '<div class="text-danger py-5">Failed to generate profile QR. Check the member ID.</div>'; return; }
+  if (!__isPageAlive()) return;
   var d = await res.json();
   display.innerHTML = '<div class="py-4">' +
     '<h5 class="mb-3">Profile QR for ' + escapeHtml(d.member_name) + '</h5>' +
@@ -299,6 +302,7 @@ async function loadBiometric() {
     document.getElementById('bioBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Could not load biometric records.</td></tr>';
     return;
   }
+  if (!__isPageAlive()) return;
   var data = await res.json();
   allBioRecords = data.results || data;
 
@@ -360,6 +364,7 @@ async function submitEnroll() {
 
   var res = await apiRequest('/attendance/biometric/', { method: 'POST', body: JSON.stringify(payload) });
   if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (!__isPageAlive()) return;
   if (res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('enrollModal')).hide();
     loadBiometric();

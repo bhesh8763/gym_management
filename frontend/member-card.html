@@ -151,6 +151,7 @@
           showError('Member not found or inactive.');
           return;
         }
+        if (!__isPageAlive()) return;
         const data = await res.json();
         renderProfile(data);
       } catch (e) {
