@@ -27,7 +27,9 @@ services:
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
     # Free tier doesn't support preDeployCommand, so migrate at boot
     # (no-op once applied) before gunicorn starts accepting traffic.
-    startCommand: python manage.py migrate && gunicorn gym_management.wsgi:application
+    # --bind 0.0.0.0:$PORT: Render health-checks its own assigned port;
+    # gunicorn's default (127.0.0.1:8000) is never reachable -> deploy timeout.
+    startCommand: python manage.py migrate && gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT
     healthCheckPath: /api/health/
     envVars:
       - key: SECRET_KEY
