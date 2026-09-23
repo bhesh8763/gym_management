@@ -789,7 +789,7 @@ def export_staff(request):
     profiles = StaffProfile.objects.select_related('user').order_by('user__first_name')
 
     headers = [
-        'ID', 'Full Name', 'Email', 'Phone', 'Department',
+        'ID', 'Full Name', 'Email', 'Phone', 'Role',
         'Joined Date', 'Salary (NPR)', 'Is Active',
     ]
     rows = []
@@ -800,7 +800,7 @@ def export_staff(request):
             user.get_full_name(),
             user.email,
             user.phone or '',
-            s.department,
+            s.role,
             str(s.joined_date) if s.joined_date else '',
             float(s.salary) if s.salary else '',
             'Yes' if user.is_active else 'No',

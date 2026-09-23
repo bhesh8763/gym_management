@@ -189,10 +189,16 @@ class TrainerAssignmentListTestCase(APITestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['trainer'], self.trainer.id)
 
-    def test_member_cannot_list_assignments(self):
+    def test_member_sees_only_own_assignments(self):
+        """Members may list assignments (my-trainer.html needs it), but the
+        queryset must scope them to rows where they are the member — no leak
+        of other members' assignments."""
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(self.member).access_token}')
         r = self.client.get('/api/trainers/assignments/')
-        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        results = r.data.get('results', r.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['member'], self.member.id)
 
     def test_assignments_contain_trainer_and_member_ids(self):
         """Each assignment should include trainer and member foreign key ids."""

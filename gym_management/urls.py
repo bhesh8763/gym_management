@@ -7,7 +7,8 @@ import time
 from django.contrib import admin
 from django.db import connection
 from django.http import JsonResponse
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.static import serve as static_serve
 from django.conf import settings
 from django.conf.urls.static import static
 from allauth.socialaccount import providers
@@ -114,3 +115,15 @@ urlpatterns = [
     path('api/trainers/', include('apps.trainers.urls')),
     path('api/import/', include('apps.dataimport.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# DEBUG=False makes the static() helper above a no-op, and Render runs no
+# nginx in front of /media — so route uploads through Django in production
+# (fine at this scale; swap for S3/Cloudinary when media grows).
+if not settings.DEBUG:
+    urlpatterns += [
+        re_path(
+            r'^media/(?P<path>.*)$',
+            static_serve,
+            {'document_root': settings.MEDIA_ROOT},
+        ),
+    ]

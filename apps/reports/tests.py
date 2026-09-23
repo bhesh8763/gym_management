@@ -688,7 +688,7 @@ class ExportStaffTestCase(APITestCase):
                                       first_name='Coach', last_name='Smith')
         from apps.staff.models import StaffProfile
         self.staff_profile = StaffProfile.objects.create(
-            user=self.staff_user, department='Training',
+            user=self.staff_user, role='TRAINER',
             salary=Decimal('35000.00'),
         )
 
@@ -698,7 +698,7 @@ class ExportStaffTestCase(APITestCase):
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         headers, _ = parse_csv(r)
         expected = [
-            'ID', 'Full Name', 'Email', 'Phone', 'Department',
+            'ID', 'Full Name', 'Email', 'Phone', 'Role',
             'Joined Date', 'Salary (NPR)', 'Is Active',
         ]
         self.assertEqual(headers, expected)
@@ -711,7 +711,7 @@ class ExportStaffTestCase(APITestCase):
         row = rows[0]
         self.assertEqual(row[1], 'John Staff')       # Full Name
         self.assertEqual(row[2], 'staff@gym.com')   # Email
-        self.assertEqual(row[4], 'Training')         # Department
+        self.assertEqual(row[4], 'TRAINER')         # Role
 
     def test_excel_headers(self):
         self.client.credentials(**auth_headers(self.owner))

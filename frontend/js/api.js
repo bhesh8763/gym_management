@@ -1,5 +1,15 @@
-const API_BASE = window.FITCORE_API_BASE || 'http://localhost:8000/api';
-
+// API base: FITCORE_API_BASE always wins. Dev (Live Server on :5500 or a
+// LAN IP, i.e. any port other than Django's own) talks to Django on :8000;
+// production — and pages served by Django itself — use same-origin /api.
+function detectApiBase() {
+  const host = location.hostname;
+  const devHost = host === 'localhost' || host === '127.0.0.1' ||
+    /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+  return (devHost && location.port && location.port !== '8000')
+    ? 'http://' + host + ':8000/api'
+    : '/api';
+}
+const API_BASE = window.FITCORE_API_BASE || detectApiBase();
 // Global fallback for __isPageAlive — always returns true on direct page loads
 // (no SPA navigation has occurred, so the page is always "alive").
 // When a page is loaded via the SPA router, runInlineScript injects a scoped

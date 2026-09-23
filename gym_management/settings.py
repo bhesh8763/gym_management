@@ -26,6 +26,15 @@ SECURE_CONTENT_TYPE_NOSNIFF = config('SECURE_CONTENT_TYPE_NOSNIFF', default=True
 X_FRAME_OPTIONS = 'DENY'
 SESSION_COOKIE_HTTPONLY = True
 
+# Behind Render's (or any) TLS-terminating proxy, trust X-Forwarded-Proto so
+# request.is_secure() and absolute URLs (password-reset emails) use https.
+# Off by default like the rest of this block — enable via .env on deploy.
+SECURE_PROXY_SSL_HEADER = (
+    ('HTTP_X_FORWARDED_PROTO', 'https')
+    if config('TRUST_X_FORWARDED_PROTO', default=False, cast=bool)
+    else None
+)
+
 # ─── APPLICATIONS ────────────────────────────────────────────────────────────
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -74,6 +83,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -146,6 +156,19 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Serve the static frontend (frontend/) at the site root in production:
+# WHITENOISE_INDEX_FILE maps "/" to frontend/index.html, so one service hosts
+# the whole UI + API at a single origin (same-origin /api, no CORS needed).
+WHITENOISE_ROOT = BASE_DIR / 'frontend'
+WHITENOISE_INDEX_FILE = True
+
+# Compressed (non-manifest) static storage — ships .gz/.br on collectstatic
+# without ManifestStaticFilesStorage's hard failure on any stale reference.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -211,6 +234,14 @@ CORS_ALLOWED_ORIGINS = [
     'https://192.168.100.234:5500',
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# Extra origins from env (comma-separated), e.g. a split frontend deploy:
+#   CORS_ALLOWED_ORIGINS=https://fitcore.example.com,https://www.fitcore.example.com
+CORS_ALLOWED_ORIGINS += [
+    origin.strip()
+    for origin in config('CORS_ALLOWED_ORIGINS', default='').split(',')
+    if origin.strip()
+]
 
 # ─── CSRF ─────────────────────────────────────────────────────────────────────
 # Trusted origins for CSRF in production.  Django requires the full scheme,

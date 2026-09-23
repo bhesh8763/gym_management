@@ -318,9 +318,15 @@ class LeaveDateValidationTests(StaffAPITestCase):
 class LeaveCancelTests(StaffAPITestCase):
     def setUp(self):
         super().setUp()
+        # Future dates: get_queryset() auto-rejects any PENDING leave whose
+        # end_date has passed, which would 400 the cancel (date-rot: these
+        # were future dates when the test was written).
+        today = timezone.now().date()
         self.leave = LeaveRequest.objects.create(
             requester=self.trainer, leave_type='SICK',
-            start_date='2026-07-20', end_date='2026-07-21', reason='Test',
+            start_date=today + timedelta(days=10),
+            end_date=today + timedelta(days=12),
+            reason='Test',
         )
         self.cancel_url = f'/api/staff/leave-requests/{self.leave.id}/cancel/'
 

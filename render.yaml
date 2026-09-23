@@ -1,0 +1,75 @@
+# Render blueprint: one web service (Django API + static frontend served by
+# whitenoise from the site root) + managed Postgres, Singapore region.
+# Deploy: Dashboard -> New -> Blueprint -> pick this repo.
+#
+# NOTE: if Render appends a suffix to the service name below (name already
+# taken), the hostname changes — update ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS
+# and FRONTEND_URL to match <name>.onrender.com.
+
+databases:
+  - name: fitcore-db
+    databaseName: gym_db
+    user: gym_user
+    # Free Postgres is a time-limited trial on Render; switch to a paid plan
+    # before it expires, or point DB_* env vars at Neon/Supabase instead.
+    plan: free
+
+services:
+  - type: web
+    name: fitcore
+    runtime: python
+    region: singapore
+    # Free web services sleep after inactivity; upgrade to "starter" for always-on.
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: gunicorn gym_management.wsgi:application
+    preDeployCommand: python manage.py migrate
+    healthCheckPath: /api/health/
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: fitcore.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://fitcore.onrender.com
+      - key: FRONTEND_URL
+        value: https://fitcore.onrender.com
+      - key: TRUST_X_FORWARDED_PROTO
+        value: "True"
+      - key: SESSION_COOKIE_SECURE
+        value: "True"
+      - key: CSRF_COOKIE_SECURE
+        value: "True"
+      # Enable after the first green deploy (redirects can confuse health checks):
+      - key: SECURE_SSL_REDIRECT
+        value: "False"
+      # DB_* consumed by gym_management/settings.py (python-decouple).
+      - key: DB_HOST
+        fromDatabase:
+          name: fitcore-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: fitcore-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: fitcore-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: fitcore-db
+          property: username
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: fitcore-db
+          property: password
+    # Persistent disk for media/ (profile pictures, equipment photos, staff
+    # ID docs) — requires a paid instance; until then uploads are ephemeral
+    # and disappear on redeploy.
+    # disk:
+    #   name: media
+    #   mountPath: /opt/render/project/src/media
+    #   sizeGB: 1
