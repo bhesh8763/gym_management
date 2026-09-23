@@ -355,7 +355,7 @@
   }
 
   /* ── Dark mode support for scoped styles ────────────────────────────────────── */
-  [data-theme="dark"] {
+  html:not([data-theme="light"]) {
     /* Table sticky header in dark mode */
     .table thead th {
       background: var(--bg-topbar) !important;

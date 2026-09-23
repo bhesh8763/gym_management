@@ -58,6 +58,16 @@
     color: #fff !important;
   }
 
+  /* ── Dark mode: notification icon chips ───────────────────────────────────
+     TYPE_META (JS) injects light pastel backgrounds into inline style
+     attributes. theme.css darkens those backgrounds in dark mode via
+     [style*="background:#…"] overrides, but the foregrounds stay dark
+     (dark-on-dark, contrast ~2:1). Brighten them here. The
+     html:not([data-theme="light"]) guard matches the default dark state. */
+  html:not([data-theme="light"]) [style*="background:#fce4ec"] { color:#fbcfe8 !important; }
+  html:not([data-theme="light"]) [style*="background:#e3f2fd"] { color:#93c5fd !important; }
+  html:not([data-theme="light"]) [style*="background:#e8f5e9"] { color:#6ee7b7 !important; }
+
 </style>
 </head>
 <body>

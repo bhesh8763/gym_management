@@ -349,6 +349,7 @@ function buildSidebar(activePage) {
 
     ${section('Insights')}
     ${link('reports.html', 'bi-bar-chart-line', 'Reports', 'OWNER', a('reports'))}
+    ${link('import.html', 'bi-box-arrow-in-up', 'Import Data', 'OWNER', a('import'))}
 
     ${section('System')}
     ${link('notifications.html', 'bi-bell', 'Notifications', '', a('notifications'))}
@@ -1251,9 +1252,20 @@ async function loadSidebarMessageBadge() {
 // every page load. The toggle button is injected into the topbar once.
 
 function applyTheme() {
-  const theme = localStorage.getItem('theme') || 'light';
+  const theme = localStorage.getItem('theme') || 'dark';
   document.documentElement.setAttribute('data-theme', theme);
   updateThemeIcon(theme);
+  applyChartTheme(theme);
+}
+
+// Chart.js reads its global defaults when each chart is constructed, so
+// refreshing them here keeps axes legible in both themes (charts are
+// created by page scripts that run after this file).
+function applyChartTheme(theme) {
+  if (typeof Chart === 'undefined' || !Chart.defaults) return;
+  const dark = theme !== 'light';
+  Chart.defaults.color = dark ? '#9aa0aa' : '#6b7280';
+  Chart.defaults.borderColor = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
 }
 
 function updateThemeIcon(theme) {

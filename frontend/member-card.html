@@ -113,6 +113,15 @@
       padding: 3rem;
       color: #e63946;
     }
+
+    /* ── Dark mode ──────────────────────────────────────────────────────────
+       This page loads neither css/theme.css nor js/api.js, so no data-theme
+       attribute is ever set — html:not([data-theme="light"]) therefore matches
+       the default (dark) state. Values mirror theme.css dark tokens. */
+    html:not([data-theme="light"]) body { background: #07070a; color: #f2f3f5; }
+    html:not([data-theme="light"]) .profile-body { background: #101117; }
+    html:not([data-theme="light"]) .info-row { border-bottom-color: rgba(255,255,255,0.08); }
+    html:not([data-theme="light"]) .info-value { color: #f2f3f5; }
   </style>
 </head>
 <body>

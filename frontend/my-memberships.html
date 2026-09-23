@@ -81,14 +81,14 @@
 <div id="page-content">
 <style>
   .plan-card {
-    border: 2px solid #e5e7eb;
+    border: 2px solid var(--border-light);
     border-radius: 16px;
     padding: 2rem;
     text-align: center;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-    background: #fff;
+    background: var(--bg-card);
   }
   .plan-card:hover {
     border-color: var(--brand-red);
@@ -124,7 +124,7 @@
   }
   .plan-cycle {
     display: inline-block;
-    background: #f3f4f6;
+    background: var(--bg-hover);
     color: var(--text-secondary);
     padding: 4px 12px;
     border-radius: 20px;
@@ -179,6 +179,23 @@
     background: linear-gradient(135deg, #fffbeb, #fef3c7);
     border: 1px solid #fde68a;
   }
+  /* Dark variants — pastel gradients would leave light-on-light text */
+  html:not([data-theme="light"]) .status-card.active {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    border-color: #047857;
+  }
+  html:not([data-theme="light"]) .status-card.expired {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    border-color: #b91c1c;
+  }
+  html:not([data-theme="light"]) .status-card.frozen {
+    background: linear-gradient(135deg, #172554, #1e3a5f);
+    border-color: #1e40af;
+  }
+  html:not([data-theme="light"]) .status-card.pending {
+    background: linear-gradient(135deg, #451a03, #78350f);
+    border-color: #92400e;
+  }
   .status-card .status-icon {
     width: 48px;
     height: 48px;
@@ -193,13 +210,13 @@
   .status-card.frozen .status-icon { background: #3b82f6; color: #fff; }
   .status-card.pending .status-icon { background: #f59e0b; color: #fff; }
   .history-item {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-light);
     border-radius: 12px;
     padding: 1rem 1.25rem;
     margin-bottom: 0.75rem;
     transition: background 0.2s;
   }
-  .history-item:hover { background: #f9fafb; }
+  .history-item:hover { background: var(--bg-hover); }
 </style>
 <div class="d-flex">
   <div class="sidebar" id="sidebar"></div>

@@ -29,6 +29,8 @@
     .calorie-progress-fill.surplus{background:linear-gradient(90deg,#f59e0b,#ef4444)}
     .calorie-progress-fill.on-track{background:var(--border-light)}
     .disclaimer-banner{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius-md);padding:0.75rem 1rem;font-size:0.8rem;color:#92400e;display:flex;gap:8px;align-items:flex-start}
+    /* Dark mode: #92400e disclaimer text is nearly invisible on the dark card — brighten it */
+    html:not([data-theme="light"]) .disclaimer-banner{color:#fde68a}
     .disclaimer-banner i{font-size:1rem;flex-shrink:0;margin-top:1px}
 
     /* Plan target bar */

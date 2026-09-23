@@ -4,7 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="logo.png">
+  <meta name="description" content="FitCore — all-in-one gym management platform for memberships, attendance, payments, trainers, workouts and diet plans.">
   <title>FitCore Gym — Management System</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="css/landing.css" rel="stylesheet">
@@ -12,286 +18,422 @@
 <body>
 
 <!-- ── Navbar ─────────────────────────────────────────────────────── -->
-<nav class="lp-navbar" id="navbar">
-  <div class="container d-flex align-items-center justify-content-between py-3">
+<header class="lp-nav" id="navbar">
+  <div class="container lp-nav-inner">
     <a href="/" class="lp-brand">
-      <img src="logo.png" alt="FitCore" style="height:30px;width:30px;object-fit:contain;"> FitCore
+      <img src="logo.png" alt="FitCore logo"> <span>FitCore</span>
     </a>
-    <div class="d-flex align-items-center gap-2">
-      <a href="login.html" class="btn btn-outline-light btn-sm px-3">Log In</a>
-      <a href="signup.html" class="btn lp-btn-accent btn-sm px-3">Sign Up</a>
+
+    <nav class="lp-nav-links" id="navLinks">
+      <a href="#features">Features</a>
+      <a href="#modules">Modules</a>
+      <a href="#roles">Roles</a>
+      <a href="#cta">Get Started</a>
+    </nav>
+
+    <div class="lp-nav-actions">
+      <a href="login.html" class="lp-btn lp-btn-ghost lp-btn-sm">Log In</a>
+      <a href="signup.html" class="lp-btn lp-btn-solid lp-btn-sm">Sign Up</a>
+      <button class="lp-burger" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </div>
-</nav>
+</header>
 
 <!-- ── Hero ──────────────────────────────────────────────────────── -->
 <section class="lp-hero">
-  <div class="lp-hero-bg">
-    <div class="lp-hero-orb lp-orb-1"></div>
-    <div class="lp-hero-orb lp-orb-2"></div>
-    <div class="lp-hero-orb lp-orb-3"></div>
-  </div>
-  <div class="container position-relative">
-    <div class="row align-items-center min-vh-hero">
+  <div class="lp-hero-bg" aria-hidden="true"></div>
+
+  <div class="container lp-hero-inner">
+    <div class="row align-items-center g-5">
       <div class="col-lg-6">
-        <span class="lp-eyebrow"><i class="bi bi-lightning-charge-fill me-1"></i> All-in-one gym platform</span>
-        <h1 class="lp-hero-title">Run your gym.<br><span class="lp-hero-highlight">Smarter.</span></h1>
-        <p class="lp-hero-sub">
+        <span class="lp-eyebrow reveal"><span class="lp-dot"></span> All-in-one gym platform</span>
+
+        <h1 class="lp-hero-title reveal" style="transition-delay:.08s">
+          Run your gym.<br>
+          <span class="lp-hero-highlight">Smarter.</span>
+        </h1>
+
+        <p class="lp-hero-sub reveal" style="transition-delay:.16s">
           Memberships, attendance, payments, trainers, workout plans, diet
-          tracking, lockers, and equipment — managed from one clean dashboard.
+          tracking, lockers and equipment — run the whole operation from one
+          clean dashboard.
         </p>
-        <div class="d-flex gap-3 flex-wrap mt-4">
-          <a href="signup.html" class="btn lp-btn-primary btn-lg px-4">
-            <i class="bi bi-rocket-takeoff me-2"></i>Get Started Free
+
+        <div class="lp-hero-cta reveal" style="transition-delay:.24s">
+          <a href="signup.html" class="lp-btn lp-btn-solid lp-btn-lg">
+            Get Started Free <i class="bi bi-arrow-right"></i>
           </a>
-          <a href="#features" class="btn lp-btn-ghost btn-lg px-4">
-            Explore Features <i class="bi bi-arrow-down ms-1"></i>
+          <a href="#features" class="lp-btn lp-btn-ghost lp-btn-lg">
+            Explore Features
           </a>
         </div>
-        <div class="lp-hero-trust mt-4">
+
+        <div class="lp-hero-trust reveal" style="transition-delay:.32s">
           <div class="lp-trust-avatars">
-            <div class="lp-trust-avatar" style="background:#e63946;">R</div>
-            <div class="lp-trust-avatar" style="background:#457b9d;">S</div>
-            <div class="lp-trust-avatar" style="background:#06a77d;">A</div>
-            <div class="lp-trust-avatar" style="background:#f77f00;">M</div>
+            <span style="--c:#e63946">R</span>
+            <span style="--c:#457b9d">S</span>
+            <span style="--c:#06a77d">A</span>
+            <span style="--c:#f77f00">M</span>
           </div>
-          <span class="lp-trust-text">Trusted by <strong>248+ active members</strong></span>
+          <p>Trusted by <strong>248+ active members</strong> · 15 expert trainers</p>
         </div>
       </div>
-      <div class="col-lg-6 d-none d-lg-flex justify-content-center mt-5 mt-lg-0">
-        <div class="lp-hero-graphic">
-          <div class="lp-stat-card lp-stat-1">
-            <i class="bi bi-people-fill"></i>
-            <div>
-              <div class="lp-stat-num">248</div>
-              <div class="lp-stat-label">Active Members</div>
-            </div>
+
+      <!-- Dashboard preview -->
+      <div class="col-lg-6">
+        <div class="lp-preview reveal" style="transition-delay:.2s">
+          <div class="lp-preview-bar">
+            <span class="lp-dots"><i></i><i></i><i></i></span>
+            <span class="lp-preview-url">fitcore / dashboard</span>
+            <span class="lp-preview-live"><span class="lp-dot"></span> live</span>
           </div>
-          <div class="lp-stat-card lp-stat-2">
-            <i class="bi bi-calendar-check-fill"></i>
-            <div>
-              <div class="lp-stat-num">94%</div>
-              <div class="lp-stat-label">Attendance Rate</div>
+
+          <div class="lp-preview-body">
+            <div class="lp-tiles">
+              <div class="lp-tile">
+                <i class="bi bi-people-fill"></i>
+                <strong>248</strong>
+                <span>Active members</span>
+              </div>
+              <div class="lp-tile">
+                <i class="bi bi-calendar-check-fill"></i>
+                <strong>94%</strong>
+                <span>Attendance</span>
+              </div>
+              <div class="lp-tile">
+                <i class="bi bi-cash-stack"></i>
+                <strong>Rs 1.2L</strong>
+                <span>Revenue / mo</span>
+              </div>
             </div>
-          </div>
-          <div class="lp-stat-card lp-stat-3">
-            <i class="bi bi-cash-stack"></i>
-            <div>
-              <div class="lp-stat-num">Rs 1.2L</div>
-              <div class="lp-stat-label">Monthly Revenue</div>
+
+            <div class="lp-panel">
+              <div class="lp-panel-head">
+                <span>Weekly check-ins</span>
+                <span class="lp-chip">+12.4%</span>
+              </div>
+              <div class="lp-chart">
+                <div class="lp-bar" style="--h:44%"></div>
+                <div class="lp-bar" style="--h:62%"></div>
+                <div class="lp-bar" style="--h:51%"></div>
+                <div class="lp-bar" style="--h:78%"></div>
+                <div class="lp-bar" style="--h:66%"></div>
+                <div class="lp-bar" style="--h:92%"></div>
+                <div class="lp-bar" style="--h:74%"></div>
+              </div>
+              <div class="lp-chart-labels">
+                <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+              </div>
             </div>
-          </div>
-          <div class="lp-hero-ring">
-            <i class="bi bi-lightning-charge-fill"></i>
+
+            <div class="lp-panel lp-feed">
+              <div class="lp-feed-row">
+                <span class="lp-feed-avatar" style="--c:#e63946">AS</span>
+                <span class="lp-feed-text">
+                  <strong>Anisha Sharma</strong>
+                  <small>Checked in · 06:12 AM</small>
+                </span>
+                <span class="lp-badge lp-badge-green">In</span>
+              </div>
+              <div class="lp-feed-row">
+                <span class="lp-feed-avatar" style="--c:#457b9d">BT</span>
+                <span class="lp-feed-text">
+                  <strong>Bikash Thapa</strong>
+                  <small>Membership renewed · 3 months</small>
+                </span>
+                <span class="lp-badge lp-badge-red">Paid</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  <div class="lp-hero-wave">
-    <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#f4f4f6"/>
-    </svg>
-  </div>
 </section>
 
-<!-- ── Stats Bar ─────────────────────────────────────────────────── -->
-<section class="lp-stats-bar">
+<!-- ── Stats ─────────────────────────────────────────────────────── -->
+<section class="lp-stats-wrap">
   <div class="container">
-    <div class="row g-4 text-center">
-      <div class="col-6 col-md-3">
-        <div class="lp-stats-item">
-          <div class="lp-stats-value">248+</div>
-          <div class="lp-stats-label">Active Members</div>
-        </div>
+    <div class="lp-stats reveal">
+      <div class="lp-stat">
+        <strong><span data-count="248">0</span>+</strong>
+        <span>Active members</span>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="lp-stats-item">
-          <div class="lp-stats-value">15+</div>
-          <div class="lp-stats-label">Expert Trainers</div>
-        </div>
+      <div class="lp-stat">
+        <strong><span data-count="15">0</span>+</strong>
+        <span>Expert trainers</span>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="lp-stats-item">
-          <div class="lp-stats-value">94%</div>
-          <div class="lp-stats-label">Attendance Rate</div>
-        </div>
+      <div class="lp-stat">
+        <strong><span data-count="94">0</span>%</strong>
+        <span>Attendance rate</span>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="lp-stats-item">
-          <div class="lp-stats-value">500+</div>
-          <div class="lp-stats-label">Workouts Completed</div>
-        </div>
+      <div class="lp-stat">
+        <strong><span data-count="500">0</span>+</strong>
+        <span>Workouts completed</span>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ── Features ──────────────────────────────────────────────────── -->
-<section class="lp-features py-5" id="features">
+<section class="lp-section" id="features">
   <div class="container">
-    <div class="text-center mb-5">
-      <span class="lp-eyebrow lp-eyebrow-dark"><i class="bi bi-grid-3x3-gap-fill me-1"></i> What's included</span>
-      <h2 class="lp-section-title">Everything your gym needs</h2>
-      <p class="lp-section-sub">One system. Every operation covered.</p>
+    <div class="lp-head reveal">
+      <span class="lp-kicker">What's included</span>
+      <h2>Everything your gym needs</h2>
+      <p>One system. Every operation covered — no spreadsheets, no guesswork.</p>
     </div>
-    <div class="row g-4">
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-person-vcard-fill"></i></div>
-          <h5>Members</h5>
-          <p>Manage profiles, fitness goals, BMI, and activity status for every member.</p>
-        </div>
+    <div class="row g-4" id="modules">
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal">
+          <div class="lp-card-icon"><i class="bi bi-person-vcard-fill"></i></div>
+          <h3>Members</h3>
+          <p>Manage profiles, fitness goals, BMI and activity status for every member.</p>
+        </article>
       </div>
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-card-checklist"></i></div>
-          <h5>Memberships</h5>
-          <p>Flexible plans with renewals, freeze/cancel support, and expiry alerts.</p>
-        </div>
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal" style="transition-delay:.05s">
+          <div class="lp-card-icon"><i class="bi bi-card-checklist"></i></div>
+          <h3>Memberships</h3>
+          <p>Flexible plans with renewals, freeze/cancel support and automatic expiry alerts.</p>
+        </article>
       </div>
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-calendar-check-fill"></i></div>
-          <h5>Attendance</h5>
-          <p>Check-in and check-out tracking for members, staff, and trainers.</p>
-        </div>
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal" style="transition-delay:.1s">
+          <div class="lp-card-icon"><i class="bi bi-calendar-check-fill"></i></div>
+          <h3>Attendance</h3>
+          <p>Check-in and check-out tracking for members, staff and trainers.</p>
+        </article>
       </div>
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-cash-stack"></i></div>
-          <h5>Payments</h5>
-          <p>Record transactions, apply discounts, and generate receipts for cash, eSewa & Khalti.</p>
-        </div>
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal">
+          <div class="lp-card-icon"><i class="bi bi-cash-stack"></i></div>
+          <h3>Payments</h3>
+          <p>Record transactions, apply discounts and generate receipts for cash, eSewa &amp; Khalti.</p>
+        </article>
       </div>
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-person-badge-fill"></i></div>
-          <h5>Staff & Trainers</h5>
-          <p>Departments, leave requests, specializations, and member assignments.</p>
-        </div>
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal" style="transition-delay:.05s">
+          <div class="lp-card-icon"><i class="bi bi-person-badge-fill"></i></div>
+          <h3>Staff &amp; Trainers</h3>
+          <p>Departments, leave requests, specializations and member assignments.</p>
+        </article>
       </div>
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
-          <h5>Progress Tracking</h5>
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal" style="transition-delay:.1s">
+          <div class="lp-card-icon"><i class="bi bi-graph-up-arrow"></i></div>
+          <h3>Progress Tracking</h3>
           <p>Body metrics over time and personal records (PRs) for every member.</p>
-        </div>
+        </article>
       </div>
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-trophy-fill"></i></div>
-          <h5>Workout Plans</h5>
-          <p>Exercise library, workout plans, training days, and sets/reps management.</p>
-        </div>
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal">
+          <div class="lp-card-icon"><i class="bi bi-trophy-fill"></i></div>
+          <h3>Workout Plans</h3>
+          <p>Exercise library, workout plans, training days and sets/reps management.</p>
+        </article>
       </div>
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-egg-fried"></i></div>
-          <h5>Diet Plans</h5>
-          <p>Meal plans with macros (protein, carbs, fat, calories) per member.</p>
-        </div>
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal" style="transition-delay:.05s">
+          <div class="lp-card-icon"><i class="bi bi-egg-fried"></i></div>
+          <h3>Diet Plans</h3>
+          <p>Meal plans with macros — protein, carbs, fat and calories — per member.</p>
+        </article>
       </div>
 
-      <div class="col-sm-6 col-lg-4">
-        <div class="lp-feature-card">
-          <div class="lp-feature-icon"><i class="bi bi-bell-fill"></i></div>
-          <h5>Notifications</h5>
-          <p>Automated alerts for membership expiry, due payments, and inactivity.</p>
-        </div>
+      <div class="col-md-6 col-lg-4">
+        <article class="lp-card reveal" style="transition-delay:.1s">
+          <div class="lp-card-icon"><i class="bi bi-bell-fill"></i></div>
+          <h3>Notifications</h3>
+          <p>Automated alerts for membership expiry, due payments and inactivity.</p>
+        </article>
       </div>
-
     </div>
   </div>
 </section>
 
-<!-- ── Roles ──────────────────────────────────────────────────────── -->
-<section class="lp-roles py-5">
+<!-- ── Roles ─────────────────────────────────────────────────────── -->
+<section class="lp-section lp-section-alt" id="roles">
   <div class="container">
-    <div class="text-center mb-5">
-      <span class="lp-eyebrow lp-eyebrow-dark"><i class="bi bi-shield-lock-fill me-1"></i> Role-based access</span>
-      <h2 class="lp-section-title">The right tools for everyone</h2>
-      <p class="lp-section-sub">Every role gets a tailored dashboard experience.</p>
+    <div class="lp-head reveal">
+      <span class="lp-kicker">Role-based access</span>
+      <h2>The right tools for everyone</h2>
+      <p>Every role signs in to a dashboard tailored to exactly what they need.</p>
     </div>
-    <div class="row g-4 justify-content-center">
 
-      <div class="col-sm-6 col-lg-3">
-        <div class="lp-role-card">
-          <div class="lp-role-icon lp-role-owner"><i class="bi bi-shield-fill-check"></i></div>
-          <h6 class="fw-bold mt-3">Owner</h6>
-          <p class="text-muted small">Full access — staff, reports, settings, and all modules.</p>
-        </div>
-      </div>
+    <div class="lp-roles">
+      <article class="lp-role reveal" style="--role:#e63946">
+        <div class="lp-role-icon"><i class="bi bi-shield-fill-check"></i></div>
+        <h3>Owner</h3>
+        <p>Full access — staff, reports, settings and every module in the system.</p>
+        <span class="lp-role-tag">Full control</span>
+      </article>
 
-      <div class="col-sm-6 col-lg-3">
-        <div class="lp-role-card">
-          <div class="lp-role-icon lp-role-staff"><i class="bi bi-person-workspace"></i></div>
-          <h6 class="fw-bold mt-3">Staff</h6>
-          <p class="text-muted small">Front-desk ops — members, payments, and attendance.</p>
-        </div>
-      </div>
+      <article class="lp-role reveal" style="--role:#457b9d; transition-delay:.06s">
+        <div class="lp-role-icon"><i class="bi bi-person-workspace"></i></div>
+        <h3>Staff</h3>
+        <p>Front-desk operations — members, payments, attendance and check-ins.</p>
+        <span class="lp-role-tag">Front desk</span>
+      </article>
 
-      <div class="col-sm-6 col-lg-3">
-        <div class="lp-role-card">
-          <div class="lp-role-icon lp-role-trainer"><i class="bi bi-person-arms-up"></i></div>
-          <h6 class="fw-bold mt-3">Trainer</h6>
-          <p class="text-muted small">Assigned members, workout plans, and diet plans.</p>
-        </div>
-      </div>
+      <article class="lp-role reveal" style="--role:#f77f00; transition-delay:.12s">
+        <div class="lp-role-icon"><i class="bi bi-person-arms-up"></i></div>
+        <h3>Trainer</h3>
+        <p>Assigned members, workout plans, diet plans and progress reviews.</p>
+        <span class="lp-role-tag">Coaching</span>
+      </article>
 
-      <div class="col-sm-6 col-lg-3">
-        <div class="lp-role-card">
-          <div class="lp-role-icon lp-role-member"><i class="bi bi-person-fill"></i></div>
-          <h6 class="fw-bold mt-3">Member</h6>
-          <p class="text-muted small">Own profile, plans, progress, and notifications.</p>
-        </div>
-      </div>
-
+      <article class="lp-role reveal" style="--role:#06a77d; transition-delay:.18s">
+        <div class="lp-role-icon"><i class="bi bi-person-fill"></i></div>
+        <h3>Member</h3>
+        <p>Own profile, plans, progress, payments and personal notifications.</p>
+        <span class="lp-role-tag">Self-serve</span>
+      </article>
     </div>
   </div>
 </section>
 
 <!-- ── CTA ───────────────────────────────────────────────────────── -->
-<section class="lp-cta">
-  <div class="container text-center py-5">
-    <h2 class="lp-cta-title">Ready to take control?</h2>
-    <p class="lp-cta-sub mb-4">Join FitCore today and start managing your gym like a pro.</p>
-    <div class="d-flex gap-3 justify-content-center flex-wrap">
-      <a href="signup.html" class="btn lp-btn-primary btn-lg px-5">
-        <i class="bi bi-rocket-takeoff me-2"></i>Sign Up
-      </a>
-      <a href="login.html" class="btn lp-btn-ghost btn-lg px-5">
-        <i class="bi bi-box-arrow-in-right me-2"></i>Log In
-      </a>
+<section class="lp-cta" id="cta">
+  <div class="container">
+    <div class="lp-cta-card reveal">
+      <span class="lp-kicker">Get started</span>
+      <h2>Ready to take control?</h2>
+      <p>Join FitCore today and start managing your gym like a pro. Free to start, no card required.</p>
+      <div class="lp-cta-actions">
+        <a href="signup.html" class="lp-btn lp-btn-solid lp-btn-lg">
+          Create free account <i class="bi bi-arrow-right"></i>
+        </a>
+        <a href="login.html" class="lp-btn lp-btn-ghost lp-btn-lg">
+          <i class="bi bi-box-arrow-in-right"></i> Log In
+        </a>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- ── Footer ─────────────────────────────────────────────────────── -->
 <footer class="lp-footer">
-  <div class="container d-flex flex-column flex-sm-row align-items-center justify-content-between py-4 gap-3">
-    <span class="lp-brand-sm"><img src="logo.png" alt="FitCore" style="height:28px;width:28px;object-fit:contain;"> FitCore</span>
-    <div class="d-flex gap-3">
-      <a href="login.html" class="lp-footer-link">Log In</a>
-      <a href="signup.html" class="lp-footer-link">Sign Up</a>
+  <div class="container">
+    <div class="lp-footer-grid">
+      <div class="lp-footer-brand">
+        <a href="/" class="lp-brand">
+          <img src="logo.png" alt="FitCore logo"> <span>FitCore</span>
+        </a>
+        <p>The all-in-one management system for modern gyms — built for owners, staff, trainers and members.</p>
+        <div class="lp-socials">
+          <a href="#" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+          <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+          <a href="#" aria-label="YouTube"><i class="bi bi-youtube"></i></a>
+        </div>
+      </div>
+
+      <div class="lp-footer-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="#roles">Roles</a>
+        <a href="#modules">Modules</a>
+        <a href="#cta">Get Started</a>
+      </div>
+
+      <div class="lp-footer-col">
+        <h4>Account</h4>
+        <a href="login.html">Log In</a>
+        <a href="signup.html">Sign Up</a>
+        <a href="forgot-password.html">Forgot password</a>
+        <a href="reset-password.html">Reset password</a>
+      </div>
+
+      <div class="lp-footer-col">
+        <h4>Resources</h4>
+        <a href="getting-started.html">Getting started</a>
+        <a href="messages.html">Messages</a>
+        <a href="#">Support</a>
+        <a href="#">Status</a>
+      </div>
     </div>
-    <span class="text-muted small">&copy; 2026 FitCore. All rights reserved.</span>
+
+    <div class="lp-footer-bottom">
+      <span>&copy; 2026 FitCore. All rights reserved.</span>
+      <div>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+    </div>
   </div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Navbar shadow on scroll
+// Navbar state on scroll
+const navbar = document.getElementById('navbar');
 window.addEventListener('scroll', () => {
-  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+  navbar.classList.toggle('scrolled', window.scrollY > 20);
+}, { passive: true });
+
+// Mobile menu
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+navToggle.addEventListener('click', () => {
+  const open = navLinks.classList.toggle('open');
+  navToggle.classList.toggle('open', open);
+  navToggle.setAttribute('aria-expanded', open);
+});
+navLinks.addEventListener('click', e => {
+  if (e.target.tagName === 'A') {
+    navLinks.classList.remove('open');
+    navToggle.classList.remove('open');
+  }
+});
+
+// Reveal on scroll
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(en => {
+    if (en.isIntersecting) {
+      en.target.classList.add('in');
+      io.unobserve(en.target);
+    }
+  });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+// Count-up stats
+const counters = document.querySelectorAll('[data-count]');
+const cIo = new IntersectionObserver((entries) => {
+  entries.forEach(en => {
+    if (!en.isIntersecting) return;
+    const el = en.target;
+    const target = +el.dataset.count;
+    const dur = 1400;
+    const start = performance.now();
+    const tick = now => {
+      const p = Math.min((now - start) / dur, 1);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    cIo.unobserve(el);
+  });
+}, { threshold: 0.6 });
+counters.forEach(el => cIo.observe(el));
+
+// Pointer glow on cards
+document.querySelectorAll('.lp-card').forEach(card => {
+  card.addEventListener('pointermove', e => {
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
 });
 </script>
 </body>

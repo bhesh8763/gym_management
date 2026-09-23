@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="logo.png">
+  <title>Import Data – FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    .import-card {
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card);
+      background: var(--bg-card);
+    }
+    .dropzone {
+      border: 2px dashed var(--border-light);
+      border-radius: var(--radius-lg);
+      background: var(--bg-root);
+      padding: 34px 18px;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--brand-red);
+      background: var(--brand-red-50);
+    }
+    .dropzone-icon { display: block; font-size: 2.2rem; color: var(--brand-red); margin-bottom: 8px; }
+    .dropzone-title { font-weight: 600; color: var(--text-primary); }
+    .dropzone-hint { font-size: .82rem; color: var(--text-muted); margin-top: 4px; }
+    .file-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+      background: var(--bg-root);
+    }
+    .import-chips {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .chip {
+      border: 1px solid var(--border-card);
+      background: var(--bg-root);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+    }
+    .chip-label {
+      display: block;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+    }
+    .chip-value {
+      display: block;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-family: var(--font-display);
+    }
+    .chip-danger { border-color: var(--color-danger); background: var(--color-danger-bg); }
+    .chip-danger .chip-value { color: var(--color-danger); }
+    .import-rules { list-style: none; padding-left: 0; margin-bottom: 0; }
+    .import-rules li {
+      position: relative;
+      padding-left: 1.35rem;
+      font-size: .85rem;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .import-rules li::before {
+      content: '\2713';
+      position: absolute;
+      left: 0;
+      color: var(--color-success);
+      font-weight: 700;
+    }
+    .import-note {
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-size: .85rem;
+      border: 1px solid transparent;
+    }
+    .note-info { background: var(--color-info-bg); border-color: var(--color-info); color: var(--text-primary); }
+    .note-warn { background: var(--color-warning-bg); border-color: var(--color-warning); color: var(--text-primary); }
+    .import-errors {
+      max-height: 320px;
+      overflow: auto;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+    }
+    .import-errors thead th { position: sticky; top: 0; background: var(--bg-card); z-index: 1; }
+    .sheet-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+      gap: 10px;
+    }
+    .sheet-chip {
+      border: 1px solid var(--border-card);
+      background: var(--bg-root);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+    }
+    .sheet-chip-name { display: block; font-weight: 600; font-size: .88rem; color: var(--text-primary); }
+    .sheet-chip-meta { display: block; font-size: .72rem; color: var(--brand-red); margin-top: 2px; }
+    .sheet-chip-desc { display: block; font-size: .75rem; color: var(--text-muted); margin-top: 4px; }
+  </style>
+</head>
+<body data-allowed-roles="OWNER">
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta"><div class="profile-name" id="profileName">&mdash;</div><div class="profile-role" id="profileRole">&mdash;</div></span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content"><div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="p-4 flex-grow-1">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+      <div>
+        <h3 class="mb-1 fw-bold">Import Data</h3>
+        <p class="text-muted mb-0">Bring members, plans, payments and more over from one Excel workbook — preview first, nothing is saved until you confirm.</p>
+      </div>
+      <button class="btn btn-outline-primary" id="templateBtn" onclick="downloadTemplate()">
+        <i class="bi bi-download me-1"></i> Download Template
+      </button>
+    </div>
+
+    <div class="alert alert-danger" id="globalError" style="display:none;"></div>
+    <div class="alert alert-success" id="successBox" style="display:none;"></div>
+
+    <div class="row g-3">
+      <!-- 1. Choose workbook -->
+      <div class="col-lg-6">
+        <div class="card import-card h-100">
+          <div class="card-body">
+            <h6 class="fw-semibold mb-3"><i class="bi bi-file-earmark-spreadsheet me-1 text-danger"></i>1. Choose your workbook</h6>
+            <div class="dropzone" id="dropzone">
+              <i class="bi bi-cloud-arrow-up dropzone-icon"></i>
+              <div class="dropzone-title">Drag &amp; drop your .xlsx file here</div>
+              <div class="dropzone-hint">or click to browse — up to 4.5 MB, 20,000 rows per sheet</div>
+              <input type="file" id="fileInput" accept=".xlsx,.xlsm" hidden>
+            </div>
+            <div class="file-meta" id="fileMeta" style="display:none;">
+              <div class="d-flex align-items-center gap-2 text-truncate">
+                <i class="bi bi-file-earmark-check text-success"></i>
+                <span class="fw-semibold text-truncate" id="fileName"></span>
+                <span class="text-muted small" id="fileSize"></span>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary flex-shrink-0" onclick="clearFile()">Change</button>
+            </div>
+            <div class="form-text mt-2">Only .xlsx / .xlsm workbooks. Download the template above for the exact headers and an example row per sheet.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Options -->
+      <div class="col-lg-6">
+        <div class="card import-card h-100">
+          <div class="card-body">
+            <h6 class="fw-semibold mb-3"><i class="bi bi-sliders me-1 text-danger"></i>2. Options</h6>
+            <label class="form-label small fw-semibold" for="defaultPassword">Default password for new accounts <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="password" class="form-control" id="defaultPassword" placeholder="Leave blank" minlength="6" autocomplete="new-password">
+            <div class="form-text">Used for member/staff/trainer rows that have no Password value of their own (minimum 6 characters). Leave blank and those accounts get a password they must reset before signing in.</div>
+            <hr>
+            <ul class="import-rules mb-3">
+              <li>The preview is a safe dry run — nothing is written until you press Import.</li>
+              <li>Rows that already exist are skipped, never duplicated — re-uploads are safe.</li>
+              <li>If any row has an error, the whole file is held back — fix it and re-upload.</li>
+            </ul>
+            <button class="btn btn-primary w-100" id="previewBtn" disabled onclick="previewImport()">
+              <span class="spinner-border spinner-border-sm me-1" id="previewSpin" style="display:none;"></span>
+              <i class="bi bi-search me-1" id="previewIcon"></i> Preview Import
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report -->
+    <div id="reportArea" style="display:none;">
+      <div class="card import-card mt-3">
+        <div class="card-body">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <h5 class="mb-0 fw-bold" id="reportTitle">Preview</h5>
+            <span class="badge text-bg-secondary text-truncate" id="reportFile" style="max-width:280px;"></span>
+          </div>
+
+          <div class="import-chips">
+            <div class="chip"><span class="chip-label">Rows read</span><span class="chip-value" id="chipRows">0</span></div>
+            <div class="chip"><span class="chip-label" id="chipNewLabel">To import</span><span class="chip-value" id="chipNew">0</span></div>
+            <div class="chip"><span class="chip-label">Already exist</span><span class="chip-value" id="chipSkip">0</span></div>
+            <div class="chip"><span class="chip-label">Errors</span><span class="chip-value" id="chipErr">0</span></div>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Sheet</th>
+                  <th class="text-end">Rows</th>
+                  <th class="text-end" id="thNew">To import</th>
+                  <th class="text-end">Already exist</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="sheetBody"></tbody>
+            </table>
+          </div>
+          <div class="form-text mt-2" id="omittedNote"></div>
+
+          <div class="import-note note-info mt-3" id="passwordNote" style="display:none;"></div>
+
+          <div id="errorsBlock" style="display:none;">
+            <h6 class="fw-semibold text-danger mt-4 mb-2">
+              <i class="bi bi-exclamation-triangle me-1"></i>Errors <span id="errCount"></span>
+            </h6>
+            <div class="import-errors">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr><th style="width:170px;">Sheet</th><th style="width:70px;">Row</th><th style="width:180px;">Column</th><th>Message</th></tr>
+                </thead>
+                <tbody id="errorBody"></tbody>
+              </table>
+            </div>
+            <div class="form-text mt-1" id="errTruncNote" style="display:none;">Showing the first errors only — fix these and re-upload to see the rest.</div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <button class="btn btn-success" id="importBtn" style="display:none;" onclick="commitImport()">
+              <span class="spinner-border spinner-border-sm me-1" id="importSpin" style="display:none;"></span>
+              <i class="bi bi-box-arrow-in-up me-1" id="importIcon"></i>
+              <span id="importLabel">Import</span>
+            </button>
+            <button class="btn btn-outline-secondary" onclick="document.getElementById('fileInput').click()">Choose another file</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supported sheets -->
+    <div class="card import-card mt-3 mb-4">
+      <div class="card-body">
+        <h5 class="fw-bold mb-1">What can I import?</h5>
+        <p class="text-muted small mb-3">Every tab is optional — include only the ones you need. Sheets import in a fixed order (plans → people → offers → memberships → payments → attendance → equipment → lockers → assignments → progress) so references always resolve.</p>
+        <div class="sheet-list" id="sheetList">
+          <div class="skeleton-text" style="width:70%;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+buildSidebar('import');
+if (!getAccessToken()) window.location.href = 'login.html';
+
+var selectedFile = null;
+var lastReport = null;
+var committedOk = false;
+var previewedRun = false;   // true once the current file has a preview report
+var maxFileBytes = 4500000;
+
+// ── Small helpers ───────────────────────────────────────────────────────────
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+function showError(msg) {
+  var el = document.getElementById('globalError');
+  el.textContent = msg;
+  el.style.display = '';
+}
+function hideError() { document.getElementById('globalError').style.display = 'none'; }
+function showSuccess(msg) {
+  var el = document.getElementById('successBox');
+  el.textContent = msg;
+  el.style.display = '';
+}
+function hideSuccess() { document.getElementById('successBox').style.display = 'none'; }
+
+// ── Supported-sheet list (single source of truth: the API) ──────────────────
+async function loadSchema() {
+  var res = await apiRequest('/import/');
+  if (!res || !res.ok) {
+    document.getElementById('sheetList').innerHTML =
+      '<span class="text-muted small">Could not load the sheet list — the download above still has every supported tab.</span>';
+    return;
+  }
+  var data = await res.json();
+  if (!__isPageAlive()) return;
+  if (data.limits && data.limits.max_file_bytes) maxFileBytes = data.limits.max_file_bytes;
+  document.getElementById('sheetList').innerHTML = data.sheets.map(function (s) {
+    var required = s.columns.filter(function (c) { return c.required; }).length;
+    return '<div class="sheet-chip" title="' + escapeHtml(s.description) + '">' +
+      '<span class="sheet-chip-name"><i class="bi bi-table me-1"></i>' + escapeHtml(s.name) + '</span>' +
+      '<span class="sheet-chip-meta">' + s.columns.length + ' columns &middot; ' + required + ' required</span>' +
+      '<span class="sheet-chip-desc">' + escapeHtml(s.description) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// ── File selection (click + drag & drop) ────────────────────────────────────
+function setFile(file) {
+  var ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (ext !== 'xlsx' && ext !== 'xlsm') {
+    showError('"' + file.name + '" is not an .xlsx workbook — download the template for the right format.');
+    return;
+  }
+  if (file.size > maxFileBytes) {
+    showError('That file is ' + fmtSize(file.size) + ' — the maximum is ' + fmtSize(maxFileBytes) + '. Split it into smaller workbooks.');
+    return;
+  }
+  hideError();
+  hideSuccess();
+  selectedFile = file;
+  lastReport = null;
+  committedOk = false;
+  previewedRun = false;
+  document.getElementById('reportArea').style.display = 'none';
+  document.getElementById('fileMeta').style.display = '';
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = fmtSize(file.size);
+  document.getElementById('previewBtn').disabled = false;
+}
+
+function clearFile() {
+  selectedFile = null;
+  lastReport = null;
+  committedOk = false;
+  previewedRun = false;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileMeta').style.display = 'none';
+  document.getElementById('reportArea').style.display = 'none';
+  document.getElementById('previewBtn').disabled = true;
+  hideError();
+  hideSuccess();
+}
+
+(function wireDropzone() {
+  var zone = document.getElementById('dropzone');
+  var input = document.getElementById('fileInput');
+  zone.addEventListener('click', function () { input.click(); });
+  input.addEventListener('change', function () {
+    if (input.files && input.files[0]) setFile(input.files[0]);
+  });
+  ['dragenter', 'dragover'].forEach(function (evt) {
+    zone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      zone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (evt) {
+    zone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      zone.classList.remove('dragover');
+    });
+  });
+  zone.addEventListener('drop', function (e) {
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) setFile(files[0]);
+  });
+})();
+
+// ── Talking to the API ──────────────────────────────────────────────────────
+async function sendImport(dryRun) {
+  var fd = new FormData();
+  fd.append('file', selectedFile);
+  fd.append('dry_run', dryRun ? 'true' : 'false');
+  var pwd = document.getElementById('defaultPassword').value.trim();
+  if (pwd) fd.append('default_password', pwd);
+
+  var res = await apiRequest('/import/', { method: 'POST', body: fd });
+  if (!res) { showError('Network error — please try again.'); return null; }
+  if (!__isPageAlive()) return null;
+
+  var data = await res.json().catch(function () { return null; });
+  if (!data || !data.sheets) {
+    showError((data && (data.error || data.detail)) || 'Unexpected server response — please try again.');
+    return null;
+  }
+  return data;
+}
+
+async function previewImport() {
+  if (!selectedFile) return;
+  hideError();
+  hideSuccess();
+  var btn = document.getElementById('previewBtn');
+  btn.disabled = true;
+  document.getElementById('previewSpin').style.display = '';
+  document.getElementById('previewIcon').style.display = 'none';
+
+  var report = await sendImport(true);
+
+  btn.disabled = false;
+  document.getElementById('previewSpin').style.display = 'none';
+  document.getElementById('previewIcon').style.display = '';
+  if (!report || !__isPageAlive()) return;
+
+  previewedRun = true;
+  renderReport(report, false);
+}
+
+async function commitImport() {
+  if (!selectedFile || !lastReport || !previewedRun || committedOk) return;
+  if (lastReport.totals.errors > 0) return;
+
+  var n = lastReport.totals.to_create;
+  var confirmed = await confirmAction(
+    'Create ' + n.toLocaleString() + ' record' + (n === 1 ? '' : 's') +
+      ' now? Rows that already exist will be skipped, and the whole import is all-or-nothing.',
+    { confirmText: 'Import', variant: 'primary', icon: 'bi-box-arrow-in-up' }
+  );
+  if (!confirmed) return;
+
+  var btn = document.getElementById('importBtn');
+  btn.disabled = true;
+  document.getElementById('importSpin').style.display = '';
+  document.getElementById('importIcon').style.display = 'none';
+
+  var report = await sendImport(false);
+
+  btn.disabled = false;
+  document.getElementById('importSpin').style.display = 'none';
+  document.getElementById('importIcon').style.display = '';
+  if (!report || !__isPageAlive()) return;
+
+  renderReport(report, true);
+}
+
+// ── Rendering the report ────────────────────────────────────────────────────
+function renderReport(report, wasCommit) {
+  lastReport = report;
+  committedOk = wasCommit && !!report.ok;
+  previewedRun = !committedOk;   // a successful commit ends the flow
+  var t = report.totals;
+
+  document.getElementById('reportArea').style.display = '';
+  document.getElementById('reportTitle').textContent = committedOk
+    ? 'Import complete'
+    : 'Preview — nothing has been saved yet';
+  document.getElementById('reportFile').textContent = report.file || '';
+
+  document.getElementById('chipRows').textContent = t.rows.toLocaleString();
+  document.getElementById('chipNew').textContent = t.to_create.toLocaleString();
+  document.getElementById('chipSkip').textContent = t.skipped.toLocaleString();
+  document.getElementById('chipErr').textContent = t.errors.toLocaleString();
+  document.getElementById('chipErr').parentElement.classList.toggle('chip-danger', t.errors > 0);
+
+  var newLabel = committedOk ? 'Imported' : 'To import';
+  document.getElementById('chipNewLabel').textContent = newLabel;
+  document.getElementById('thNew').textContent = newLabel;
+
+  if (report.error) showError(report.error); else hideError();
+
+  var present = report.sheets.filter(function (s) { return s.present; });
+  var omitted = report.sheets.filter(function (s) { return !s.present; })
+    .map(function (s) { return s.name; });
+
+  document.getElementById('sheetBody').innerHTML = present.map(function (s) {
+    var status;
+    if (s.error_count > 0) {
+      status = '<span class="badge text-bg-danger">' + s.error_count +
+        ' error' + (s.error_count === 1 ? '' : 's') + '</span>';
+    } else if (committedOk) {
+      status = '<span class="badge text-bg-success">Imported</span>';
+    } else if (s.to_create === 0) {
+      status = '<span class="badge text-bg-secondary">All skipped</span>';
+    } else {
+      status = '<span class="badge text-bg-success">Ready</span>';
+    }
+    var ignored = (s.ignored_columns && s.ignored_columns.length)
+      ? '<div class="form-text">Ignored column' + (s.ignored_columns.length === 1 ? '' : 's') +
+        ': ' + escapeHtml(s.ignored_columns.join(', ')) + '</div>'
+      : '';
+    return '<tr>' +
+      '<td class="fw-semibold">' + escapeHtml(s.name) + ignored + '</td>' +
+      '<td class="text-end">' + s.rows.toLocaleString() + '</td>' +
+      '<td class="text-end fw-semibold">' + s.to_create.toLocaleString() + '</td>' +
+      '<td class="text-end text-muted">' + s.skipped.toLocaleString() + '</td>' +
+      '<td>' + status + '</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('omittedNote').textContent = omitted.length
+    ? 'Tabs not in your file (skipped): ' + omitted.join(', ') + '.'
+    : '';
+
+  // Password note
+  var pNote = document.getElementById('passwordNote');
+  if (report.accounts_using_default_password > 0) {
+    pNote.className = 'import-note note-info mt-3';
+    pNote.innerHTML = '<i class="bi bi-key me-1"></i><strong>' +
+      report.accounts_using_default_password.toLocaleString() +
+      '</strong> new account(s) will receive the default password entered above.';
+    pNote.style.display = '';
+  } else if (report.accounts_without_password > 0) {
+    pNote.className = 'import-note note-warn mt-3';
+    pNote.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i><strong>' +
+      report.accounts_without_password.toLocaleString() +
+      '</strong> new account(s) will be created <em>without</em> a sign-in password — set a default password above, or reset them individually later.';
+    pNote.style.display = '';
+  } else {
+    pNote.style.display = 'none';
+  }
+
+  // Error table (cap the DOM; the server already caps per sheet)
+  var errRows = [];
+  var truncated = false;
+  present.forEach(function (s) {
+    s.errors.forEach(function (e) {
+      if (errRows.length < 200) {
+        errRows.push({ sheet: s.name, row: e.row, column: e.column, message: e.message });
+      } else {
+        truncated = true;
+      }
+    });
+    if (s.errors_truncated) truncated = true;
+  });
+
+  var errorsBlock = document.getElementById('errorsBlock');
+  if (errRows.length) {
+    errorsBlock.style.display = '';
+    document.getElementById('errCount').textContent = '(' + t.errors.toLocaleString() + ' total)';
+    document.getElementById('errorBody').innerHTML = errRows.map(function (r) {
+      return '<tr>' +
+        '<td class="fw-semibold">' + escapeHtml(r.sheet) + '</td>' +
+        '<td>' + (r.row || '&mdash;') + '</td>' +
+        '<td>' + escapeHtml(r.column || '—') + '</td>' +
+        '<td>' + escapeHtml(r.message) + '</td>' +
+      '</tr>';
+    }).join('');
+    document.getElementById('errTruncNote').style.display = truncated ? '' : 'none';
+  } else {
+    errorsBlock.style.display = 'none';
+    document.getElementById('errTruncNote').style.display = 'none';
+  }
+
+  // Actions
+  var importBtn = document.getElementById('importBtn');
+  var canImport = !wasCommit && !report.error && t.errors === 0 && t.to_create > 0;
+  importBtn.style.display = canImport ? '' : 'none';
+  if (canImport) {
+    document.getElementById('importLabel').textContent =
+      'Import ' + t.to_create.toLocaleString() + ' record' + (t.to_create === 1 ? '' : 's');
+  }
+
+  if (committedOk) {
+    showSuccess('Import complete — ' + t.to_create.toLocaleString() +
+      ' record(s) created' +
+      (t.skipped ? ', ' + t.skipped.toLocaleString() + ' already existed and were skipped' : '') + '.');
+  }
+
+  document.getElementById('reportArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Template download (authenticated, so it goes through apiRequest) ────────
+async function downloadTemplate() {
+  var btn = document.getElementById('templateBtn');
+  btn.disabled = true;
+  var res = await apiRequest('/import/template/');
+  btn.disabled = false;
+  if (!res || !res.ok) { showError('Could not download the template — please try again.'); return; }
+
+  var blob = await res.blob();
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'fitcore_import_template.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+}
+
+// Init
+loadSchema();
+loadTopbarNotifications();
+</script>
+</body>
+</html>

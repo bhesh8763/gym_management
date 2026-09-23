@@ -13,10 +13,10 @@
     .diet-toolbar{flex-wrap:nowrap}
     .diet-toolbar>.flex-grow-1{background:transparent !important}
     @media(max-width:768px){.diet-toolbar{flex-wrap:wrap}}
-    [data-theme="dark"] #page-content .plans-list-card .flex-grow-1{background:transparent !important}
-    [data-theme="dark"] .plans-list-card .form-select,
-    [data-theme="dark"] .plans-list-card .form-control{background:var(--bg-card) !important;color:var(--text-primary) !important;border-color:var(--border-light) !important}
-    [data-theme="dark"] .plans-list-card .input-group-text{background:var(--bg-card) !important;color:var(--text-secondary) !important;border-color:var(--border-light) !important}
+    html:not([data-theme="light"]) #page-content .plans-list-card .flex-grow-1{background:transparent !important}
+    html:not([data-theme="light"]) .plans-list-card .form-select,
+    html:not([data-theme="light"]) .plans-list-card .form-control{background:var(--bg-card) !important;color:var(--text-primary) !important;border-color:var(--border-light) !important}
+    html:not([data-theme="light"]) .plans-list-card .input-group-text{background:var(--bg-card) !important;color:var(--text-secondary) !important;border-color:var(--border-light) !important}
 
   </style>
 </head>

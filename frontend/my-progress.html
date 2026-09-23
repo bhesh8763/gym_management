@@ -443,7 +443,7 @@ buildSidebar('my-progress');
                 plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' kg' } } },
                 scales: {
                     x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
-                    y: { grid: { color: '#f3f4f6' }, ticks: { callback: v => v + ' kg', font: { size: 11 } } },
+                    y: { ticks: { callback: v => v + ' kg', font: { size: 11 } } },
                 },
             },
         });
@@ -605,7 +605,7 @@ buildSidebar('my-progress');
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { x: { display: false }, y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 } } } },
+                scales: { x: { display: false }, y: { ticks: { font: { size: 10 } } } },
             },
         });
         return inst;

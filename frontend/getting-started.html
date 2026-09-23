@@ -11,22 +11,46 @@
     :root {
       --brand-red: #e63946;
       --brand-red-dark: #b32d3a;
-      --dark-bg: #1a1a1f;
-      --soft-bg: #f7f8fa;
+      /* Design tokens (light) — mirrors css/theme.css, which this standalone page does not load. */
+      --bg-root: #f5f6f8;
+      --bg-card: #ffffff;
+      --bg-topbar: #08090d;
+      --bg-hover: #f0f1f3;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --border-light: #e5e7eb;
+      --dark-neutral: #374151;
+      --shadow-lg: 0 12px 32px rgba(0,0,0,0.1);
+    }
+
+    /* Dark mode (default) — same token overrides / selector pattern as css/theme.css */
+    html:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg-root: #07070a;
+      --bg-card: #101117;
+      --bg-topbar: #08090d;
+      --bg-hover: #16181f;
+      --text-primary: #f2f3f5;
+      --text-secondary: #9aa0aa;
+      --text-muted: #7d838d;
+      --border-light: rgba(255,255,255,0.08);
+      --dark-neutral: #334155;
+      --shadow-lg: 0 16px 36px rgba(0,0,0,0.65);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--soft-bg);
-      color: #1a1a1f;
+      background: var(--bg-root);
+      color: var(--text-primary);
       min-height: 100vh;
     }
 
     .gs-topbar {
-      background: #fff;
-      border-bottom: 1px solid #e8e8ed;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-light);
       padding: 1rem 2rem;
       display: flex;
       align-items: center;
@@ -39,7 +63,7 @@
       gap: 0.5rem;
       font-size: 1.25rem;
       font-weight: 800;
-      color: var(--dark-bg);
+      color: var(--text-primary);
       text-decoration: none;
     }
 
@@ -54,10 +78,10 @@
       align-items: center;
       gap: 0.5rem;
       padding: 0.5rem 1rem;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-light);
       border-radius: 8px;
-      background: #fff;
-      color: #555;
+      background: var(--bg-card);
+      color: var(--text-secondary);
       font-size: 0.875rem;
       font-weight: 500;
       text-decoration: none;
@@ -66,8 +90,8 @@
     }
 
     .gs-signout:hover {
-      border-color: #bbb;
-      color: #333;
+      border-color: var(--text-muted);
+      color: var(--text-primary);
     }
 
     .gs-hero {
@@ -78,7 +102,7 @@
     .gs-hero h1 {
       font-size: 2.75rem;
       font-weight: 800;
-      color: var(--dark-bg);
+      color: var(--text-primary);
       line-height: 1.2;
       margin-bottom: 0.75rem;
     }
@@ -89,7 +113,7 @@
 
     .gs-hero p {
       font-size: 1.1rem;
-      color: #6c6c78;
+      color: var(--text-secondary);
       max-width: 500px;
       margin: 0 auto;
     }
@@ -105,11 +129,11 @@
     }
 
     .gs-plan {
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 16px;
       padding: 2rem;
       width: 320px;
-      border: 2px solid #e8e8ed;
+      border: 2px solid var(--border-light);
       position: relative;
       display: flex;
       flex-direction: column;
@@ -118,7 +142,7 @@
 
     .gs-plan:hover {
       transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-lg);
     }
 
     .gs-plan.popular {
@@ -152,8 +176,8 @@
     }
 
     .gs-badge-starter {
-      background: #e8e8ed;
-      color: #6c6c78;
+      background: var(--bg-hover);
+      color: var(--text-secondary);
     }
 
     .gs-badge-popular {
@@ -177,13 +201,13 @@
       font-size: 1.25rem;
     }
 
-    .gs-plan-icon.starter { background: #e8e8ed; color: #6c6c78; }
+    .gs-plan-icon.starter { background: var(--bg-hover); color: var(--text-secondary); }
     .gs-plan-icon.popular { background: #fde8e8; color: var(--brand-red); }
     .gs-plan-icon.value { background: #fef3c7; color: #f59e0b; }
 
     .gs-plan-desc {
       font-size: 0.85rem;
-      color: #6c6c78;
+      color: var(--text-secondary);
       margin-bottom: 1.5rem;
     }
 
@@ -197,24 +221,24 @@
     .gs-plan-currency {
       font-size: 0.95rem;
       font-weight: 600;
-      color: #6c6c78;
+      color: var(--text-secondary);
     }
 
     .gs-plan-amount {
       font-size: 2.5rem;
       font-weight: 800;
-      color: var(--dark-bg);
+      color: var(--text-primary);
     }
 
     .gs-plan-period {
       font-size: 0.8rem;
-      color: #999;
+      color: var(--text-muted);
       margin-bottom: 1.5rem;
     }
 
     .gs-divider {
       border: none;
-      border-top: 1px solid #e8e8ed;
+      border-top: 1px solid var(--border-light);
       margin: 0 0 1.25rem;
     }
 
@@ -223,7 +247,7 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #999;
+      color: var(--text-muted);
       margin-bottom: 0.75rem;
     }
 
@@ -240,7 +264,7 @@
       gap: 0.6rem;
       padding: 0.35rem 0;
       font-size: 0.9rem;
-      color: #444;
+      color: var(--text-primary);
     }
 
     .gs-feature-list li i {
@@ -249,10 +273,10 @@
     }
 
     .gs-feature-list li i.bi-check-circle-fill { color: #10b981; }
-    .gs-feature-list li i.bi-x-circle-fill { color: #ddd; }
+    .gs-feature-list li i.bi-x-circle-fill { color: var(--text-muted); }
 
     .gs-feature-list li.excluded {
-      color: #bbb;
+      color: var(--text-muted);
     }
 
     .gs-not-included-label {
@@ -260,7 +284,7 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #ccc;
+      color: var(--text-muted);
       text-align: center;
       margin: 0.5rem 0 0.5rem;
       position: relative;
@@ -273,7 +297,7 @@
       top: 50%;
       width: 30%;
       height: 1px;
-      background: #e8e8ed;
+      background: var(--border-light);
     }
 
     .gs-not-included-label::before { left: 0; }
@@ -296,12 +320,12 @@
     }
 
     .gs-btn-primary {
-      background: var(--dark-bg);
+      background: var(--bg-topbar);
       color: #fff;
     }
 
     .gs-btn-primary:hover {
-      background: #333;
+      background: var(--dark-neutral);
       color: #fff;
     }
 
