@@ -2,9 +2,11 @@
 # whitenoise from the site root) + managed Postgres, Singapore region.
 # Deploy: Dashboard -> New -> Blueprint -> pick this repo.
 #
-# NOTE: if Render appends a suffix to the service name below (name already
-# taken), the hostname changes — update ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS
-# and FRONTEND_URL to match <name>.onrender.com.
+# NOTE: Render appended a suffix to the service name (name was taken), so the
+# real hostname is fitcore-k5zr.onrender.com, not fitcore.onrender.com.
+# settings.py ALSO auto-appends RENDER_EXTERNAL_HOSTNAME to ALLOWED_HOSTS /
+# CSRF_TRUSTED_ORIGINS, so only FRONTEND_URL below needs a manual update if the
+# hostname ever changes again.
 
 databases:
   - name: fitcore-db
@@ -37,11 +39,11 @@ services:
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
-        value: fitcore.onrender.com
+        value: fitcore-k5zr.onrender.com
       - key: CSRF_TRUSTED_ORIGINS
-        value: https://fitcore.onrender.com
+        value: https://fitcore-k5zr.onrender.com
       - key: FRONTEND_URL
-        value: https://fitcore.onrender.com
+        value: https://fitcore-k5zr.onrender.com
       - key: TRUST_X_FORWARDED_PROTO
         value: "True"
       - key: SESSION_COOKIE_SECURE

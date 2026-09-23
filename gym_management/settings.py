@@ -11,6 +11,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
+# Render publishes the service's real public hostname in RENDER_EXTERNAL_HOSTNAME
+# (a random suffix is appended when the requested name is taken, e.g.
+# fitcore-k5zr.onrender.com).  Append it unconditionally so host checks never
+# reject requests with a 400 DisallowedHost, whatever the env var says.
+_render_host = config('RENDER_EXTERNAL_HOSTNAME', default='')
+if _render_host and _render_host not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_render_host)
 
 # ─── PRODUCTION SECURITY (env-gated, off by default) ────────────────────────────
 # These default OFF so local dev is unaffected. Setting the matching env vars to
@@ -252,6 +259,11 @@ CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
     default='http://localhost:5500,http://127.0.0.1:5500',
 ).split(',')
+# Same auto-discovered Render host (see SECURITY section) for CSRF origin checks.
+if _render_host:
+    _render_origin = f'https://{_render_host}'
+    if _render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_render_origin)
 
 # ─── EMAIL ─────────────────────────────────────────────────────────────────────
 # In development: print emails to the console.
