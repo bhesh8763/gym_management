@@ -7,6 +7,9 @@ django-cors-headers==4.4.0
 # ─── Auth & Social ───────────────────────────────────────────────────────────
 django-allauth==65.7.0
 dj-rest-auth==7.0.1
+# cryptography: imported by allauth Google provider (google.views -> internal.jwtkit);
+# was present in the dev venv but never pinned, breaking clean installs.
+cryptography==50.0.1
 
 # ─── Database ────────────────────────────────────────────────────────────────
 psycopg2-binary==2.9.12
