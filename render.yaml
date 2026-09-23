@@ -22,8 +22,9 @@ services:
     # Free web services sleep after inactivity; upgrade to "starter" for always-on.
     plan: free
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: gunicorn gym_management.wsgi:application
-    preDeployCommand: python manage.py migrate
+    # Free tier doesn't support preDeployCommand, so migrate at boot
+    # (no-op once applied) before gunicorn starts accepting traffic.
+    startCommand: python manage.py migrate && gunicorn gym_management.wsgi:application
     healthCheckPath: /api/health/
     envVars:
       - key: SECRET_KEY
@@ -61,7 +62,7 @@ services:
       - key: DB_USER
         fromDatabase:
           name: fitcore-db
-          property: username
+          property: user
       - key: DB_PASSWORD
         fromDatabase:
           name: fitcore-db
