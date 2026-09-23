@@ -336,9 +336,9 @@ function buildSidebar(activePage) {
     ${link('staff.html', 'bi-people', 'Staff', 'OWNER', a('staff'))}
     ${link('trainers.html', 'bi-person-workspace', 'Trainers', 'STAFF', a('trainers'))}
 
-    ${section('Workout & Diet', 'OWNER,STAFF,TRAINER')}
-    ${link('workouts.html', 'bi-heart-pulse', 'Workouts', 'OWNER,STAFF,TRAINER', a('workouts'))}
-    ${link('diet.html', 'bi-egg-fried', 'Diet', 'OWNER,STAFF,TRAINER', a('diet'))}
+    ${section('Workout & Diet', 'OWNER,TRAINER')}
+    ${link('workouts.html', 'bi-heart-pulse', 'Workouts', 'OWNER,TRAINER', a('workouts'))}
+    ${link('diet.html', 'bi-egg-fried', 'Diet', 'OWNER,TRAINER', a('diet'))}
 
     ${section('Payments')}
     ${link('payments.html', 'bi-cash-coin', 'Payments', 'OWNER,STAFF', a('payments'))}
