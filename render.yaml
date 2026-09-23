@@ -8,6 +8,9 @@
 
 databases:
   - name: fitcore-db
+    # MUST match the service region — Render's internal DNS/private network
+    # is per-region, and the region default is "oregon" (can't change later).
+    region: singapore
     databaseName: gym_db
     user: gym_user
     # Free Postgres is a time-limited trial on Render; switch to a paid plan
