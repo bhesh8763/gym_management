@@ -20,6 +20,16 @@
 </head>
 <body data-allowed-roles="OWNER,STAFF,TRAINER">
 
+<!-- Toast container for save/update/delete feedback -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
     <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
@@ -226,10 +236,17 @@
       </div>
     </div>
 
+    <!-- -- Members: bulk action bar (shown when rows are selected) ---------- -->
+    <div id="memberBulkBar" class="alert alert-secondary d-none d-flex align-items-center gap-2 py-2">
+      <span id="memberBulkCount" class="small">0 selected</span>
+      <button class="btn btn-sm btn-danger" id="memberBulkDeleteBtn" onclick="bulkDeleteMembers()"><i class="bi bi-trash"></i> Delete</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="clearMemberSelection()">Cancel</button>
+    </div>
+
     <div class="d-flex justify-content-between align-items-center mb-2">
       <div class="d-flex align-items-center gap-2">
         <label class="form-label mb-0 small text-muted">Rows per page</label>
-        <select id="pageSize" class="form-select form-select-sm" style="width:auto;" onchange="renderPage(1)">
+        <select id="pageSize" class="form-select form-select-sm" style="width:auto;" onchange="clearMemberSelection(); renderPage(1)">
           <option value="10">10</option>
           <option value="25">25</option>
           <option value="50">50</option>
@@ -244,6 +261,7 @@
       <table class="table member-table align-middle" id="memberTable">
         <thead>
           <tr>
+            <th class="member-bulk-col" data-no-export><input type="checkbox" id="memberSelectAll" onchange="toggleMemberSelectAll(this.checked)"></th>
             <th>Member</th><th>Phone</th>
             <th>Membership Plan</th><th>Expires</th>
             <th>Fitness Goal</th><th>Status</th><th data-no-export>Actions</th>
@@ -256,8 +274,8 @@
     <div class="d-flex justify-content-between align-items-center mt-3">
       <small class="text-muted" id="pageInfo">Showing 0 of 0</small>
       <div>
-        <button class="btn btn-sm btn-outline-secondary me-1" id="prevPageBtn" onclick="renderPage('prev')">Previous</button>
-        <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" onclick="renderPage('next')">Next</button>
+        <button class="btn btn-sm btn-outline-secondary me-1" id="prevPageBtn" onclick="clearMemberSelection(); renderPage('prev')">Previous</button>
+        <button class="btn btn-sm btn-outline-secondary" id="nextPageBtn" onclick="clearMemberSelection(); renderPage('next')">Next</button>
       </div>
     </div>
   </div>
@@ -520,6 +538,8 @@ buildSidebar('members');
 
   var allMembers = [];
   var currentPage = 1;
+  var selectedMemberIds = new Set();
+  var memberBulkAllowed = ['OWNER', 'ADMIN'].includes(localStorage.getItem('user_role'));
   var searchDebounceTimer = null;
 
   function onSearchInput() {
@@ -529,10 +549,113 @@ buildSidebar('members');
     }, 300);
   }
 
+  // --- Toast feedback (same helper as equipment.html) ------------------------
+  function showToast(message, variant) {
+    const toastEl = document.getElementById("appToast");
+    const bodyEl = document.getElementById("appToastBody");
+    if (!toastEl || !bodyEl) {
+      console.warn("Toast element missing from page - skipping toast:", message);
+      return;
+    }
+    toastEl.classList.remove("bg-success", "bg-danger");
+    toastEl.classList.add(variant === "error" ? "bg-danger" : "bg-success");
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 }).show();
+  }
+
+  // --- Bulk selection --------------------------------------------------------
+  function currentPageRows() {
+    const pageSize = parseInt(document.getElementById('pageSize').value, 10);
+    const start = (currentPage - 1) * pageSize;
+    return allMembers.slice(start, start + pageSize);
+  }
+
+  function toggleMemberSelectAll(checked) {
+    const rows = currentPageRows();
+    if (checked) rows.forEach(m => selectedMemberIds.add(m.user_id));
+    else rows.forEach(m => selectedMemberIds.delete(m.user_id));
+    renderPage(currentPage);
+  }
+
+  function toggleMemberRowSelect(userId, checked) {
+    if (checked) selectedMemberIds.add(userId);
+    else selectedMemberIds.delete(userId);
+    updateMemberBulkBar();
+  }
+
+  function clearMemberSelection() {
+    selectedMemberIds.clear();
+    updateMemberBulkBar();
+  }
+
+  function applyMemberBulkVisibility() {
+    document.querySelectorAll('.member-bulk-col').forEach(el => {
+      el.style.display = memberBulkAllowed ? '' : 'none';
+    });
+  }
+
+  function updateMemberBulkBar() {
+    const bar = document.getElementById('memberBulkBar');
+    const count = document.getElementById('memberBulkCount');
+    if (!bar || !count) return;
+    if (memberBulkAllowed && selectedMemberIds.size > 0) {
+      bar.classList.remove('d-none');
+      count.textContent = `${selectedMemberIds.size} selected`;
+    } else {
+      bar.classList.add('d-none');
+    }
+    const selectAllBox = document.getElementById('memberSelectAll');
+    if (selectAllBox) {
+      const rows = currentPageRows();
+      selectAllBox.checked = rows.length > 0 && rows.every(m => selectedMemberIds.has(m.user_id));
+    }
+  }
+
+  async function bulkDeleteMembers() {
+    const ids = Array.from(selectedMemberIds);
+    if (ids.length === 0) return;
+    const confirmed = await confirmAction(
+      'Members with no payment or attendance history will be permanently deleted. Members with history will be deactivated instead so their records are kept.',
+      { title: `Delete ${ids.length} selected member(s)?`, confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('memberBulkDeleteBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await apiRequest('/members/bulk-delete/', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      });
+      if (!res) return;
+      if (!__isPageAlive()) return;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast('Bulk delete failed: ' + formatApiError(err), 'error');
+        return;
+      }
+      const data = await res.json();
+      const skipped = data.skipped || [];
+      showToast(`${data.deleted} deleted, ${data.deactivated} deactivated, ${skipped.length} skipped.`);
+      if (skipped.length) {
+        alert('Skipped members:\n' + skipped.map(s => {
+          const row = allMembers.find(m => m.user_id === s.id);
+          return `${row ? row.full_name + ' (#' + s.id + ')' : '#' + s.id} - ${s.reason}`;
+        }).join('\n'));
+      }
+      clearMemberSelection();
+      await loadMembers();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function loadMembers() {
     const tbody = document.getElementById('memberTableBody');
     if (!tbody) return;
-    tbody.innerHTML = Array(5).fill(null).map(() => `<tr><td colspan="7" style="padding:12px 0;"><div class="skeleton-table-row"><div style="flex:2;"><div class="skeleton-text" style="width:60%;"></div></div><div><div class="skeleton-text" style="width:70%;"></div></div><div><div class="skeleton-text" style="width:50%;"></div></div><div><div class="skeleton-text" style="width:65%;"></div></div><div><div class="skeleton-text" style="width:40%;"></div></div><div><div class="skeleton-text" style="width:55%;"></div></div><div><div class="skeleton-text" style="width:30%;"></div></div></div></td></tr>`).join('');
+    selectedMemberIds.clear();
+    updateMemberBulkBar();
+    tbody.innerHTML = Array(5).fill(null).map(() => `<tr><td colspan="8" style="padding:12px 0;"><div class="skeleton-table-row"><div style="flex:2;"><div class="skeleton-text" style="width:60%;"></div></div><div><div class="skeleton-text" style="width:70%;"></div></div><div><div class="skeleton-text" style="width:50%;"></div></div><div><div class="skeleton-text" style="width:65%;"></div></div><div><div class="skeleton-text" style="width:40%;"></div></div><div><div class="skeleton-text" style="width:55%;"></div></div><div><div class="skeleton-text" style="width:30%;"></div></div></div></td></tr>`).join('');
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
     if (search) params.set('search', search);
@@ -583,7 +706,7 @@ buildSidebar('members');
 
       if (allMembers.length === 0) {
         tbody.innerHTML = `
-          <tr><td colspan="7" class="text-center text-muted py-4">
+          <tr><td colspan="8" class="text-center text-muted py-4">
             <i class="bi bi-people display-6 d-block mb-2"></i>
             No members found. Click "Add Member" to create your first member.
           </td></tr>`;
@@ -611,6 +734,7 @@ buildSidebar('members');
 
           tbody.innerHTML += `
             <tr>
+              <td class="member-bulk-col"><input type="checkbox" ${selectedMemberIds.has(row.user_id) ? 'checked' : ''} onchange="toggleMemberRowSelect(${row.user_id}, this.checked)"></td>
               <td>
                 <div class="member-cell d-flex align-items-center gap-2">
                   <div>
@@ -639,11 +763,13 @@ buildSidebar('members');
         : 'Showing 0 of 0';
       document.getElementById('prevPageBtn').disabled = currentPage === 1;
       document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+      updateMemberBulkBar();
+      applyMemberBulkVisibility();
 
     } catch (err) {
       console.error('renderPage failed:', err);
       document.getElementById('memberTableBody').innerHTML =
-        `<tr><td colspan="7" class="text-center text-danger py-4">Something went wrong rendering this table. Check the console for details.</td></tr>`;
+        `<tr><td colspan="8" class="text-center text-danger py-4">Something went wrong rendering this table. Check the console for details.</td></tr>`;
     }
   }
 
@@ -943,6 +1069,7 @@ buildSidebar('members');
     new bootstrap.Modal(manageModalEl).show();
   }
 
+  applyMemberBulkVisibility();
   loadMembers();
 
   // --- Height unit toggle ------------------------------------------

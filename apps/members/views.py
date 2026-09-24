@@ -9,6 +9,7 @@ API Endpoints:
     PATCH  /api/members/<id>/             - Partial update profile (Owner/Staff or self)
     DELETE /api/members/<id>/             - Deactivate member (Owner/Staff)
     POST   /api/members/<id>/reactivate/  - Reactivate member (Owner/Staff)
+    POST   /api/members/bulk-delete/      - Hybrid bulk delete/deactivate (Owner/Admin)
     GET    /api/members/me/               - Own profile (Member)
     PATCH  /api/members/me/              - Update own profile (Member)
 
@@ -20,7 +21,10 @@ Search/Filter (query params on list):
     ?is_active=<true|false>
     ?ordering=<created_at|-created_at|full_name>
 """
+import logging
+
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import generics, status, filters
 from rest_framework.exceptions import NotFound, PermissionDenied
@@ -39,6 +43,8 @@ from apps.members.serializers import (
 )
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -211,6 +217,113 @@ class MemberDetailView(APIView):
         user.save(update_fields=['is_active'])
         return Response(
             {'detail': f'Member {user.get_full_name()} has been deactivated.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+# ─── Member Bulk Delete (hybrid) ──────────────────────────────────────────────
+
+class MemberBulkDeleteView(APIView):
+    """
+    POST /api/members/bulk-delete/ — Bulk delete/deactivate members (Owner/Admin only).
+
+    Body: {"ids": [<user_id>, ...]}
+
+    Per id (each wrapped in its own savepoint so one failure never aborts the batch):
+      1. Not found / role != MEMBER / superuser / the requesting user -> skipped.
+      2. Has any Payment, Attendance, Membership or PromoCodeUsage row ->
+         deactivated (is_active=False); skipped if already inactive.
+      3. No such rows -> hard delete (cascades the member's own profile,
+         progress, locker, workout, diet and assignment rows).
+
+    Response: {"deleted": n, "deactivated": n, "skipped": [{"id", "reason"}]}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.attendance.models import Attendance
+        from apps.memberships.models import Membership, PromoCodeUsage
+        from apps.payments.models import Payment
+
+        if request.user.role not in (User.Role.OWNER, User.Role.ADMIN):
+            raise PermissionDenied('Only Owners/Admins can bulk delete members.')
+
+        raw_ids = request.data.get('ids')
+        if not isinstance(raw_ids, list):
+            return Response(
+                {'detail': 'Request body must include an "ids" list.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        skipped = []
+        ids = []
+        seen = set()
+        for raw in raw_ids:
+            try:
+                pk = int(raw)
+            except (TypeError, ValueError):
+                skipped.append({'id': raw, 'reason': 'not a deletable member'})
+                continue
+            if pk in seen:
+                continue
+            seen.add(pk)
+            ids.append(pk)
+
+        # Batch-load users and the "has history" id sets — one query per model,
+        # not one per id.
+        users = {u.id: u for u in User.objects.filter(id__in=ids)}
+        has_history = set()
+        if ids:
+            has_history |= set(
+                Payment.objects.filter(member_id__in=ids)
+                .values_list('member_id', flat=True).distinct()
+            )
+            has_history |= set(
+                Attendance.objects.filter(user_id__in=ids)
+                .values_list('user_id', flat=True).distinct()
+            )
+            has_history |= set(
+                Membership.objects.filter(member_id__in=ids)
+                .values_list('member_id', flat=True).distinct()
+            )
+            has_history |= set(
+                PromoCodeUsage.objects.filter(member_id__in=ids)
+                .values_list('member_id', flat=True).distinct()
+            )
+
+        deleted = deactivated = 0
+        with transaction.atomic():
+            for pk in ids:
+                user = users.get(pk)
+                if (
+                    user is None
+                    or user.role != User.Role.MEMBER
+                    or user.is_superuser
+                    or user.id == request.user.id
+                ):
+                    skipped.append({'id': pk, 'reason': 'not a deletable member'})
+                    continue
+                try:
+                    with transaction.atomic():
+                        if pk in has_history:
+                            if user.is_active:
+                                user.is_active = False
+                                user.save(update_fields=['is_active'])
+                                deactivated += 1
+                            else:
+                                skipped.append({
+                                    'id': pk,
+                                    'reason': 'already inactive (has history)',
+                                })
+                        else:
+                            user.delete()
+                            deleted += 1
+                except Exception:
+                    logger.exception('Bulk delete failed for member user id=%s', pk)
+                    skipped.append({'id': pk, 'reason': 'could not be deleted'})
+
+        return Response(
+            {'deleted': deleted, 'deactivated': deactivated, 'skipped': skipped},
             status=status.HTTP_200_OK,
         )
 

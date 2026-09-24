@@ -10,6 +10,7 @@ Coverage:
     - Member detail (GET /api/members/<id>/)
     - Member update (PATCH /api/members/<id>/)
     - Member deactivate (DELETE /api/members/<id>/)
+    - Member bulk delete (POST /api/members/bulk-delete/)
     - My profile (GET/PATCH /api/members/me/)
     - Search and filter on the list endpoint
     - RBAC: only correct roles can access each endpoint
@@ -324,6 +325,101 @@ class MemberDeleteTests(MemberAPITestCase):
         self.auth_as(self.member_user)
         r = self.client.delete(self.detail_url)
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+
+# ─── Bulk delete endpoint ─────────────────────────────────────────────────────
+
+class MemberBulkDeleteTests(MemberAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.bulk_url = '/api/members/bulk-delete/'
+
+    def test_owner_deletes_clean_member(self):
+        """A member with no payment/attendance history is hard-deleted."""
+        from apps.members.models import MemberProfile
+        clean = make_member('clean@gym.com', first_name='Clean', last_name='Member')
+        self.auth_as(self.owner)
+        r = self.client.post(self.bulk_url, {'ids': [clean.user_id]}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['deleted'], 1)
+        self.assertEqual(r.data['deactivated'], 0)
+        self.assertEqual(r.data['skipped'], [])
+        self.assertFalse(User.objects.filter(pk=clean.user_id).exists())
+        self.assertFalse(MemberProfile.objects.filter(pk=clean.pk).exists())
+
+    def test_member_with_payment_is_deactivated_and_payment_kept(self):
+        """History rows force a soft delete; the Payment row must survive."""
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from apps.payments.models import Payment
+        hist = make_member('hist@gym.com', first_name='Hist', last_name='Member')
+        payment = Payment.objects.create(
+            member=hist.user, amount=Decimal('100.00'),
+            receipt_number='BULK-HIST-1', payment_method='CASH',
+            status='PAID', paid_at=timezone.now(),
+        )
+        self.auth_as(self.owner)
+        r = self.client.post(self.bulk_url, {'ids': [hist.user_id]}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['deleted'], 0)
+        self.assertEqual(r.data['deactivated'], 1)
+        self.assertEqual(r.data['skipped'], [])
+        hist.user.refresh_from_db()
+        self.assertFalse(hist.user.is_active)
+        self.assertTrue(Payment.objects.filter(pk=payment.pk).exists())
+
+    def test_already_inactive_member_with_history_is_skipped(self):
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from apps.payments.models import Payment
+        inactive = make_member('inactive@gym.com', first_name='Idle', last_name='Member')
+        inactive.user.is_active = False
+        inactive.user.save(update_fields=['is_active'])
+        Payment.objects.create(
+            member=inactive.user, amount=Decimal('50.00'),
+            receipt_number='BULK-IDLE-1', payment_method='CASH',
+            status='PAID', paid_at=timezone.now(),
+        )
+        self.auth_as(self.owner)
+        r = self.client.post(self.bulk_url, {'ids': [inactive.user_id]}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['deleted'], 0)
+        self.assertEqual(r.data['deactivated'], 0)
+        self.assertEqual(r.data['skipped'], [
+            {'id': inactive.user_id, 'reason': 'already inactive (has history)'},
+        ])
+        inactive.user.refresh_from_db()
+        self.assertFalse(inactive.user.is_active)
+
+    def test_staff_gets_403(self):
+        self.auth_as(self.staff)
+        r = self.client.post(self.bulk_url, {'ids': [self.member_user.pk]}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(User.objects.filter(pk=self.member_user.pk).exists())
+
+    def test_own_id_and_non_member_id_are_skipped(self):
+        """The requesting user and any non-MEMBER account are skipped, not deleted."""
+        self.auth_as(self.owner)
+        r = self.client.post(
+            self.bulk_url, {'ids': [self.owner.pk, self.staff.pk, self.trainer.pk]},
+            format='json',
+        )
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['deleted'], 0)
+        self.assertEqual(r.data['deactivated'], 0)
+        self.assertEqual(
+            [s['id'] for s in r.data['skipped']],
+            [self.owner.pk, self.staff.pk, self.trainer.pk],
+        )
+        for s in r.data['skipped']:
+            self.assertEqual(s['reason'], 'not a deletable member')
+        for user in (self.owner, self.staff, self.trainer):
+            user.refresh_from_db()
+            self.assertTrue(user.is_active)
 
 
 # ─── My profile endpoint ──────────────────────────────────────────────────────
