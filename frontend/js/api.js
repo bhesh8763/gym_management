@@ -427,6 +427,35 @@ function enforcePageRoleAccess() {
 
 enforcePageRoleAccess();
 
+// ── Owner plan gate ─────────────────────────────────────────────────────────
+// Signup creates an OWNER and sends them through payment.html, but an owner
+// who never completed checkout (closed the tab at the payment step, account
+// created before this flow existed, …) must not reach the dashboard. Every
+// app page that loads api.js checks GET /auth/subscription/ once per full
+// page load and bounces unpaid owners to the checkout. Public/auth pages are
+// excluded to avoid redirect loops (payment.html itself especially). Fails
+// open: if the check errors, don't lock the user out of the app.
+async function enforceOwnerPlanGate() {
+  const role = localStorage.getItem('user_role');
+  if (role !== 'OWNER' || !getAccessToken()) return;
+
+  const page = location.pathname.split('/').pop() || 'index.html';
+  const publicPages = [
+    'index.html', 'login.html', 'signup.html', 'payment.html',
+    'getting-started.html', 'forgot-password.html', 'reset-password.html',
+    'member-card.html', '',
+  ];
+  if (publicPages.includes(page)) return;
+
+  const res = await apiRequest('/auth/subscription/');
+  if (!res || !res.ok) return;
+  const data = await res.json().catch(() => null);
+  if (data && data.has_plan === false) {
+    window.location.replace('payment.html');
+  }
+}
+enforceOwnerPlanGate();
+
 let sidebarCollapseObserver = null;
 
 // Re-applies the collapsed/expanded state from localStorage to whichever

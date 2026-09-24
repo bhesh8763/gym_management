@@ -6,6 +6,8 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from .models import PlanSubscription
+
 User = get_user_model()
 
 
@@ -41,10 +43,12 @@ class RegisterSerializer(serializers.ModelSerializer):
     Handles new user (public, self-service) registration.
     Password is write-only and validated against Django password validators.
 
-    Always creates a MEMBER — this endpoint is open (AllowAny), so it must
-    never accept a caller-supplied role. Owner/Staff accounts are created
-    through the dedicated Staff/Trainer "add" endpoints, which require an
-    authenticated Owner/Staff request instead.
+    Always creates an OWNER — public signup is the gym-owner onboarding flow:
+    the account registers, picks a plan on payment.html, then manages the gym.
+    Members/Staff/Trainers are added later by the Owner through the dedicated
+    "add" endpoints instead. The endpoint is open (AllowAny), so it still must
+    never accept a caller-supplied role — the role is fixed server-side no
+    matter what the payload claims.
     """
     password = serializers.CharField(
         write_only=True, required=True, validators=[validate_password]
@@ -70,10 +74,20 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password2')
         password = validated_data.pop('password')
-        user = User(role=User.Role.MEMBER, **validated_data)
+        user = User(role=User.Role.OWNER, is_staff=True, **validated_data)
         user.set_password(password)
         user.save()
         return user
+
+
+class SubscribeSerializer(serializers.Serializer):
+    """
+    Validates the simulated checkout payload from payment.html. The price is
+    intentionally absent from the fields — it is derived server-side from
+    PLAN_PRICES so a tampered client can't pick its own amount.
+    """
+    plan = serializers.ChoiceField(choices=PlanSubscription.PLAN_CHOICES)
+    method = serializers.ChoiceField(choices=PlanSubscription.METHOD_CHOICES)
 
 
 class UserDetailSerializer(serializers.ModelSerializer):

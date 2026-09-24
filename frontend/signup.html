@@ -50,7 +50,7 @@
     <div class="login-card">
       <div class="login-card-header">
         <h2>Create Account</h2>
-        <p>Sign up for a free FitCore account</p>
+        <p>Create your gym's owner account — pick a plan next</p>
       </div>
 
       <div id="errorBox" class="login-alert login-alert-danger d-none"></div>
@@ -148,11 +148,25 @@
 <script src="js/api.js"></script>
 <script src="js/validate.js"></script>
 <script>
+  // Plan chosen on getting-started.html (signup.html?plan=starter|gold|platinum)
+  // is carried through to checkout. Persisted so it survives the register
+  // round-trip even if the redirect URL loses the query string.
+  const planParam = new URLSearchParams(location.search).get('plan');
+  if (planParam) localStorage.setItem('pending_plan', planParam);
+
   // Clear fields on load
   window.addEventListener('load', () => {
     document.getElementById('email').value = '';
     document.getElementById('password').value = '';
     document.getElementById('password2').value = '';
+    // Already signed in AS AN OWNER (e.g. clicked "Get Started" with a live
+    // session)? Skip the form and go straight to checkout. Any other role
+    // (MEMBER etc.) must see the form — registering is what creates the
+    // OWNER account; reusing a member session would pay and stay a member.
+    if (getAccessToken() && localStorage.getItem('user_role') === 'OWNER') {
+      const p = localStorage.getItem('pending_plan') || '';
+      window.location.replace('payment.html' + (p ? '?plan=' + p : ''));
+    }
   });
 
   const signupRules = {
@@ -220,7 +234,9 @@
         localStorage.setItem('user_role', data.user.role);
         localStorage.setItem('user_name', data.user.full_name);
         localStorage.setItem('user_picture', data.user.profile_picture || '');
-        window.location.href = 'getting-started.html';
+        // Account created (as OWNER) — next step is the plan checkout.
+        const chosenPlan = localStorage.getItem('pending_plan') || planParam || '';
+        window.location.href = 'payment.html' + (chosenPlan ? '?plan=' + chosenPlan : '');
       } else {
         const msg = typeof data === 'object'
           ? Object.entries(data).map(([k, v]) => {

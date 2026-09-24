@@ -71,6 +71,94 @@ class RegisterTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_creates_owner_and_ignores_supplied_role(self):
+        # The payload sends role=MEMBER (see _payload) — the endpoint must
+        # still create an OWNER: signup is the gym-owner onboarding flow.
+        response = self.client.post(self.url, self._payload(), format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['user']['role'], 'OWNER')
+        user = User.objects.get(email='bhesh@gym.com')
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.display_id.startswith('OWN-'))
+
+
+class SubscribeTests(APITestCase):
+    """POST /api/auth/subscribe/"""
+
+    url = reverse('auth-subscribe')
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='owner@gym.com', password='SecurePass@123',
+            first_name='Own', last_name='Er', role='OWNER',
+        )
+
+    def test_requires_authentication(self):
+        response = self.client.post(
+            self.url, {'plan': 'gold', 'method': 'esewa'}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_successful_subscription_uses_server_price(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.post(
+            self.url,
+            # 'price' is not an accepted field — tampering must not matter.
+            {'plan': 'gold', 'method': 'khalti', 'price': 1},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['plan'], 'gold')
+        self.assertEqual(response.data['price'], 9999)
+        self.assertEqual(response.data['status'], 'paid')
+        self.assertTrue(response.data['reference'].startswith('TXN-'))
+
+        from apps.accounts.models import PlanSubscription
+        sub = PlanSubscription.objects.get(user=self.user)
+        self.assertEqual(sub.price, 9999)
+        self.assertEqual(sub.method, 'khalti')
+
+    def test_invalid_plan_rejected(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.post(
+            self.url, {'plan': 'enterprise', 'method': 'esewa'}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class SubscriptionTests(APITestCase):
+    """GET /api/auth/subscription/"""
+
+    url = reverse('auth-subscription')
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='owner2@gym.com', password='SecurePass@123',
+            first_name='Own', last_name='Two', role='OWNER',
+        )
+
+    def test_requires_authentication(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_unpaid_owner_reports_no_plan(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['has_plan'])
+
+    def test_paid_owner_reports_plan(self):
+        self.client.force_authenticate(self.user)
+        self.client.post(
+            reverse('auth-subscribe'),
+            {'plan': 'starter', 'method': 'esewa'}, format='json',
+        )
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['has_plan'])
+        self.assertEqual(response.data['plan'], 'starter')
+        self.assertEqual(response.data['price'], 4999)
+
 
 class LoginTests(APITestCase):
     """POST /api/auth/login/"""

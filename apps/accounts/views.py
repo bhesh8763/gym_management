@@ -2,7 +2,9 @@
 Authentication and user profile views.
 
 Endpoints:
-    POST   /api/auth/register/            - Register a new user
+    POST   /api/auth/register/            - Register a new user (creates OWNER)
+    POST   /api/auth/subscribe/           - Record a simulated plan purchase
+    GET    /api/auth/subscription/        - Current owner's plan status (gate)
     POST   /api/auth/login/               - Obtain JWT pair (login)
     POST   /api/auth/token/refresh/       - Refresh access token
     POST   /api/auth/logout/              - Blacklist refresh token (logout)
@@ -13,6 +15,7 @@ Endpoints:
     POST   /api/auth/reset-password/      - Reset password using token
 """
 import logging
+import uuid
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -28,10 +31,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
-from .models import PasswordResetToken
+from .models import PasswordResetToken, PlanSubscription
 from .serializers import (
     CustomTokenObtainPairSerializer,
     RegisterSerializer,
+    SubscribeSerializer,
     UserDetailSerializer,
     UserUpdateSerializer,
     ChangePasswordSerializer,
@@ -45,8 +49,9 @@ class RegisterView(generics.CreateAPIView):
     """
     POST /api/auth/register/
     Open endpoint — no authentication required.
-    Always creates a MEMBER account. Staff/Trainer accounts are created by an
-    Owner through the dedicated staff/trainer "add" endpoints instead.
+    Always creates an OWNER account (gym-owner onboarding flow: register →
+    plan checkout on payment.html → dashboard). Members/Staff/Trainers are
+    added later by the Owner through the dedicated "add" endpoints instead.
     """
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
@@ -72,6 +77,75 @@ class RegisterView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class SubscribeView(APIView):
+    """
+    POST /api/auth/subscribe/
+    Records a simulated plan purchase from the signup checkout (payment.html).
+    Requires an authenticated user (the freshly registered owner's JWT) and
+    derives the price server-side — the client only picks plan + method.
+    """
+    permission_classes = [IsAuthenticated]
+
+    PLAN_PRICES = {'starter': 4999, 'gold': 9999, 'platinum': 19999}
+
+    def post(self, request):
+        serializer = SubscribeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        plan = serializer.validated_data['plan']
+        method = serializer.validated_data['method']
+
+        while True:
+            reference = 'TXN-' + uuid.uuid4().hex[:10].upper()
+            if not PlanSubscription.objects.filter(reference=reference).exists():
+                break
+
+        sub = PlanSubscription.objects.create(
+            user=request.user,
+            plan=plan,
+            price=self.PLAN_PRICES[plan],
+            method=method,
+            reference=reference,
+            status='paid',
+        )
+        return Response(
+            {
+                'reference': sub.reference,
+                'plan': sub.plan,
+                'price': sub.price,
+                'method': sub.method,
+                'status': sub.status,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class SubscriptionView(APIView):
+    """
+    GET /api/auth/subscription/
+    Returns the current user's latest plan purchase, or has_plan: false.
+    Drives the frontend owner-plan gate: unpaid owners are redirected from
+    any app page to payment.html until checkout completes.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        sub = (
+            PlanSubscription.objects.filter(user=request.user)
+            .order_by('-created_at')
+            .first()
+        )
+        if not sub:
+            return Response({'has_plan': False})
+        return Response({
+            'has_plan': True,
+            'plan': sub.plan,
+            'price': sub.price,
+            'method': sub.method,
+            'reference': sub.reference,
+            'created_at': sub.created_at.isoformat(),
+        })
 
 
 class LoginView(TokenObtainPairView):

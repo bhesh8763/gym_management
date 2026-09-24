@@ -4,164 +4,104 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="logo.png">
+  <meta name="description" content="FitCore pricing — one plan for every stage of your gym's growth. Starter, Gold and Platinum, billed annually.">
   <title>Choose Your Plan — FitCore</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="css/landing.css" rel="stylesheet">
   <style>
-    :root {
-      --brand-red: #e63946;
-      --brand-red-dark: #b32d3a;
-      /* Design tokens (light) — mirrors css/theme.css, which this standalone page does not load. */
-      --bg-root: #f5f6f8;
-      --bg-card: #ffffff;
-      --bg-topbar: #08090d;
-      --bg-hover: #f0f1f3;
-      --text-primary: #111827;
-      --text-secondary: #6b7280;
-      --text-muted: #9ca3af;
-      --border-light: #e5e7eb;
-      --dark-neutral: #374151;
-      --shadow-lg: 0 12px 32px rgba(0,0,0,0.1);
-    }
+    /* Pricing-page additions on top of css/landing.css — same dark & premium
+       design language as the landing page (index.html). */
 
-    /* Dark mode (default) — same token overrides / selector pattern as css/theme.css */
-    html:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg-root: #07070a;
-      --bg-card: #101117;
-      --bg-topbar: #08090d;
-      --bg-hover: #16181f;
-      --text-primary: #f2f3f5;
-      --text-secondary: #9aa0aa;
-      --text-muted: #7d838d;
-      --border-light: rgba(255,255,255,0.08);
-      --dark-neutral: #334155;
-      --shadow-lg: 0 16px 36px rgba(0,0,0,0.65);
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--bg-root);
-      color: var(--text-primary);
-      min-height: 100vh;
-    }
-
-    .gs-topbar {
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border-light);
-      padding: 1rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .gs-brand {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 1.25rem;
-      font-weight: 800;
-      color: var(--text-primary);
-      text-decoration: none;
-    }
-
-    .gs-brand img {
-      height: 28px;
-      width: 28px;
-      object-fit: contain;
-    }
-
-    .gs-signout {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border-light);
-      border-radius: 8px;
-      background: var(--bg-card);
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-      font-weight: 500;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .gs-signout:hover {
-      border-color: var(--text-muted);
-      color: var(--text-primary);
-    }
-
+    /* ── Hero ─────────────────────────────────────────────────────── */
     .gs-hero {
       text-align: center;
-      padding: 4rem 1.5rem 2rem;
+      padding-bottom: 4.5rem;
     }
-
-    .gs-hero h1 {
-      font-size: 2.75rem;
-      font-weight: 800;
-      color: var(--text-primary);
-      line-height: 1.2;
-      margin-bottom: 0.75rem;
-    }
-
-    .gs-hero h1 span {
-      color: var(--brand-red);
-    }
-
-    .gs-hero p {
+    .gs-hero-inner { max-width: 760px; }
+    .gs-hero .lp-eyebrow { margin-bottom: 1.4rem; }
+    .gs-hero-title { margin-bottom: 1rem; }
+    .gs-hero-sub {
+      margin: 0 auto;
+      max-width: 540px;
       font-size: 1.1rem;
-      color: var(--text-secondary);
-      max-width: 500px;
-      margin: 0 auto;
     }
 
-    .gs-plans {
-      display: flex;
-      justify-content: center;
-      gap: 1.5rem;
-      padding: 2rem 1.5rem 4rem;
-      flex-wrap: wrap;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
+    /* ── Plans grid ───────────────────────────────────────────────── */
+    .gs-plans-section { padding-top: 0; }
 
     .gs-plan {
-      background: var(--bg-card);
-      border-radius: 16px;
-      padding: 2rem;
-      width: 320px;
-      border: 2px solid var(--border-light);
+      --mx: 50%;
+      --my: 0%;
       position: relative;
+      height: 100%;
       display: flex;
       flex-direction: column;
-      transition: transform 0.2s, box-shadow 0.2s;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.9rem 1.7rem 1.7rem;
+      overflow: hidden;
+      transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1),
+                  border-color 0.35s ease, box-shadow 0.35s ease;
     }
-
+    .gs-plan::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(320px 180px at var(--mx) var(--my),
+                  rgba(230, 57, 70, 0.16), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.35s ease;
+      pointer-events: none;
+    }
     .gs-plan:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-lg);
+      transform: translateY(-6px);
+      border-color: rgba(230, 57, 70, 0.35);
+      box-shadow: 0 30px 50px -35px rgba(230, 57, 70, 0.75);
     }
+    .gs-plan:hover::before { opacity: 1; }
 
+    /* Featured (Gold) — same red language as .lp-btn-solid / .lp-role */
     .gs-plan.popular {
-      border-color: var(--brand-red);
-      box-shadow: 0 8px 32px rgba(230, 57, 70, 0.12);
+      border-color: rgba(230, 57, 70, 0.55);
+      box-shadow: 0 30px 60px -40px rgba(230, 57, 70, 0.8);
+      background:
+        linear-gradient(180deg, rgba(230, 57, 70, 0.08), transparent 42%),
+        var(--surface);
+    }
+    .gs-plan.popular::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      pointer-events: none;
     }
 
     .gs-plan-header {
+      position: relative;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 0.75rem;
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.75rem;
     }
-
+    .gs-plan-head-text {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
     .gs-plan-name {
-      font-size: 1rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
     }
 
     .gs-badge {
@@ -169,292 +109,419 @@
       align-items: center;
       gap: 0.25rem;
       padding: 0.2rem 0.6rem;
-      border-radius: 20px;
-      font-size: 0.7rem;
+      border-radius: 999px;
+      font-size: 0.66rem;
       font-weight: 700;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
+      border: 1px solid;
     }
-
     .gs-badge-starter {
-      background: var(--bg-hover);
-      color: var(--text-secondary);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+      border-color: var(--line);
     }
-
     .gs-badge-popular {
-      background: var(--brand-red);
       color: #fff;
+      background: linear-gradient(135deg, var(--accent-light), var(--accent));
+      border-color: transparent;
+      box-shadow: 0 8px 18px -10px rgba(230, 57, 70, 0.9);
     }
-
     .gs-badge-value {
-      background: #f59e0b;
-      color: #fff;
+      color: #fcd34d;
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.3);
     }
 
     .gs-plan-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
+      margin-left: auto;
+      flex-shrink: 0;
+      width: 46px; height: 46px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-left: auto;
+      border-radius: 14px;
       font-size: 1.25rem;
+      border: 1px solid;
+    }
+    .gs-plan-icon.starter {
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--line);
+    }
+    .gs-plan-icon.popular {
+      color: var(--accent-light);
+      background: rgba(230, 57, 70, 0.12);
+      border-color: rgba(230, 57, 70, 0.3);
+    }
+    .gs-plan-icon.value {
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.3);
     }
 
-    .gs-plan-icon.starter { background: var(--bg-hover); color: var(--text-secondary); }
-    .gs-plan-icon.popular { background: #fde8e8; color: var(--brand-red); }
-    .gs-plan-icon.value { background: #fef3c7; color: #f59e0b; }
-
     .gs-plan-desc {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      margin-bottom: 1.5rem;
+      position: relative;
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-bottom: 1.4rem;
     }
 
     .gs-plan-price {
+      position: relative;
       display: flex;
       align-items: baseline;
-      gap: 0.25rem;
-      margin-bottom: 0.25rem;
+      gap: 0.4rem;
+      margin-bottom: 0.3rem;
     }
-
     .gs-plan-currency {
+      font-family: var(--font-display);
       font-size: 0.95rem;
       font-weight: 600;
-      color: var(--text-secondary);
+      color: var(--muted);
     }
-
     .gs-plan-amount {
-      font-size: 2.5rem;
+      font-family: var(--font-display);
+      font-size: 2.6rem;
       font-weight: 800;
-      color: var(--text-primary);
+      letter-spacing: -0.04em;
+      line-height: 1;
     }
-
+    .gs-plan.popular .gs-plan-amount {
+      background: linear-gradient(120deg, #fff 30%, var(--accent-light));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
     .gs-plan-period {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 1.5rem;
+      position: relative;
+      font-size: 0.78rem;
+      color: var(--muted-2);
+      margin-bottom: 0;
     }
 
     .gs-divider {
+      position: relative;
       border: none;
-      border-top: 1px solid var(--border-light);
-      margin: 0 0 1.25rem;
+      border-top: 1px solid var(--line);
+      opacity: 1;
+      margin: 1.4rem 0 1.2rem;
     }
 
     .gs-includes {
-      font-size: 0.75rem;
+      position: relative;
+      font-size: 0.7rem;
       font-weight: 700;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      margin-bottom: 0.75rem;
+      color: var(--muted-2);
+      margin-bottom: 0.8rem;
     }
 
     .gs-feature-list {
+      position: relative;
       list-style: none;
       padding: 0;
-      margin: 0 0 1.5rem;
+      margin: 0 0 1.6rem;
       flex: 1;
     }
-
     .gs-feature-list li {
       display: flex;
       align-items: center;
       gap: 0.6rem;
-      padding: 0.35rem 0;
+      padding: 0.34rem 0;
       font-size: 0.9rem;
-      color: var(--text-primary);
+      color: var(--text);
     }
-
     .gs-feature-list li i {
       font-size: 0.9rem;
       flex-shrink: 0;
     }
+    .gs-feature-list li i.bi-check-circle-fill { color: #4ade80; }
+    .gs-feature-list li i.bi-x-circle-fill { color: rgba(255, 255, 255, 0.25); }
+    .gs-feature-list li.excluded { color: var(--muted-2); }
+    .gs-feature-list strong { color: var(--text); font-weight: 700; }
 
-    .gs-feature-list li i.bi-check-circle-fill { color: #10b981; }
-    .gs-feature-list li i.bi-x-circle-fill { color: var(--text-muted); }
-
-    .gs-feature-list li.excluded {
-      color: var(--text-muted);
-    }
-
-    .gs-not-included-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      text-align: center;
-      margin: 0.5rem 0 0.5rem;
+    .gs-plan-cta {
       position: relative;
-    }
-
-    .gs-not-included-label::before,
-    .gs-not-included-label::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      width: 30%;
-      height: 1px;
-      background: var(--border-light);
-    }
-
-    .gs-not-included-label::before { left: 0; }
-    .gs-not-included-label::after { right: 0; }
-
-    .gs-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
       width: 100%;
-      padding: 0.85rem;
-      border-radius: 12px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border: none;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.2s;
+      margin-top: auto;
     }
 
-    .gs-btn-primary {
-      background: var(--bg-topbar);
-      color: #fff;
+    button.lp-btn { cursor: pointer; }
+
+    .gs-note {
+      margin-top: 2.25rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted-2);
     }
 
-    .gs-btn-primary:hover {
-      background: var(--dark-neutral);
-      color: #fff;
-    }
-
-    .gs-btn-accent {
-      background: var(--brand-red);
-      color: #fff;
-    }
-
-    .gs-btn-accent:hover {
-      background: var(--brand-red-dark);
-      color: #fff;
-    }
-
-    @media (max-width: 768px) {
-      .gs-hero h1 { font-size: 2rem; }
-      .gs-plans { flex-direction: column; align-items: center; }
-      .gs-plan { width: 100%; max-width: 360px; }
+    @media (max-width: 767px) {
+      .gs-hero { padding-bottom: 3rem; }
+      .gs-plan { max-width: 440px; margin-inline: auto; width: 100%; }
     }
   </style>
 </head>
 <body>
 
-  <div class="gs-topbar">
-    <a href="dashboard.html" class="gs-brand">
-      <img src="logo.png" alt="FitCore"> FitCore
+<!-- ── Navbar (same as landing) ──────────────────────────────────── -->
+<header class="lp-nav" id="navbar">
+  <div class="container lp-nav-inner">
+    <a href="/" class="lp-brand">
+      <img src="logo.png" alt="FitCore logo"> <span>FitCore</span>
     </a>
-    <button class="gs-signout" onclick="logout()">
-      <i class="bi bi-box-arrow-left"></i> Sign out
-    </button>
+
+    <nav class="lp-nav-links" id="navLinks">
+      <a href="index.html#features">Features</a>
+      <a href="index.html#modules">Modules</a>
+      <a href="index.html#roles">Roles</a>
+      <a href="#plans">Get Started</a>
+    </nav>
+
+    <div class="lp-nav-actions">
+      <span id="navAuthActions" style="display: contents;">
+        <a href="login.html" class="lp-btn lp-btn-ghost lp-btn-sm">Log In</a>
+        <a href="signup.html" class="lp-btn lp-btn-solid lp-btn-sm">Sign Up</a>
+      </span>
+      <button class="lp-burger" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
   </div>
+</header>
 
-  <div class="gs-hero">
-    <h1>Choose your <span>plan.</span></h1>
-    <p>One plan for every stage of your gym's growth. Switch anytime.</p>
+<!-- ── Hero (landing glow + typography) ──────────────────────────── -->
+<section class="lp-hero gs-hero">
+  <div class="lp-hero-bg" aria-hidden="true"></div>
+
+  <div class="container gs-hero-inner">
+    <span class="lp-eyebrow reveal"><span class="lp-dot"></span> Simple pricing</span>
+
+    <h1 class="lp-hero-title reveal" style="transition-delay:.08s">
+      Choose your <span class="lp-hero-highlight">plan.</span>
+    </h1>
+
+    <p class="lp-hero-sub gs-hero-sub reveal" style="transition-delay:.16s">
+      One plan for every stage of your gym's growth. Switch anytime.
+    </p>
   </div>
+</section>
 
-  <div class="gs-plans">
+<!-- ── Plans ─────────────────────────────────────────────────────── -->
+<section class="lp-section gs-plans-section" id="plans">
+  <div class="container">
+    <div class="row g-4 justify-content-center">
 
-    <!-- Starter -->
-    <div class="gs-plan">
-      <div class="gs-plan-header">
-        <span class="gs-plan-name">Starter</span>
-        <span class="gs-badge gs-badge-starter"><i class="bi bi-dot"></i> Starter</span>
-        <div class="gs-plan-icon starter"><i class="bi bi-box2"></i></div>
+      <!-- Starter -->
+      <div class="col-md-6 col-lg-4">
+        <article class="gs-plan reveal">
+          <div class="gs-plan-header">
+            <div class="gs-plan-head-text">
+              <span class="gs-plan-name">Starter</span>
+              <span class="gs-badge gs-badge-starter"><i class="bi bi-dot"></i> Starter</span>
+            </div>
+            <div class="gs-plan-icon starter"><i class="bi bi-box2"></i></div>
+          </div>
+          <p class="gs-plan-desc">For small gyms getting started</p>
+          <div class="gs-plan-price">
+            <span class="gs-plan-currency">Rs</span>
+            <span class="gs-plan-amount">4,999</span>
+          </div>
+          <p class="gs-plan-period">per year · billed annually</p>
+          <hr class="gs-divider">
+          <p class="gs-includes">Includes</p>
+          <ul class="gs-feature-list">
+            <li><i class="bi bi-check-circle-fill"></i> Member Management</li>
+            <li><i class="bi bi-check-circle-fill"></i> Attendance</li>
+            <li><i class="bi bi-check-circle-fill"></i> Basic Reports</li>
+            <li class="excluded"><i class="bi bi-x-circle-fill"></i> Finance & Payments</li>
+            <li class="excluded"><i class="bi bi-x-circle-fill"></i> Diet & Workout Plans</li>
+            <li class="excluded"><i class="bi bi-x-circle-fill"></i> Staff Management</li>
+            <li class="excluded"><i class="bi bi-x-circle-fill"></i> Equipment Tracking</li>
+            <li class="excluded"><i class="bi bi-x-circle-fill"></i> Multi-Branch</li>
+            <li class="excluded"><i class="bi bi-x-circle-fill"></i> Chat Support</li>
+          </ul>
+          <a href="signup.html?plan=starter" class="lp-btn lp-btn-ghost gs-plan-cta">Get Started <i class="bi bi-arrow-right-short"></i></a>
+        </article>
       </div>
-      <p class="gs-plan-desc">For small gyms getting started</p>
-      <div class="gs-plan-price">
-        <span class="gs-plan-currency">Rs</span>
-        <span class="gs-plan-amount">4,999</span>
+
+      <!-- Gold -->
+      <div class="col-md-6 col-lg-4">
+        <article class="gs-plan popular reveal" style="transition-delay:.06s">
+          <div class="gs-plan-header">
+            <div class="gs-plan-head-text">
+              <span class="gs-plan-name">Gold</span>
+              <span class="gs-badge gs-badge-popular"><i class="bi bi-star-fill" style="font-size:0.6rem;"></i> Popular</span>
+            </div>
+            <div class="gs-plan-icon popular"><i class="bi bi-fire"></i></div>
+          </div>
+          <p class="gs-plan-desc">Ideal for growing gym branches</p>
+          <div class="gs-plan-price">
+            <span class="gs-plan-currency">Rs</span>
+            <span class="gs-plan-amount">9,999</span>
+          </div>
+          <p class="gs-plan-period">per year · billed annually</p>
+          <hr class="gs-divider">
+          <p class="gs-includes">Includes</p>
+          <ul class="gs-feature-list">
+            <li><i class="bi bi-check-circle-fill"></i> Member Management</li>
+            <li><i class="bi bi-check-circle-fill"></i> Attendance</li>
+            <li><i class="bi bi-check-circle-fill"></i> Finance & Payments</li>
+            <li><i class="bi bi-check-circle-fill"></i> Diet & Workout Plans</li>
+            <li><i class="bi bi-check-circle-fill"></i> Staff Management</li>
+            <li><i class="bi bi-check-circle-fill"></i> Equipment Tracking</li>
+            <li><i class="bi bi-check-circle-fill"></i> Progress Reports</li>
+            <li><i class="bi bi-check-circle-fill"></i> Chat Support</li>
+            <li><i class="bi bi-check-circle-fill"></i> Members: <strong>Unlimited</strong></li>
+            <li class="excluded"><i class="bi bi-x-circle-fill"></i> Multi-Branch</li>
+          </ul>
+          <a href="signup.html?plan=gold" class="lp-btn lp-btn-solid gs-plan-cta">Get Started <i class="bi bi-arrow-right-short"></i></a>
+        </article>
       </div>
-      <p class="gs-plan-period">per year · billed annually</p>
-      <hr class="gs-divider">
-      <p class="gs-includes">Includes</p>
-      <ul class="gs-feature-list">
-        <li><i class="bi bi-check-circle-fill"></i> Member Management</li>
-        <li><i class="bi bi-check-circle-fill"></i> Attendance</li>
-        <li><i class="bi bi-check-circle-fill"></i> Basic Reports</li>
-        <li class="excluded"><i class="bi bi-x-circle-fill"></i> Finance & Payments</li>
-        <li class="excluded"><i class="bi bi-x-circle-fill"></i> Diet & Workout Plans</li>
-        <li class="excluded"><i class="bi bi-x-circle-fill"></i> Staff Management</li>
-        <li class="excluded"><i class="bi bi-x-circle-fill"></i> Equipment Tracking</li>
-        <li class="excluded"><i class="bi bi-x-circle-fill"></i> Multi-Branch</li>
-        <li class="excluded"><i class="bi bi-x-circle-fill"></i> Chat Support</li>
-      </ul>
-      <a href="dashboard.html" class="gs-btn gs-btn-primary">Get Started <i class="bi bi-arrow-right-short"></i></a>
+
+      <!-- Platinum -->
+      <div class="col-md-6 col-lg-4">
+        <article class="gs-plan reveal" style="transition-delay:.12s">
+          <div class="gs-plan-header">
+            <div class="gs-plan-head-text">
+              <span class="gs-plan-name">Platinum</span>
+              <span class="gs-badge gs-badge-value"><i class="bi bi-trophy-fill" style="font-size:0.6rem;"></i> Best Value</span>
+            </div>
+            <div class="gs-plan-icon value"><i class="bi bi-trophy"></i></div>
+          </div>
+          <p class="gs-plan-desc">Full-scale multi-branch management</p>
+          <div class="gs-plan-price">
+            <span class="gs-plan-currency">Rs</span>
+            <span class="gs-plan-amount">19,999</span>
+          </div>
+          <p class="gs-plan-period">per year · billed annually</p>
+          <hr class="gs-divider">
+          <p class="gs-includes">Includes</p>
+          <ul class="gs-feature-list">
+            <li><i class="bi bi-check-circle-fill"></i> Member Management</li>
+            <li><i class="bi bi-check-circle-fill"></i> Attendance</li>
+            <li><i class="bi bi-check-circle-fill"></i> Finance & Payments</li>
+            <li><i class="bi bi-check-circle-fill"></i> Diet & Workout Plans</li>
+            <li><i class="bi bi-check-circle-fill"></i> Staff Management</li>
+            <li><i class="bi bi-check-circle-fill"></i> Equipment Tracking</li>
+            <li><i class="bi bi-check-circle-fill"></i> Progress Reports</li>
+            <li><i class="bi bi-check-circle-fill"></i> Multi-Branch</li>
+            <li><i class="bi bi-check-circle-fill"></i> Chat Support</li>
+            <li><i class="bi bi-check-circle-fill"></i> Priority Support</li>
+          </ul>
+          <a href="signup.html?plan=platinum" class="lp-btn lp-btn-ghost gs-plan-cta">Get Started <i class="bi bi-arrow-right-short"></i></a>
+        </article>
+      </div>
+
     </div>
 
-    <!-- Gold -->
-    <div class="gs-plan popular">
-      <div class="gs-plan-header">
-        <span class="gs-plan-name">Gold</span>
-        <span class="gs-badge gs-badge-popular"><i class="bi bi-star-fill" style="font-size:0.6rem;"></i> Popular</span>
-        <div class="gs-plan-icon popular"><i class="bi bi-fire"></i></div>
-      </div>
-      <p class="gs-plan-desc">Ideal for growing gym branches</p>
-      <div class="gs-plan-price">
-        <span class="gs-plan-currency">Rs</span>
-        <span class="gs-plan-amount">9,999</span>
-      </div>
-      <p class="gs-plan-period">per year · billed annually</p>
-      <hr class="gs-divider">
-      <p class="gs-includes">Includes</p>
-      <ul class="gs-feature-list">
-        <li><i class="bi bi-check-circle-fill"></i> Member Management</li>
-        <li><i class="bi bi-check-circle-fill"></i> Attendance</li>
-        <li><i class="bi bi-check-circle-fill"></i> Finance & Payments</li>
-        <li><i class="bi bi-check-circle-fill"></i> Diet & Workout Plans</li>
-        <li><i class="bi bi-check-circle-fill"></i> Staff Management</li>
-        <li><i class="bi bi-check-circle-fill"></i> Equipment Tracking</li>
-        <li><i class="bi bi-check-circle-fill"></i> Progress Reports</li>
-        <li><i class="bi bi-check-circle-fill"></i> Chat Support</li>
-        <li><i class="bi bi-check-circle-fill"></i> Members: <strong>Unlimited</strong></li>
-        <li class="excluded"><i class="bi bi-x-circle-fill"></i> Multi-Branch</li>
-      </ul>
-      <a href="dashboard.html" class="gs-btn gs-btn-accent">Get Started <i class="bi bi-arrow-right-short"></i></a>
-    </div>
-
-    <!-- Platinum -->
-    <div class="gs-plan">
-      <div class="gs-plan-header">
-        <span class="gs-plan-name">Platinum</span>
-        <span class="gs-badge gs-badge-value"><i class="bi bi-trophy-fill" style="font-size:0.6rem;"></i> Best Value</span>
-        <div class="gs-plan-icon value"><i class="bi bi-trophy"></i></div>
-      </div>
-      <p class="gs-plan-desc">Full-scale multi-branch management</p>
-      <div class="gs-plan-price">
-        <span class="gs-plan-currency">Rs</span>
-        <span class="gs-plan-amount">19,999</span>
-      </div>
-      <p class="gs-plan-period">per year · billed annually</p>
-      <hr class="gs-divider">
-      <p class="gs-includes">Includes</p>
-      <ul class="gs-feature-list">
-        <li><i class="bi bi-check-circle-fill"></i> Member Management</li>
-        <li><i class="bi bi-check-circle-fill"></i> Attendance</li>
-        <li><i class="bi bi-check-circle-fill"></i> Finance & Payments</li>
-        <li><i class="bi bi-check-circle-fill"></i> Diet & Workout Plans</li>
-        <li><i class="bi bi-check-circle-fill"></i> Staff Management</li>
-        <li><i class="bi bi-check-circle-fill"></i> Equipment Tracking</li>
-        <li><i class="bi bi-check-circle-fill"></i> Progress Reports</li>
-        <li><i class="bi bi-check-circle-fill"></i> Multi-Branch</li>
-        <li><i class="bi bi-check-circle-fill"></i> Chat Support</li>
-        <li><i class="bi bi-check-circle-fill"></i> Priority Support</li>
-      </ul>
-      <a href="dashboard.html" class="gs-btn gs-btn-primary">Get Started <i class="bi bi-arrow-right-short"></i></a>
-    </div>
-
+    <p class="gs-note reveal">No setup fees · Cancel or switch anytime · Prices in NPR</p>
   </div>
+</section>
 
-  <script src="js/api.js"></script>
+<!-- ── Footer (same as landing) ──────────────────────────────────── -->
+<footer class="lp-footer">
+  <div class="container">
+    <div class="lp-footer-grid">
+      <div class="lp-footer-brand">
+        <a href="/" class="lp-brand">
+          <img src="logo.png" alt="FitCore logo"> <span>FitCore</span>
+        </a>
+        <p>The all-in-one management system for modern gyms — built for owners, staff, trainers and members.</p>
+        <div class="lp-socials">
+          <a href="#" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+          <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+          <a href="#" aria-label="YouTube"><i class="bi bi-youtube"></i></a>
+        </div>
+      </div>
+
+      <div class="lp-footer-col">
+        <h4>Product</h4>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#roles">Roles</a>
+        <a href="index.html#modules">Modules</a>
+        <a href="index.html#cta">Get Started</a>
+      </div>
+
+      <div class="lp-footer-col">
+        <h4>Account</h4>
+        <a href="login.html">Log In</a>
+        <a href="signup.html">Sign Up</a>
+        <a href="forgot-password.html">Forgot password</a>
+        <a href="reset-password.html">Reset password</a>
+      </div>
+
+      <div class="lp-footer-col">
+        <h4>Resources</h4>
+        <a href="getting-started.html">Getting started</a>
+        <a href="messages.html">Messages</a>
+        <a href="#">Support</a>
+        <a href="#">Status</a>
+      </div>
+    </div>
+
+    <div class="lp-footer-bottom">
+      <span>&copy; 2026 FitCore. All rights reserved.</span>
+      <div>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+// Navbar state on scroll
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 20);
+}, { passive: true });
+
+// Mobile menu
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+navToggle.addEventListener('click', () => {
+  const open = navLinks.classList.toggle('open');
+  navToggle.classList.toggle('open', open);
+  navToggle.setAttribute('aria-expanded', open);
+});
+navLinks.addEventListener('click', e => {
+  if (e.target.tagName === 'A') {
+    navLinks.classList.remove('open');
+    navToggle.classList.remove('open');
+  }
+});
+
+// Reveal on scroll
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(en => {
+    if (en.isIntersecting) {
+      en.target.classList.add('in');
+      io.unobserve(en.target);
+    }
+  });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+// Pointer glow on plan cards
+document.querySelectorAll('.gs-plan').forEach(card => {
+  card.addEventListener('pointermove', e => {
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+});
+
+// Signed-in visitors (e.g. an owner following "Change plan" from checkout)
+// get app actions instead of Log In / Sign Up — same lp-btn styling.
+if (typeof getAccessToken === 'function' && getAccessToken()) {
+  document.getElementById('navAuthActions').innerHTML =
+    '<a href="dashboard.html" class="lp-btn lp-btn-ghost lp-btn-sm">Dashboard</a>' +
+    '<button type="button" onclick="logout()" class="lp-btn lp-btn-solid lp-btn-sm">Sign out</button>';
+}
+</script>
 </body>
 </html>

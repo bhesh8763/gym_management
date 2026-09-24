@@ -188,6 +188,46 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.role == self.Role.MEMBER
 
 
+class PlanSubscription(models.Model):
+    """
+    One simulated plan purchase from the signup checkout flow (payment.html).
+    The client only sends plan + payment method; the price is enforced
+    server-side (SubscribeView.PLAN_PRICES) so a tampered payload can't
+    choose its own amount. No real gateway is contacted — this records the
+    checkout step for the demo flow.
+    """
+    PLAN_CHOICES = [
+        ('starter', 'Starter'),
+        ('gold', 'Gold'),
+        ('platinum', 'Platinum'),
+    ]
+    METHOD_CHOICES = [
+        ('esewa', 'eSewa'),
+        ('khalti', 'Khalti'),
+        ('card', 'Card'),
+    ]
+
+    user = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.CASCADE,
+        related_name='plan_subscriptions',
+    )
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES)
+    price = models.PositiveIntegerField()  # NPR, billed annually
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES)
+    reference = models.CharField(max_length=40, unique=True, db_index=True)
+    status = models.CharField(max_length=20, default='paid')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'plan_subscriptions'
+        verbose_name = 'Plan Subscription'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.email} — {self.plan} ({self.reference})'
+
+
 class PasswordResetToken(models.Model):
     """
     One-time token for email-based password reset.

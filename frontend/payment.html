@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="logo.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout — FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="css/login.css" rel="stylesheet">
+  <style>
+    .pay-label {
+      font-size: 0.75rem; letter-spacing: 0.09em; text-transform: uppercase;
+      color: #8b8f9a; margin: 1.1rem 0 0.5rem; font-weight: 700;
+    }
+    .pay-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .pay-plan {
+      background: #14151c; border: 1px solid #262833; border-radius: 12px;
+      padding: 0.7rem 0.5rem; cursor: pointer; display: flex; flex-direction: column;
+      gap: 0.15rem; align-items: center; color: #c7cad3; transition: 0.15s;
+    }
+    .pay-plan:hover { border-color: #3a3d4d; }
+    .pay-plan.active { border-color: #ff4d5e; box-shadow: 0 0 0 1px #ff4d5e inset; color: #fff; }
+    .pay-plan-name { font-weight: 700; font-size: 0.85rem; }
+    .pay-plan-price { font-weight: 800; font-size: 1rem; }
+    .pay-plan-period { font-size: 0.65rem; color: #7c8090; }
+
+    .pay-summary {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #101117; border: 1px solid #232531; border-radius: 12px;
+      padding: 0.75rem 0.9rem; margin-top: 0.6rem;
+    }
+    .pay-summary .sum-name { font-weight: 700; color: #fff; font-size: 0.95rem; }
+    .pay-summary .sum-sub { font-size: 0.72rem; color: #7c8090; }
+    .pay-summary .sum-amt { font-size: 1.15rem; font-weight: 800; color: #ff6b78; }
+
+    .pay-methods { display: flex; flex-direction: column; gap: 0.5rem; }
+    .pay-method {
+      display: flex; align-items: center; gap: 0.75rem; background: #14151c;
+      border: 1px solid #262833; border-radius: 12px; padding: 0.7rem 0.85rem;
+      cursor: pointer; transition: 0.15s; color: #d7dae2; text-align: left; width: 100%;
+    }
+    .pay-method:hover { border-color: #3a3d4d; }
+    .pay-method.active { border-color: #ff4d5e; box-shadow: 0 0 0 1px #ff4d5e inset; }
+    .pay-method-ic {
+      width: 38px; height: 38px; border-radius: 9px; display: flex;
+      align-items: center; justify-content: center; color: #fff;
+      font-size: 1.05rem; flex-shrink: 0;
+    }
+    .pay-method-name { font-weight: 600; font-size: 0.92rem; }
+    .pay-method-hint { font-size: 0.72rem; color: #7c8090; }
+    .pay-method .method-check { margin-left: auto; color: #ff4d5e; font-size: 1.15rem; display: none; }
+    .pay-method.active .method-check { display: block; }
+
+    .pay-btn { width: 100%; margin-top: 1.1rem; }
+    .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pay-note { text-align: center; font-size: 0.72rem; color: #6f7382; margin-top: 0.7rem; }
+
+    .pay-overlay {
+      position: fixed; inset: 0; background: rgba(8, 9, 13, 0.84);
+      backdrop-filter: blur(3px); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1rem; z-index: 2000; color: #fff;
+    }
+    .pay-overlay .spinner-border { width: 2.6rem; height: 2.6rem; color: #ff4d5e; }
+    .pay-overlay .ov-title { font-weight: 700; font-size: 1.05rem; }
+    .pay-overlay .ov-sub { font-size: 0.8rem; color: #9aa0ae; }
+
+    .suc-icon {
+      width: 74px; height: 74px; border-radius: 50%;
+      background: rgba(16, 185, 129, 0.12); color: #10b981;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; margin: 0.4rem auto 1rem;
+    }
+    .suc-row {
+      display: flex; justify-content: space-between; padding: 0.55rem 0;
+      border-bottom: 1px dashed #242632; font-size: 0.9rem;
+    }
+    .suc-row:last-of-type { border-bottom: none; }
+    .suc-row span { color: #8b8f9a; }
+    .suc-row b { font-weight: 600; color: #fff; }
+    .suc-row .suc-ref { font-family: monospace; color: #ff6b78; }
+    .pay-secure { font-size: 0.78rem; color: #10b981; text-align: center; margin-top: 0.8rem; }
+  </style>
+</head>
+<body>
+
+<div class="login-bg"></div>
+
+<div class="login-container">
+
+  <!-- Left side - Branding -->
+  <div class="login-left">
+    <a href="getting-started.html" class="login-back-link">
+      <i class="bi bi-arrow-left"></i> Change plan
+    </a>
+
+    <div class="login-branding">
+      <div class="login-logo">
+        <img src="logo.png" alt="FitCore">
+      </div>
+      <h1 class="login-brand-name">FitCore</h1>
+      <p class="login-brand-tagline">One plan for every stage of your gym's growth. Switch anytime.</p>
+    </div>
+
+    <div class="login-features">
+      <div class="login-feature-item">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>All modules included from day one</span>
+      </div>
+      <div class="login-feature-item">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Cancel or switch plans anytime</span>
+      </div>
+      <div class="login-feature-item">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Members, staff, payments & reports</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right side - Checkout -->
+  <div class="login-right">
+
+    <!-- Checkout card -->
+    <div class="login-card" id="checkoutCard">
+      <div class="login-card-header">
+        <h2>Confirm your plan</h2>
+        <p>Review your plan and choose a payment method</p>
+      </div>
+
+      <div id="errorBox" class="login-alert login-alert-danger d-none"></div>
+
+      <div class="pay-label">Your plan</div>
+      <div class="pay-plans" id="planCards"></div>
+
+      <div class="pay-summary" id="planSummary"></div>
+
+      <div class="pay-label">Payment method</div>
+      <div class="pay-methods" id="methodRows"></div>
+
+      <button type="button" class="login-btn-primary pay-btn" id="payBtn" disabled>
+        <span id="payBtnText">Select a plan</span>
+        <i class="bi bi-arrow-right-short"></i>
+      </button>
+
+      <p class="pay-note">
+        <i class="bi bi-shield-lock"></i>
+        Secure checkout · demo environment — no real charge is made
+      </p>
+    </div>
+
+    <!-- Success card (shown after payment confirms) -->
+    <div class="login-card d-none" id="successCard">
+      <div class="login-card-header">
+        <div class="suc-icon"><i class="bi bi-check-lg"></i></div>
+        <h2>Payment confirmed!</h2>
+        <p>Your plan is active — welcome to FitCore</p>
+      </div>
+
+      <div class="suc-row"><span>Plan</span> <b id="sucPlan">—</b></div>
+      <div class="suc-row"><span>Paid via</span> <b id="sucMethod">—</b></div>
+      <div class="suc-row"><span>Reference</span> <b class="suc-ref" id="sucRef">—</b></div>
+      <div class="suc-row"><span>Billing</span> <b>Yearly · renews automatically</b></div>
+
+      <button type="button" class="login-btn-primary pay-btn" id="dashBtn">
+        <span>Go to Dashboard</span>
+        <i class="bi bi-arrow-right-short"></i>
+      </button>
+      <p class="pay-secure"><i class="bi bi-arrow-repeat"></i> Taking you to your dashboard…</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- Processing overlay -->
+<div class="pay-overlay d-none" id="payOverlay">
+  <div class="spinner-border"></div>
+  <div class="ov-title" id="ovTitle">Confirming payment…</div>
+  <div class="ov-sub" id="ovSub">Do not close this page</div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  // Plan + method catalogue — prices must mirror
+  // SubscribeView.PLAN_PRICES in apps/accounts/views.py (server is the
+  // authority; these labels are display-only).
+  const PLANS = {
+    starter:  { name: 'Starter',  price: 4999,  priceLabel: '4,999',  blurb: 'For small gyms getting started' },
+    gold:     { name: 'Gold',     price: 9999,  priceLabel: '9,999',  blurb: 'Ideal for growing gym branches' },
+    platinum: { name: 'Platinum', price: 19999, priceLabel: '19,999', blurb: 'Full-scale multi-branch management' },
+  };
+  const METHODS = {
+    esewa:  { label: 'eSewa',              hint: 'Pay from your eSewa wallet',  color: '#60bb46', icon: 'bi-wallet2' },
+    khalti: { label: 'Khalti',             hint: 'Pay from your Khalti wallet', color: '#5c2d91', icon: 'bi-lightning-charge-fill' },
+    card:   { label: 'Debit / Credit Card', hint: 'Visa · Mastercard',          color: '#e11d48', icon: 'bi-credit-card-2-front-fill' },
+  };
+
+  // Plan travels: getting-started.html → signup.html?plan=… → localStorage → here.
+  let selectedPlan = new URLSearchParams(location.search).get('plan')
+    || localStorage.getItem('pending_plan') || '';
+  if (!PLANS[selectedPlan]) selectedPlan = '';
+  let selectedMethod = 'esewa';
+
+  function renderPlans() {
+    const wrap = document.getElementById('planCards');
+    wrap.innerHTML = Object.entries(PLANS).map(([key, p]) => `
+      <button type="button" class="pay-plan${selectedPlan === key ? ' active' : ''}" data-plan="${key}">
+        <span class="pay-plan-name">${p.name}</span>
+        <span class="pay-plan-price">Rs ${p.priceLabel}</span>
+        <span class="pay-plan-period">per year</span>
+      </button>`).join('');
+    wrap.querySelectorAll('.pay-plan').forEach(btn => btn.addEventListener('click', () => {
+      selectedPlan = btn.dataset.plan;
+      localStorage.setItem('pending_plan', selectedPlan);
+      renderPlans();
+      updateSummary();
+    }));
+  }
+
+  function renderMethods() {
+    const wrap = document.getElementById('methodRows');
+    wrap.innerHTML = Object.entries(METHODS).map(([key, m]) => `
+      <button type="button" class="pay-method${selectedMethod === key ? ' active' : ''}" data-method="${key}">
+        <span class="pay-method-ic" style="background:${m.color}"><i class="bi ${m.icon}"></i></span>
+        <span>
+          <span class="pay-method-name">${m.label}</span><br>
+          <span class="pay-method-hint">${m.hint}</span>
+        </span>
+        <i class="bi bi-check2-circle method-check"></i>
+      </button>`).join('');
+    wrap.querySelectorAll('.pay-method').forEach(btn => btn.addEventListener('click', () => {
+      selectedMethod = btn.dataset.method;
+      renderMethods();
+      updateSummary();
+    }));
+  }
+
+  function updateSummary() {
+    const p = PLANS[selectedPlan];
+    const sum = document.getElementById('planSummary');
+    const btn = document.getElementById('payBtn');
+    if (p) {
+      sum.innerHTML = `
+        <span><span class="sum-name">${p.name} plan</span><br><span class="sum-sub">${p.blurb}</span></span>
+        <span class="sum-amt">Rs ${p.priceLabel}</span>`;
+      document.getElementById('payBtnText').textContent =
+        `Pay Rs ${p.priceLabel} with ${METHODS[selectedMethod].label}`;
+      btn.disabled = false;
+    } else {
+      sum.innerHTML = `<span class="sum-sub">Choose a plan above to continue</span>`;
+      document.getElementById('payBtnText').textContent = 'Select a plan';
+      btn.disabled = true;
+    }
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = msg;
+    box.classList.remove('d-none');
+  }
+
+  async function pay() {
+    if (!selectedPlan) return;
+    document.getElementById('errorBox').classList.add('d-none');
+
+    const overlay = document.getElementById('payOverlay');
+    document.getElementById('ovTitle').textContent =
+      `Confirming ${METHODS[selectedMethod].label} payment…`;
+    document.getElementById('ovSub').textContent = 'Do not close this page';
+    overlay.classList.remove('d-none');
+
+    // Simulated gateway latency so the checkout feels like a real redirect.
+    await new Promise(r => setTimeout(r, 1200));
+
+    const res = await apiRequest('/auth/subscribe/', {
+      method: 'POST',
+      body: JSON.stringify({ plan: selectedPlan, method: selectedMethod }),
+    });
+
+    overlay.classList.add('d-none');
+    if (!res) { showError('Network error. Please try again.'); return; }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showError(formatApiError(err));
+      return;
+    }
+    showSuccess(await res.json());
+  }
+
+  function showSuccess(data) {
+    document.getElementById('checkoutCard').classList.add('d-none');
+    document.getElementById('sucPlan').textContent =
+      `${PLANS[data.plan].name} — Rs ${data.price.toLocaleString('en-IN')}`;
+    document.getElementById('sucMethod').textContent = METHODS[data.method].label;
+    document.getElementById('sucRef').textContent = data.reference;
+    document.getElementById('successCard').classList.remove('d-none');
+    localStorage.removeItem('pending_plan');
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 4000);
+  }
+
+  renderPlans();
+  renderMethods();
+  updateSummary();
+  document.getElementById('payBtn').addEventListener('click', pay);
+  document.getElementById('dashBtn').addEventListener('click', () => {
+    window.location.href = 'dashboard.html';
+  });
+</script>
+</body>
+</html>
