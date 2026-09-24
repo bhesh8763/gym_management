@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1143,3 +1144,1187 @@ async function verifyEsewaIfReturning() {
 <script src="js/bottom-tabs.js"></script>
 </body>
 </html>
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="logo.png">
+  <title>My Membership – FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+  <style>
+    body { display:flex;flex-direction:column;height:100vh;min-height:100vh;overflow:hidden;margin:0;background:var(--bg-root);font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--text-primary); }
+    .topbar { flex:0 0 auto;background:var(--bg-topbar);padding:0 1.25rem;height:56px;display:flex;align-items:center;gap:0.75rem;z-index:100;position:relative; }
+    .topbar .sidebar-toggle { background:none;border:none;color:var(--text-sidebar);font-size:1.25rem;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center; }
+    .topbar .sidebar-toggle:hover { color:#fff;background:rgba(255,255,255,0.08); }
+    .topbar .navbar-brand,.topbar a.navbar-brand { color:#fff !important;text-decoration:none !important;font-weight:700;font-size:1.1rem;margin-right:auto;flex:1 1 0%;display:flex;align-items:center;gap:0; }
+    .topbar .navbar-brand span { color:#fff !important;text-decoration:none !important; }
+    #page-content { display:flex;flex:1 1 auto;min-height:0; }
+    #page-content > .d-flex { flex:1 1 auto;min-height:0; }
+    #page-content .flex-grow-1 { height:100%;min-height:0;overflow-y:auto; }
+    .sidebar { background:var(--bg-sidebar);flex:0 0 240px;width:240px;min-height:0;max-height:none;align-self:stretch;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.04); }
+    .sidebar .list-group-item { background-color:transparent;color:var(--text-sidebar);border:none;padding:9px 16px;margin:2px 8px;font-weight:500;font-size:0.85rem;border-radius:10px;display:flex;align-items:center;gap:10px;text-decoration:none; }
+    .sidebar .list-group-item:hover { background-color:rgba(255,255,255,0.06);color:#fff !important; }
+    .sidebar .list-group-item.active { background:linear-gradient(135deg,var(--brand-red),var(--brand-red-dark));color:#fff !important; }
+    .nav-section-label { color:rgba(255,255,255,0.3);font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:18px 16px 6px; }
+    nav.topbar a.navbar-brand,
+    nav.topbar a.navbar-brand span { color: #fff !important; text-decoration: none !important; -webkit-text-fill-color: #fff; }
+    nav.topbar a:not(.navbar-brand):not(.spa-link) { color: inherit; text-decoration: none !important; }
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="MEMBER">
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+  <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size:1.5rem;font-weight:700;">FitCore</span>
+  </a>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">–</div>
+        <div class="profile-role" id="profileRole">–</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content">
+<style>
+  .plan-card {
+    border: 2px solid var(--border-light);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-card);
+  }
+  .plan-card:hover {
+    border-color: var(--brand-red);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(230, 57, 70, 0.15);
+  }
+  .plan-card.popular {
+    border-color: var(--brand-red);
+  }
+  .plan-card.popular::before {
+    content: 'POPULAR';
+    position: absolute;
+    top: 12px;
+    right: -30px;
+    background: var(--brand-red);
+    color: #fff;
+    padding: 4px 36px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    transform: rotate(45deg);
+    letter-spacing: 1px;
+  }
+  .plan-price {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  .plan-price small {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .plan-cycle {
+    display: inline-block;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 0.75rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+    text-align: left;
+  }
+  .plan-features li {
+    padding: 6px 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .plan-features li i {
+    color: #10b981;
+    font-size: 0.85rem;
+  }
+  .plan-duration {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+  .status-card {
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .status-card.active {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 1px solid #a7f3d0;
+  }
+  .status-card.expired {
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    border: 1px solid #fecaca;
+  }
+  .status-card.frozen {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border: 1px solid #bfdbfe;
+  }
+  .status-card.pending {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 1px solid #fde68a;
+  }
+  /* Dark variants — pastel gradients would leave light-on-light text */
+  html:not([data-theme="light"]) .status-card.active {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    border-color: #047857;
+  }
+  html:not([data-theme="light"]) .status-card.expired {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    border-color: #b91c1c;
+  }
+  html:not([data-theme="light"]) .status-card.frozen {
+    background: linear-gradient(135deg, #172554, #1e3a5f);
+    border-color: #1e40af;
+  }
+  html:not([data-theme="light"]) .status-card.pending {
+    background: linear-gradient(135deg, #451a03, #78350f);
+    border-color: #92400e;
+  }
+  .status-card .status-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+  .status-card.active .status-icon { background: #10b981; color: #fff; }
+  .status-card.expired .status-icon { background: #ef4444; color: #fff; }
+  .status-card.frozen .status-icon { background: #3b82f6; color: #fff; }
+  .status-card.pending .status-icon { background: #f59e0b; color: #fff; }
+  .history-item {
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+    transition: background 0.2s;
+  }
+  .history-item:hover { background: var(--bg-hover); }
+</style>
+<div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="p-4 flex-grow-1">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+      <div>
+        <h3 class="mb-1 fw-800" style="font-size:1.5rem;">My Membership</h3>
+        <div class="text-muted" style="font-size:0.85rem;">Manage your membership and browse plans.</div>
+      </div>
+    </div>
+
+    <div id="loadingState" class="py-4">
+      <div class="skeleton-card mb-3"><div class="skeleton-title" style="width:30%;"></div><div class="skeleton-text"></div><div class="skeleton-text" style="width:70%;"></div><div class="skeleton-text" style="width:50%;"></div></div>
+      <div class="skeleton-stat-grid mb-3">
+        <div class="skeleton-stat"><div class="skeleton-text" style="width:50%;height:10px;"></div><div class="skeleton-text" style="width:40%;height:24px;margin-bottom:0;"></div></div>
+        <div class="skeleton-stat"><div class="skeleton-text" style="width:50%;height:10px;"></div><div class="skeleton-text" style="width:40%;height:24px;margin-bottom:0;"></div></div>
+        <div class="skeleton-stat"><div class="skeleton-text" style="width:50%;height:10px;"></div><div class="skeleton-text" style="width:40%;height:24px;margin-bottom:0;"></div></div>
+      </div>
+    </div>
+
+    <div id="pageBody" style="display:none;">
+
+      <!-- Current Membership — Digital Card -->
+      <div id="currentSection" class="mb-4">
+        <div id="currentMembershipCard"></div>
+        <div id="noMembershipState" class="fitness-card text-center py-5 d-none">
+          <div style="width:64px;height:64px;border-radius:16px;background:var(--color-membership-bg);display:flex;align-items:center;justify-content:center;margin:0 auto var(--sp-3);">
+            <i class="bi bi-card-checklist" style="font-size:1.8rem;color:var(--color-membership);"></i>
+          </div>
+          <div class="fw-bold" style="font-size:1.1rem;">No Active Membership</div>
+          <div class="text-muted" style="font-size:0.9rem;margin-bottom:var(--sp-4);">Choose a plan below to get started!</div>
+          <a href="#plansSection" class="btn btn-primary">Browse Plans</a>
+        </div>
+      </div>
+
+      <!-- Pending Dues -->
+      <div id="duesSection" class="mb-4 d-none">
+        <h5 class="mb-3"><i class="bi bi-hourglass-split text-warning me-1"></i> Outstanding Dues</h5>
+        <div id="duesContainer" class="row g-3"></div>
+      </div>
+
+      <hr class="my-4">
+
+      <!-- Available Plans -->
+      <div id="plansSection" class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i class="bi bi-grid me-1"></i> Available Plans</h5>
+        </div>
+        <div id="plansContainer" class="row g-4"></div>
+        <div id="noPlansState" class="alert alert-secondary d-none">
+          <i class="bi bi-info-circle"></i> No membership plans available at the moment.
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <!-- Membership History -->
+      <div id="historySection">
+        <h5 class="mb-3"><i class="bi bi-clock-history me-1"></i> Membership History</h5>
+        <div id="historyContainer"></div>
+        <div id="noHistoryState" class="alert alert-secondary d-none">
+          <i class="bi bi-info-circle"></i> No membership history yet.
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <!-- Freeze Requests -->
+      <div id="freezeRequestsSection">
+        <h5 class="mb-3"><i class="bi bi-snow me-1 text-info"></i> Freeze Requests</h5>
+        <div id="freezeRequestsContainer"></div>
+        <div id="noFreezeRequestsState" class="alert alert-secondary d-none">
+          <i class="bi bi-info-circle"></i> No freeze requests yet.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Purchase Confirmation Modal -->
+<div class="modal fade" id="purchaseModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Purchase</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-3">
+          <div class="fs-1 fw-bold text-brand" id="purchasePlanName">–</div>
+          <div class="text-muted" id="purchasePlanCycle">–</div>
+        </div>
+        <div class="bg-light rounded p-3 mb-3">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Duration</span>
+            <strong id="purchasePlanDuration">–</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Price</span>
+            <strong id="purchasePlanPrice">–</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Start Date</span>
+            <strong id="purchaseStartDate">–</strong>
+          </div>
+        </div>
+        <div class="alert alert-info small mb-0">
+          <i class="bi bi-info-circle"></i> After confirming, you'll be redirected to complete the payment.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmPurchaseBtn" onclick="confirmPurchase()">
+          <span class="spinner-border spinner-border-sm d-none" id="purchaseSpinner"></span>
+          Confirm & Pay
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Renew Confirmation Modal -->
+<div class="modal fade" id="renewModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Renew Membership</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-3">
+          <div class="fs-5 fw-bold" id="renewPlanName">–</div>
+          <div class="text-muted small" id="renewPlanInfo">–</div>
+        </div>
+        <div class="bg-light rounded p-3 mb-3">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Duration</span>
+            <strong id="renewDuration">–</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Price</span>
+            <strong id="renewPrice">–</strong>
+          </div>
+        </div>
+        <div class="alert alert-info small mb-0">
+          <i class="bi bi-info-circle"></i> A new membership will be created starting from today. You'll be redirected to complete the payment.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmRenewBtn" onclick="confirmRenew()">
+          <span class="spinner-border spinner-border-sm d-none" id="renewSpinner"></span>
+          Renew & Pay
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pay Modal (for dues) -->
+<div class="modal fade" id="payModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="payModalTitle">Pay</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="payForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Amount Due</label>
+            <input type="text" id="payAmountDisplay" class="form-control" disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Promo Code (optional)</label>
+            <div class="input-group">
+              <input type="text" id="payPromoCode" class="form-control text-uppercase" placeholder="Enter promo code">
+              <button type="button" class="btn btn-outline-primary" id="validatePromoBtn" onclick="validatePromoCode()">Apply</button>
+            </div>
+            <div id="promoResult" class="mt-2 small" style="display:none;"></div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Payment Method</label>
+            <select id="payMethod" class="form-select" required>
+              <option value="KHALTI" selected>Khalti (Online)</option>
+              <option value="ESEWA">eSewa (Online)</option>
+            </select>
+            <div class="form-text" id="payMethodHint">
+              <i class="bi bi-info-circle"></i> You'll be redirected to Khalti to complete this payment securely.
+            </div>
+          </div>
+          <div id="payError" class="alert alert-danger d-none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span class="spinner-border spinner-border-sm d-none" id="paySpinner"></span>
+            <span id="paySubmitLabel">Pay with Khalti</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Freeze Request Modal -->
+<div class="modal fade" id="freezeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-snow me-2 text-info"></i>Request Membership Freeze</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="freezeMembershipId">
+        <div class="alert alert-info small mb-3">
+          <i class="bi bi-info-circle"></i> Your request will be reviewed by staff. You'll be notified once it's approved or rejected.
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Freeze Start Date *</label>
+          <input type="date" id="freezeStartDate" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Freeze End Date *</label>
+          <input type="date" id="freezeEndDate" class="form-control" required>
+          <div class="form-text">Membership will be extended by the number of frozen days once unfrozen.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Reason for Freeze *</label>
+          <textarea id="freezeReason" class="form-control" rows="3" placeholder="e.g. Traveling, medical reason, personal issue..." required></textarea>
+        </div>
+        <div id="freezeError" class="alert alert-danger d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-info" id="submitFreezeBtn" onclick="submitFreezeRequest()">
+          <span class="spinner-border spinner-border-sm d-none" id="freezeSpinner"></span>
+          Submit Request
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/validate.js"></script>
+<script>
+buildSidebar('my-memberships');
+if (!getAccessToken()) window.location.href = 'login.html';
+
+let plansCache = [];
+let membershipsCache = [];
+let duesCache = [];
+let selectedPlan = null;
+let selectedDue = null;
+let renewingMembership = null;
+
+function showToast(message, variant) {
+  const toastEl = document.getElementById('appToast');
+  const bodyEl = document.getElementById('appToastBody');
+  if (!toastEl || !bodyEl) return;
+  toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+  toastEl.classList.add(variant === 'error' ? 'bg-danger' : variant === 'warning' ? 'bg-warning' : 'bg-success');
+  bodyEl.textContent = message;
+  bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3500 }).show();
+}
+
+function pillClass(status) {
+  const map = { ACTIVE: 'success', EXPIRED: 'muted', FROZEN: 'info', CANCELLED: 'danger', PENDING: 'warning' };
+  return 'pill-' + (map[status] || 'muted');
+}
+
+function statusBadge(status) {
+  return `<span class="pill ${pillClass(status)}">${status}</span>`;
+}
+
+function formatDate(d) {
+  if (!d) return '–';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+async function fetchAll(path) {
+  let all = [];
+  while (path) {
+    const res = await apiRequest(path);
+    if (!res || !res.ok) return null;
+    if (!__isPageAlive()) return null;
+    const data = await res.json();
+    all = all.concat(data.results);
+    path = data.next ? data.next.replace(API_BASE, '') : null;
+  }
+  return all;
+}
+
+// ─── Load Plans ────────────────────────────────────────────────────────
+async function loadPlans() {
+  const plans = await fetchAll('/memberships/plans/?is_active=true');
+  if (!plans) return;
+  if (!__isPageAlive()) return;
+  plansCache = plans;
+  renderPlans();
+}
+
+function renderPlans() {
+  const container = document.getElementById('plansContainer');
+  const noState = document.getElementById('noPlansState');
+
+ if (!plansCache.length) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    noState.classList.remove('d-none');
+    return;
+}
+
+container.style.display = '';
+noState.classList.add('d-none');
+
+  container.innerHTML = plansCache.map((p, idx) => {
+    const features = (p.features && p.features.length) ? p.features : [];
+    const isPopular = idx === 1 || (plansCache.length === 3 && idx === 1);
+    return `
+      <div class="col-md-4">
+        <div class="plan-card h-100 d-flex flex-column ${isPopular ? 'popular' : ''}">
+          <div class="plan-cycle">${p.billing_cycle_display}</div>
+          <div class="plan-price">NPR ${parseFloat(p.price).toFixed(0)}<small>/${p.billing_cycle_display.toLowerCase()}</small></div>
+          <div class="plan-duration">${p.duration_days} days access</div>
+          ${p.description ? `<p class="text-muted small mb-2">${p.description}</p>` : ''}
+          <ul class="plan-features flex-grow-1">
+            ${features.length ? features.map(f => `<li><i class="bi bi-check-circle-fill"></i> ${f}</li>`).join('') :
+              `<li><i class="bi bi-check-circle-fill"></i> ${p.duration_days} days gym access</li>
+               <li><i class="bi bi-check-circle-fill"></i> All facility access</li>
+               <li><i class="bi bi-check-circle-fill"></i> Standard support</li>`}
+          </ul>
+          <button class="btn btn-primary w-100 mt-auto" onclick="openPurchaseModal(${p.id})">
+            <i class="bi bi-cart-plus me-1"></i> Purchase
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── Load Current Membership ───────────────────────────────────────────
+async function loadMemberships() {
+  const all = await fetchAll('/memberships/');
+  if (all === null) return;
+  if (!__isPageAlive()) return;
+  membershipsCache = all;
+  renderCurrentMembership();
+  renderHistory();
+}
+
+function renderCurrentMembership() {
+  const card = document.getElementById('currentMembershipCard');
+  const noState = document.getElementById('noMembershipState');
+
+  const active = membershipsCache.find(m => m.status === 'ACTIVE');
+  const frozen = membershipsCache.find(m => m.status === 'FROZEN');
+  const pending = membershipsCache.find(m => m.status === 'PENDING');
+  const current = active || frozen || pending;
+
+  if (!current) {
+    card.innerHTML = '';
+    noState.classList.remove('d-none');
+    return;
+  }
+  noState.classList.add('d-none');
+
+  const statusClass = current.status.toLowerCase();
+  const statusLabel = { ACTIVE: 'Active', FROZEN: 'Frozen', PENDING: 'Pending', EXPIRED: 'Expired', CANCELLED: 'Cancelled' };
+  const memberName = localStorage.getItem('user_name') || 'Member';
+  const daysText = current.days_remaining != null ? `${current.days_remaining} days remaining` : '';
+
+  card.innerHTML = `
+    <div class="membership-card" style="margin-bottom:var(--sp-4);">
+      <div class="mc-brand">FitCore</div>
+      <div class="mc-name">${escapeHtml(memberName)}</div>
+      <div class="mc-plan">${escapeHtml(current.plan_name || 'Plan')}</div>
+      <div class="mc-expiry">Valid Until</div>
+      <div class="mc-date">${formatDate(current.end_date)}</div>
+      <div class="mc-status ${statusClass}"><span>●</span> ${statusLabel[current.status] || current.status}</div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mb-3" style="padding:0 var(--sp-2);">
+      <div>
+        <div class="text-muted" style="font-size:0.8rem;">${daysText}</div>
+        <div class="text-muted" style="font-size:0.75rem;">Started ${formatDate(current.start_date)}</div>
+      </div>
+      <div class="text-end">
+        <div class="fw-bold" style="font-size:0.95rem;">NPR ${parseFloat(current.price_paid).toFixed(0)}</div>
+        <div class="text-muted" style="font-size:0.75rem;">amount paid</div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      ${current.status === 'ACTIVE' ? `
+        <a href="#" class="quick-action-btn" onclick="openFreezeModal(${current.id});return false;" style="border-color:var(--color-info);color:var(--color-info);">
+          <i class="bi bi-snow"></i> Freeze
+        </a>` : ''}
+      ${current.status === 'PENDING' ? `
+        <button class="quick-action-btn" onclick="openDuePayModal(${current.id})" style="border-color:var(--color-warning);color:var(--color-warning);">
+          <i class="bi bi-phone"></i> Complete Payment
+        </button>` : ''}
+      <a href="#plansSection" class="quick-action-btn" style="border-color:var(--color-progress);color:var(--color-progress);">
+        <i class="bi bi-arrow-up"></i> Upgrade
+      </a>
+    </div>`;
+}
+
+// ─── Load Dues ─────────────────────────────────────────────────────────
+async function loadDues() {
+  const res = await apiRequest('/payments/my-dues/');
+  if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
+  const data = await res.json();
+  duesCache = data.dues || [];
+  renderDues();
+}
+
+function renderDues() {
+  const section = document.getElementById('duesSection');
+  const container = document.getElementById('duesContainer');
+
+  if (!duesCache.length) {
+    section.classList.add('d-none');
+    return;
+  }
+  section.classList.remove('d-none');
+
+  container.innerHTML = duesCache.map((due, idx) => `
+    <div class="col-md-6">
+      <div class="card h-100 border-warning">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <div class="text-muted small text-uppercase">${due.payment_for === 'LOCKER' ? 'Locker' : 'Membership'}</div>
+            <div class="fw-bold"><i class="bi bi-${due.payment_for === 'LOCKER' ? 'lock' : 'card-checklist'} me-1"></i>${due.label}</div>
+            <div class="text-warning fw-bold mt-1">NPR ${due.amount.toFixed(2)}</div>
+          </div>
+          <button class="btn btn-warning" onclick="openPayModalFromDues(${idx})">
+            <i class="bi bi-phone"></i> Pay Now
+          </button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openDuePayModal(membershipId) {
+  const due = duesCache.find(d => d.payment_for === 'MEMBERSHIP' && d.reference_id === membershipId);
+  if (due) {
+    const idx = duesCache.indexOf(due);
+    openPayModalFromDues(idx);
+  }
+}
+
+function openPayModalFromDues(idx) {
+  selectedDue = duesCache[idx];
+  document.getElementById('payModalTitle').textContent = `Pay — ${selectedDue.label}`;
+  document.getElementById('payAmountDisplay').value = `NPR ${selectedDue.amount.toFixed(2)}`;
+  document.getElementById('payError').classList.add('d-none');
+  document.getElementById('payForm').reset();
+  document.getElementById('payMethod').value = 'KHALTI';
+  document.getElementById('paySpinner').classList.add('d-none');
+  document.getElementById('payPromoCode').value = '';
+  document.getElementById('promoResult').style.display = 'none';
+  validatedPromo = null;
+  updatePayMethodUI();
+  new bootstrap.Modal(document.getElementById('payModal')).show();
+}
+
+function updatePayMethodUI() {
+  const method = document.getElementById('payMethod').value;
+  const hint = document.getElementById('payMethodHint');
+  const submitLabel = document.getElementById('paySubmitLabel');
+  const gw = method === 'ESEWA' ? 'eSewa' : 'Khalti';
+  hint.innerHTML = `<i class="bi bi-info-circle"></i> You'll be redirected to ${gw} to complete this payment securely.`;
+  if (submitLabel) submitLabel.textContent = `Pay with ${gw}`;
+}
+
+document.getElementById('payMethod')?.addEventListener('change', updatePayMethodUI);
+
+const payFormRules = {
+  payMethod: [v => validate.required(v, 'Payment method')],
+};
+
+document.getElementById('payForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!validateForm(document.getElementById('payForm'), payFormRules)) return;
+  if (!selectedDue) return;
+  const errorBox = document.getElementById('payError');
+  errorBox.classList.add('d-none');
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const spinner = document.getElementById('paySpinner');
+  submitBtn.disabled = true;
+  spinner.classList.remove('d-none');
+
+  let payload = {
+    payment_for: selectedDue.payment_for,
+    reference_id: selectedDue.reference_id,
+    payment_method: document.getElementById('payMethod').value,
+    return_url: window.location.origin + window.location.pathname,
+  };
+  if (validatedPromo) {
+    payload.promo_code = validatedPromo.promo_code;
+  }
+  payload = sanitizePayload(payload);
+
+  try {
+    const res = await apiRequest('/payments/pay/', { method: 'POST', body: JSON.stringify(payload) });
+    if (!res) return;
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      errorBox.textContent = (typeof formatApiError === 'function') ? formatApiError(data) : JSON.stringify(data);
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
+    if (data.payment_url) {
+      showToast('Redirecting to Khalti...');
+      window.location.href = data.payment_url;
+      return;
+    }
+    if (data.esewa_form_fields) {
+      showToast('Redirecting to eSewa...');
+      submitEsewaForm(data.esewa_action_url, data.esewa_form_fields);
+      return;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('payModal'))?.hide();
+    showToast('Payment recorded — pending verification.');
+    await loadDues();
+    await loadMemberships();
+  } catch (err) {
+    errorBox.textContent = 'Network error — please try again.';
+    errorBox.classList.remove('d-none');
+  } finally {
+    submitBtn.disabled = false;
+    spinner.classList.add('d-none');
+  }
+});
+
+function submitEsewaForm(actionUrl, fields) {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = actionUrl;
+  Object.entries(fields).forEach(([name, value]) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
+
+// ─── Promo Code Validation ──────────────────────────────────────────────
+let validatedPromo = null;
+
+async function validatePromoCode() {
+  const code = document.getElementById('payPromoCode').value.trim();
+  const resultEl = document.getElementById('promoResult');
+  const validateBtn = document.getElementById('validatePromoBtn');
+  if (!code) { resultEl.style.display = 'none'; validatedPromo = null; return; }
+
+  validateBtn.disabled = true;
+  validateBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+  // Determine plan_id from selectedDue
+  const planId = selectedDue && selectedDue.reference_id ? selectedDue.reference_id : null;
+  if (!planId) {
+    resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Select a plan first.</span>';
+    resultEl.style.display = '';
+    validateBtn.disabled = false;
+    validateBtn.textContent = 'Apply';
+    return;
+  }
+
+  const res = await apiRequest('/memberships/offers/validate/', {
+    method: 'POST',
+    body: JSON.stringify({ code: code, plan_id: planId }),
+  });
+
+  validateBtn.disabled = false;
+  validateBtn.textContent = 'Apply';
+
+  if (!res) {
+    resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Network error.</span>';
+    resultEl.style.display = '';
+    validatedPromo = null;
+    return;
+  }
+
+  const data = await res.json().catch(() => ({}));
+
+  if (res.ok) {
+    validatedPromo = data;
+    const savingsText = data.discount_type === 'PERCENTAGE'
+      ? data.discount_value + '% off'
+      : 'NPR ' + data.discount_amount + ' off';
+    resultEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i><strong>' +
+      escapeHtml(data.offer_name) + '</strong> — ' + savingsText +
+      ' (Final: NPR ' + data.final_price + ')</span>';
+    resultEl.style.display = '';
+    // Update displayed amount
+    document.getElementById('payAmountDisplay').value = 'NPR ' + data.final_price;
+  } else {
+    validatedPromo = null;
+    resultEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' +
+      (typeof formatApiError === 'function' ? formatApiError(data) : 'Invalid promo code.') + '</span>';
+    resultEl.style.display = '';
+  }
+}
+
+// ─── Purchase Flow ─────────────────────────────────────────────────────
+function openPurchaseModal(planId) {
+  selectedPlan = plansCache.find(p => p.id === planId);
+  if (!selectedPlan) return;
+
+  document.getElementById('purchasePlanName').textContent = selectedPlan.name;
+  document.getElementById('purchasePlanCycle').textContent = selectedPlan.billing_cycle_display;
+  document.getElementById('purchasePlanDuration').textContent = selectedPlan.duration_days + ' days';
+  document.getElementById('purchasePlanPrice').textContent = 'NPR ' + parseFloat(selectedPlan.price).toFixed(2);
+  document.getElementById('purchaseStartDate').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  document.getElementById('purchaseSpinner').classList.add('d-none');
+  document.getElementById('confirmPurchaseBtn').disabled = false;
+
+  new bootstrap.Modal(document.getElementById('purchaseModal')).show();
+}
+
+async function confirmPurchase() {
+  if (!selectedPlan) return;
+  const btn = document.getElementById('confirmPurchaseBtn');
+  const spinner = document.getElementById('purchaseSpinner');
+  btn.disabled = true;
+  spinner.classList.remove('d-none');
+
+  try {
+    const res = await apiRequest('/memberships/', {
+      method: 'POST',
+      body: JSON.stringify({ plan: selectedPlan.id }),
+    });
+
+    if (!res) return;
+    if (!__isPageAlive()) return;
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      showToast(typeof formatApiError === 'function' ? formatApiError(data) : 'Purchase failed', 'error');
+      return;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('purchaseModal'))?.hide();
+    showToast('Membership created! Redirecting to payment...');
+
+    await loadMemberships();
+    await loadDues();
+
+    setTimeout(() => {
+      const due = duesCache.find(d => d.payment_for === 'MEMBERSHIP' && d.reference_id === data.id);
+      if (due) {
+        const idx = duesCache.indexOf(due);
+        openPayModalFromDues(idx);
+      }
+    }, 500);
+  } catch (err) {
+    showToast('Network error — please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    spinner.classList.add('d-none');
+  }
+}
+
+// ─── Renew Flow ────────────────────────────────────────────────────────
+function openRenewModal(membershipId) {
+  const m = membershipsCache.find(x => x.id === membershipId);
+  if (!m) return;
+  renewingMembership = m;
+
+  document.getElementById('renewPlanName').textContent = m.plan_name;
+  document.getElementById('renewPlanInfo').textContent = `Previous membership ended ${formatDate(m.end_date)}`;
+  document.getElementById('renewDuration').textContent = 'Same plan duration';
+  document.getElementById('renewPrice').textContent = 'NPR ' + parseFloat(m.price_paid).toFixed(2);
+  document.getElementById('renewSpinner').classList.add('d-none');
+  document.getElementById('confirmRenewBtn').disabled = false;
+
+  new bootstrap.Modal(document.getElementById('renewModal')).show();
+}
+
+async function confirmRenew() {
+  if (!renewingMembership) return;
+  const btn = document.getElementById('confirmRenewBtn');
+  const spinner = document.getElementById('renewSpinner');
+  btn.disabled = true;
+  spinner.classList.remove('d-none');
+
+  try {
+    const res = await apiRequest(`/memberships/${renewingMembership.id}/renew/`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+
+    if (!res) return;
+    if (!__isPageAlive()) return;
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      showToast(typeof formatApiError === 'function' ? formatApiError(data) : 'Renewal failed', 'error');
+      return;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('renewModal'))?.hide();
+    showToast('Membership renewed! Redirecting to payment...');
+
+    await loadMemberships();
+    await loadDues();
+
+    setTimeout(() => {
+      const due = duesCache.find(d => d.payment_for === 'MEMBERSHIP' && d.reference_id === data.id);
+      if (due) {
+        const idx = duesCache.indexOf(due);
+        openPayModalFromDues(idx);
+      }
+    }, 500);
+  } catch (err) {
+    showToast('Network error — please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    spinner.classList.add('d-none');
+  }
+}
+
+// ─── History ───────────────────────────────────────────────────────────
+function renderHistory() {
+  const container = document.getElementById('historyContainer');
+  const noState = document.getElementById('noHistoryState');
+
+  const past = membershipsCache.filter(m => m.status === 'EXPIRED' || m.status === 'CANCELLED');
+
+  if (!past.length) {
+    container.innerHTML = '';
+    noState.classList.remove('d-none');
+    return;
+  }
+  noState.classList.add('d-none');
+
+  container.innerHTML = past.map(m => `
+    <div class="history-item d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-3">
+        <div class="text-center" style="min-width:48px;">
+          <div class="fw-bold fs-5">${statusBadge(m.status)}</div>
+        </div>
+        <div>
+          <div class="fw-semibold">${m.plan_name}</div>
+          <div class="text-muted small">${formatDate(m.start_date)} → ${formatDate(m.end_date)}</div>
+          <div class="text-muted small">NPR ${parseFloat(m.price_paid).toFixed(2)} paid</div>
+        </div>
+      </div>
+      <div>
+        ${m.status === 'EXPIRED' ? `
+          <button class="btn btn-outline-primary btn-sm" onclick="openRenewModal(${m.id})">
+            <i class="bi bi-arrow-repeat me-1"></i> Renew
+          </button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+// ─── Freeze Requests ──────────────────────────────────────────────────
+let freezeRequestsCache = [];
+
+function openFreezeModal(membershipId) {
+  document.getElementById('freezeMembershipId').value = membershipId;
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('freezeStartDate').value = today;
+  document.getElementById('freezeStartDate').min = today;
+  document.getElementById('freezeEndDate').value = '';
+  document.getElementById('freezeEndDate').min = today;
+  document.getElementById('freezeReason').value = '';
+  document.getElementById('freezeError').classList.add('d-none');
+  document.getElementById('freezeSpinner').classList.add('d-none');
+  document.getElementById('submitFreezeBtn').disabled = false;
+  new bootstrap.Modal(document.getElementById('freezeModal')).show();
+}
+
+const freezeFormRules = {
+  freezeStartDate: [v => validate.required(v, 'Start date'), v => validate.notPast(v, 'Start date')],
+  freezeEndDate: [v => validate.required(v, 'End date'), v => validate.dateAfter(v, document.getElementById('freezeStartDate').value, 'End date', 'Start date')],
+  freezeReason: [v => validate.required(v, 'Reason'), v => validate.maxLength(v, 500, 'Reason'), v => validate.noHtml(v, 'Reason')],
+};
+
+async function submitFreezeRequest() {
+  const membershipId = document.getElementById('freezeMembershipId').value;
+  const freezeStart = document.getElementById('freezeStartDate').value;
+  const freezeEnd = document.getElementById('freezeEndDate').value;
+  const reason = document.getElementById('freezeReason').value.trim();
+  const errorBox = document.getElementById('freezeError');
+  const btn = document.getElementById('submitFreezeBtn');
+  const spinner = document.getElementById('freezeSpinner');
+
+  errorBox.classList.add('d-none');
+
+  if (!validateForm(document.getElementById('freezeModal'), freezeFormRules)) return;
+
+  btn.disabled = true;
+  spinner.classList.remove('d-none');
+
+  try {
+    const res = await apiRequest('/memberships/freeze-requests/', {
+      method: 'POST',
+      body: JSON.stringify(sanitizePayload({
+        membership: parseInt(membershipId),
+        freeze_start: freezeStart,
+        freeze_end: freezeEnd,
+        reason,
+      })),
+    });
+
+    if (!res) {
+      errorBox.textContent = 'Network error — please try again.';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      errorBox.textContent = typeof formatApiError === 'function' ? formatApiError(data) : 'Request failed';
+      errorBox.classList.remove('d-none');
+      return;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('freezeModal'))?.hide();
+    showToast('Freeze request submitted! Waiting for staff review.');
+    loadFreezeRequests();
+  } catch (err) {
+    errorBox.textContent = 'Network error — please try again.';
+    errorBox.classList.remove('d-none');
+  } finally {
+    btn.disabled = false;
+    spinner.classList.add('d-none');
+  }
+}
+
+async function loadFreezeRequests() {
+  const res = await apiRequest('/memberships/freeze-requests/');
+  if (!res || !res.ok) return;
+  if (!__isPageAlive()) return;
+  const data = await res.json();
+  freezeRequestsCache = data.results || data;
+  renderFreezeRequests();
+}
+
+function renderFreezeRequests() {
+  const container = document.getElementById('freezeRequestsContainer');
+  const noState = document.getElementById('noFreezeRequestsState');
+
+  if (!freezeRequestsCache.length) {
+    container.innerHTML = '';
+    noState.classList.remove('d-none');
+    return;
+  }
+  noState.classList.add('d-none');
+
+  const statusColors = {
+    PENDING: 'warning',
+    APPROVED: 'success',
+    REJECTED: 'danger',
+  };
+
+  container.innerHTML = freezeRequestsCache.map(fr => `
+    <div class="history-item">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="fw-semibold">${fr.plan_name || 'Membership'}</div>
+          <div class="text-muted small">
+            <i class="bi bi-calendar3 me-1"></i>${formatDate(fr.freeze_start)} → ${formatDate(fr.freeze_end)}
+          </div>
+          <div class="text-muted small mt-1"><strong>Reason:</strong> ${fr.reason}</div>
+          ${fr.status === 'REJECTED' && fr.rejection_reason ? `
+            <div class="text-danger small mt-1"><strong>Rejection reason:</strong> ${fr.rejection_reason}</div>` : ''}
+          ${fr.reviewed_by_name ? `
+            <div class="text-muted small mt-1">Reviewed by ${fr.reviewed_by_name} on ${formatDate(fr.reviewed_at?.split('T')[0])}</div>` : ''}
+        </div>
+        <span class="badge bg-${statusColors[fr.status] || 'secondary'}">${fr.status_display || fr.status}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ─── Payment Return Verification ───────────────────────────────────────
+async function verifyKhaltiIfReturning() {
+  const params = new URLSearchParams(window.location.search);
+  const pidx = params.get('pidx');
+  if (!pidx) return;
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  showToast('Verifying your Khalti payment...');
+  const res = await apiRequest('/payments/verify-khalti/', {
+    method: 'POST',
+    body: JSON.stringify({ pidx }),
+  });
+  if (!res) return;
+  if (!__isPageAlive()) return;
+  const data = await res.json().catch(() => ({}));
+
+  if (res.ok && data.status === 'PAID') showToast('Payment successful!');
+  else if (res.ok && data.status === 'FAILED') showToast('Payment was not completed.', 'error');
+  else if (res.ok) showToast('Payment is still processing — check back shortly.', 'warning');
+  else showToast('Payment verified!');
+
+  await loadDues();
+  await loadMemberships();
+}
+
+async function verifyEsewaIfReturning() {
+  const params = new URLSearchParams(window.location.search);
+  const dataParam = params.get('data');
+  if (!dataParam) return;
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  showToast('Verifying your eSewa payment...');
+  const res = await apiRequest('/payments/verify-esewa/', {
+    method: 'POST',
+    body: JSON.stringify({ data: dataParam }),
+  });
+  if (!res) return;
+  if (!__isPageAlive()) return;
+  const responseData = await res.json().catch(() => ({}));
+
+  if (res.ok && responseData.status === 'PAID') showToast('Payment successful!');
+  else if (res.ok && responseData.status === 'FAILED') showToast('Payment was not completed.', 'error');
+  else if (res.ok) showToast('Payment is still processing — check back shortly.', 'warning');
+  else showToast('Payment verified!');
+
+  await loadDues();
+  await loadMemberships();
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    await Promise.all([loadPlans(), loadMemberships(), loadDues(), loadFreezeRequests()]);
+  } catch (err) {
+    console.error('Failed to load membership page:', err);
+    showToast('Something went wrong — please refresh.', 'error');
+  } finally {
+    if (__isPageAlive()) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('pageBody').style.display = '';
+    }
+  }
+
+  try {
+    await verifyKhaltiIfReturning();
+    await verifyEsewaIfReturning();
+  } catch (err) {
+    console.error('Payment return verification failed:', err);
+  }
+})();
+</script>
+<script src="js/bottom-tabs.js"></script>
+</body>
+</html>
+>>>>>>> Stashed changes
