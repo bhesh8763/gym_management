@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import DietPlan, Meal, MealLog
+from .models import DietPlan, Meal, MealLog, MealChecklist
 
 
 class MealInline(admin.TabularInline):
@@ -18,5 +18,12 @@ class DietPlanAdmin(admin.ModelAdmin):
 @admin.register(MealLog)
 class MealLogAdmin(admin.ModelAdmin):
     list_display   = ('member', 'date', 'total_calories')
+    search_fields  = ('member__email', 'member__first_name')
+    date_hierarchy = 'date'
+
+
+@admin.register(MealChecklist)
+class MealChecklistAdmin(admin.ModelAdmin):
+    list_display   = ('member', 'date', 'completed_count', 'total_meals')
     search_fields  = ('member__email', 'member__first_name')
     date_hierarchy = 'date'

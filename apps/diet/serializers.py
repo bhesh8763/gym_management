@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import DietPlan, Meal, MealLog
+from .models import DietPlan, Meal, MealLog, MealChecklist
 
 
 class MealSerializer(serializers.ModelSerializer):
@@ -106,3 +106,21 @@ class MealLogSerializer(serializers.ModelSerializer):
             'notes', 'created_at',
         ]
         read_only_fields = ['id', 'total_calories', 'created_at']
+
+
+class MealChecklistSerializer(serializers.ModelSerializer):
+    """Serializer for a member's daily meal-completion checklist."""
+
+    member = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    completed_count = serializers.ReadOnlyField()
+    progress_percent = serializers.ReadOnlyField()
+
+    class Meta:
+        model  = MealChecklist
+        fields = [
+            'id', 'member', 'date',
+            'completed_meal_types', 'total_meals',
+            'completed_count', 'progress_percent',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']

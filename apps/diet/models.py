@@ -116,3 +116,49 @@ class MealLog(models.Model):
     def save(self, *args, **kwargs):
         self.total_calories = sum(item.get('calories', 0) for item in self.food_items)
         super().save(*args, **kwargs)
+
+
+class MealChecklist(models.Model):
+    """
+    A member's daily checklist of which meals (from their effective plan —
+    personal DietPlan or general goal-based plan) they completed on a given
+    date. This does NOT duplicate the plan/meal definitions per day; it only
+    stores which meal_type codes were checked off for that date.
+    """
+    member = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='meal_checklists',
+        limit_choices_to={'role': 'MEMBER'},
+    )
+    date = models.DateField()
+    completed_meal_types = models.JSONField(
+        default=list,
+        help_text='Meal type codes checked off that day, e.g. ["BREAKFAST", "LUNCH"]',
+    )
+    total_meals = models.PositiveIntegerField(
+        default=0,
+        help_text='Snapshot of how many meals were in the effective plan on this date',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'meal_checklists'
+        verbose_name = 'Meal Checklist'
+        verbose_name_plural = 'Meal Checklists'
+        ordering = ['-date']
+        unique_together = [('member', 'date')]
+
+    def __str__(self):
+        return f'{self.member.get_full_name()} — {self.date}'
+
+    @property
+    def completed_count(self):
+        return len(self.completed_meal_types or [])
+
+    @property
+    def progress_percent(self):
+        if not self.total_meals:
+            return 0
+        return round((self.completed_count / self.total_meals) * 100, 1)

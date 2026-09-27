@@ -1,10 +1,12 @@
 """
 Diet module views.
 
-DietPlanViewSet   — full CRUD + ?q= / ?goal= filtering + /stats action
-MealViewSet       — full CRUD for individual meals
-MealLogViewSet    — member-scoped daily meal logging
+DietPlanViewSet         — full CRUD + ?q= / ?goal= filtering + /stats action
+MealViewSet             — full CRUD for individual meals
+MealLogViewSet          — member-scoped daily meal logging
 MealLogDailySummaryView — aggregate daily intake vs. plan calorie goal
+EffectiveDietPlanView   — personal plan if assigned, else a general goal-based plan
+MealChecklistViewSet    — daily meal-completion checklist + history
 """
 from datetime import date as date_cls, timedelta
 
@@ -19,11 +21,12 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
 
-from .models import DietPlan, Meal, MealLog
+from .models import DietPlan, Meal, MealLog, MealChecklist
 from .serializers import (
     DietPlanSerializer,
     MealSerializer,
     MealLogSerializer,
+    MealChecklistSerializer,
 )
 
 User = get_user_model()
@@ -36,6 +39,106 @@ DIET_DISCLAIMER = (
     "Consult a doctor or registered dietitian before making significant "
     "dietary changes, especially if you have a medical condition."
 )
+
+# ─── General (non-personal) diet plans, keyed on DietPlan.Goal ────────────────
+# Used only as a fallback when a member has no trainer-assigned DietPlan.
+# These are NOT stored as DietPlan/Meal rows — they're static templates.
+# Every one of DietPlan.Goal's 5 values has a template here, each with at
+# least 4 meals, so the checklist is never empty regardless of which goal
+# a member ends up mapped to.
+
+GENERAL_MEAL_PLANS = {
+    'MUSCLE_GAIN': [
+        {'meal_type': 'BREAKFAST',    'food_name': '2 eggs + oats + banana'},
+        {'meal_type': 'MID_MORNING',  'food_name': 'Milk + nuts'},
+        {'meal_type': 'LUNCH',        'food_name': 'Rice + chicken/paneer + vegetables'},
+        {'meal_type': 'PRE_WORKOUT',  'food_name': 'Banana + peanut butter'},
+        {'meal_type': 'POST_WORKOUT', 'food_name': 'Protein-rich meal or shake'},
+        {'meal_type': 'DINNER',       'food_name': 'Rice/roti + protein + vegetables'},
+    ],
+    'WEIGHT_LOSS': [
+        {'meal_type': 'BREAKFAST',      'food_name': 'Eggs + vegetables/oats'},
+        {'meal_type': 'MID_MORNING',    'food_name': 'Fruit'},
+        {'meal_type': 'LUNCH',          'food_name': 'Rice/roti + lean protein + vegetables'},
+        {'meal_type': 'EVENING_SNACK',  'food_name': 'Light healthy snack'},
+        {'meal_type': 'DINNER',         'food_name': 'Protein + vegetables'},
+    ],
+    'RECOMPOSITION': [
+        {'meal_type': 'BREAKFAST',    'food_name': 'Eggs + oats + berries'},
+        {'meal_type': 'MID_MORNING',  'food_name': 'Greek yogurt or protein shake + nuts'},
+        {'meal_type': 'LUNCH',        'food_name': 'Rice/roti + lean protein + vegetables'},
+        {'meal_type': 'PRE_WORKOUT',  'food_name': 'Banana + small handful of nuts'},
+        {'meal_type': 'POST_WORKOUT', 'food_name': 'Protein-rich meal or shake'},
+        {'meal_type': 'DINNER',       'food_name': 'Lean protein + vegetables, moderate carbs'},
+    ],
+    'MAINTENANCE': [
+        {'meal_type': 'BREAKFAST',     'food_name': 'Eggs/oats + fruit'},
+        {'meal_type': 'LUNCH',         'food_name': 'Rice/roti + protein + vegetables'},
+        {'meal_type': 'EVENING_SNACK', 'food_name': 'Fruit or light snack'},
+        {'meal_type': 'DINNER',        'food_name': 'Roti/rice + protein + vegetables'},
+    ],
+    'ENDURANCE': [
+        {'meal_type': 'BREAKFAST',    'food_name': 'Oats + banana + honey'},
+        {'meal_type': 'MID_MORNING',  'food_name': 'Fruit + a handful of nuts'},
+        {'meal_type': 'LUNCH',        'food_name': 'Rice/roti + protein + vegetables'},
+        {'meal_type': 'PRE_WORKOUT',  'food_name': 'Toast + banana or energy bar'},
+        {'meal_type': 'POST_WORKOUT', 'food_name': 'Carb + protein recovery meal'},
+        {'meal_type': 'DINNER',       'food_name': 'Roti/rice + protein + vegetables'},
+    ],
+}
+
+# Maps MemberProfile.fitness_goal (WEIGHT_LOSS, MUSCLE_GAIN, ENDURANCE,
+# FLEXIBILITY, GENERAL, REHAB) to the nearest DietPlan.Goal used above.
+# Anything blank, unrecognized, or without a direct match falls back to
+# MAINTENANCE, so a template is always found — the checklist is never empty.
+FITNESS_GOAL_TO_DIET_GOAL = {
+    'WEIGHT_LOSS': 'WEIGHT_LOSS',
+    'MUSCLE_GAIN': 'MUSCLE_GAIN',
+    'ENDURANCE':   'ENDURANCE',
+    'FLEXIBILITY': 'MAINTENANCE',
+    'GENERAL':     'MAINTENANCE',
+    'REHAB':       'MAINTENANCE',
+}
+
+GOAL_LABELS = {
+    'WEIGHT_LOSS':   'Weight Loss',
+    'MUSCLE_GAIN':   'Muscle Gain',
+    'RECOMPOSITION': 'Recomposition',
+    'MAINTENANCE':   'Maintenance',
+    'ENDURANCE':     'Endurance',
+}
+
+
+def _general_plan_for(member):
+    """Build a read-only, non-persisted 'general plan' payload for a member
+    with no trainer-assigned DietPlan, based on their MemberProfile.fitness_goal,
+    mapped onto DietPlan.Goal's 5 categories (defaulting to MAINTENANCE)."""
+    profile = getattr(member, 'member_profile', None)
+    fitness_goal = (getattr(profile, 'fitness_goal', '') or '').upper()
+    goal = FITNESS_GOAL_TO_DIET_GOAL.get(fitness_goal, 'MAINTENANCE')
+    template = GENERAL_MEAL_PLANS[goal]
+    meal_type_labels = dict(Meal.MealType.choices)
+    meals = [
+        {
+            'id': None,
+            'meal_type': m['meal_type'],
+            'meal_type_display': meal_type_labels.get(m['meal_type'], m['meal_type']),
+            'food_name': m['food_name'],
+            'portion': '', 'calories': None, 'time_suggestion': None, 'notes': '',
+        }
+        for m in template
+    ]
+    return {
+        'id': None,
+        'source': 'GENERAL',
+        'name': f'General Plan — {GOAL_LABELS[goal]}',
+        'goal': goal,
+        'goal_display': GOAL_LABELS[goal],
+        'daily_calories': None, 'protein_g': None, 'carbs_g': None, 'fats_g': None,
+        'is_active': True, 'status': 'Active',
+        'meals': meals,
+        'disclaimer': DIET_DISCLAIMER,
+    }
 
 
 def _visible_diet_plans(user):
@@ -357,3 +460,123 @@ class MealLogDailySummaryView(APIView):
             } if active_plan else None,
             'meal_logs': log_list,
         })
+
+
+# ─── Effective Plan (personal-first, general fallback) ───────────────────────
+
+class EffectiveDietPlanView(APIView):
+    """
+    GET /api/diet/effective-plan/?member=<id>
+
+    Returns the ONE plan a member should see today:
+      - their active trainer-assigned DietPlan if one exists (source=PERSONAL)
+      - otherwise a general plan built from MemberProfile.fitness_goal (source=GENERAL)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        member_id = request.query_params.get('member')
+        if member_id and user.role in ('OWNER', 'STAFF', 'TRAINER'):
+            try:
+                member = User.objects.get(pk=member_id, role='MEMBER')
+            except User.DoesNotExist:
+                return Response({'error': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            if not user.is_member:
+                return Response(
+                    {'error': "Specify ?member=<id> to view a member's effective plan."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            member = user
+
+        personal_plan = (
+            DietPlan.objects.filter(member=member, is_active=True)
+            .prefetch_related('meals')
+            .order_by('-start_date')
+            .first()
+        )
+        if personal_plan:
+            data = DietPlanSerializer(personal_plan, context={'request': request}).data
+            data['source'] = 'PERSONAL'
+            data['disclaimer'] = DIET_DISCLAIMER
+            return Response(data)
+
+        return Response(_general_plan_for(member))
+
+
+# ─── Daily Meal Checklist ─────────────────────────────────────────────────────
+
+class MealChecklistViewSet(viewsets.ModelViewSet):
+    """
+    CRUD + history for a member's daily meal checklist.
+    Members see only their own; owners/staff/trainers may filter by ?member=.
+    """
+
+    serializer_class   = MealChecklistSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in (User.Role.OWNER, User.Role.STAFF):
+            qs = MealChecklist.objects.all()
+        elif user.is_trainer:
+            from apps.trainers.models import TrainerMemberAssignment
+            assigned = TrainerMemberAssignment.objects.filter(
+                trainer=user, is_active=True
+            ).values_list('member_id', flat=True)
+            qs = MealChecklist.objects.filter(member_id__in=assigned)
+        else:
+            qs = MealChecklist.objects.filter(member=user)
+
+        member_id = self.request.query_params.get('member')
+        if member_id and user.role in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER):
+            qs = qs.filter(member_id=member_id)
+
+        date_filter = self.request.query_params.get('date')
+        if date_filter:
+            qs = qs.filter(date=date_filter)
+
+        return qs.order_by('-date')
+
+    def perform_create(self, serializer):
+        serializer.save(member=self.request.user)
+
+    @action(detail=False, methods=['get', 'post'], url_path='today', permission_classes=[IsAuthenticated])
+    def today(self, request):
+        """
+        GET  /api/diet/meal-checklist/today/
+             -> today's checklist for the current member (or a default empty shape).
+        POST /api/diet/meal-checklist/today/
+             body: {"completed_meal_types": ["BREAKFAST", "LUNCH"], "total_meals": 5}
+             -> creates/updates today's record for the current member only.
+        """
+        if not request.user.is_member:
+            return Response({'error': 'Only members have a personal checklist.'},
+                             status=status.HTTP_400_BAD_REQUEST)
+
+        today_str = timezone.localdate().isoformat()
+
+        if request.method == 'GET':
+            obj = MealChecklist.objects.filter(member=request.user, date=today_str).first()
+            if not obj:
+                return Response({
+                    'date': today_str, 'completed_meal_types': [],
+                    'total_meals': 0, 'completed_count': 0, 'progress_percent': 0,
+                })
+            return Response(MealChecklistSerializer(obj).data)
+
+        completed = request.data.get('completed_meal_types', [])
+        if not isinstance(completed, list):
+            return Response({'error': 'completed_meal_types must be a list.'},
+                             status=status.HTTP_400_BAD_REQUEST)
+        try:
+            total = int(request.data.get('total_meals', 0))
+        except (TypeError, ValueError):
+            total = 0
+
+        obj, _created = MealChecklist.objects.update_or_create(
+            member=request.user, date=today_str,
+            defaults={'completed_meal_types': completed, 'total_meals': total},
+        )
+        return Response(MealChecklistSerializer(obj).data)

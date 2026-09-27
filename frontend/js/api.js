@@ -803,10 +803,16 @@ initProfileHeader();
 // payments/lockers fix history) as the option value and full_name as the
 // label. Was previously copy-pasted identically into attendance.html,
 // diet.html, lockers.html, payments.html, and workouts.html.
-async function loadMembersIntoSelect(selectId) {
+//
+// Pass { assignedToMe: true } to restrict results to the current trainer's
+// own assigned members (e.g. when a trainer is creating a diet plan) — this
+// is a no-op for owner/staff accounts, who still see every member. Omit it
+// (or pass nothing) to keep the previous "every active member" behavior.
+async function loadMembersIntoSelect(selectId, options = {}) {
   const select = document.getElementById(selectId);
   if (!select) return;
-  const res = await apiRequest('/members/?is_active=true');
+  const scopeParam = options.assignedToMe ? '&assigned_to_me=true' : '';
+  const res = await apiRequest('/members/?is_active=true' + scopeParam);
   if (!res || !res.ok) {
     select.innerHTML = '<option value="">Could not load members</option>';
     return;

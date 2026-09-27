@@ -1,4 +1,4 @@
-<<<<<<< Updated upstream
+
 /* ==========================================================================
    FitCore — Design System v2
    Fitness-first design tokens, component library, dark mode via CSS variables.
@@ -2478,4 +2478,4 @@ html:not([data-theme="light"]) .alert {
   border-color: var(--border-light, rgba(255, 255, 255, 0.1)) !important;
   color: var(--text-primary, #ffffff) !important;
 }
->>>>>>> Stashed changes
+
