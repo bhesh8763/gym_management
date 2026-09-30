@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="logo.png">
+  <title>Trash – FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body data-allowed-roles="OWNER,STAFF">
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta"><div class="profile-name" id="profileName">&mdash;</div><div class="profile-role" id="profileRole">&mdash;</div></span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content"><div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="p-4 flex-grow-1">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <h3 class="mb-1 fw-bold">Trash</h3>
+        <p class="text-muted mb-0">Deleted records are kept here before being removed forever. Restore them or purge permanently.</p>
+      </div>
+    </div>
+
+    <div class="alert alert-warning d-flex align-items-center gap-2 py-2 small">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      Records in trash still count toward unique names/numbers (e.g. a trashed plan keeps its name taken). Restore or purge to free them.
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <select id="categorySelect" class="form-select" style="width:auto;" onchange="loadTrashList()">
+        <option value="">Loading categories…</option>
+      </select>
+      <div class="d-flex gap-2">
+        <div class="input-group" style="width:280px;">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" id="trashSearch" class="form-control" placeholder="Search by name or email…" oninput="debouncedSearch()">
+        </div>
+        <button class="btn btn-outline-secondary" onclick="loadSummary(true)" title="Refresh counts"><i class="bi bi-arrow-clockwise"></i></button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th style="width:45%;">Item</th>
+            <th>Deleted</th>
+            <th>Deleted By</th>
+            <th data-no-export style="width:220px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="trashBody">
+          <tr><td colspan="4" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="text-muted small" id="trashCount"></div>
+  </div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+buildSidebar('trash');
+if (!getAccessToken()) window.location.href = 'login.html';
+
+const CATEGORY_LABELS = {
+  'members': 'Members',
+  'memberships': 'Memberships',
+  'plans': 'Membership Plans',
+  'offers': 'Offers',
+  'promo-codes': 'Promo Codes',
+  'payments': 'Payments',
+  'staff': 'Staff',
+  'trainers': 'Trainers',
+  'trainer-assignments': 'Trainer Assignments',
+  'attendance': 'Attendance',
+  'diet-plans': 'Diet Plans',
+  'workout-plans': 'Workout Plans',
+  'equipment': 'Equipment',
+  'lockers': 'Lockers',
+  'locker-assignments': 'Locker Assignments',
+};
+
+let summaryData = [];
+let searchTimer = null;
+
+function showToast(message, variant) {
+  const toastEl = document.getElementById('appToast');
+  const bodyEl = document.getElementById('appToastBody');
+  if (!toastEl || !bodyEl) return;
+  toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+  toastEl.classList.add(variant === 'error' ? 'bg-danger' : variant === 'warning' ? 'bg-warning' : 'bg-success');
+  bodyEl.textContent = message;
+  bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3000 }).show();
+}
+
+function debouncedSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadTrashList, 300);
+}
+
+function currentSlug() {
+  return document.getElementById('categorySelect').value;
+}
+
+async function loadSummary(force) {
+  const res = await apiRequest('/gyms/trash/');
+  if (!res) return;
+  if (!__isPageAlive()) return;
+  if (!res.ok) {
+    document.getElementById('trashBody').innerHTML =
+      '<tr><td colspan="4" class="text-center text-danger py-4">Could not load trash. You may not have access.</td></tr>';
+    return;
+  }
+  const data = await res.json();
+  summaryData = data.categories || [];
+
+  const select = document.getElementById('categorySelect');
+  const previous = currentSlug();
+  const options = summaryData
+    .filter(c => c.count > 0)
+    .map(c => `<option value="${c.slug}">${escapeHtml(CATEGORY_LABELS[c.slug] || c.slug)} (${c.count})</option>`)
+    .join('');
+  select.innerHTML = options || '<option value="">Trash is empty</option>';
+
+  const stillThere = summaryData.some(c => c.slug === previous && c.count > 0);
+  if (previous && stillThere) select.value = previous;
+  loadTrashList();
+}
+
+async function loadTrashList() {
+  const slug = currentSlug();
+  const tbody = document.getElementById('trashBody');
+  const countEl = document.getElementById('trashCount');
+  if (!slug) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4"><i class="bi bi-trash3 me-1"></i> Nothing has been deleted yet.</td></tr>';
+    countEl.textContent = '';
+    return;
+  }
+
+  const search = document.getElementById('trashSearch').value.trim();
+  const params = new URLSearchParams({ limit: '200' });
+  if (search) params.set('search', search);
+
+  const res = await apiRequest(`/gyms/trash/${slug}/?${params}`);
+  if (!res) return;
+  if (!__isPageAlive()) return;
+  if (!res.ok) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Could not load this category.</td></tr>';
+    return;
+  }
+  const data = await res.json();
+  const rows = data.results || [];
+  countEl.textContent = `${data.count} item${data.count === 1 ? '' : 's'} in trash`;
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Nothing here' + (search ? ' matching your search' : '') + '.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(row => {
+    const deletedAt = row.deleted_at ? new Date(row.deleted_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+    const label = trashRowLabel(row);
+    return `<tr>
+      <td>
+        <div class="fw-semibold">${label}</div>
+        ${row.notes ? `<div class="text-muted small text-truncate" style="max-width:420px;">${escapeHtml(String(row.notes))}</div>` : ''}
+      </td>
+      <td class="small text-muted">${deletedAt}</td>
+      <td class="small text-muted">${escapeHtml(row.deleted_by_name || '—')}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-success me-1" onclick="restoreRow('${row.id}')">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="purgeRow('${row.id}')">
+          <i class="bi bi-x-lg me-1"></i>Delete Forever
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// Best-effort human label for each category's serialized row.
+function trashRowLabel(row) {
+  return row.full_name || row.name || row.member_name || row.plan_name
+    || row.receipt_number || row.equipment_name || row.locker_number && `Locker ${row.locker_number}`
+    || row.code || row.title || `${row.label || 'Item'} #${row.id}`;
+}
+
+async function restoreRow(id) {
+  const slug = currentSlug();
+  if (!(await confirmAction('Restore this record? It will reappear in its original page.', { confirmText: 'Restore', icon: 'bi-arrow-counterclockwise' }))) return;
+  const res = await apiRequest(`/gyms/trash/${slug}/${id}/restore/`, { method: 'POST' });
+  if (!res) return;
+  const data = await res.json().catch(() => ({}));
+  if (res.ok) {
+    showToast(typeof data.detail === 'string' ? data.detail : 'Record restored.');
+    await Promise.all([loadSummary(true), loadTrashList()]);
+  } else {
+    showToast(typeof formatApiError === 'function' ? formatApiError(data) : (data.detail || 'Could not restore.'), 'error');
+  }
+}
+
+async function purgeRow(id) {
+  const slug = currentSlug();
+  if (!(await confirmAction('Permanently delete this record? This cannot be undone.', { confirmText: 'Delete Forever', variant: 'danger', icon: 'bi-x-lg' }))) return;
+  const res = await apiRequest(`/gyms/trash/${slug}/${id}/`, { method: 'DELETE' });
+  if (!res) return;
+  const data = await res.json().catch(() => ({}));
+  if (res.ok) {
+    showToast(typeof data.detail === 'string' ? data.detail : 'Record permanently deleted.');
+    await Promise.all([loadSummary(true), loadTrashList()]);
+  } else {
+    showToast(typeof formatApiError === 'function' ? formatApiError(data) : (data.detail || 'Could not delete.'), 'error');
+  }
+}
+
+// Init
+loadSummary();
+loadTopbarNotifications();
+</script>
+<script src="js/bottom-tabs.js"></script>
+</body>
+</html>

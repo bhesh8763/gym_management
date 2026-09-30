@@ -38,6 +38,10 @@ services:
         generateValue: true
       - key: DEBUG
         value: "False"
+      - key: TENANCY_REQUIRE_MEMBERSHIP
+        value: "True"
+      - key: REQUIRE_OWNER_SUBSCRIPTION
+        value: "True"
       - key: ALLOWED_HOSTS
         value: fitcore-k5zr.onrender.com
       - key: CSRF_TRUSTED_ORIGINS

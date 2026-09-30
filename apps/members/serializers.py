@@ -6,6 +6,7 @@ Handles member profile creation, update, and read with computed fields.
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
+from django.db.models import Q
 from rest_framework import serializers
 
 from apps.members.models import MemberProfile
@@ -58,7 +59,7 @@ class MemberProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = MemberProfile
         fields = [
-            'id', 'user',
+            'id', 'user', 'gym', 'branch',
             'date_of_birth', 'gender', 'gender_display',
             'address',
             'emergency_contact_name', 'emergency_contact_phone',
@@ -68,7 +69,7 @@ class MemberProfileSerializer(serializers.ModelSerializer):
             'medical_conditions', 'notes',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'gym', 'branch', 'user', 'created_at', 'updated_at']
 
     def get_bmi(self, obj):
         return obj.bmi
@@ -141,8 +142,17 @@ class MemberCreateSerializer(serializers.Serializer):
     notes = serializers.CharField(required=False, allow_blank=True)
 
     def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else None
+        existing = User.objects.filter(email__iexact=value).first()
+        if existing and gym is None:
             raise serializers.ValidationError('A user with this email already exists.')
+        if existing and gym is not None:
+            from apps.gyms.models import GymMembership
+            if GymMembership.objects.filter(
+                user=existing, gym=gym, status=GymMembership.Status.ACTIVE,
+            ).exists():
+                raise serializers.ValidationError('This user is already a member of this gym.')
         return value
 
     def create(self, validated_data):
@@ -151,12 +161,64 @@ class MemberCreateSerializer(serializers.Serializer):
         user_data = {k: validated_data.pop(k) for k in user_fields if k in validated_data}
         password = user_data.pop('password')
 
-        user = User(role=User.Role.MEMBER, **user_data)
-        user.set_password(password)
-        user.save()
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None)
+        email = user_data.get('email', '')
+        user = User.objects.filter(email__iexact=email).first()
+        had_membership = user is not None and user.gym_memberships.exists()
+        if user is None:
+            user = User(role=User.Role.MEMBER, **user_data)
+            user.set_password(password)
+            user.save()
+        elif not had_membership:
+            # Preserve the account's identity; the tenant role is authoritative.
+            user.role = User.Role.MEMBER
+            user.save(update_fields=['role'])
+
+        from apps.gyms.models import GymMembership
+        if gym is not None:
+            membership, _ = GymMembership.objects.get_or_create(
+                user=user,
+                gym=gym,
+                defaults={
+                    'role': User.Role.MEMBER,
+                    'status': GymMembership.Status.ACTIVE,
+                },
+            )
+            if not user.gym_memberships.filter(is_default=True).exists():
+                membership.is_default = True
+                membership.save(update_fields=['is_default', 'updated_at'])
+            if not user.is_active:
+                user.is_active = True
+                user.save(update_fields=['is_active'])
+            from apps.gyms.services import primary_branch
+            request_branch = getattr(request, 'branch', None)
+            branch = (
+                request_branch
+                if request_branch is not None and request_branch.gym_id == gym.id
+                else primary_branch(gym)
+            )
+            if branch:
+                membership.branch_memberships.get_or_create(branch=branch)
 
         # Create or update the profile (signal may have auto-created it)
-        profile, _ = MemberProfile.objects.get_or_create(user=user)
+        profile = MemberProfile._base_manager.filter(user=user, gym=gym).first()
+        if profile is None:
+            profile = MemberProfile._base_manager.filter(user=user, gym__isnull=True).first()
+        if profile is None:
+            profile = MemberProfile(user=user, gym=gym)
+        elif profile.is_deleted:
+            # Re-adding a member revives their trashed profile; without this
+            # the row would keep deleted_at set and stay invisible everywhere.
+            profile.restore()
+        profile.gym = gym
+        selected_branch = getattr(request, 'branch', None)
+        if selected_branch is not None and selected_branch.gym_id != gym.id:
+            selected_branch = None
+        profile.branch = selected_branch
+        if profile.branch is None and gym is not None:
+            from apps.gyms.services import primary_branch
+            profile.branch = primary_branch(gym)
         for attr, value in validated_data.items():
             setattr(profile, attr, value)
         profile.save()
@@ -186,7 +248,7 @@ class MemberListSerializer(serializers.ModelSerializer):
     class Meta:
         model = MemberProfile
         fields = [
-            'id', 'user_id', 'display_id', 'full_name', 'email', 'phone', 'is_active',
+            'id', 'user_id', 'gym', 'branch', 'display_id', 'full_name', 'email', 'phone', 'is_active',
             'profile_picture', 'gender',
             'fitness_goal', 'fitness_goal_display',
             'fitness_level', 'fitness_level_display',
@@ -215,8 +277,17 @@ class MemberListSerializer(serializers.ModelSerializer):
         applied (e.g. if this serializer is reused somewhere else later).
         """
         memberships = getattr(obj.user, '_current_memberships', None)
+        profile_gym_id = obj.gym_id or getattr(self.context.get('request'), 'gym_id', None)
         if memberships is None:
-            memberships = list(obj.user.memberships.exclude(status='CANCELLED').select_related('plan'))
+            memberships = list(
+                obj.user.memberships.filter(gym_id=profile_gym_id)
+                .exclude(status='CANCELLED')
+                .select_related('plan')
+            )
+
+        if not memberships:
+            return None
+        memberships = [m for m in memberships if m.gym_id == profile_gym_id]
 
         if not memberships:
             return None
@@ -291,13 +362,31 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
             'recent_payments', 'payment_dues',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'gym', 'branch', 'user', 'created_at', 'updated_at']
+
+    def _tenant_queryset(self, queryset, obj):
+        """Scope reverse-relation queries to this profile's gym/branch.
+
+        Related managers use Django's base manager, not ``objects`` (and
+        therefore do not automatically inherit the request-local TenantManager).
+        Keep these explicit filters in the aggregate serializer so a member
+        who belongs to multiple gyms never sees another tenant's history.
+        """
+        request = self.context.get('request')
+        gym_id = obj.gym_id or getattr(request, 'gym_id', None)
+        queryset = queryset.filter(gym_id=gym_id)
+        branch = getattr(request, 'branch', None) if request is not None else obj.branch
+        if branch is not None:
+            queryset = queryset.filter(Q(branch=branch) | Q(branch__isnull=True))
+        return queryset
 
     def get_bmi(self, obj):
         return obj.bmi
 
     def get_active_membership(self, obj):
-        ms = obj.user.memberships.filter(status='ACTIVE').select_related('plan').order_by('-end_date').first()
+        ms = self._tenant_queryset(
+            obj.user.memberships.filter(status='ACTIVE'), obj
+        ).select_related('plan').order_by('-end_date').first()
         if not ms:
             return None
         return {
@@ -314,7 +403,9 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
     def get_membership_history(self, obj):
         from apps.memberships.models import Membership
-        memberships = obj.user.memberships.exclude(status='CANCELLED').select_related('plan').order_by('-start_date')[:10]
+        memberships = self._tenant_queryset(
+            obj.user.memberships.exclude(status='CANCELLED'), obj
+        ).select_related('plan').order_by('-start_date')[:10]
         return [{
             'id': m.id,
             'plan_name': m.plan.name,
@@ -328,7 +419,9 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
         from apps.attendance.models import Attendance
         today = timezone.now().date()
         month_start = today.replace(day=1)
-        records = Attendance.objects.filter(user=obj.user, attendance_type='MEMBER')
+        records = self._tenant_queryset(
+            Attendance.objects.filter(user=obj.user, attendance_type='MEMBER'), obj
+        )
         this_month = records.filter(date__gte=month_start).filter(status='PRESENT').count()
         total_present = records.filter(status='PRESENT').count()
         total_records = records.count()
@@ -349,13 +442,25 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
     def get_assigned_trainer(self, obj):
         from apps.trainers.models import TrainerMemberAssignment
-        assignment = TrainerMemberAssignment.objects.filter(
-            member=obj.user, is_active=True
-        ).select_related('trainer', 'trainer__trainer_profile').first()
+        assignment = self._tenant_queryset(
+            TrainerMemberAssignment.objects.filter(
+                member=obj.user, is_active=True
+            ), obj
+        ).select_related('trainer').first()
         if not assignment:
             return None
         trainer = assignment.trainer
-        profile = getattr(trainer, 'trainer_profile', None)
+        from apps.trainers.models import TrainerProfile
+        profile_qs = TrainerProfile._base_manager.filter(
+            user=trainer,
+            gym=assignment.gym,
+        )
+        profile_branch = getattr(self.context.get('request'), 'branch', None) or assignment.branch
+        if profile_branch is not None:
+            profile_qs = profile_qs.filter(
+                Q(branch_id=profile_branch.id) | Q(branch__isnull=True)
+            )
+        profile = profile_qs.first()
         return {
             'id': trainer.id,
             'full_name': trainer.get_full_name(),
@@ -366,8 +471,10 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
     def get_active_workouts(self, obj):
         from apps.workouts.models import WorkoutAssignment
-        assignments = WorkoutAssignment.objects.filter(
-            member=obj.user, status='ACTIVE'
+        assignments = self._tenant_queryset(
+            WorkoutAssignment.objects.filter(
+                member=obj.user, status='ACTIVE'
+            ), obj
         ).select_related('template').order_by('-start_date')
         if not assignments.exists():
             return []
@@ -384,7 +491,9 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
     def get_active_diet_plan(self, obj):
         from apps.diet.models import DietPlan
-        plan = DietPlan.objects.filter(member=obj.user, is_active=True).first()
+        plan = self._tenant_queryset(
+            DietPlan.objects.filter(member=obj.user, is_active=True), obj
+        ).first()
         if not plan:
             return None
         meals = plan.meals.all().order_by('time_suggestion')
@@ -401,7 +510,9 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
     def get_latest_progress(self, obj):
         from apps.progress.models import ProgressEntry
-        entry = ProgressEntry.objects.filter(member=obj.user).order_by('-date').first()
+        entry = self._tenant_queryset(
+            ProgressEntry.objects.filter(member=obj.user), obj
+        ).order_by('-date').first()
         if not entry:
             return None
         return {
@@ -415,7 +526,9 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
     def get_personal_records(self, obj):
         from apps.progress.models import PersonalRecord
-        records = PersonalRecord.objects.filter(member=obj.user).select_related('exercise').order_by('-date')[:5]
+        records = self._tenant_queryset(
+            PersonalRecord.objects.filter(member=obj.user), obj
+        ).select_related('exercise').order_by('-date')[:5]
         return [{
             'id': pr.id,
             'exercise_name': pr.exercise.name,
@@ -426,7 +539,9 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
     def get_recent_payments(self, obj):
         from apps.payments.models import Payment
-        payments = Payment.objects.filter(member=obj.user).select_related('membership', 'membership__plan').order_by('-paid_at')[:5]
+        payments = self._tenant_queryset(
+            Payment.objects.filter(member=obj.user), obj
+        ).select_related('membership', 'membership__plan').order_by('-paid_at')[:5]
         return [{
             'id': p.id,
             'amount': str(p.amount),
@@ -447,8 +562,10 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
 
         dues = []
 
-        pending_memberships = Membership.objects.filter(
-            member=obj.user, status=Membership.Status.PENDING
+        pending_memberships = self._tenant_queryset(
+            Membership.objects.filter(
+                member=obj.user, status=Membership.Status.PENDING
+            ), obj
         ).select_related('plan').order_by('-created_at')
         for pm in pending_memberships:
             outstanding = pm.plan.price - (pm.price_paid or Decimal('0'))
@@ -460,18 +577,22 @@ class MemberAggregatedProfileSerializer(serializers.ModelSerializer):
                     'amount': float(outstanding),
                 })
 
-        active_locker = LockerAssignment.objects.filter(
-            member=obj.user, is_active=True
+        active_locker = self._tenant_queryset(
+            LockerAssignment.objects.filter(
+                member=obj.user, is_active=True
+            ), obj
         ).select_related('locker').first()
         if active_locker and active_locker.locker.monthly_fee > 0:
             from apps.payments.models import Payment
             now = timezone.now()
-            has_paid = Payment.objects.filter(
-                member=obj.user,
-                payment_for='LOCKER',
-                status='PAID',
-                created_at__year=now.year,
-                created_at__month=now.month,
+            has_paid = self._tenant_queryset(
+                Payment.objects.filter(
+                    member=obj.user,
+                    payment_for='LOCKER',
+                    status='PAID',
+                    created_at__year=now.year,
+                    created_at__month=now.month,
+                ), obj
             ).exists()
             if not has_paid:
                 dues.append({

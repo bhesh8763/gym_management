@@ -8,6 +8,7 @@ Technical documentation for developers working on the Gym Management System.
 
 ## Table of Contents
 
+- [Live Deployment](#live-deployment)
 - [Architecture Deep Dive](#architecture-deep-dive)
 - [Adding a New App](#adding-a-new-app)
 - [Adding New Endpoints](#adding-new-endpoints)
@@ -18,7 +19,23 @@ Technical documentation for developers working on the Gym Management System.
 - [API Usage Examples](#api-usage-examples)
 - [Frontend Development](#frontend-development)
 - [Database Migrations](#database-migrations)
+- [Production Deployment](#production-deployment)
 - [Code Conventions](#code-conventions)
+
+---
+
+## Live Deployment
+
+The production environment is hosted on Render:
+
+| Resource | URL |
+|----------|-----|
+| Application | **[https://fitcore-k5zr.onrender.com](https://fitcore-k5zr.onrender.com)** |
+| API base | `https://fitcore-k5zr.onrender.com/api` |
+| Health check | `https://fitcore-k5zr.onrender.com/api/health/` |
+| Django admin | `https://fitcore-k5zr.onrender.com/admin/` |
+
+Production uses a single origin: WhiteNoise serves `frontend/` while Django/DRF serves `/api/`. See [Production Deployment](#production-deployment) for environment and release details.
 
 ---
 
@@ -38,6 +55,24 @@ Serializer (validate) → Model (save)
 Response → JSON/CSV/Excel
 ```
 
+### Tenant Request Lifecycle
+
+```
+JWT (gym_id claim) + optional X-Gym-ID/X-Branch-ID
+    ↓ VersionedJWTAuthentication
+Active GymMembership + BranchMembership validation
+    ↓
+tenant_context (request-local Gym/Branch)
+    ↓
+TenantManager / tenant_queryset scopes operational records
+    ↓
+Serializer validates cross-gym references and assigns gym/branch on writes
+```
+
+`apps.gyms` is the tenancy boundary. `GymMembership` is authoritative for the role inside a gym; `User.role` remains a compatibility/default role for legacy code. `Gym`, `Branch`, `BranchMembership`, `Invitation`, `ImpersonationSession`, and `AuditLog` are defined in that app. New tenant-owned models should inherit `TenantScopedModel` and use `TenantManager`; child models without a direct gym field must still validate their parent relationship.
+
+The production settings enable `TENANCY_REQUIRE_MEMBERSHIP=True` and `REQUIRE_OWNER_SUBSCRIPTION=True`. Keep both rollout switches disabled in local development unless testing the production guard behavior.
+
 ### Model Relationships
 
 ```
@@ -46,7 +81,7 @@ Response → JSON/CSV/Excel
 │  email, first_name, last_name, role, display_id             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│  ┌── MemberProfile (1:1) ──────────────────────────────┐   │
+│  ┌── MemberProfile (1 per gym) ────────────────────────┐   │
 │  │  date_of_birth, gender, fitness_goal, height, weight │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                              │
@@ -89,7 +124,7 @@ Response → JSON/CSV/Excel
 │  ┌── ProgressEntry (1:N) ────────────────────────────┐     │
 │  │  date, weight, height, body_fat, muscle_mass         │     │
 │  │  chest, waist, hips, bicep, thigh                    │     │
-│  │  unique_together = (member, date)                    │     │
+│  │  unique per gym = (gym, member, date)                │     │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                              │
 │  ┌── PersonalRecord (1:N) ──────────────────────────┐      │
@@ -104,7 +139,10 @@ All API endpoints are namespaced under `/api/<app>/`:
 
 ```python
 # gym_management/urls.py
+path('',                 backend_root),
+path('api/health/',      health_check),
 path('api/auth/',        include('apps.accounts.urls')),
+path('api/gyms/',        include('apps.gyms.urls', namespace='gyms')),
 path('api/members/',     include('apps.members.urls')),
 path('api/memberships/', include('apps.memberships.urls')),
 path('api/attendance/',  include('apps.attendance.urls')),
@@ -118,6 +156,7 @@ path('api/equipment/',   include('apps.equipment.urls')),
 path('api/notifications/', include('apps.notifications.urls')),
 path('api/reports/',     include('apps.reports.urls')),
 path('api/trainers/',    include('apps.trainers.urls')),
+path('api/import/',       include('apps.dataimport.urls')),
 ```
 
 ---
@@ -312,6 +351,12 @@ class IsTrainerOrMember(HasRole) # Trainer or Member
 class IsAnyStaffRole(HasRole)    # Owner, Staff, or Trainer
 ```
 
+### Tenant-aware permissions
+
+`HasRole` uses `request.gym_role` (the active `GymMembership.role`) rather than the global compatibility role on `User`. With `TENANCY_REQUIRE_MEMBERSHIP=True`, an authenticated request without an active membership is rejected. `REQUIRE_OWNER_SUBSCRIPTION=True` additionally requires a paid `PlanSubscription` for the active gym on owner management operations.
+
+Always apply `tenant_queryset()` (or inherit `TenantScopedModel`) in new views. A frontend role check is never a substitute for both checks. For custom APIViews that do their own role checks, call `subscription_allowed(request)` and verify the target gym membership explicitly.
+
 ### Using Permissions
 
 ```python
@@ -502,23 +547,28 @@ function socialLogin(provider) {
 }
 ```
 
-After successful OAuth, allauth redirects to `FRONTEND_URL` (set in `.env`).
+After successful OAuth, allauth redirects to `FRONTEND_URL` (set in `.env`). Server-rendered allauth error/cancelled pages use `gym_management.context_processors.deployment_context` so their login links target the configured frontend rather than hard-coding a localhost or Render URL.
 
 ### Setup Steps
 
 1. **Google**: Create OAuth 2.0 credentials in [Google Cloud Console](https://console.cloud.google.com/)
-   - Authorized redirect URI: `http://localhost:8000/api/auth/google/callback/`
+   - Local redirect URI: `http://localhost:8000/api/auth/google/callback/`
+   - Production redirect URI: `https://fitcore-k5zr.onrender.com/api/auth/google/callback/`
 2. **Facebook**: Create an app in [Facebook Developers](https://developers.facebook.com/)
-   - Valid OAuth redirect URI: `http://localhost:8000/api/auth/facebook/callback/`
-3. Add credentials to `.env`:
+   - Local redirect URI: `http://localhost:8000/api/auth/facebook/callback/`
+   - Production redirect URI: `https://fitcore-k5zr.onrender.com/api/auth/facebook/callback/`
+3. Add credentials to local `.env` and the corresponding Render environment variables:
    ```env
    GOOGLE_CLIENT_ID=your-client-id
    GOOGLE_CLIENT_SECRET=your-client-secret
    FACEBOOK_APP_ID=your-app-id
    FACEBOOK_APP_SECRET=your-app-secret
    ```
-4. Create a `Site` object in Django admin (allauth requires it):
-   - `Site` id=1, domain=localhost:5500, name=FitCore
+4. Ensure `Site(id=1)` exists (allauth requires it):
+   - Local development: `domain=localhost:5500`, `name=FitCore`
+   - Production: `domain=fitcore-k5zr.onrender.com`, `name=FitCore`
+
+   Run `python manage.py ensure_site --domain fitcore-k5zr.onrender.com --name FitCore` for a new site, or update an existing row in Django admin.
 
 ---
 
@@ -569,7 +619,10 @@ class MyEndpointTestCase(APITestCase):
         self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
 ```
 
-### CSV Content Validation
+### Tenant isolation tests
+
+Use `provision_owner_gym()` and `token_for_membership()` when testing tenant behavior. Create two gyms with overlapping user IDs and assert that list/detail/create operations never cross the boundary. Include tests for `X-Gym-ID`, branch grants, invitation acceptance, and impersonation expiry. The shared suite lives in `apps/gyms/tests.py`.
+
 
 ```python
 import csv
@@ -855,6 +908,17 @@ python manage.py makemigrations my_feature -m "Add new field"
 python manage.py migrate
 ```
 
+### Tenancy rollout migrations
+
+The initial `gyms` migrations create tenant tables, backfill legacy owners and operational records, grant primary-branch access, and fill any remaining unscoped rows. `0005_backfill_missing_tenancy` is intentionally idempotent so an installation that was already migrated receives the same backfill. Run migrations before enabling the production guards:
+
+```bash
+python manage.py migrate
+python manage.py check
+```
+
+Keep `TENANCY_REQUIRE_MEMBERSHIP` and `REQUIRE_OWNER_SUBSCRIPTION` disabled during the compatibility rollout. Once the backfill has been verified, enable them in the Render environment and redeploy.
+
 ### Common Patterns
 
 ```python
@@ -881,6 +945,110 @@ def forward(apps, schema_editor):
 
 migrations.RunPython(forward),
 ```
+
+---
+
+## Production Deployment
+
+### Live Endpoints
+
+| Resource | Production URL |
+|----------|----------------|
+| Frontend and application | `https://fitcore-k5zr.onrender.com` |
+| REST API | `https://fitcore-k5zr.onrender.com/api` |
+| Health check | `https://fitcore-k5zr.onrender.com/api/health/` |
+| Django admin | `https://fitcore-k5zr.onrender.com/admin/` |
+
+The canonical production hostname is `fitcore-k5zr.onrender.com`.
+
+### Local URL Separation
+
+| Local URL | Responsibility |
+|-----------|----------------|
+| `http://127.0.0.1:5500/` | Static frontend served by Live Server or another static server |
+| `http://127.0.0.1:8000/` | Backend service-information JSON |
+| `http://127.0.0.1:8000/api/` | Django/DRF API |
+| `http://127.0.0.1:8000/api/health/` | Backend and PostgreSQL health check |
+
+With `DEBUG=True`, `gym_management/settings.py` sets `WHITENOISE_ROOT=None` and disables its index file. The `backend_root` URL then returns JSON identifying the API service, so port `8000` does not duplicate the frontend on port `5500`. `api.js` detects a non-8000 local port and calls `http://<current-host>:8000/api`.
+
+Production uses `DEBUG=False`: WhiteNoise serves `frontend/` from the Render origin, and the frontend calls same-origin `/api`.
+
+### Render Topology
+
+`render.yaml` defines:
+
+- One Python web service in Render's Singapore region
+- One managed PostgreSQL database in the same region
+- A same-origin deployment where WhiteNoise serves `frontend/` and Django serves the API
+- Gunicorn bound to Render's assigned `0.0.0.0:$PORT`
+- `/api/health/` as the Render health-check path
+
+The build and start commands are:
+
+```bash
+# Build
+pip install -r requirements.txt
+python manage.py collectstatic --noinput
+
+# Start
+python manage.py migrate
+gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT
+```
+
+### Required Production Environment
+
+```env
+DEBUG=False
+ALLOWED_HOSTS=fitcore-k5zr.onrender.com
+CSRF_TRUSTED_ORIGINS=https://fitcore-k5zr.onrender.com
+FRONTEND_URL=https://fitcore-k5zr.onrender.com
+TRUST_X_FORWARDED_PROTO=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+SECURE_SSL_REDIRECT=False
+```
+
+Render supplies `SECRET_KEY` and maps the managed database values into `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD`. `RENDER_EXTERNAL_HOSTNAME` is also supplied automatically and is appended to Django's host and CSRF allowlists.
+
+Keep `SECURE_SSL_REDIRECT=False` until Render's health checks remain green through an HTTPS redirect. Enable HSTS only after confirming the final hostname and HTTPS configuration.
+
+### Release Workflow
+
+1. Push the validated change to the repository branch connected to the Render service.
+2. Let Render run the build, `collectstatic`, startup migration, and Gunicorn boot.
+3. Check the live health endpoint before declaring the release complete:
+
+   ```bash
+   curl -fS https://fitcore-k5zr.onrender.com/api/health/
+   ```
+
+   A healthy response includes:
+
+   ```json
+   {
+     "status": "healthy",
+     "database": "connected",
+     "debug": false
+   }
+   ```
+
+4. Smoke-test the landing page, owner signup/checkout, login, and one role-scoped dashboard.
+
+The free web service may sleep after inactivity, so the first request can take longer while Render wakes it. Configure reminder, gateway-reconciliation, and backup jobs separately; `render.yaml` does not schedule management commands.
+
+### Production OAuth and Media
+
+Register these OAuth callback URLs with each provider:
+
+```text
+https://fitcore-k5zr.onrender.com/api/auth/google/callback/
+https://fitcore-k5zr.onrender.com/api/auth/facebook/callback/
+```
+
+The persistent media disk is currently commented out in `render.yaml`. Until a disk or external object-storage service is configured, uploaded profile pictures, equipment images, and staff documents are ephemeral and may disappear on redeploy or instance replacement.
+
+If Render assigns a different hostname, update the values in `render.yaml` and `FRONTEND_URL`; `RENDER_EXTERNAL_HOSTNAME` protects host/CSRF checks automatically.
 
 ---
 

@@ -20,6 +20,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import User
 from apps.accounts.permissions import IsAnyStaffRole, IsMember, IsOwnerOrStaff
+from apps.gyms.tenancy import tenant_queryset
 from apps.lockers.models import LockerAssignment
 from apps.memberships.models import Membership
 from .models import Payment
@@ -44,6 +45,8 @@ def _notify_payment_received(payment):
 
     sender = payment.collected_by or payment.member
     Notification.objects.create(
+        gym=payment.gym,
+        branch=payment.branch,
         sender=sender,
         recipient=payment.member,
         notification_type=Notification.NotificationType.PAYMENT_RECEIVED,
@@ -120,7 +123,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        qs = Payment.objects.select_related('member', 'collected_by', 'membership').all()
+        qs = tenant_queryset(
+            Payment.objects.select_related('member', 'collected_by', 'membership').all(),
+            self.request,
+        )
         status_ = self.request.query_params.get('status')
         payment_for = self.request.query_params.get('payment_for')
         if status_:
@@ -128,7 +134,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         if payment_for:
             qs = qs.filter(payment_for=payment_for)
 
-        if self.request.user.role == User.Role.MEMBER:
+        if getattr(self.request, 'gym_role', self.request.user.role) == User.Role.MEMBER:
             # Members only ever see their own payment history.
             return qs.filter(member=self.request.user)
 
@@ -149,7 +155,11 @@ class PaymentViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(collected_by=self.request.user)
+        serializer.save(
+            collected_by=self.request.user,
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
     @staticmethod
     def _generate_receipt_number():
@@ -214,28 +224,49 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         return Response({'dues': dues})
 
-    def _resolve_due_amount(self, user, payment_for, reference_id):
+    def _resolve_due_amount(self, user, payment_for, reference_id, requested_amount=None):
         """
         Looks up the authoritative amount for a member's own membership/locker
-        due. Never trusts a client-sent amount. Returns (amount, membership_obj).
+        due. Never trusts a client-sent amount — except for a *partial*
+        payment, where the client may pay ANY amount up to the outstanding
+        balance (validated here, clamped, and re-checked below the minimum).
+
+        Returns (amount_to_charge, outstanding, membership_obj).
         """
+        MIN_PARTIAL = Decimal('1.00')  # smallest payable fragment (NPR)
         if payment_for == Payment.PaymentFor.MEMBERSHIP:
             membership = get_object_or_404(
                 Membership, id=reference_id, member=user, status=Membership.Status.PENDING
             )
-            amount = membership.plan.price - (membership.price_paid or Decimal('0'))
-            if amount <= 0:
+            outstanding = membership.plan.price - (membership.price_paid or Decimal('0'))
+            if outstanding <= 0:
                 raise ValidationError({'detail': 'This membership has no outstanding balance.'})
-            return amount, membership
+            if requested_amount is None:
+                return outstanding, outstanding, membership
+            requested_amount = Decimal(str(requested_amount)).quantize(Decimal('0.01'))
+            if requested_amount < MIN_PARTIAL:
+                raise ValidationError({'amount': f'Minimum partial payment is {MIN_PARTIAL}.'})
+            if requested_amount >= outstanding:
+                # Paying the rest → treat as a full payment of the balance.
+                return outstanding, outstanding, membership
+            return requested_amount, outstanding, membership
 
         if payment_for == Payment.PaymentFor.LOCKER:
             assignment = get_object_or_404(
                 LockerAssignment, id=reference_id, member=user, is_active=True
             )
-            amount = assignment.locker.monthly_fee
-            if amount <= 0:
+            outstanding = assignment.locker.monthly_fee
+            if outstanding <= 0:
                 raise ValidationError({'detail': 'This locker has no fee configured.'})
-            return amount, None
+            if requested_amount is None:
+                return outstanding, outstanding, None
+            requested_amount = Decimal(str(requested_amount)).quantize(Decimal('0.01'))
+            if requested_amount < MIN_PARTIAL:
+                raise ValidationError({'amount': f'Minimum partial payment is {MIN_PARTIAL}.'})
+            if requested_amount >= outstanding:
+                return outstanding, outstanding, None
+            # Partial locker payment: charge what was asked.
+            return requested_amount, outstanding, None
 
         raise ValidationError({'payment_for': 'Must be MEMBERSHIP or LOCKER.'})
 
@@ -272,6 +303,16 @@ class PaymentViewSet(viewsets.ModelViewSet):
         reference_id = request.data.get('reference_id')
         payment_method = request.data.get('payment_method') or Payment.PaymentMethod.OTHER
         return_url = request.data.get('return_url')  # optional override for Khalti redirect
+        # Optional partial-payment amount. None = pay the full outstanding.
+        raw_amount = request.data.get('amount')
+        requested_amount = None
+        if raw_amount not in (None, '', 'full'):
+            try:
+                requested_amount = Decimal(str(raw_amount))
+            except Exception:
+                raise ValidationError({'amount': 'Enter a valid amount.'})
+            if requested_amount <= 0:
+                raise ValidationError({'amount': 'Amount must be greater than zero.'})
         if payment_method not in Payment.PaymentMethod.values:
             raise ValidationError({'payment_method': 'Not a valid payment method.'})
 
@@ -382,17 +423,41 @@ class PaymentViewSet(viewsets.ModelViewSet):
                             notes=f'Canceled: member switched to {payment_method}',
                         )
 
-        amount, membership = self._resolve_due_amount(user, payment_for, reference_id)
+        amount, outstanding, membership = self._resolve_due_amount(
+            user, payment_for, reference_id, requested_amount
+        )
+        is_partial = amount < outstanding
 
         payment = Payment.objects.create(
+            gym=getattr(request, 'gym', None),
+            branch=getattr(request, 'branch', None),
             member=user,
             membership=membership,
             payment_for=payment_for,
             amount=amount,
             discount=Decimal('0'),
             payment_method=payment_method,
-            status=Payment.PaymentStatus.PENDING,
+            # Partial payments via non-gateway methods land as PARTIAL
+            # immediately (cash/bank confirmed by the act of paying at the
+            # desk). Gateway flows stay PENDING until verification.
+            status=(
+                Payment.PaymentStatus.PARTIAL
+                if is_partial and payment_method not in (
+                    Payment.PaymentMethod.KHALTI, Payment.PaymentMethod.ESEWA
+                )
+                else Payment.PaymentStatus.PENDING
+            ),
+            amount_paid=(
+                amount if is_partial and payment_method not in (
+                    Payment.PaymentMethod.KHALTI, Payment.PaymentMethod.ESEWA
+                )
+                else Decimal('0')
+            ),
             receipt_number=self._generate_receipt_number(),
+            notes=(
+                f'Partial payment: {amount} of {outstanding} outstanding.'
+                if is_partial else ''
+            ),
         )
 
         if payment_method == Payment.PaymentMethod.KHALTI:
@@ -784,7 +849,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
           }
         }
         """
-        qs = Payment.objects.all()
+        qs = tenant_queryset(Payment.objects.all(), request)
 
         # Optional date range filters: ?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
         date_from = request.query_params.get('date_from')

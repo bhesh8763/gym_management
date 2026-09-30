@@ -17,7 +17,7 @@
 
   <!-- Left side - Branding -->
   <div class="login-left">
-    <a href="http://localhost:5500/" class="login-back-link">
+    <a href="index.html" class="login-back-link">
       <i class="bi bi-arrow-left"></i> Back to Home
     </a>
 
@@ -231,7 +231,10 @@
       if (res.ok) {
         saveTokens(data.tokens.access, data.tokens.refresh);
         localStorage.setItem('user_id', data.user.id);
-        localStorage.setItem('user_role', data.user.role);
+        localStorage.setItem('user_role', data.user.gym_role || data.user.role);
+        localStorage.setItem('gym_id', data.user.gym_id || '');
+        localStorage.setItem('gym_role', data.user.gym_role || data.user.role);
+        localStorage.setItem('gym_public_id', data.user.gym_public_id || '');
         localStorage.setItem('user_name', data.user.full_name);
         localStorage.setItem('user_picture', data.user.profile_picture || '');
         // Account created (as OWNER) — next step is the plan checkout.

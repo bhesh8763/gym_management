@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.gyms.tenancy import user_has_branch_access
 from apps.memberships.models import FreezeRequest, Membership, MembershipPlan, Offer, PromoCode, PromoCodeUsage
 
 User = get_user_model()
@@ -26,11 +27,25 @@ class MembershipPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = MembershipPlan
         fields = [
-            'id', 'name', 'description', 'billing_cycle', 'billing_cycle_display',
+            'id', 'gym', 'branch', 'name', 'description', 'billing_cycle', 'billing_cycle_display',
             'duration_days', 'price', 'features', 'is_active',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'gym', 'branch', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else getattr(self.instance, 'gym', None)
+        name = attrs.get('name', getattr(self.instance, 'name', None))
+        if name:
+            lookup = {'name__iexact': name}
+            lookup['gym_id'] = gym.id if gym is not None else None
+            queryset = MembershipPlan._base_manager.filter(**lookup)
+            if self.instance:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            if queryset.exists():
+                raise serializers.ValidationError({'name': 'A plan with this name already exists in this gym.'})
+        return attrs
 
 
 # ─── Memberships: read ────────────────────────────────────────────────────────
@@ -47,7 +62,7 @@ class MembershipListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Membership
         fields = [
-            'id', 'member', 'member_name', 'member_email',
+            'id', 'gym', 'branch', 'member', 'member_name', 'member_email',
             'plan', 'plan_name', 'status', 'status_display',
             'start_date', 'end_date', 'price_paid',
             'is_active', 'days_remaining',
@@ -88,13 +103,31 @@ class MembershipCreateSerializer(serializers.ModelSerializer):
         }
 
     def validate_member(self, value):
-        if value.role != User.Role.MEMBER:
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else None
+        if gym is not None:
+            from apps.gyms.models import GymMembership
+            if not GymMembership.objects.filter(
+                gym=gym, user=value, role=GymMembership.Role.MEMBER,
+                status=GymMembership.Status.ACTIVE,
+            ).exists():
+                raise serializers.ValidationError('Selected user is not a member of this gym.')
+            if not user_has_branch_access(value, gym, getattr(request, 'branch', None)):
+                raise serializers.ValidationError('Selected user does not have access to this branch.')
+        elif value.role != User.Role.MEMBER:
             raise serializers.ValidationError('Selected user is not a member.')
         return value
 
     def validate_plan(self, value):
         if not value.is_active:
             raise serializers.ValidationError('This plan is no longer active.')
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else None
+        if gym is not None and value.gym_id != gym.id:
+            raise serializers.ValidationError('Selected plan does not belong to this gym.')
+        branch = getattr(request, 'branch', None) if request else None
+        if branch is not None and value.branch_id not in (None, branch.id):
+            raise serializers.ValidationError('Selected plan does not belong to this branch.')
         return value
 
     def validate(self, data):
@@ -140,6 +173,8 @@ class MembershipCreateSerializer(serializers.ModelSerializer):
                     price_paid = max(price_paid - discount, Decimal('0'))
                     # Record usage
                     PromoCodeUsage.objects.create(
+                        gym=promo_code_obj.gym,
+                        branch=promo_code_obj.branch,
                         promo_code=promo_code_obj,
                         member=validated_data['member'],
                         original_price=validated_data.get('price_paid', plan.price),
@@ -208,13 +243,21 @@ class FreezeRequestCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FreezeRequest
-        fields = ['id', 'membership', 'freeze_start', 'freeze_end', 'reason']
-        read_only_fields = ['id']
+        fields = ['id', 'gym', 'branch', 'membership', 'freeze_start', 'freeze_end', 'reason']
+        read_only_fields = ['id', 'gym', 'branch']
 
     def validate_membership(self, value):
         if value.status != Membership.Status.ACTIVE:
             raise serializers.ValidationError('Only active memberships can be frozen.')
-        if value.member != self.context['request'].user:
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else None
+        if gym is not None and value.gym_id != gym.id:
+            raise serializers.ValidationError('Membership does not belong to this gym.')
+        if gym is not None and not user_has_branch_access(
+            value.member, gym, getattr(request, 'branch', None),
+        ):
+            raise serializers.ValidationError('Membership does not belong to this branch.')
+        if value.member != request.user:
             raise serializers.ValidationError('You can only request a freeze for your own membership.')
         return value
 
@@ -244,7 +287,7 @@ class FreezeRequestListSerializer(serializers.ModelSerializer):
     class Meta:
         model = FreezeRequest
         fields = [
-            'id', 'membership', 'member_name', 'member_email', 'plan_name',
+            'id', 'gym', 'branch', 'membership', 'member_name', 'member_email', 'plan_name',
             'freeze_start', 'freeze_end', 'reason',
             'status', 'status_display',
             'reviewed_by', 'reviewed_by_name', 'reviewed_at', 'rejection_reason',
@@ -270,7 +313,7 @@ class OfferSerializer(serializers.ModelSerializer):
     class Meta:
         model = Offer
         fields = [
-            'id', 'name', 'description',
+            'id', 'gym', 'branch', 'name', 'description',
             'discount_type', 'discount_type_display', 'discount_value',
             'applicability', 'applicability_display', 'plans',
             'max_uses', 'max_uses_per_member',
@@ -278,7 +321,7 @@ class OfferSerializer(serializers.ModelSerializer):
             'is_active', 'total_uses', 'is_available',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'gym', 'branch', 'created_at', 'updated_at']
 
     def validate(self, data):
         valid_from = data.get('valid_from', getattr(self.instance, 'valid_from', None))
@@ -293,6 +336,26 @@ class OfferSerializer(serializers.ModelSerializer):
         plans = data.get('plans', None)
         if applicability == Offer.Applicability.SPECIFIC_PLANS and not plans:
             raise serializers.ValidationError({'plans': 'At least one plan is required when applicability is SPECIFIC_PLANS.'})
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else getattr(self.instance, 'gym', None)
+        if gym is not None and plans:
+            invalid = [p.id for p in plans if p.gym_id != gym.id]
+            if invalid:
+                raise serializers.ValidationError({'plans': 'All plans must belong to this gym.'})
+            branch = getattr(request, 'branch', None)
+            if branch is not None:
+                invalid_branch = [p.id for p in plans if p.branch_id not in (None, branch.id)]
+                if invalid_branch:
+                    raise serializers.ValidationError({'plans': 'All plans must belong to this branch.'})
+        name = data.get('name', getattr(self.instance, 'name', None))
+        if name:
+            lookup = {'name__iexact': name}
+            lookup['gym_id'] = gym.id if gym is not None else None
+            queryset = Offer._base_manager.filter(**lookup)
+            if self.instance:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            if queryset.exists():
+                raise serializers.ValidationError({'name': 'An offer with this name already exists in this gym.'})
         return data
 
 
@@ -308,7 +371,7 @@ class PromoCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = PromoCode
         fields = [
-            'id', 'code', 'offer', 'offer_name', 'offer_discount_type', 'offer_discount_value',
+            'id', 'gym', 'branch', 'code', 'offer', 'offer_name', 'offer_discount_type', 'offer_discount_value',
             'status', 'status_display',
             'max_uses', 'used_count',
             'valid_from', 'valid_until',
@@ -316,14 +379,29 @@ class PromoCodeSerializer(serializers.ModelSerializer):
             'is_valid',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'used_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'gym', 'branch', 'used_count', 'created_at', 'updated_at']
+
+    def validate_offer(self, value):
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else getattr(self.instance, 'gym', None)
+        if gym is not None and value.gym_id != gym.id:
+            raise serializers.ValidationError('Offer does not belong to this gym.')
+        branch = getattr(request, 'branch', None)
+        if branch is not None and value.branch_id not in (None, branch.id):
+            raise serializers.ValidationError('Offer does not belong to this branch.')
+        return value
 
     def validate_code(self, value):
         value = value.upper().strip()
         if self.instance and self.instance.code == value:
             return value
-        if PromoCode.objects.filter(code=value).exists():
-            raise serializers.ValidationError('A promo code with this code already exists.')
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else getattr(self.instance, 'gym', None)
+        lookup = {'code': value}
+        if gym is not None:
+            lookup['gym_id'] = gym.id
+        if PromoCode._base_manager.filter(**lookup).exists():
+            raise serializers.ValidationError('A promo code with this code already exists in this gym.')
         return value
 
     def validate(self, data):
@@ -341,8 +419,13 @@ class ValidatePromoCodeSerializer(serializers.Serializer):
 
     def validate_code(self, value):
         value = value.upper().strip()
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else None
+        lookup = {'code': value}
+        if gym is not None:
+            lookup['gym_id'] = gym.id
         try:
-            promo = PromoCode.objects.select_related('offer').get(code=value)
+            promo = PromoCode._base_manager.select_related('offer').get(**lookup)
         except PromoCode.DoesNotExist:
             raise serializers.ValidationError('Invalid promo code.')
         if not promo.is_valid:
@@ -350,8 +433,13 @@ class ValidatePromoCodeSerializer(serializers.Serializer):
         return promo
 
     def validate_plan_id(self, value):
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else None
+        lookup = {'pk': value, 'is_active': True}
+        if gym is not None:
+            lookup['gym_id'] = gym.id
         try:
-            plan = MembershipPlan.objects.get(pk=value, is_active=True)
+            plan = MembershipPlan._base_manager.get(**lookup)
         except MembershipPlan.DoesNotExist:
             raise serializers.ValidationError('Invalid or inactive plan.')
         return plan

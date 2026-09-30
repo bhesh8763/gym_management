@@ -2,8 +2,6 @@
 URL patterns for authentication module.
 """
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
-
 from .views import (
     RegisterView,
     SubscribeView,
@@ -14,6 +12,7 @@ from .views import (
     ChangePasswordView,
     ForgotPasswordView,
     ResetPasswordView,
+    TenantTokenRefreshView,
 )
 
 urlpatterns = [
@@ -21,7 +20,7 @@ urlpatterns = [
     path('subscribe/', SubscribeView.as_view(), name='auth-subscribe'),
     path('subscription/', SubscriptionView.as_view(), name='auth-subscription'),
     path('login/', LoginView.as_view(), name='auth-login'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='auth-token-refresh'),
+    path('token/refresh/', TenantTokenRefreshView.as_view(), name='auth-token-refresh'),
     path('logout/', LogoutView.as_view(), name='auth-logout'),
     path('me/', MeView.as_view(), name='auth-me'),
     path('change-password/', ChangePasswordView.as_view(), name='auth-change-password'),

@@ -4,6 +4,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.accounts.permissions import IsOwner, IsOwnerOrStaff, IsAnyStaffRole
+from apps.gyms.tenancy import tenant_queryset
 from .models import StaffProfile, LeaveRequest
 from .serializers import StaffProfileSerializer, StaffCreateSerializer, LeaveRequestSerializer
 
@@ -14,6 +15,9 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerOrStaff]
     queryset = StaffProfile.objects.select_related('user').all()
 
+    def get_queryset(self):
+        return tenant_queryset(super().get_queryset(), self.request)
+
     def get_serializer_class(self):
         if self.action == 'create':
             if self.request and 'user' in self.request.data:
@@ -23,11 +27,14 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         if 'user' in request.data:
-            serializer = StaffProfileSerializer(data=request.data)
+            serializer = StaffProfileSerializer(data=request.data, context={'request': request})
         else:
-            serializer = StaffCreateSerializer(data=request.data)
+            serializer = StaffCreateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        profile = serializer.save()
+        profile = serializer.save(
+            gym=getattr(request, 'gym', None),
+            branch=getattr(request, 'branch', None),
+        )
         return Response(
             StaffProfileSerializer(profile).data,
             status=status.HTTP_201_CREATED,
@@ -74,16 +81,36 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
     def activate(self, request, pk=None):
         """POST /api/staff/profiles/{id}/activate/ — re-enable a staff user's login."""
         profile = self.get_object()
-        profile.user.is_active = True
-        profile.user.save(update_fields=['is_active'])
+        from apps.gyms.models import GymMembership
+        if getattr(request, 'gym', None) is not None:
+            GymMembership.objects.filter(
+                user=profile.user, gym=getattr(request, 'gym', None), status=GymMembership.Status.INACTIVE,
+            ).update(status=GymMembership.Status.ACTIVE)
+            if not profile.user.is_active:
+                profile.user.is_active = True
+                profile.user.save(update_fields=['is_active'])
+        else:
+            profile.user.is_active = True
+            profile.user.save(update_fields=['is_active'])
         return Response(StaffProfileSerializer(profile).data)
 
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
         """POST /api/staff/profiles/{id}/deactivate/ — disable a staff user's login."""
         profile = self.get_object()
-        profile.user.is_active = False
-        profile.user.save(update_fields=['is_active'])
+        from apps.gyms.models import GymMembership
+        if getattr(request, 'gym', None) is not None:
+            GymMembership.objects.filter(
+                user=profile.user, gym=getattr(request, 'gym', None), status=GymMembership.Status.ACTIVE,
+            ).update(status=GymMembership.Status.INACTIVE)
+            if not profile.user.gym_memberships.filter(
+                status=GymMembership.Status.ACTIVE,
+            ).exists():
+                profile.user.is_active = False
+                profile.user.save(update_fields=['is_active'])
+        else:
+            profile.user.is_active = False
+            profile.user.save(update_fields=['is_active'])
         return Response(StaffProfileSerializer(profile).data)
 
     @action(detail=True, methods=['post'], url_path='reset-password')
@@ -119,20 +146,34 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         from django.utils import timezone as _tz
         # Auto-reject expired pending leaves before any query
         _today = _tz.now().date()
-        LeaveRequest.objects.filter(
-            status=LeaveRequest.LeaveStatus.PENDING,
-            end_date__lt=_today,
-        ).update(
+        stale_qs = tenant_queryset(
+            LeaveRequest.objects.filter(
+                status=LeaveRequest.LeaveStatus.PENDING,
+                end_date__lt=_today,
+            ),
+            self.request,
+        )
+        stale_qs.update(
             status=LeaveRequest.LeaveStatus.REJECTED,
             review_note='Auto-rejected: leave end date passed without review.',
         )
 
-        qs = LeaveRequest.objects.select_related('requester', 'reviewed_by').all()
-        if self.request.user.role == 'OWNER':
+        qs = tenant_queryset(
+            LeaveRequest.objects.select_related('requester', 'reviewed_by').all(),
+            self.request,
+        )
+        if getattr(self.request, 'gym_role', self.request.user.role) == 'OWNER':
             pass  # Owners see all
-        elif self.request.user.role == 'STAFF':
-            # Receptionists only see leave requests from trainers
-            qs = qs.filter(requester__role='TRAINER')
+        elif getattr(self.request, 'gym_role', self.request.user.role) == 'STAFF':
+            # Receptionists only see leave requests from trainers in this gym.
+            from apps.gyms.models import GymMembership
+            qs = qs.filter(
+                requester__gym_memberships__gym=self.request.gym,
+                requester__gym_memberships__role=GymMembership.Role.TRAINER,
+                requester__gym_memberships__status=GymMembership.Status.ACTIVE,
+            ) if getattr(self.request, 'gym', None) is not None else qs.filter(
+                requester__role=GymMembership.Role.TRAINER,
+            )
         else:
             # Trainers only see their own requests
             qs = qs.filter(requester=self.request.user)
@@ -148,7 +189,11 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        serializer.save(requester=self.request.user)
+        serializer.save(
+            requester=self.request.user,
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
     def perform_update(self, serializer):
         """Only the requester can edit their own PENDING leave request."""

@@ -6,8 +6,10 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
 
-class Locker(models.Model):
+
+class Locker(TenantScopedModel):
     """Represents a physical locker in the gym."""
 
     class LockerStatus(models.TextChoices):
@@ -16,7 +18,7 @@ class Locker(models.Model):
         MAINTENANCE = 'MAINTENANCE', 'Under Maintenance'
         RESERVED = 'RESERVED', 'Reserved'
 
-    locker_number = models.CharField(max_length=20, unique=True)
+    locker_number = models.CharField(max_length=20)
     location = models.CharField(
         max_length=100, blank=True,
         help_text='e.g. "Men\'s Block A", "Women\'s Block B"'
@@ -41,12 +43,28 @@ class Locker(models.Model):
         verbose_name = 'Locker'
         verbose_name_plural = 'Lockers'
         ordering = ['locker_number']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['gym', 'branch', 'locker_number'],
+                name='unique_locker_number_per_branch',
+            ),
+            models.UniqueConstraint(
+                fields=['gym', 'locker_number'],
+                condition=models.Q(branch__isnull=True),
+                name='unique_locker_number_per_gym_without_branch',
+            ),
+            models.UniqueConstraint(
+                fields=['locker_number'],
+                condition=models.Q(gym__isnull=True, branch__isnull=True),
+                name='unique_legacy_locker_number',
+            ),
+        ]
 
     def __str__(self):
         return f'Locker {self.locker_number} ({self.status})'
 
 
-class LockerAssignment(models.Model):
+class LockerAssignment(TenantScopedModel):
     """Records which member is assigned to which locker and for how long."""
 
     locker = models.ForeignKey(

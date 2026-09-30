@@ -12,6 +12,7 @@ members that already have a profile.
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
+from apps.gyms.models import GymMembership
 from apps.members.models import MemberProfile
 
 User = get_user_model()
@@ -21,16 +22,30 @@ class Command(BaseCommand):
     help = 'Create a MemberProfile for any existing User with role=MEMBER that is missing one.'
 
     def handle(self, *args, **options):
-        members_without_profile = User.objects.filter(
-            role=User.Role.MEMBER, member_profile__isnull=True
-        )
         count = 0
-        for user in members_without_profile:
-            MemberProfile.objects.get_or_create(user=user)
-            self.stdout.write(f'  created profile for {user.email}')
+        seen_users = set()
+        memberships = GymMembership.objects.filter(
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+            gym__status__in=['ACTIVE', 'TRIAL'],
+        ).select_related('user', 'gym')
+        for membership in memberships:
+            access = membership.branch_memberships.select_related('branch').first()
+            MemberProfile.objects.get_or_create(
+                user=membership.user,
+                gym=membership.gym,
+                defaults={'branch': access.branch if access else None},
+            )
+            seen_users.add(membership.user_id)
+            count += 1
+
+        # Preserve the legacy compatibility path for users that predate
+        # GymMembership entirely; production requests never rely on gym=None.
+        for user in User.objects.filter(role=User.Role.MEMBER).exclude(pk__in=seen_users):
+            MemberProfile.objects.get_or_create(user=user, gym=None)
             count += 1
 
         if count == 0:
             self.stdout.write(self.style.SUCCESS('No missing profiles found — nothing to do.'))
         else:
-            self.stdout.write(self.style.SUCCESS(f'Created {count} missing member profile(s).'))
+            self.stdout.write(self.style.SUCCESS(f'Ensured {count} member profile row(s).'))

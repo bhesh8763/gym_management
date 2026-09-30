@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from apps.accounts.permissions import IsOwnerOrStaff
+from apps.gyms.tenancy import tenant_queryset
 from .models import Equipment, MaintenanceRecord
 from .serializers import EquipmentSerializer, MaintenanceRecordSerializer
 
@@ -10,7 +11,7 @@ class EquipmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerOrStaff]
 
     def get_queryset(self):
-        qs = Equipment.objects.all()
+        qs = tenant_queryset(Equipment.objects.all(), self.request)
         category = self.request.query_params.get('category')
         condition = self.request.query_params.get('condition')
         if category:
@@ -19,6 +20,12 @@ class EquipmentViewSet(viewsets.ModelViewSet):
             qs = qs.filter(condition=condition)
         return qs
 
+    def perform_create(self, serializer):
+        serializer.save(
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
+
 
 class MaintenanceRecordViewSet(viewsets.ModelViewSet):
     """Owner/Staff schedule and log maintenance."""
@@ -26,7 +33,10 @@ class MaintenanceRecordViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerOrStaff]
 
     def get_queryset(self):
-        qs = MaintenanceRecord.objects.select_related('equipment', 'recorded_by').all()
+        qs = tenant_queryset(
+            MaintenanceRecord.objects.select_related('equipment', 'recorded_by').all(),
+            self.request,
+        )
         equipment_id = self.request.query_params.get('equipment')
         status_ = self.request.query_params.get('status')
         if equipment_id:
@@ -36,4 +46,8 @@ class MaintenanceRecordViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(recorded_by=self.request.user)
+        serializer.save(
+            recorded_by=self.request.user,
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )

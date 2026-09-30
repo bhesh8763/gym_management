@@ -6,8 +6,10 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
 
-class StaffProfile(models.Model):
+
+class StaffProfile(TenantScopedModel):
     """Profile for users with role=STAFF."""
 
     class Role(models.TextChoices):
@@ -15,10 +17,10 @@ class StaffProfile(models.Model):
         GYM_KEEPER = 'GYM_KEEPER', 'Gym Keeper'
         TRAINER = 'TRAINER', 'Trainer'
 
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='staff_profile',
+        related_name='staff_profiles',
     )
     role = models.CharField(
         max_length=15, choices=Role.choices, default=Role.RECEPTIONIST
@@ -43,12 +45,20 @@ class StaffProfile(models.Model):
         db_table = 'staff_profiles'
         verbose_name = 'Staff Profile'
         verbose_name_plural = 'Staff Profiles'
+        constraints = [
+            models.UniqueConstraint(fields=['gym', 'user'], name='unique_staff_profile_per_gym'),
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(gym__isnull=True),
+                name='unique_legacy_staff_profile_user',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.user.get_full_name()} — {self.role}'
 
 
-class LeaveRequest(models.Model):
+class LeaveRequest(TenantScopedModel):
     """Leave requests submitted by staff or trainers."""
 
     class LeaveType(models.TextChoices):

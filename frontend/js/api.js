@@ -106,6 +106,25 @@ function saveTokens(access, refresh) {
   if (refresh) localStorage.setItem('refresh_token', refresh);
 }
 
+async function switchGym(gymId) {
+  const res = await apiRequest('/gyms/switch/', {
+    method: 'POST',
+    body: JSON.stringify({ gym_id: gymId }),
+  });
+  if (!res || !res.ok) return null;
+  const data = await res.json();
+  saveTokens(data.access, data.refresh);
+  localStorage.setItem('gym_id', String(data.gym.id));
+  localStorage.setItem('gym_public_id', data.gym.public_id || '');
+  localStorage.setItem('gym_role', data.role || '');
+  localStorage.setItem('user_role', data.role || '');
+  // Permissions are gym-specific — drop stale ones; syncGymPermissions()
+  // repopulates them from /auth/me/ on the next full page load.
+  localStorage.removeItem('gym_permissions');
+  localStorage.removeItem('gym_custom_role');
+  return data;
+}
+
 function clearTokens() {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
@@ -113,6 +132,11 @@ function clearTokens() {
   localStorage.removeItem('user_role');
   localStorage.removeItem('user_name');
   localStorage.removeItem('user_picture');
+  localStorage.removeItem('gym_id');
+  localStorage.removeItem('gym_role');
+  localStorage.removeItem('gym_public_id');
+  localStorage.removeItem('gym_permissions');
+  localStorage.removeItem('gym_custom_role');
 }
 
 // Tracks a refresh that's currently in progress, so multiple simultaneous
@@ -188,6 +212,8 @@ async function apiRequest(path, options = {}) {
     : { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  const gymId = localStorage.getItem('gym_id');
+  if (gymId) headers['X-Gym-ID'] = gymId;
 
   // Strip the helper flag before passing options to fetch
   const { isFormData: _ignored, ...fetchOptions } = options;
@@ -362,6 +388,8 @@ function buildSidebar(activePage) {
     ${link('import.html', 'bi-box-arrow-in-up', 'Import Data', 'OWNER', a('import'))}
 
     ${section('System')}
+    ${link('roles.html', 'bi-person-gear', 'Roles & Permissions', 'OWNER', a('roles'))}
+    ${link('trash.html', 'bi-trash3', 'Trash', 'OWNER,STAFF', a('trash'))}
     ${link('notifications.html', 'bi-bell', 'Notifications', '', a('notifications'))}
   </div>`;
 
@@ -380,9 +408,27 @@ function applySidebarRoleVisibility() {
   const role = localStorage.getItem('user_role');
   if (!role) return;
 
+  // Effective permission codes synced from /auth/me/ (see syncGymPermissions).
+  // Optional per-link gating: data-perms="reports.view audit.view" requires
+  // EVERY listed code. Only enforced once the set has been synced; without a
+  // stored set the role check alone decides (backwards compatible).
+  let grantedPerms = null;
+  try {
+    const raw = localStorage.getItem('gym_permissions');
+    if (raw) grantedPerms = JSON.parse(raw);
+  } catch (_e) {
+    grantedPerms = null;
+  }
+  if (!Array.isArray(grantedPerms)) grantedPerms = null;
+
   document.querySelectorAll('.sidebar a[data-roles]').forEach(link => {
     const allowedRoles = link.dataset.roles.split(',');
-    if (allowedRoles.includes(role)) {
+    let visible = allowedRoles.includes(role);
+    if (visible && link.dataset.perms && grantedPerms) {
+      const needed = link.dataset.perms.split(' ').filter(Boolean);
+      visible = needed.every(code => grantedPerms.includes(code));
+    }
+    if (visible) {
       link.classList.remove('hidden-role');
       link.style.display = '';
     } else {
@@ -769,12 +815,15 @@ function initProfileHeader() {
   const userName = localStorage.getItem('user_name') || 'User';
   const userRole = localStorage.getItem('user_role') || '';
   const userPicture = localStorage.getItem('user_picture') || '';
+  const customRole = localStorage.getItem('gym_custom_role') || '';
   const nameEl = document.getElementById('profileName');
   const roleEl = document.getElementById('profileRole');
   const avatarEl = document.getElementById('profileAvatar');
   if (nameEl) nameEl.textContent = userName;
   const roleDisplayMap = { STAFF: 'RECEPTIONIST' };
-  if (roleEl) roleEl.textContent = roleDisplayMap[userRole] || userRole;
+  // Owner-defined custom roles are shown verbatim; builtin roles get their
+  // display mapping.
+  if (roleEl) roleEl.textContent = customRole || roleDisplayMap[userRole] || userRole;
   // Hide search bar for MEMBER role
   const searchBar = document.querySelector('.topbar-search');
   if (searchBar && userRole === 'MEMBER') {
@@ -797,6 +846,41 @@ function initProfileHeader() {
   }
 }
 initProfileHeader();
+
+// Syncs the signed-in user's effective permission set (and custom role name)
+// from /auth/me/ into localStorage, then re-applies sidebar visibility.
+// This is what lets owner-built CUSTOM ROLES see exactly the pages their
+// granted codes allow: data-roles alone can't express e.g. "staff-level but
+// only members + payments".
+//
+// Runs once per full page load (api.js is loaded exactly once per session —
+// the SPA router skips re-loading it), guarded so repeated calls no-op.
+// Owner/staff logins still work fine if this fails: the sidebar just falls
+// back to role-only visibility.
+let __permSyncStarted = false;
+async function syncGymPermissions() {
+  if (__permSyncStarted) return;
+  __permSyncStarted = true;
+  if (!getAccessToken()) return;
+
+  try {
+    const res = await apiRequest('/auth/me/');
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    if (Array.isArray(data.gym_permissions)) {
+      localStorage.setItem('gym_permissions', JSON.stringify(data.gym_permissions));
+    }
+    if (data.gym_custom_role) {
+      localStorage.setItem('gym_custom_role', data.gym_custom_role);
+    } else {
+      localStorage.removeItem('gym_custom_role');
+    }
+    applySidebarRoleVisibility();
+  } catch (err) {
+    console.warn('Permission sync skipped:', err);
+  }
+}
+syncGymPermissions();
 
 // Populates a <select id="..."> with active members, using each member's
 // user_id (not their MemberProfile id — see the members/workouts/diet/

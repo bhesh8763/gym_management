@@ -22,7 +22,7 @@ import csv
 import io
 from datetime import timedelta, date
 
-from django.db.models import Count, Sum, Q
+from django.db.models import Count, Sum, Q, Prefetch
 from django.db.models.functions import TruncMonth
 from django.http import HttpResponse
 from django.utils import timezone
@@ -30,6 +30,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsOwner
+from apps.gyms.tenancy import gym_users
+from apps.gyms.models import GymMembership
 from apps.payments.models import Payment
 from apps.memberships.models import Membership, MembershipPlan
 from apps.attendance.models import Attendance
@@ -135,7 +137,7 @@ def revenue_report(request):
     Monthly revenue trend (last 12 months), breakdown by payment method,
     breakdown by payment status, and breakdown by what the payment was for.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     twelve_months_ago = (today.replace(day=1) - timedelta(days=365))
 
     monthly = (
@@ -196,7 +198,7 @@ def membership_report(request):
     Status breakdown, plan popularity, and memberships expiring in the
     next 30 days (useful for renewal follow-ups).
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     by_status = (
         Membership.objects.values('status')
@@ -248,7 +250,7 @@ def attendance_report(request):
     Daily check-in counts for the last 30 days, plus a breakdown by
     attendance type (member/staff/trainer).
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     thirty_days_ago = today - timedelta(days=29)
 
     daily = (
@@ -280,7 +282,7 @@ def equipment_report(request):
     Condition breakdown, maintenance cost total, and upcoming/overdue
     maintenance counts.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
 
     by_condition = (
         Equipment.objects.values('condition')
@@ -373,13 +375,14 @@ def retention_report(request):
     from django.contrib.auth import get_user_model
     from django.db.models.functions import TruncMonth
     User = get_user_model()
+    members = gym_users(gym=getattr(request, 'gym', None), role=GymMembership.Role.MEMBER)
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     twelve_months_ago = today - timedelta(days=365)
 
     # Cohort: members grouped by join month
     cohorts = (
-        User.objects.filter(role=User.Role.MEMBER, date_joined__date__gte=twelve_months_ago)
+        members.filter(date_joined__date__gte=twelve_months_ago)
         .annotate(join_month=TruncMonth('date_joined'))
         .values('join_month')
         .annotate(total_joined=Count('id'))
@@ -411,7 +414,7 @@ def retention_report(request):
         })
 
     # Overall stats
-    total_members = User.objects.filter(role=User.Role.MEMBER).count()
+    total_members = members.count()
     active_with_membership = (
         Membership.objects.filter(status=Membership.Status.ACTIVE)
         .values('member').distinct().count()
@@ -436,7 +439,7 @@ def overview_report(request):
     Top-line KPIs for a landing dashboard: revenue this month, active
     members, occupancy, and equipment condition — one call per page load.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     month_start = today.replace(day=1)
 
     revenue_this_month = Payment.objects.filter(
@@ -469,7 +472,7 @@ def export_attendance(request):
     Exports all attendance records in the given date range.
     Defaults to last 30 days if no range provided.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     start = _parse_date(request.query_params.get('start'), today - timedelta(days=29))
     end = _parse_date(request.query_params.get('end'), today)
 
@@ -550,7 +553,7 @@ def export_revenue(request):
     Exports all payment records in the given date range.
     Defaults to current month if no range provided.
     """
-    today = timezone.now().date()
+    today = timezone.localdate()
     start = _parse_date(request.query_params.get('start'), today.replace(day=1))
     end = _parse_date(request.query_params.get('end'), today)
 
@@ -595,15 +598,26 @@ def export_members(request):
     GET /api/reports/export/members/?format=csv|excel
     Exports all member profiles with their active membership info.
     """
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-
-    members = (
-        User.objects
-        .filter(role=User.Role.MEMBER)
-        .prefetch_related('memberships', 'memberships__plan')
-        .order_by('first_name', 'last_name')
-    )
+    members = gym_users(
+        gym=getattr(request, 'gym', None),
+        role=GymMembership.Role.MEMBER,
+    ).order_by('first_name', 'last_name')
+    if getattr(request, 'gym', None) is not None:
+        membership_qs = Membership.objects.filter(
+            gym=request.gym,
+            status='ACTIVE',
+        )
+        if getattr(request, 'branch', None) is not None:
+            membership_qs = membership_qs.filter(
+                Q(branch=request.branch) | Q(branch__isnull=True)
+            )
+        members = members.prefetch_related(
+            Prefetch(
+                'memberships',
+                queryset=membership_qs.select_related('plan').order_by('-start_date'),
+                to_attr='tenant_memberships',
+            )
+        )
 
     headers = [
         'Display ID', 'Full Name', 'Email', 'Phone',
@@ -612,7 +626,17 @@ def export_members(request):
     ]
     rows = []
     for member in members:
-        active_membership = member.memberships.filter(status='ACTIVE').order_by('-start_date').first()
+        if hasattr(member, 'tenant_memberships'):
+            active_membership = member.tenant_memberships[0] if member.tenant_memberships else None
+        else:
+            membership_qs = member.memberships.filter(status='ACTIVE')
+            if getattr(request, 'gym', None) is not None:
+                membership_qs = membership_qs.filter(gym=request.gym)
+                if getattr(request, 'branch', None) is not None:
+                    membership_qs = membership_qs.filter(
+                        Q(branch=request.branch) | Q(branch__isnull=True)
+                    )
+            active_membership = membership_qs.order_by('-start_date').first()
         rows.append([
             member.display_id or '',
             member.get_full_name(),

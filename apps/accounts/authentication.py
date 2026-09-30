@@ -19,6 +19,38 @@ from rest_framework_simplejwt.exceptions import InvalidToken
 
 
 class VersionedJWTAuthentication(JWTAuthentication):
+    def authenticate(self, request):
+        """Authenticate, validate impersonation state, and resolve the tenant."""
+        result = super().authenticate(request)
+        if result is None:
+            return result
+        user, token = result
+        request.jwt_claim_gym_id = token.get('gym_id')
+
+        impersonation_id = token.get('impersonation_id')
+        if impersonation_id is not None:
+            from apps.gyms.models import ImpersonationSession
+            session = ImpersonationSession.objects.select_related('actor', 'subject').filter(
+                pk=impersonation_id,
+            ).first()
+            if session is None or not session.is_active:
+                raise InvalidToken('Impersonation session is invalid or expired.')
+            if (
+                session.subject_id != user.id
+                or session.actor_id != token.get('actor_id')
+                or str(session.gym_id) != str(token.get('gym_id'))
+            ):
+                raise InvalidToken('Impersonation session identity does not match this token.')
+            request.impersonation_session = session
+            request.impersonation_actor = session.actor
+
+        from apps.gyms.tenancy import resolve_request_tenant
+        membership = resolve_request_tenant(request, user)
+        from django.conf import settings
+        if getattr(settings, 'TENANCY_REQUIRE_MEMBERSHIP', False) and membership is None:
+            raise InvalidToken('An active gym membership is required.')
+        return user, token
+
     def get_user(self, validated_token):
         user = super().get_user(validated_token)
 

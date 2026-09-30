@@ -4,8 +4,10 @@ Diet and nutrition plan models.
 from django.conf import settings
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
 
-class DietPlan(models.Model):
+
+class DietPlan(TenantScopedModel):
     """
     A nutrition plan created by a trainer (or owner/staff) for a specific member.
     """
@@ -84,7 +86,7 @@ class Meal(models.Model):
         return f'{self.diet_plan.name} — {self.get_meal_type_display()} — {self.food_name}'
 
 
-class MealLog(models.Model):
+class MealLog(TenantScopedModel):
     """
     A member's actual daily food intake log, separate from the prescribed
     DietPlan/Meal which represents trainer recommendations.

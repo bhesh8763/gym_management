@@ -4,8 +4,10 @@ Progress tracking: body metrics and personal records (PRs).
 from django.conf import settings
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
 
-class ProgressEntry(models.Model):
+
+class ProgressEntry(TenantScopedModel):
     """
     A snapshot of a member's body metrics on a given date.
     Tracked over time to show improvement.
@@ -50,7 +52,14 @@ class ProgressEntry(models.Model):
         verbose_name = 'Progress Entry'
         verbose_name_plural = 'Progress Entries'
         ordering = ['-date']
-        unique_together = [('member', 'date')]
+        unique_together = [('gym', 'member', 'date')]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['member', 'date'],
+                condition=models.Q(gym__isnull=True),
+                name='unique_legacy_progress_member_date',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.member.get_full_name()} — {self.date}'
@@ -63,7 +72,7 @@ class ProgressEntry(models.Model):
         return None
 
 
-class PersonalRecord(models.Model):
+class PersonalRecord(TenantScopedModel):
     """
     Tracks a member's best performance on a specific exercise (PR).
     e.g. Bench Press 1RM = 100kg

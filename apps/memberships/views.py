@@ -34,6 +34,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsMember, IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
+from apps.gyms.tenancy import gym_users, tenant_queryset, assign_tenant
 from apps.notifications.models import Notification
 from apps.memberships.models import FreezeRequest, Membership, MembershipPlan, Offer, PromoCode, PromoCodeUsage
 from apps.memberships.serializers import (
@@ -68,9 +69,12 @@ def _sync_expired(qs):
         stale.update(status=Membership.Status.EXPIRED)
 
 
-def get_membership_or_404(pk):
+def get_membership_or_404(pk, request=None):
     try:
-        return Membership.objects.select_related('member', 'plan').get(pk=pk)
+        qs = Membership.objects.select_related('member', 'plan')
+        if request is not None:
+            qs = tenant_queryset(qs, request)
+        return qs.get(pk=pk)
     except Membership.DoesNotExist:
         raise NotFound(f'Membership with id={pk} not found.')
 
@@ -90,8 +94,14 @@ class PlanListCreateView(generics.ListCreateAPIView):
             return [IsOwnerOrStaff()]
         return [IsAuthenticated()]
 
+    def perform_create(self, serializer):
+        serializer.save(
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
+
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = tenant_queryset(super().get_queryset(), self.request)
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             qs = qs.filter(is_active=is_active.lower() in ('true', '1', 'yes'))
@@ -113,6 +123,9 @@ class PlanDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method == 'GET':
             return [IsAuthenticated()]
         return [IsOwnerOrStaff()]
+
+    def get_queryset(self):
+        return tenant_queryset(super().get_queryset(), self.request)
 
     def destroy(self, request, *args, **kwargs):
         plan = self.get_object()
@@ -143,11 +156,14 @@ class MembershipListCreateView(generics.ListCreateAPIView):
         return MembershipListSerializer
 
     def get_queryset(self):
-        qs = Membership.objects.select_related('member', 'plan')
+        qs = tenant_queryset(
+            Membership.objects.select_related('member', 'plan'),
+            self.request,
+        )
         _sync_expired(qs)
 
         user = self.request.user
-        if user.role == User.Role.MEMBER:
+        if getattr(self.request, 'gym_role', user.role) == User.Role.MEMBER:
             qs = qs.filter(member=user)
 
         search = self.request.query_params.get('search', '').strip()
@@ -178,19 +194,28 @@ class MembershipListCreateView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         user = request.user
-        is_self_purchase = user.role == User.Role.MEMBER
+        is_self_purchase = getattr(request, 'gym_role', user.role) == User.Role.MEMBER
 
         if is_self_purchase:
             data = request.data.copy()
             data['member'] = user.id
             data['status'] = Membership.Status.PENDING
-            serializer = MembershipCreateSerializer(data=data)
+            serializer = MembershipCreateSerializer(data=data, context={'request': request})
             serializer.is_valid(raise_exception=True)
-            membership = serializer.save()
+            membership = serializer.save(
+                gym=getattr(request, 'gym', None),
+                branch=getattr(request, 'branch', None),
+            )
         else:
-            serializer = MembershipCreateSerializer(data=request.data)
+            serializer = MembershipCreateSerializer(
+                data=request.data,
+                context={'request': request},
+            )
             serializer.is_valid(raise_exception=True)
-            membership = serializer.save()
+            membership = serializer.save(
+                gym=getattr(request, 'gym', None),
+                branch=getattr(request, 'branch', None),
+            )
 
         return Response(
             MembershipDetailSerializer(membership).data,
@@ -209,29 +234,29 @@ class MembershipDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def _can_access(self, request, membership):
-        if request.user.role in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER):
+        if getattr(request, 'gym_role', request.user.role) in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER):
             return True
         return membership.member == request.user
 
     def get(self, request, pk):
-        membership = get_membership_or_404(pk)
+        membership = get_membership_or_404(pk, request)
         if not self._can_access(request, membership):
             raise PermissionDenied('You do not have permission to view this membership.')
         return Response(MembershipDetailSerializer(membership).data)
 
     def patch(self, request, pk):
-        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner/Staff can update memberships.')
-        membership = get_membership_or_404(pk)
+        membership = get_membership_or_404(pk, request)
         serializer = MembershipUpdateSerializer(membership, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         membership = serializer.save()
         return Response(MembershipDetailSerializer(membership).data)
 
     def delete(self, request, pk):
-        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner/Staff can cancel memberships.')
-        membership = get_membership_or_404(pk)
+        membership = get_membership_or_404(pk, request)
         membership.status = Membership.Status.CANCELLED
         membership.save(update_fields=['status'])
         return Response(
@@ -254,7 +279,7 @@ class MembershipFreezeView(APIView):
     throttle_classes = [MembershipWriteThrottle]
 
     def post(self, request, pk):
-        membership = get_membership_or_404(pk)
+        membership = get_membership_or_404(pk, request)
         if membership.status != Membership.Status.ACTIVE:
             raise ValidationError('Only active memberships can be frozen.')
 
@@ -281,7 +306,7 @@ class MembershipUnfreezeView(APIView):
     throttle_classes = [MembershipWriteThrottle]
 
     def post(self, request, pk):
-        membership = get_membership_or_404(pk)
+        membership = get_membership_or_404(pk, request)
         if membership.status != Membership.Status.FROZEN:
             raise ValidationError('Membership is not currently frozen.')
 
@@ -311,17 +336,17 @@ class MembershipRenewView(APIView):
     throttle_classes = [MembershipWriteThrottle]
 
     def _can_access(self, request, membership):
-        if request.user.role in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) in (User.Role.OWNER, User.Role.STAFF):
             return True
         return membership.member == request.user
 
     def post(self, request, pk):
-        old = get_membership_or_404(pk)
+        old = get_membership_or_404(pk, request)
         if not self._can_access(request, old):
             raise PermissionDenied('You do not have permission to renew this membership.')
 
         user = request.user
-        is_self_renewal = user.role == User.Role.MEMBER
+        is_self_renewal = getattr(request, 'gym_role', user.role) == User.Role.MEMBER
 
         serializer = RenewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -335,6 +360,8 @@ class MembershipRenewView(APIView):
         price_paid = data.get('price_paid', default_price_paid)
 
         new_membership = Membership.objects.create(
+            gym=old.gym,
+            branch=old.branch,
             member=old.member,
             plan=old.plan,
             status=new_status,
@@ -368,7 +395,13 @@ class OfferListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsOwnerOrStaff]
 
     def get_queryset(self):
-        return Offer.objects.prefetch_related('plans').all()
+        return tenant_queryset(Offer.objects.prefetch_related('plans').all(), self.request)
+
+    def perform_create(self, serializer):
+        serializer.save(
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
 
 class OfferDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -378,6 +411,9 @@ class OfferDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OfferSerializer
     queryset = Offer.objects.prefetch_related('plans').all()
     permission_classes = [IsOwnerOrStaff]
+
+    def get_queryset(self):
+        return tenant_queryset(super().get_queryset(), self.request)
 
     def destroy(self, request, *args, **kwargs):
         offer = self.get_object()
@@ -401,6 +437,9 @@ class OfferValidateView(APIView):
         serializer.is_valid(raise_exception=True)
         promo = serializer.validated_data['code']
         plan = serializer.validated_data['plan_id']
+        gym = getattr(request, 'gym', None)
+        if gym is not None and (promo.gym_id != gym.id or plan.gym_id != gym.id):
+            return Response({'detail': 'Plan and promo code must belong to the active gym.'}, status=400)
 
         original_price = plan.price
         discount = promo.calculate_discount(original_price)
@@ -426,7 +465,10 @@ class PromoCodeListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsOwnerOrStaff]
 
     def get_queryset(self):
-        qs = PromoCode.objects.select_related('offer', 'created_by').all()
+        qs = tenant_queryset(
+            PromoCode.objects.select_related('offer', 'created_by').all(),
+            self.request,
+        )
         offer_id = self.request.query_params.get('offer')
         if offer_id:
             qs = qs.filter(offer_id=offer_id)
@@ -436,7 +478,11 @@ class PromoCodeListCreateView(generics.ListCreateAPIView):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        serializer.save(
+            created_by=self.request.user,
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
 
 class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -446,6 +492,9 @@ class PromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PromoCodeSerializer
     queryset = PromoCode.objects.select_related('offer', 'created_by').all()
     permission_classes = [IsOwnerOrStaff]
+
+    def get_queryset(self):
+        return tenant_queryset(super().get_queryset(), self.request)
 
 
 class PromoCodeUsageListView(generics.ListAPIView):
@@ -469,9 +518,10 @@ class PromoCodeUsageListView(generics.ListAPIView):
         return _UsageSerializer
 
     def get_queryset(self):
-        return PromoCodeUsage.objects.select_related(
-            'promo_code', 'member', 'membership'
-        ).all()
+        return tenant_queryset(
+            PromoCodeUsage.objects.select_related('promo_code', 'member', 'membership').all(),
+            self.request,
+        )
 
 
 class ExpiringMembershipsView(generics.ListAPIView):
@@ -483,7 +533,10 @@ class ExpiringMembershipsView(generics.ListAPIView):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def get_queryset(self):
-        qs = Membership.objects.select_related('member', 'plan')
+        qs = tenant_queryset(
+            Membership.objects.select_related('member', 'plan'),
+            self.request,
+        )
         _sync_expired(qs)
 
         try:
@@ -519,14 +572,18 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in (User.Role.OWNER, User.Role.STAFF):
+        qs = tenant_queryset(
+            FreezeRequest.objects.select_related(
+                'membership', 'membership__plan', 'requested_by', 'reviewed_by',
+            ).all(),
+            self.request,
+        )
+        if getattr(self.request, 'gym_role', user.role) in (User.Role.OWNER, User.Role.STAFF):
             qs = FreezeRequest.objects.select_related(
                 'membership', 'membership__plan', 'requested_by', 'reviewed_by',
             ).all()
         else:
-            qs = FreezeRequest.objects.select_related(
-                'membership', 'membership__plan', 'requested_by', 'reviewed_by',
-            ).filter(requested_by=user)
+            qs = qs.filter(requested_by=user)
 
         status_param = self.request.query_params.get('status')
         if status_param:
@@ -535,7 +592,11 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(requested_by=self.request.user)
+        serializer.save(
+            requested_by=self.request.user,
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -546,11 +607,14 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
         # Notify all owner/staff about new freeze request
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        staff_users = User.objects.filter(
-            role__in=[User.Role.OWNER, User.Role.STAFF], is_active=True
-        )
+        staff_users = gym_users(
+            gym=getattr(request, 'gym', None),
+            role=[User.Role.OWNER, User.Role.STAFF],
+        ).filter(is_active=True)
         for staff_user in staff_users:
             Notification.objects.create(
+                gym=freeze_request.gym,
+                branch=freeze_request.branch,
                 recipient=staff_user,
                 notification_type=Notification.NotificationType.GENERAL,
                 title='New freeze request',
@@ -570,7 +634,7 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='approve')
     def approve(self, request, pk=None):
         """Approve a freeze request — freezes the membership."""
-        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner/Staff can approve freeze requests.')
 
         freeze_request = self.get_object()
@@ -597,6 +661,8 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
         # Notify the member. The sender is the owner/staff who approved it,
         # stored explicitly now that Notification carries a sender FK.
         Notification.objects.create(
+            gym=freeze_request.gym,
+            branch=freeze_request.branch,
             sender=request.user,
             recipient=freeze_request.requested_by,
             notification_type=Notification.NotificationType.GENERAL,
@@ -614,7 +680,7 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='reject')
     def reject(self, request, pk=None):
         """Reject a freeze request."""
-        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner/Staff can reject freeze requests.')
 
         freeze_request = self.get_object()
@@ -632,6 +698,8 @@ class FreezeRequestViewSet(viewsets.ModelViewSet):
         # Notify the member. The sender is the owner/staff who rejected it,
         # stored explicitly now that Notification carries a sender FK.
         Notification.objects.create(
+            gym=freeze_request.gym,
+            branch=freeze_request.branch,
             sender=request.user,
             recipient=freeze_request.requested_by,
             notification_type=Notification.NotificationType.GENERAL,

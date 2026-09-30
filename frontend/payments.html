@@ -404,7 +404,8 @@ buildSidebar('payments');
       if (!res) return;
       if (!__isPageAlive()) return;
       const data = await res.json();
-      all = all.concat(data.results);
+      const page = data.results || data;
+      all = all.concat(page);
       path = data.next ? data.next.replace(API_BASE, '') : null;
     }
 

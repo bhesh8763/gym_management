@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.gyms.tenancy import user_has_branch_access
+
 from .models import DietPlan, Meal, MealLog, MealChecklist
 
 
@@ -54,7 +56,7 @@ class DietPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model  = DietPlan
         fields = [
-            'id', 'name', 'goal', 'goal_display',
+            'id', 'gym', 'branch', 'name', 'goal', 'goal_display',
             'daily_calories', 'protein_g', 'carbs_g', 'fats_g',
             'is_active', 'status',
             'member', 'member_name',
@@ -63,7 +65,7 @@ class DietPlanSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
             'meals',
         ]
-        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'gym', 'branch', 'created_by', 'created_at', 'updated_at']
 
     def get_status(self, obj):
         return 'Active' if obj.is_active else 'Inactive'
@@ -101,11 +103,11 @@ class MealLogSerializer(serializers.ModelSerializer):
     class Meta:
         model  = MealLog
         fields = [
-            'id', 'member', 'date',
+            'id', 'gym', 'branch', 'member', 'date',
             'food_items', 'total_calories',
             'notes', 'created_at',
         ]
-        read_only_fields = ['id', 'total_calories', 'created_at']
+        read_only_fields = ['id', 'gym', 'branch', 'total_calories', 'created_at']
 
 
 class MealChecklistSerializer(serializers.ModelSerializer):

@@ -177,7 +177,7 @@
       </div>
     </div>
 
-    <!-- -------------- MY LEAVE (staff / trainer only) -------------- -->
+    <!-- -------------- MY LEAVE -------------- -->
     <div id="myLeaveSection">
       <hr class="my-2">
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -623,7 +623,8 @@ buildSidebar('attendance');
       if (!res || !res.ok) return null;
       if (!__isPageAlive()) return null;
       const data = await res.json();
-      all = all.concat(data.results);
+      const page = data.results || data;
+      all = all.concat(page);
       path = data.next ? data.next.replace(API_BASE, '') : null;
     }
     return all;
@@ -1052,12 +1053,9 @@ buildSidebar('attendance');
 
 
 
-    // My Leave section - visible to STAFF and TRAINER only, hidden for OWNER
-    const myRole = localStorage.getItem('user_role');
+    // My Leave section - visible to STAFF and TRAINER, and OWNER too
     const myLeaveSection = document.getElementById('myLeaveSection');
-    if (myRole === 'OWNER') {
-      myLeaveSection.style.display = 'none';
-    } else {
+    if (myLeaveSection) {
       myLeaveSection.style.display = '';
       await loadMyLeaves();
     }
@@ -1066,7 +1064,7 @@ buildSidebar('attendance');
 
 
 
-  // -- My Leave (staff / trainer) --------------------------------------------
+  // -- My Leave --------------------------------------------
   let leaveCache = [];   // kept at module level so openEditLeave can look up rows
 
   async function loadMyLeaves() {

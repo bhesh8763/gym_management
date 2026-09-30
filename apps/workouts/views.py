@@ -11,6 +11,8 @@ import csv
 from datetime import date
 
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
+from apps.gyms.tenancy import branch_queryset, gym_users, tenant_queryset
+from apps.gyms.models import GymMembership
 
 from .models import (
     Exercise,
@@ -63,17 +65,23 @@ class ExerciseDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 # ─── Workout Templates ──────────────────────────────────────────────────────
 
-def _visible_templates(user):
-    if user.role in ['OWNER', 'STAFF']:
-        return WorkoutTemplate.objects.all()
-    if user.is_trainer:
-        return WorkoutTemplate.objects.filter(trainer=user)
-    if user.is_member:
+def _visible_templates(user, request=None):
+    gym = getattr(request, 'gym', None) if request is not None else None
+    role = getattr(request, 'gym_role', user.role) if request is not None else user.role
+    if role in ['OWNER', 'STAFF']:
+        qs = WorkoutTemplate.objects.all()
+    elif role == 'TRAINER':
+        qs = WorkoutTemplate.objects.filter(trainer=user)
+    elif role == 'MEMBER':
         # Members only ever see templates they've actually been assigned.
-        return WorkoutTemplate.objects.filter(
+        qs = WorkoutTemplate.objects.filter(
             assignments__member=user, status=WorkoutTemplate.Status.APPROVED
         ).distinct()
-    return WorkoutTemplate.objects.none()
+    else:
+        qs = WorkoutTemplate.objects.none()
+    if gym is not None:
+        qs = qs.filter(gym=gym)
+    return qs
 
 
 class WorkoutTemplateListCreateView(generics.ListCreateAPIView):
@@ -92,7 +100,7 @@ class WorkoutTemplateListCreateView(generics.ListCreateAPIView):
         # leave the queryset's ordering ambiguous even with Meta.ordering set,
         # which makes DRF's pagination warn (and, worse, can actually
         # duplicate or skip rows across pages). Pin it here.
-        qs = _visible_templates(self.request.user).annotate(
+        qs = _visible_templates(self.request.user, self.request).annotate(
             assigned_member_count=Count(
                 'assignments', filter=Q(assignments__status=WorkoutAssignment.Status.ACTIVE), distinct=True
             )
@@ -108,6 +116,12 @@ class WorkoutTemplateListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(Q(name__icontains=search) | Q(goal__icontains=search))
         return qs
 
+    def perform_create(self, serializer):
+        serializer.save(
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
+
 
 class WorkoutTemplateDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = WorkoutTemplateSerializer
@@ -119,7 +133,7 @@ class WorkoutTemplateDetailView(generics.RetrieveUpdateDestroyAPIView):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return _visible_templates(self.request.user).annotate(
+        return _visible_templates(self.request.user, self.request).annotate(
             assigned_member_count=Count(
                 'assignments', filter=Q(assignments__status=WorkoutAssignment.Status.ACTIVE), distinct=True
             )
@@ -130,7 +144,7 @@ class WorkoutTemplateSubmitReviewView(APIView):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def post(self, request, pk):
-        template = _visible_templates(request.user).filter(pk=pk).first()
+        template = _visible_templates(request.user, request).filter(pk=pk).first()
         if not template:
             return Response(status=status.HTTP_404_NOT_FOUND)
         try:
@@ -145,7 +159,7 @@ class WorkoutTemplateApproveView(APIView):
     permission_classes = [IsOwnerOrStaff]
 
     def post(self, request, pk):
-        template = WorkoutTemplate.objects.filter(pk=pk).first()
+        template = _visible_templates(request.user, request).filter(pk=pk).first()
         if not template:
             return Response(status=status.HTTP_404_NOT_FOUND)
         try:
@@ -159,7 +173,7 @@ class WorkoutTemplateArchiveView(APIView):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def post(self, request, pk):
-        template = _visible_templates(request.user).filter(pk=pk).first()
+        template = _visible_templates(request.user, request).filter(pk=pk).first()
         if not template:
             return Response(status=status.HTTP_404_NOT_FOUND)
         template.archive()
@@ -170,7 +184,7 @@ class WorkoutTemplateDuplicateView(APIView):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def post(self, request, pk):
-        template = _visible_templates(request.user).filter(pk=pk).first()
+        template = _visible_templates(request.user, request).filter(pk=pk).first()
         if not template:
             return Response(status=status.HTTP_404_NOT_FOUND)
         clone = template.clone(new_name=request.data.get('name'))
@@ -182,7 +196,7 @@ class WorkoutTemplateVersionListView(generics.ListAPIView):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def get_queryset(self):
-        template = _visible_templates(self.request.user).filter(pk=self.kwargs['pk']).first()
+        template = _visible_templates(self.request.user, self.request).filter(pk=self.kwargs['pk']).first()
         if not template:
             return WorkoutTemplateVersion.objects.none()
         return template.versions.all()
@@ -192,7 +206,7 @@ class WorkoutTemplateVersionRestoreView(APIView):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def post(self, request, pk, version_id):
-        template = _visible_templates(request.user).filter(pk=pk).first()
+        template = _visible_templates(request.user, request).filter(pk=pk).first()
         if not template:
             return Response(status=status.HTTP_404_NOT_FOUND)
         version = template.versions.filter(pk=version_id).first()
@@ -210,15 +224,23 @@ class WorkoutDayListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def get_queryset(self):
-        qs = WorkoutDay.objects.all()
+        qs = WorkoutDay.objects.filter(template__gym=getattr(self.request, 'gym', None))
+        qs = branch_queryset(qs, self.request, field='template__branch')
         template_id = self.request.query_params.get('template')
         return qs.filter(template_id=template_id) if template_id else qs
 
 
 class WorkoutDayDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = WorkoutDay.objects.all()
     serializer_class = WorkoutDaySerializer
     permission_classes = [IsOwnerOrStaffOrTrainer]
+
+    def get_queryset(self):
+        qs = tenant_queryset(
+            WorkoutDay.objects.filter(template__gym=getattr(self.request, 'gym', None)),
+            self.request,
+            field='template__gym',
+        )
+        return branch_queryset(qs, self.request, field='template__branch')
 
 
 class WorkoutDayMoveView(APIView):
@@ -236,12 +258,19 @@ class WorkoutDayMoveView(APIView):
         if direction not in ('up', 'down'):
             raise DRFValidationError({'direction': 'Must be "up" or "down".'})
 
-        day = WorkoutDay.objects.filter(pk=pk).first()
+        day_qs = WorkoutDay.objects.filter(
+            pk=pk,
+            template__gym=getattr(request, 'gym', None),
+        )
+        day_qs = branch_queryset(day_qs, request, field='template__branch')
+        day = day_qs.first()
         if not day:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         siblings = WorkoutDay.objects.filter(
-            template=day.template, week_number=day.week_number
+            template=day.template,
+            template__gym=getattr(request, 'gym', None),
+            week_number=day.week_number,
         ).order_by('day_number')
         siblings_list = list(siblings)
         idx = next((i for i, d in enumerate(siblings_list) if d.id == day.id), None)
@@ -270,27 +299,45 @@ class WorkoutDayExerciseListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def get_queryset(self):
-        qs = WorkoutDayExercise.objects.all()
+        qs = WorkoutDayExercise.objects.filter(
+            workout_day__template__gym=getattr(self.request, 'gym', None),
+        )
+        qs = branch_queryset(qs, self.request, field='workout_day__template__branch')
         day_id = self.request.query_params.get('workout_day')
         return qs.filter(workout_day_id=day_id) if day_id else qs
 
 
 class WorkoutDayExerciseDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = WorkoutDayExercise.objects.all()
     serializer_class = WorkoutDayExerciseSerializer
     permission_classes = [IsOwnerOrStaffOrTrainer]
+
+    def get_queryset(self):
+        qs = tenant_queryset(
+            WorkoutDayExercise.objects.filter(
+                workout_day__template__gym=getattr(self.request, 'gym', None),
+            ),
+            self.request,
+            field='workout_day__template__gym',
+        )
+        return branch_queryset(qs, self.request, field='workout_day__template__branch')
 
 
 # ─── Assignments ────────────────────────────────────────────────────────────
 
-def _visible_assignments(user):
-    if user.role in ['OWNER', 'STAFF']:
-        return WorkoutAssignment.objects.all()
-    if user.is_trainer:
-        return WorkoutAssignment.objects.filter(template__trainer=user)
-    if user.is_member:
-        return WorkoutAssignment.objects.filter(member=user)
-    return WorkoutAssignment.objects.none()
+def _visible_assignments(user, request=None):
+    gym = getattr(request, 'gym', None) if request is not None else None
+    role = getattr(request, 'gym_role', user.role) if request is not None else user.role
+    if role in ['OWNER', 'STAFF']:
+        qs = WorkoutAssignment.objects.all()
+    elif role == 'TRAINER':
+        qs = WorkoutAssignment.objects.filter(template__trainer=user)
+    elif role == 'MEMBER':
+        qs = WorkoutAssignment.objects.filter(member=user)
+    else:
+        qs = WorkoutAssignment.objects.none()
+    if gym is not None:
+        qs = qs.filter(gym=gym)
+    return qs
 
 
 class WorkoutAssignmentListCreateView(generics.ListCreateAPIView):
@@ -303,7 +350,7 @@ class WorkoutAssignmentListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        qs = _visible_assignments(self.request.user)
+        qs = _visible_assignments(self.request.user, self.request)
         template_id = self.request.query_params.get('template')
         if template_id:
             qs = qs.filter(template_id=template_id)
@@ -320,7 +367,10 @@ class WorkoutAssignmentListCreateView(generics.ListCreateAPIView):
         # the loser of that race gets an unhandled IntegrityError -> 500.
         try:
             with transaction.atomic():
-                serializer.save()
+                serializer.save(
+                    gym=getattr(self.request, 'gym', None),
+                    branch=getattr(self.request, 'branch', None),
+                )
         except IntegrityError:
             raise DRFValidationError(
                 {'member': 'This member already has an active assignment for this template.'}
@@ -337,7 +387,7 @@ class WorkoutAssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return _visible_assignments(self.request.user)
+        return _visible_assignments(self.request.user, self.request)
 
 
 # ─── Personal record detection (extracted from completion-log view) ────────
@@ -377,6 +427,8 @@ def _detect_personal_records(log, member, assignment):
             continue
 
         pr, created = PersonalRecord.objects.get_or_create(
+            gym=assignment.gym,
+            branch=assignment.branch,
             member=member,
             exercise=exercise,
             defaults={
@@ -408,19 +460,22 @@ class WorkoutCompletionLogListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         qs = WorkoutCompletionLog.objects.filter(
-            assignment__in=_visible_assignments(self.request.user)
+            assignment__in=_visible_assignments(self.request.user, self.request)
         )
         assignment_id = self.request.query_params.get('assignment')
         return qs.filter(assignment_id=assignment_id) if assignment_id else qs
 
     def perform_create(self, serializer):
         assignment = serializer.validated_data['assignment']
-        if self.request.user.is_member and assignment.member_id != self.request.user.id:
+        if getattr(self.request, 'gym_role', self.request.user.role) == User.Role.MEMBER and assignment.member_id != self.request.user.id:
             raise PermissionDenied('Members can only log their own workouts.')
-        log = serializer.save()
+        log = serializer.save(
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
         # Auto-detect personal records for this member after saving the log.
-        if self.request.user.is_member:
+        if getattr(self.request, 'gym_role', self.request.user.role) == User.Role.MEMBER:
             _detect_personal_records(log, self.request.user, assignment)
 
 
@@ -474,15 +529,21 @@ class AssignmentCancelView(APIView):
 # ─── Trainer messaging (via notifications) ──────────────────────────────────
 
 def _send_notification(sender, recipient, notification_type, title, message,
-                       related_membership_id=None, related_payment_id=None):
-    """Create a Notification with an explicit sender instead of encoding the
-    sender's name into the title.
-
-    Kept as a small helper so every notification creation site is consistent
-    and so the inbox can render sender info from the FK instead of parsing
-    the title string.
-    """
+                       related_membership_id=None, related_payment_id=None,
+                       gym=None, branch=None):
+    """Create a tenant-scoped notification with an explicit sender."""
+    if gym is None:
+        membership = recipient.gym_memberships.filter(
+            status=GymMembership.Status.ACTIVE,
+        ).order_by('-is_default', 'gym_id').first()
+        if membership:
+            gym = membership.gym
+            if branch is None:
+                access = membership.branch_memberships.select_related('branch').first()
+                branch = access.branch if access else None
     return Notification.objects.create(
+        gym=gym,
+        branch=branch,
         sender=sender,
         recipient=recipient,
         notification_type=notification_type,
@@ -498,7 +559,7 @@ class TrainerMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not request.user.is_member:
+        if getattr(request, 'gym_role', request.user.role) != User.Role.MEMBER:
             return Response({'detail': 'Only members can message trainers.'}, status=status.HTTP_403_FORBIDDEN)
 
         message = request.data.get('message', '').strip()
@@ -507,6 +568,7 @@ class TrainerMessageView(APIView):
 
         # Find the trainer from the member's most recent active assignment
         assignment = WorkoutAssignment.objects.filter(
+            gym=getattr(request, 'gym', None),
             member=request.user,
             status__in=[WorkoutAssignment.Status.ACTIVE, WorkoutAssignment.Status.PAUSED],
         ).select_related('template', 'template__trainer').order_by('-created_at').first()
@@ -522,6 +584,8 @@ class TrainerMessageView(APIView):
             title='Member message',
             message=message,
             related_membership_id=request.user.id,
+            gym=getattr(request, 'gym', None),
+            branch=getattr(request, 'branch', None),
         )
         return Response({'detail': 'Message sent to your trainer.'}, status=status.HTTP_201_CREATED)
 
@@ -570,7 +634,7 @@ class TrainerMessagesView(APIView):
     def get(self, request):
         member_id = request.query_params.get('member_id')
 
-        if request.user.is_member:
+        if getattr(request, 'gym_role', request.user.role) == User.Role.MEMBER:
             # Members see their own sent messages and replies they received.
             qs = Notification.objects.filter(
                 Q(
@@ -625,7 +689,7 @@ class TrainerReplyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if request.user.role not in (User.Role.TRAINER, User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.TRAINER, User.Role.OWNER, User.Role.STAFF):
             return Response(
                 {'detail': 'Only trainers, owners, and staff can reply.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -640,12 +704,20 @@ class TrainerReplyView(APIView):
             return Response({'detail': 'member_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Resolve the member user
-        member = User.objects.filter(pk=member_id).first()
+        member = gym_users(
+            gym=getattr(request, 'gym', None),
+            role=GymMembership.Role.MEMBER,
+        ).filter(pk=member_id).first()
         if member is None:
             return Response({'detail': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if not member.is_member:
-            return Response({'detail': 'Target user is not a member.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not GymMembership.objects.filter(
+            gym=getattr(request, 'gym', None),
+            user=member,
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+        ).exists() and getattr(request, 'gym', None) is not None:
+            return Response({'detail': 'Target user is not a member of this gym.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create a TRAINER_REPLY notification for the member.
         # sender=request.user is set explicitly so the inbox reads the sender
@@ -657,28 +729,42 @@ class TrainerReplyView(APIView):
             title='Trainer reply',
             message=reply_text,
             related_membership_id=request.user.id,
+            gym=getattr(request, 'gym', None),
+            branch=getattr(request, 'branch', None),
         )
         return Response({'detail': 'Reply sent.'}, status=status.HTTP_201_CREATED)
 
 
 # ─── Direct messaging between any allowed roles ──────────────────────────────
 
-def _assigned_member_ids(user):
+def _assigned_member_ids(user, gym=None, branch=None):
     """IDs of members assigned to a trainer (active or paused assignments)."""
-    return set(
-        WorkoutAssignment.objects.filter(
-            template__trainer=user,
-            status__in=[WorkoutAssignment.Status.ACTIVE, WorkoutAssignment.Status.PAUSED],
-        ).values_list('member_id', flat=True)
-    )
+    lookup = {
+        'template__trainer': user,
+        'status__in': [WorkoutAssignment.Status.ACTIVE, WorkoutAssignment.Status.PAUSED],
+    }
+    if gym is not None:
+        lookup['gym'] = gym
+    assignments = WorkoutAssignment.objects.filter(**lookup)
+    if branch is not None:
+        assignments = assignments.filter(Q(branch=branch) | Q(branch__isnull=True))
+    return set(assignments.values_list('member_id', flat=True))
 
 
-def _assigned_trainer(user):
+def _assigned_trainer(user, gym=None, branch=None):
     """The trainer currently assigned to a member (via their most recent assignment)."""
-    assignment = WorkoutAssignment.objects.filter(
-        member=user,
-        status__in=[WorkoutAssignment.Status.ACTIVE, WorkoutAssignment.Status.PAUSED],
-    ).select_related('template', 'template__trainer').order_by('-created_at').first()
+    lookup = {
+        'member': user,
+        'status__in': [WorkoutAssignment.Status.ACTIVE, WorkoutAssignment.Status.PAUSED],
+    }
+    if gym is not None:
+        lookup['gym'] = gym
+    assignments = WorkoutAssignment.objects.filter(**lookup)
+    if branch is not None:
+        assignments = assignments.filter(Q(branch=branch) | Q(branch__isnull=True))
+    assignment = assignments.select_related(
+        'template', 'template__trainer',
+    ).order_by('-created_at').first()
     if assignment and assignment.template and assignment.template.trainer:
         return assignment.template.trainer
     return None
@@ -701,77 +787,167 @@ def _owner_started_conversation(member, owner):
     ).exists()
 
 
-def _can_direct_message(user, target):
+def _user_has_branch_access(user, gym=None, branch=None):
+    if gym is None or branch is None:
+        return True
+    membership = GymMembership.objects.filter(
+        gym=gym,
+        user=user,
+        status=GymMembership.Status.ACTIVE,
+    ).first()
+    if membership is None:
+        return False
+    if membership.role == GymMembership.Role.OWNER:
+        return True
+    return membership.branch_memberships.filter(branch=branch).exists()
+
+
+def _can_direct_message(user, target, gym=None, branch=None):
     """
     Who may start a 1-on-1 chat with whom:
-      - Owner: anyone
-      - Staff: anyone (including the owner, per product rule)
+      - Owner: anyone in the same gym
+      - Staff: anyone in the same gym (including the owner)
       - Trainer: their assigned members + staff
-      - Member: their assigned trainer + staff, and the owner ONLY if the
-        owner already started the conversation (members can continue, not
-        initiate, a chat with the owner)
+      - Member: their assigned trainer + staff, and the owner only after the
+        owner has started the conversation
     """
     if user.pk == target.pk:
         return False
-    if user.is_owner:
-        return True
-    if user.is_gym_staff:
-        return True
-    if user.is_trainer:
-        if target.role == User.Role.STAFF:
-            return True
-        if target.role == User.Role.MEMBER:
-            return target.pk in _assigned_member_ids(user)
+    if gym is not None and (
+        not _user_has_branch_access(user, gym, branch)
+        or not _user_has_branch_access(target, gym, branch)
+    ):
         return False
-    if user.is_member:
-        if target.role == User.Role.STAFF:
+    if gym is not None:
+        memberships = GymMembership.objects.filter(
+            gym=gym,
+            user__in=[user, target],
+            status=GymMembership.Status.ACTIVE,
+        ).values_list('user_id', 'role')
+        roles = dict(memberships)
+        if user.pk not in roles or target.pk not in roles:
+            return False
+        user_role = roles[user.pk]
+        target_role = roles[target.pk]
+    else:
+        user_role = user.role
+        target_role = target.role
+
+    if user_role in (User.Role.OWNER, User.Role.STAFF):
+        return True
+    if user_role == User.Role.TRAINER:
+        if target_role == User.Role.STAFF:
             return True
-        if target.role == User.Role.TRAINER:
-            trainer = _assigned_trainer(user)
+        if target_role == User.Role.MEMBER:
+            return target.pk in _assigned_member_ids(user, gym, branch)
+        return False
+    if user_role == User.Role.MEMBER:
+        if target_role == User.Role.STAFF:
+            return True
+        if target_role == User.Role.TRAINER:
+            trainer = _assigned_trainer(user, gym, branch)
             return trainer is not None and trainer.pk == target.pk
-        if target.role == User.Role.OWNER:
+        if target_role == User.Role.OWNER:
             return _owner_started_conversation(user, target)
         return False
     return False
 
 
-def _allowed_recipients(user):
+def _allowed_recipients(user, gym=None, branch=None):
     """Active users this person is allowed to open a 1-on-1 chat with."""
-    if user.is_owner or user.is_gym_staff:
-        return User.objects.filter(is_active=True).exclude(pk=user.pk)
-    if user.is_trainer:
-        member_ids = _assigned_member_ids(user)
-        return User.objects.filter(is_active=True).filter(
-            Q(role=User.Role.STAFF) | Q(pk__in=member_ids)
-        ).exclude(pk=user.pk)
-    if user.is_member:
-        trainer = _assigned_trainer(user)
-        qs = User.objects.filter(is_active=True).filter(role=User.Role.STAFF)
+    base = gym_users(gym=gym) if gym is not None else User.objects.filter(is_active=True)
+    base = base.filter(is_active=True)
+    if gym is not None and branch is not None:
+        base = base.filter(
+            Q(
+                gym_memberships__gym=gym,
+                gym_memberships__role=GymMembership.Role.OWNER,
+                gym_memberships__status=GymMembership.Status.ACTIVE,
+            )
+            | Q(
+                gym_memberships__gym=gym,
+                gym_memberships__status=GymMembership.Status.ACTIVE,
+                branch_memberships__branch=branch,
+            )
+        ).distinct()
+    if gym is not None:
+        membership = GymMembership.objects.filter(
+            gym=gym, user=user, status=GymMembership.Status.ACTIVE,
+        ).first()
+        role = membership.role if membership else user.role
+    else:
+        role = user.role
+    if role in (User.Role.OWNER, User.Role.STAFF):
+        return base.exclude(pk=user.pk)
+    if role == User.Role.TRAINER:
+        member_ids = _assigned_member_ids(user, gym, branch)
+        return base.filter(
+            Q(
+                gym_memberships__role=User.Role.STAFF,
+                gym_memberships__gym=gym,
+                gym_memberships__status=GymMembership.Status.ACTIVE,
+            )
+            | Q(pk__in=member_ids)
+        ).exclude(pk=user.pk).distinct()
+    if role == User.Role.MEMBER:
+        trainer = _assigned_trainer(user, gym, branch)
+        qs = base.filter(
+            gym_memberships__role=User.Role.STAFF,
+            gym_memberships__gym=gym,
+            gym_memberships__status=GymMembership.Status.ACTIVE,
+        ) if gym is not None else base.filter(role=User.Role.STAFF)
         if trainer:
-            qs = qs | User.objects.filter(pk=trainer.pk)
-        # The owner is never offered as a "new message" option to members.
-        # If the owner starts a conversation, the member continues it from the
-        # existing conversation in their list — not from this picker.
+            qs = qs | base.filter(pk=trainer.pk)
         return qs.exclude(pk=user.pk).distinct()
-    return User.objects.none()
+    return base.none()
 
 
-def _can_create_group(user):
+def _can_create_group(user, gym=None):
+    if gym is not None:
+        membership = GymMembership.objects.filter(
+            gym=gym, user=user, status=GymMembership.Status.ACTIVE,
+        ).first()
+        return bool(membership and membership.role in (
+            User.Role.TRAINER, User.Role.STAFF, User.Role.OWNER,
+        ))
     return user.role in (User.Role.TRAINER, User.Role.STAFF, User.Role.OWNER)
 
 
-def _group_allowed_member_ids(user):
-    """Users that may be added to a group created by `user`:
-      - Owner: anyone
-      - Staff: anyone except the owner
-      - Trainer: only their assigned members
-    """
-    if user.is_owner:
-        return set(User.objects.filter(is_active=True).values_list('pk', flat=True))
-    if user.is_gym_staff:
-        return set(User.objects.filter(is_active=True).exclude(role=User.Role.OWNER).values_list('pk', flat=True))
-    if user.is_trainer:
-        return _assigned_member_ids(user)
+def _group_allowed_member_ids(user, gym=None, branch=None):
+    """Users that may be added to a group created by `user`."""
+    base = gym_users(gym=gym) if gym is not None else User.objects.filter(is_active=True)
+    base = base.filter(is_active=True)
+    if gym is not None and branch is not None:
+        base = base.filter(
+            Q(
+                gym_memberships__gym=gym,
+                gym_memberships__role=GymMembership.Role.OWNER,
+                gym_memberships__status=GymMembership.Status.ACTIVE,
+            )
+            | Q(
+                gym_memberships__gym=gym,
+                gym_memberships__status=GymMembership.Status.ACTIVE,
+                branch_memberships__branch=branch,
+            )
+        ).distinct()
+    membership = GymMembership.objects.filter(
+        gym=gym, user=user, status=GymMembership.Status.ACTIVE,
+    ).first() if gym is not None else None
+    role = membership.role if membership else user.role
+    if role == User.Role.OWNER:
+        return set(base.values_list('pk', flat=True))
+    if role == User.Role.STAFF:
+        if gym is not None:
+            return set(
+                base.exclude(
+                    gym_memberships__role=User.Role.OWNER,
+                    gym_memberships__gym=gym,
+                    gym_memberships__status=GymMembership.Status.ACTIVE,
+                ).values_list('pk', flat=True)
+            )
+        return set(base.exclude(role=User.Role.OWNER).values_list('pk', flat=True))
+    if role == User.Role.TRAINER:
+        return _assigned_member_ids(user, gym, branch)
     return set()
 
 
@@ -789,23 +965,31 @@ class DirectMessageView(APIView):
             return Response({'detail': 'recipient_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            recipient = User.objects.get(pk=recipient_id, is_active=True)
+            recipient = gym_users(gym=getattr(request, 'gym', None)).get(pk=recipient_id, is_active=True)
         except User.DoesNotExist:
             return Response({'detail': 'Recipient not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if not _can_direct_message(request.user, recipient):
+        if not _can_direct_message(
+            request.user,
+            recipient,
+            getattr(request, 'gym', None),
+            getattr(request, 'branch', None),
+        ):
             return Response(
                 {'detail': 'You are not allowed to message this user.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         sender = request.user
-        if sender.is_member:
+        if getattr(request, 'gym_role', sender.role) == User.Role.MEMBER:
             n_type = Notification.NotificationType.MEMBER_MESSAGE
             title = 'Direct message'
         else:
             n_type = Notification.NotificationType.TRAINER_REPLY
-            title = 'Reply' if recipient.is_member else 'Direct message'
+            title = 'Reply' if GymMembership.objects.filter(
+                gym=getattr(request, 'gym', None), user=recipient, role=GymMembership.Role.MEMBER,
+                status=GymMembership.Status.ACTIVE,
+            ).exists() else 'Direct message'
 
         n = _send_notification(
             sender=sender,
@@ -814,6 +998,8 @@ class DirectMessageView(APIView):
             title=title,
             message=message,
             related_membership_id=sender.pk,
+            gym=getattr(request, 'gym', None),
+            branch=getattr(request, 'branch', None),
         )
         return Response(
             {'detail': 'Message sent.', 'id': n.pk},
@@ -828,21 +1014,38 @@ class MessageRecipientsView(APIView):
     def get(self, request):
         purpose = request.query_params.get('purpose')
         if purpose == 'group':
-            if not _can_create_group(request.user):
+            if not _can_create_group(request.user, getattr(request, 'gym', None)):
                 return Response([], status=status.HTTP_200_OK)
-            user_ids = _group_allowed_member_ids(request.user)
-            qs = User.objects.filter(pk__in=user_ids, is_active=True)
+            user_ids = _group_allowed_member_ids(
+                request.user,
+                getattr(request, 'gym', None),
+                getattr(request, 'branch', None),
+            )
+            qs = gym_users(gym=getattr(request, 'gym', None)).filter(pk__in=user_ids, is_active=True)
         else:
-            qs = _allowed_recipients(request.user)
+            qs = _allowed_recipients(
+                request.user,
+                getattr(request, 'gym', None),
+                getattr(request, 'branch', None),
+            )
         qs = qs.order_by('first_name', 'last_name')
-        return Response([
-            {
-                'user_id': u.pk,
-                'full_name': u.get_full_name() or u.email,
-                'role': u.role,
-            }
-            for u in qs
-        ])
+        active_gym = getattr(request, 'gym', None)
+        response = []
+        for user in qs:
+            membership = (
+                GymMembership.objects.filter(
+                    gym=active_gym,
+                    user=user,
+                    status=GymMembership.Status.ACTIVE,
+                ).first()
+                if active_gym is not None else None
+            )
+            response.append({
+                'user_id': user.pk,
+                'full_name': user.get_full_name() or user.email,
+                'role': membership.role if membership else user.role,
+            })
+        return Response(response)
 
 
 # ─── Group chats ─────────────────────────────────────────────────────────────
@@ -857,14 +1060,30 @@ class MessageGroupListCreateView(APIView):
         for g in groups:
             last = g.messages.order_by('-created_at').first()
             unread = g.messages.exclude(sender=request.user).exclude(read_by=request.user).count()
+            # Legacy groups may contain stale M2M rows; expose only users who
+            # still have an active membership in the group's gym.
+            visible_members = gym_users(gym=g.gym).filter(pk__in=g.members.values('pk'))
+            if g.branch_id:
+                visible_members = visible_members.filter(
+                    Q(
+                        gym_memberships__gym=g.gym,
+                        gym_memberships__role=GymMembership.Role.OWNER,
+                        gym_memberships__status=GymMembership.Status.ACTIVE,
+                    )
+                    | Q(
+                        gym_memberships__gym=g.gym,
+                        gym_memberships__status=GymMembership.Status.ACTIVE,
+                        branch_memberships__branch=g.branch,
+                    )
+                ).distinct()
             data.append({
                 'id': g.pk,
                 'name': g.name,
                 'created_by_id': g.created_by_id,
-                'member_ids': list(g.members.values_list('pk', flat=True)),
+                'member_ids': list(visible_members.values_list('pk', flat=True)),
                 'member_names': {
                     str(m.pk): (m.get_full_name() or m.email)
-                    for m in g.members.all()
+                    for m in visible_members
                 },
                 'last_message': last.message if last else None,
                 'last_sender_id': last.sender_id if last else None,
@@ -877,7 +1096,7 @@ class MessageGroupListCreateView(APIView):
         return Response(data)
 
     def post(self, request):
-        if not _can_create_group(request.user):
+        if not _can_create_group(request.user, getattr(request, 'gym', None)):
             return Response(
                 {'detail': 'You are not allowed to create groups.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -902,7 +1121,11 @@ class MessageGroupListCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        allowed = _group_allowed_member_ids(request.user)
+        allowed = _group_allowed_member_ids(
+            request.user,
+            getattr(request, 'gym', None),
+            getattr(request, 'branch', None),
+        )
         if any(i not in allowed for i in member_ids):
             return Response(
                 {'detail': 'One or more members cannot be added to this group.'},
@@ -910,7 +1133,12 @@ class MessageGroupListCreateView(APIView):
             )
 
         with transaction.atomic():
-            group = MessageGroup.objects.create(name=name, created_by=request.user)
+            group = MessageGroup.objects.create(
+                gym=getattr(request, 'gym', None),
+                branch=getattr(request, 'branch', None),
+                name=name,
+                created_by=request.user,
+            )
             group.members.add(request.user)
             group.members.add(*member_ids)
         return Response({'id': group.pk, 'name': group.name, 'detail': 'Group created.'}, status=status.HTTP_201_CREATED)
@@ -950,7 +1178,13 @@ class MessageGroupSendView(APIView):
         message = request.data.get('message', '').strip()
         if not message:
             return Response({'detail': 'Message cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
-        msg = GroupMessage.objects.create(group=group, sender=request.user, message=message[:500])
+        msg = GroupMessage.objects.create(
+            gym=group.gym,
+            branch=group.branch or getattr(request, 'branch', None),
+            group=group,
+            sender=request.user,
+            message=message[:500],
+        )
         msg.read_by.add(request.user)  # the sender has read their own message
         return Response({'id': msg.pk, 'detail': 'Sent.'}, status=status.HTTP_201_CREATED)
 
@@ -1067,9 +1301,15 @@ class MessagePinView(APIView):
         else:
             if target_id == request.user.pk:
                 return Response({'detail': 'Invalid target.'}, status=status.HTTP_400_BAD_REQUEST)
-            if not User.objects.filter(pk=target_id, is_active=True).exists():
+            if not gym_users(gym=getattr(request, 'gym', None)).filter(pk=target_id, is_active=True).exists():
                 return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
-        PinnedConversation.objects.get_or_create(user=request.user, kind=kind, target_id=target_id)
+        PinnedConversation.objects.get_or_create(
+            gym=getattr(request, 'gym', None),
+            branch=getattr(request, 'branch', None),
+            user=request.user,
+            kind=kind,
+            target_id=target_id,
+        )
         return Response({'detail': 'Pinned.'}, status=status.HTTP_201_CREATED)
 
     def delete(self, request):
@@ -1101,7 +1341,7 @@ class ConversationDeleteView(APIView):
             # Delete all direct messages between the current user and the target user
             if target_id == request.user.pk:
                 return Response({'detail': 'Invalid target.'}, status=status.HTTP_400_BAD_REQUEST)
-            if not User.objects.filter(pk=target_id, is_active=True).exists():
+            if not gym_users(gym=getattr(request, 'gym', None)).filter(pk=target_id, is_active=True).exists():
                 return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
 
             # Delete messages sent by current user to target
@@ -1136,7 +1376,7 @@ class ConversationDeleteView(APIView):
 
             # Only the creator, owner, or staff can delete a group
             is_creator = group.created_by_id == request.user.pk
-            is_admin = request.user.role in (User.Role.OWNER, User.Role.STAFF)
+            is_admin = getattr(request, 'gym_role', request.user.role) in (User.Role.OWNER, User.Role.STAFF)
             if not is_creator and not is_admin:
                 return Response(
                     {'detail': 'Only the group creator or admin can delete a group.'},
@@ -1161,7 +1401,7 @@ class WorkoutCompletionLogExportView(APIView):
 
     def get(self, request):
         logs = WorkoutCompletionLog.objects.filter(
-            assignment__in=_visible_assignments(request.user)
+            assignment__in=_visible_assignments(request.user, request)
         ).select_related('assignment', 'assignment__template', 'workout_day')
 
         # Apply same filters as the list view

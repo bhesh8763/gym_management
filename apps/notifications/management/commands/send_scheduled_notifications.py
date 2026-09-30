@@ -37,7 +37,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
-        today = timezone.now().date()
+        today = timezone.localdate()  # matches created_at__date resolution
         sent_count = 0
 
         self.stdout.write(self.style.NOTICE(f'Running scheduled notifications for {today}...'))
@@ -56,6 +56,7 @@ class Command(BaseCommand):
             for membership in memberships:
                 # Check if we already sent this warning today
                 already_sent = Notification.objects.filter(
+                    gym=membership.gym,
                     recipient=membership.member,
                     notification_type=Notification.NotificationType.MEMBERSHIP_EXPIRY,
                     created_at__date=today,
@@ -76,6 +77,8 @@ class Command(BaseCommand):
                         days_left=days,
                         plan_name=membership.plan.name,
                         end_date=membership.end_date,
+                        gym=membership.gym,
+                        branch=membership.branch,
                     )
                     self.stdout.write(
                         self.style.SUCCESS(
@@ -97,6 +100,7 @@ class Command(BaseCommand):
 
             # Check if we already sent a reminder today
             already_sent = Notification.objects.filter(
+                gym=payment.gym,
                 recipient=payment.member,
                 notification_type=Notification.NotificationType.PAYMENT_DUE,
                 created_at__date=today,
@@ -117,6 +121,8 @@ class Command(BaseCommand):
                     amount=payment.amount,
                     payment_for=payment.get_payment_for_display(),
                     days_overdue=days_overdue,
+                    gym=payment.gym,
+                    branch=payment.branch,
                 )
                 self.stdout.write(
                     self.style.SUCCESS(
@@ -130,45 +136,33 @@ class Command(BaseCommand):
         self.stdout.write('\n--- Inactivity Alerts ---')
         inactive_threshold = today - timedelta(days=14)
 
-        # Find members with active memberships who haven't attended in 14+ days
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-
-        active_member_ids = Membership.objects.filter(
+        # Process each active gym membership independently. A user may be a
+        # member of more than one gym and must receive an independent alert for
+        # each tenant's attendance history.
+        active_memberships = Membership.objects.filter(
             status=Membership.Status.ACTIVE,
-        ).values_list('member_id', flat=True).distinct()
+        ).select_related('member', 'gym')
 
-        # Members who HAVE attended recently
-        recent_attendee_ids = Attendance.objects.filter(
-            date__gte=inactive_threshold,
-        ).values_list('user_id', flat=True).distinct()
-
-        # Members who are inactive (active membership but no recent attendance)
-        inactive_member_ids = set(active_member_ids) - set(recent_attendee_ids)
-
-        for member_id in inactive_member_ids:
-            try:
-                member = User.objects.get(pk=member_id, role=User.Role.MEMBER)
-            except User.DoesNotExist:
+        for membership in active_memberships:
+            member = membership.member
+            last_attendance = Attendance.objects.filter(
+                gym=membership.gym,
+                user=member,
+            ).order_by('-date').first()
+            if last_attendance is None or last_attendance.date >= inactive_threshold:
                 continue
 
-            # Check if we already sent an inactivity alert this week
             week_ago = today - timedelta(days=7)
             already_sent = Notification.objects.filter(
+                gym=membership.gym,
                 recipient=member,
                 notification_type=Notification.NotificationType.INACTIVITY,
                 created_at__date__gte=week_ago,
             ).exists()
-
             if already_sent:
                 continue
 
-            # Check how long they've been inactive
-            last_attendance = Attendance.objects.filter(
-                user=member,
-            ).order_by('-date').first()
-
-            days_inactive = (today - last_attendance.date).days if last_attendance else 999
+            days_inactive = (today - last_attendance.date).days
 
             title = 'We miss you at FitCore!'
             message = (
@@ -189,6 +183,8 @@ class Command(BaseCommand):
                     message=message,
                     send_email=True,
                     send_sms=False,
+                    gym=membership.gym,
+                    branch=membership.branch,
                 )
                 self.stdout.write(
                     self.style.SUCCESS(

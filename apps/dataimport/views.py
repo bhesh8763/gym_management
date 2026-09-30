@@ -89,6 +89,8 @@ class ImportView(APIView):
         report = run_import(
             upload,
             actor=request.user,
+            gym=getattr(request, 'gym', None),
+            branch=getattr(request, 'branch', None),
             dry_run=dry_run,
             default_password=password,
         )

@@ -4,6 +4,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
 from rest_framework import serializers
+
+from apps.gyms.tenancy import user_has_branch_access
+
 from .models import StaffProfile, LeaveRequest
 
 User = get_user_model()
@@ -20,12 +23,12 @@ class StaffProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StaffProfile
         fields = [
-            'id', 'user', 'user_name', 'user_email', 'user_display_id', 'is_active',
+            'id', 'gym', 'branch', 'user', 'user_name', 'user_email', 'user_display_id', 'is_active',
             'user_phone', 'role', 'date_of_birth', 'gender', 'marital_status', 'nationality',
             'joined_date', 'salary', 'id_document',
             'notes', 'created_at', 'updated_at', 'profile_picture_url',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'gym', 'branch', 'created_at', 'updated_at']
 
     def get_profile_picture_url(self, obj):
         if not obj.user.profile_picture:
@@ -36,7 +39,32 @@ class StaffProfileSerializer(serializers.ModelSerializer):
         return obj.user.profile_picture.url
 
     def validate_user(self, value):
-        if value.role not in [User.Role.STAFF, User.Role.TRAINER]:
+        if self.instance and value != self.instance.user:
+            raise serializers.ValidationError('The profile user cannot be changed.')
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else None
+        # Include soft-deleted profiles: the DB unique (gym, user) slot is
+        # still taken, so report it as a duplicate rather than 500-ing.
+        duplicate = StaffProfile._base_manager.filter(user=value, gym=gym)
+        if self.instance:
+            duplicate = duplicate.exclude(pk=self.instance.pk)
+        if duplicate.exists():
+            raise serializers.ValidationError('This user already has a staff profile in this gym.')
+        gym = getattr(request, 'gym', None) if request else None
+        if gym is not None:
+            from apps.gyms.models import GymMembership
+            if not GymMembership.objects.filter(
+                gym=gym,
+                user=value,
+                role__in=[GymMembership.Role.STAFF, GymMembership.Role.TRAINER],
+                status=GymMembership.Status.ACTIVE,
+            ).exists():
+                raise serializers.ValidationError(
+                    'User is not an active staff or trainer member of this gym.'
+                )
+            if not user_has_branch_access(value, gym, getattr(request, 'branch', None)):
+                raise serializers.ValidationError('User does not have access to this branch.')
+        elif value.role not in [User.Role.STAFF, User.Role.TRAINER]:
             raise serializers.ValidationError(
                 'Staff profiles can only be created for users with the STAFF or TRAINER role.'
             )
@@ -101,11 +129,39 @@ class StaffCreateSerializer(serializers.Serializer):
       user.set_password(password)
       user.save()
 
-      staff_profile = StaffProfile.objects.create(user=user, **validated_data)
+      request = self.context.get('request')
+      gym = validated_data.pop('gym', getattr(request, 'gym', None))
+      branch = validated_data.pop('branch', getattr(request, 'branch', None))
+      from apps.gyms.models import GymMembership
+      if gym is not None:
+        membership, _ = GymMembership.objects.get_or_create(
+          user=user,
+          gym=gym,
+          defaults={
+              'role': user_role,
+              'status': GymMembership.Status.ACTIVE,
+              'is_default': True,
+          },
+        )
+        from apps.gyms.services import primary_branch
+        branch = getattr(request, 'branch', None) or primary_branch(gym)
+        if branch:
+            membership.branch_memberships.get_or_create(branch=branch)
+
+      staff_profile = StaffProfile.objects.create(
+          user=user,
+          gym=gym,
+          branch=branch if gym is not None else None,
+          **validated_data,
+      )
 
       if user_role == User.Role.TRAINER:
         from apps.trainers.models import TrainerProfile
-        TrainerProfile.objects.create(user=user)
+        TrainerProfile.objects.create(
+            user=user,
+            gym=gym,
+            branch=branch if gym is not None else None,
+        )
 
       return staff_profile
 class LeaveRequestSerializer(serializers.ModelSerializer):
@@ -116,11 +172,11 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveRequest
         fields = [
-            'id', 'requester', 'requester_name', 'leave_type',
+            'id', 'gym', 'branch', 'requester', 'requester_name', 'leave_type',
             'start_date', 'end_date', 'duration_days', 'reason', 'status',
             'reviewed_by', 'reviewed_by_name', 'review_note', 'created_at',
         ]
-        read_only_fields = ['id', 'requester', 'status', 'reviewed_by', 'created_at']
+        read_only_fields = ['id', 'gym', 'branch', 'requester', 'status', 'reviewed_by', 'created_at']
 
     def validate_start_date(self, value):
         # On create, start_date must not be in the past.

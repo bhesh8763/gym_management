@@ -10,6 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ─── SECURITY ────────────────────────────────────────────────────────────────
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
+TENANCY_REQUIRE_MEMBERSHIP = config('TENANCY_REQUIRE_MEMBERSHIP', default=False, cast=bool)
+REQUIRE_OWNER_SUBSCRIPTION = config('REQUIRE_OWNER_SUBSCRIPTION', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
 # Render publishes the service's real public hostname in RENDER_EXTERNAL_HOSTNAME
 # (a random suffix is appended when the requested name is taken, e.g.
@@ -68,6 +70,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     'apps.accounts',
+    'apps.gyms',
     'apps.members',
     'apps.memberships',
     'apps.attendance',
@@ -89,6 +92,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'apps.gyms.middleware.TenantContextMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -115,6 +119,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'gym_management.context_processors.deployment_context',
             ],
             'loaders': [
                 'django.template.loaders.filesystem.Loader',
@@ -164,11 +169,11 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# Serve the static frontend (frontend/) at the site root in production:
-# WHITENOISE_INDEX_FILE maps "/" to frontend/index.html, so one service hosts
-# the whole UI + API at a single origin (same-origin /api, no CORS needed).
-WHITENOISE_ROOT = BASE_DIR / 'frontend'
-WHITENOISE_INDEX_FILE = True
+# Production serves the static frontend at the site root, so one origin hosts
+# both the UI and /api. In local development, keep Django API-only and serve
+# frontend/ separately on port 5500; otherwise :8000 and :5500 show the same UI.
+WHITENOISE_ROOT = None if DEBUG else BASE_DIR / 'frontend'
+WHITENOISE_INDEX_FILE = not DEBUG
 
 # Compressed (non-manifest) static storage — ships .gz/.br on collectstatic
 # without ManifestStaticFilesStorage's hard failure on any stale reference.

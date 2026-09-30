@@ -6,8 +6,10 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from apps.gyms.models import TenantScopedModel
 
-class Notification(models.Model):
+
+class Notification(TenantScopedModel):
     """
     System-generated or manually triggered notification for a user.
     """
@@ -69,7 +71,7 @@ class Notification(models.Model):
             self.save(update_fields=['is_read', 'read_at'])
 
 
-class MessageGroup(models.Model):
+class MessageGroup(TenantScopedModel):
     """
     A shared group chat thread. Members see the same messages.
     Created by trainers, staff, or the owner; members only participate.
@@ -96,7 +98,7 @@ class MessageGroup(models.Model):
         return f'{self.name} ({self.members.count()} members)'
 
 
-class GroupMessage(models.Model):
+class GroupMessage(TenantScopedModel):
     """A single message inside a shared group chat thread."""
 
     group = models.ForeignKey(
@@ -124,7 +126,7 @@ class GroupMessage(models.Model):
         return f'{self.sender.get_full_name()}: {self.message[:40]}'
 
 
-class PinnedConversation(models.Model):
+class PinnedConversation(TenantScopedModel):
     """A chat a user has pinned to the top of their conversation list."""
 
     class Kind(models.TextChoices):
@@ -144,7 +146,7 @@ class PinnedConversation(models.Model):
         db_table = 'pinned_conversations'
         constraints = [
             models.UniqueConstraint(
-                fields=['user', 'kind', 'target_id'],
+                fields=['gym', 'branch', 'user', 'kind', 'target_id'],
                 name='unique_pinned_conversation',
             )
         ]

@@ -12,10 +12,45 @@ Decorator usage (function-based views):
 """
 from functools import wraps
 
+from django.conf import settings
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 
 from apps.accounts.models import User
+
+
+def _role_for_request(request):
+    return getattr(request, 'gym_role', None) or getattr(request.user, 'role', None)
+
+
+def _tenant_allowed(request):
+    # Legacy data is readable while the rollout switch is off. Production sets
+    # TENANCY_REQUIRE_MEMBERSHIP=True so an unscoped token cannot use the API.
+    if getattr(settings, 'TENANCY_REQUIRE_MEMBERSHIP', False):
+        return bool(getattr(request, 'gym_membership', None))
+    return True
+
+
+def _subscription_allowed(request, gym=None, role=None):
+    """Require a paid gym plan for owner-only management APIs when enabled."""
+    if not getattr(settings, 'REQUIRE_OWNER_SUBSCRIPTION', False):
+        return True
+    if (role or _role_for_request(request)) != User.Role.OWNER:
+        return True
+    from apps.accounts.models import PlanSubscription
+    gym = gym or getattr(request, 'gym', None)
+    if gym is None:
+        return False
+    return PlanSubscription.objects.filter(
+        user=request.user,
+        gym=gym,
+        status='paid',
+    ).exists()
+
+
+def subscription_allowed(request, gym=None, role=None):
+    """Public wrapper for custom tenant views that perform their own RBAC."""
+    return _subscription_allowed(request, gym=gym, role=role)
 
 
 # ─── Base Role Permission ──────────────────────────────────────────────────────
@@ -30,7 +65,9 @@ class HasRole(BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and request.user.role in self.allowed_roles
+            and _tenant_allowed(request)
+            and _subscription_allowed(request)
+            and _role_for_request(request) in self.allowed_roles
         )
 
 
@@ -102,11 +139,12 @@ class IsOwnerOrStaffOrMemberReadOnly(BasePermission):
     message = 'You do not have permission to perform this action.'
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+        if not request.user or not request.user.is_authenticated or not _tenant_allowed(request) or not _subscription_allowed(request):
             return False
-        if request.user.role in [User.Role.OWNER, User.Role.STAFF, User.Role.ADMIN]:
+        role = _role_for_request(request)
+        if role in [User.Role.OWNER, User.Role.STAFF, User.Role.ADMIN]:
             return True
-        if request.user.role == User.Role.MEMBER and request.method in ('GET', 'HEAD', 'OPTIONS'):
+        if role == User.Role.MEMBER and request.method in ('GET', 'HEAD', 'OPTIONS'):
             return True
         return False
 
@@ -121,6 +159,11 @@ class IsOwnerOfObject(BasePermission):
     message = 'You do not have permission to access this record.'
 
     def has_object_permission(self, request, view, obj):
+        if not _tenant_allowed(request) or not _subscription_allowed(request):
+            return False
+        if hasattr(obj, 'gym_id') and getattr(request, 'gym', None) is not None:
+            if obj.gym_id != request.gym.id:
+                return False
         return obj.user == request.user
 
 
@@ -132,12 +175,48 @@ class IsOwnerOrStaffOrOwnerOfObject(BasePermission):
     message = 'You do not have permission to access this record.'
 
     def has_object_permission(self, request, view, obj):
-        if request.user.role in [User.Role.OWNER, User.Role.STAFF, User.Role.ADMIN]:
+        if not _tenant_allowed(request) or not _subscription_allowed(request):
+            return False
+        if hasattr(obj, 'gym_id') and getattr(request, 'gym', None) is not None:
+            if obj.gym_id != request.gym.id:
+                return False
+        if _role_for_request(request) in [User.Role.OWNER, User.Role.STAFF, User.Role.ADMIN]:
             return True
         return hasattr(obj, 'user') and obj.user == request.user
 
 
 # ─── Decorator for Function-Based Views ───────────────────────────────────────
+
+class RequiresPermission(BasePermission):
+    """
+    Granular permission check against the request's effective permission set.
+
+    Usage:
+        permission_classes = [IsAuthenticated, RequiresPermission]
+        required_permissions = ['payments.manage']
+
+    The request's effective_permissions are attached by
+    resolve_request_tenant (built-in roles get their implicit sets; custom
+    roles get exactly what the owner granted).
+    """
+    message = 'You do not have permission to perform this action.'
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if not _tenant_allowed(request):
+            return False
+        required = getattr(view, 'required_permissions', None)
+        if not required:
+            # Misconfigured view — deny rather than silently allow.
+            return False
+        perms = getattr(request, 'effective_permissions', None)
+        if perms is None:
+            # Tenancy never ran (e.g. tests hitting the view directly).
+            from apps.gyms.role_permissions import builtin_permissions
+            perms = builtin_permissions(_role_for_request(request))
+        return all(code in perms for code in required)
+
 
 def role_required(*roles):
     """
@@ -154,7 +233,9 @@ def role_required(*roles):
         def _wrapped_view(request, *args, **kwargs):
             if not request.user or not request.user.is_authenticated:
                 raise PermissionDenied('Authentication required.')
-            if request.user.role not in roles:
+            if not _tenant_allowed(request) or not _subscription_allowed(request):
+                raise PermissionDenied('An active gym membership and subscription are required.')
+            if _role_for_request(request) not in roles:
                 raise PermissionDenied(
                     f'This action requires one of the following roles: {", ".join(roles)}.'
                 )

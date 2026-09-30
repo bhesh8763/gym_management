@@ -562,6 +562,35 @@
     }
   });
 
+  function showToast(message, variant) {
+    const toastEl = document.getElementById('appToast');
+    const bodyEl = document.getElementById('appToastBody');
+    if (!toastEl || !bodyEl) {
+      // Fallback: inject a toast container if missing
+      const container = document.querySelector('.toast-container') || document.createElement('div');
+      if (!container.id) {
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '1080';
+        document.body.appendChild(container);
+      }
+      const newToast = document.createElement('div');
+      newToast.className = 'toast align-items-center text-white border-0';
+      newToast.setAttribute('role', 'alert');
+      newToast.innerHTML = '<div class="d-flex"><div class="toast-body" id="appToastBodyFallback"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
+      container.appendChild(newToast);
+      const fbBody = document.getElementById('appToastBodyFallback');
+      fbBody.textContent = message;
+      bootstrap.Toast.getOrCreateInstance(newToast, { delay: 3500 }).show();
+      newToast.addEventListener('hidden.bs.toast', () => newToast.remove(), { once: true });
+      return;
+    }
+    toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+    toastEl.classList.add(variant === 'error' ? 'bg-danger' : variant === 'warning' ? 'bg-warning' : 'bg-success');
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 3500 }).show();
+  }
+
   function pillClassForStatus(status) {
     const map = {
       ACTIVE: 'success', EXPIRED: 'muted', FROZEN: 'info',
@@ -581,7 +610,8 @@
       if (!res || !res.ok) return null;
       if (!__isPageAlive()) return null;
       const data = await res.json();
-      all = all.concat(data.results);
+      const page = data.results || data;
+      all = all.concat(page);
       path = data.next ? data.next.replace(API_BASE, '') : null;
     }
     return all;
@@ -934,6 +964,8 @@
 
   async function loadMemberships() {
     if (!document.getElementById('filterSearch')) return;
+    const errBox = document.getElementById('errorBox');
+    if (errBox) errBox.classList.add('d-none');
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
     if (search) params.set('search', search);
@@ -941,7 +973,14 @@
     if (status) params.set('status', status);
 
     const all = await fetchAll('/memberships/?' + params.toString());
-    if (all === null) { alert('Failed to load memberships.'); return; }
+    if (all === null) {
+      const errBox = document.getElementById('errorBox');
+      if (errBox) {
+        errBox.textContent = 'Failed to load memberships. Check your connection and try again.';
+        errBox.classList.remove('d-none');
+      }
+      return;
+    }
     if (!__isPageAlive()) return;
 
     const visible = status === 'CANCELLED' ? all : all.filter(m => m.status !== 'CANCELLED');

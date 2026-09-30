@@ -4,8 +4,10 @@ Member profile model — extends the User account with fitness-specific info.
 from django.conf import settings
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
 
-class MemberProfile(models.Model):
+
+class MemberProfile(TenantScopedModel):
     """
     One-to-one profile for users with role=MEMBER.
     Stores demographic and fitness baseline info.
@@ -30,10 +32,10 @@ class MemberProfile(models.Model):
         INTERMEDIATE = 'INTERMEDIATE', 'Intermediate'
         ADVANCED = 'ADVANCED', 'Advanced'
 
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='member_profile',
+        related_name='member_profiles',
     )
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=1, choices=Gender.choices, blank=True)
@@ -69,6 +71,14 @@ class MemberProfile(models.Model):
         db_table = 'member_profiles'
         verbose_name = 'Member Profile'
         verbose_name_plural = 'Member Profiles'
+        constraints = [
+            models.UniqueConstraint(fields=['gym', 'user'], name='unique_member_profile_per_gym'),
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(gym__isnull=True),
+                name='unique_legacy_member_profile_user',
+            ),
+        ]
 
     def __str__(self):
         return f'Profile: {self.user.get_full_name()}'

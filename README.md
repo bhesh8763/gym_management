@@ -1,6 +1,21 @@
 # 🏋️ FitCore — Gym Management System
 
-A full-stack role-based web application for managing gym operations: memberships, attendance, payments, trainers, workouts, diet plans, progress tracking, lockers, equipment, notifications, and analytics.
+A full-stack, role-based web application for managing gym operations: memberships, attendance, member payments, trainers, workouts, diet plans, progress tracking, lockers, equipment, messaging, bulk imports, notifications, and analytics.
+
+Public registration is a **gym-owner onboarding flow**: it creates an `OWNER` account, carries the selected annual plan through signup, records a simulated plan checkout, and gates the application until checkout is complete. This owner-plan checkout is a demo flow and does not contact a payment gateway. Member dues use the separate eSewa/Khalti sandbox payment system.
+
+## 🌐 Live Deployment
+
+The production FitCore application is deployed on Render:
+
+| Resource | URL |
+|----------|-----|
+| **Application** | **[https://fitcore-k5zr.onrender.com](https://fitcore-k5zr.onrender.com)** |
+| API base | `https://fitcore-k5zr.onrender.com/api` |
+| Health check | `https://fitcore-k5zr.onrender.com/api/health/` |
+| Django admin | `https://fitcore-k5zr.onrender.com/admin/` |
+
+The frontend and API are served from the same HTTPS origin. The health endpoint returns `200` when the application and PostgreSQL database are healthy.
 
 ![Stack](https://img.shields.io/badge/Django-5.2-092E20?style=flat-square&logo=django)
 ![Stack](https://img.shields.io/badge/DRF-3.15-A93C2D?style=flat-square)
@@ -13,17 +28,20 @@ A full-stack role-based web application for managing gym operations: memberships
 
 ## Table of Contents
 
+- [Live Deployment](#-live-deployment)
 - [Quick Start](#-quick-start)
 - [Project Architecture](#-project-architecture)
 - [Environment Variables](#-environment-variables)
 - [User Guide](#-user-guide)
+  - [Owner Onboarding](#owner-onboarding)
+  - [Multi-gym tenancy](#multi-gym-tenancy)
   - [Roles & Permissions](#roles--permissions)
   - [Frontend Pages](#frontend-pages)
   - [Common Workflows](#common-workflows)
 - [Developer Guide](#-developer-guide)
   - [Tech Stack](#tech-stack)
   - [App Module Reference](#app-module-reference)
-  - [Database Schema](#database-schema)
+  - [Database Schema](#database-schema-key-relationships)
   - [API Reference](#-api-reference)
   - [Authentication](#authentication)
   - [Rate Limiting](#rate-limiting)
@@ -43,7 +61,7 @@ A full-stack role-based web application for managing gym operations: memberships
 
 - Python 3.10+
 - PostgreSQL 14+
-- Node.js (optional, for frontend tooling)
+- A static HTTP server for local frontend development (for example, VS Code Live Server)
 
 ### 1. Clone & set up
 
@@ -69,7 +87,7 @@ Create a `.env` file in the project root:
 ```env
 SECRET_KEY=your-secret-key-here
 DEBUG=True
-ALLOWED_HOSTS=127.0.0.1
+ALLOWED_HOSTS=127.0.0.1,localhost
 
 DB_NAME=gym_db
 DB_USER=postgres
@@ -77,19 +95,27 @@ DB_PASSWORD=your_password
 DB_HOST=localhost
 DB_PORT=5432
 
+# Browser origins used when the frontend runs separately from Django
+CORS_ALLOWED_ORIGINS=http://127.0.0.1:5500
+CSRF_TRUSTED_ORIGINS=http://127.0.0.1:5500
+
 # Email (console backend in dev)
 EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 
-# Frontend URL (for password reset links)
+# Public frontend URL (password-reset and OAuth redirects)
 FRONTEND_URL=http://127.0.0.1:5500
 
-# Social Login (optional)
+# Local rollout compatibility (Render enables both)
+TENANCY_REQUIRE_MEMBERSHIP=False
+REQUIRE_OWNER_SUBSCRIPTION=False
+
+# Social login (optional)
 # GOOGLE_CLIENT_ID=your-google-client-id
 # GOOGLE_CLIENT_SECRET=your-google-client-secret
 # FACEBOOK_APP_ID=your-facebook-app-id
 # FACEBOOK_APP_SECRET=your-facebook-app-secret
 
-# Payments (sandbox defaults work for dev)
+# Member-dues gateways (sandbox; not used by the simulated owner-plan checkout)
 # KHALTI_SECRET_KEY=
 # ESEWA_MERCHANT_CODE=EPAYTEST
 # ESEWA_SECRET_KEY=8gBm/:&EnhH.1/q
@@ -106,14 +132,18 @@ CREATE DATABASE gym_db;
 python manage.py migrate
 ```
 
-### 4. Create the Owner account & site
+### 4. Prepare django-allauth and the optional Django admin
 
 ```bash
-python manage.py ensure_site --domain localhost:8000 --name FitCore
+python manage.py ensure_site --domain localhost:5500 --name FitCore
+
+# Optional: creates an ADMIN account for /admin/, not an application OWNER.
 python manage.py createsuperuser
 ```
 
-### 5. Run the server
+Application owners are created through the public signup flow at `signup.html`; the registration API always assigns the `OWNER` role server-side.
+
+### 5. Run the Django backend
 
 ```bash
 python manage.py runserver
@@ -121,11 +151,22 @@ python manage.py runserver
 
 ### 6. Open the frontend
 
-Serve the `frontend/` folder with any static server (e.g., VS Code Live Server on port 5500) and open:
+For local development, serve `frontend/` on port `5500` (for example, with VS Code Live Server) and open:
 
 ```
-http://127.0.0.1:5500/login.html
+http://127.0.0.1:5500/
 ```
+
+`api.js` uses `http://<current-host>:8000/api` for the separately served local frontend. In production, WhiteNoise serves `frontend/` and Django from the same origin, so the API base is `/api`.
+
+| Local URL | Purpose |
+|-----------|---------|
+| `http://127.0.0.1:5500/` | Static FitCore frontend |
+| `http://127.0.0.1:8000/` | Django backend service-information JSON |
+| `http://127.0.0.1:8000/api/` | Django REST API |
+| `http://127.0.0.1:8000/api/health/` | Backend/database health check |
+
+When `DEBUG=True`, WhiteNoise root serving is disabled and `/` returns backend service metadata, so port `8000` never duplicates the frontend on port `5500`.
 
 ---
 
@@ -133,96 +174,157 @@ http://127.0.0.1:5500/login.html
 
 ```
 gym_management/          # Django project settings & URLs
-├── apps/                # 14 Django apps (one per domain)
-│   ├── accounts/        # Custom user model, JWT auth, RBAC
-│   ├── members/         # Member profiles, fitness goals
-│   ├── memberships/     # Plans, freeze/unfreeze, renewals
-│   ├── attendance/      # Check-in/out, QR tokens
-│   ├── payments/        # Transactions, receipts, eSewa/Khalti
-│   ├── staff/           # Staff profiles, departments, leaves
-│   ├── trainers/        # Trainer profiles, member assignments
-│   ├── workouts/        # Exercise library, templates, assignments
+├── apps/                # 16 local Django apps
+│   ├── accounts/        # User, JWT auth, RBAC, owner-plan subscriptions
+│   ├── gyms/            # Gyms, memberships, branches, invitations, audit
+│   ├── members/         # Member profiles and fitness goals
+│   ├── memberships/     # Plans, subscriptions, offers, promo codes
+│   ├── attendance/      # Check-in/out, QR and biometric enrollment
+│   ├── payments/        # Member dues, eSewa/Khalti, PDF receipts
+│   ├── staff/           # Staff profiles and leave requests
+│   ├── trainers/        # Trainer profiles and member assignments
+│   ├── workouts/        # Exercises, templates, assignments, messaging
 │   ├── diet/            # Diet plans, meals, daily logs
-│   ├── progress/        # Body metrics, personal records
-│   ├── lockers/         # Locker inventory & assignments
-│   ├── equipment/       # Equipment inventory & maintenance
-│   ├── notifications/   # In-app notifications, email alerts
-│   └── reports/         # Analytics & CSV/Excel export
-├── frontend/            # Static HTML/CSS/JS frontend
-│   ├── css/             # theme.css (design tokens + dark mode)
-│   └── js/              # api.js (API client + utilities)
-├── templates/           # Django email templates
-├── scripts/             # Windows Task Scheduler scripts
-├── logs/                # Application logs
+│   ├── progress/        # Body metrics and personal records
+│   ├── lockers/         # Locker inventory and assignments
+│   ├── equipment/       # Equipment inventory and maintenance
+│   ├── notifications/   # Alerts, group messages, pinned conversations
+│   ├── reports/         # Analytics and CSV/Excel exports
+│   └── dataimport/      # Owner-only Excel import preview/commit
+├── frontend/            # 43 static HTML pages plus CSS/JS assets
+│   ├── css/             # theme, landing, and authentication styles
+│   └── js/              # shared API client, validation, mobile navigation
+├── templates/           # Django/allauth and notification email templates
+├── scripts/             # Windows Task Scheduler helpers
+├── static/              # Project static assets
+├── staticfiles/         # collectstatic output
+├── logs/                # Rotating application logs
+├── render.yaml          # Render blueprint (web service + PostgreSQL)
 └── manage.py
 ```
 
 ### Design Principles
 
 - **One app per domain**: Each Django app owns its models, serializers, views, and URLs
-- **Role-Based Access Control (RBAC)**: Every endpoint enforces permissions via custom permission classes
-- **JWT Authentication**: Stateless auth with access/refresh token rotation
-- **Frontend-agnostic API**: The REST API can serve any client (web, mobile, etc.)
-- **Dark mode first**: CSS custom properties with `[data-theme="dark"]` tokens
+- **Role-Based Access Control (RBAC)**: API permissions are enforced server-side; frontend guards are only a usability layer
+- **Gym-scoped tenancy**: every operational record carries a `gym` (and, where applicable, `branch`) boundary; authenticated JWTs select an active `GymMembership` and the request-local tenant manager prevents cross-gym queries
+- **Versioned JWT authentication**: Access/refresh rotation plus a `token_version` claim invalidates existing sessions after password changes
+- **Frontend-agnostic API**: The REST API can serve the bundled web client or another client
+- **Single-origin production**: WhiteNoise serves the static frontend and Django serves `/api` from one host
+- **Dark by default**: CSS custom properties support dark and light themes, with the preference persisted locally
 
 ---
 
 ## 🔧 Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `SECRET_KEY` | ✅ | — | Django secret key |
-| `DEBUG` | ❌ | `False` | Enable debug mode |
-| `ALLOWED_HOSTS` | ❌ | `127.0.0.1` | Comma-separated allowed hosts |
-| `DB_NAME` | ❌ | `gym_db` | PostgreSQL database name |
-| `DB_USER` | ❌ | `postgres` | Database user |
-| `DB_PASSWORD` | ❌ | `postgres` | Database password |
-| `DB_HOST` | ❌ | `localhost` | Database host |
-| `DB_PORT` | ❌ | `5432` | Database port |
-| `EMAIL_BACKEND` | ❌ | Console backend | Email transport |
-| `EMAIL_HOST` | ❌ | `smtp.gmail.com` | SMTP server |
-| `EMAIL_PORT` | ❌ | `587` | SMTP port |
-| `EMAIL_HOST_USER` | ❌ | — | SMTP username |
-| `EMAIL_HOST_PASSWORD` | ❌ | — | SMTP password |
-| `EMAIL_USE_TLS` | ❌ | `True` | Enable TLS for SMTP |
+| Variable | Required | Default / recommended | Description |
+|----------|----------|-----------------------|-------------|
+| `SECRET_KEY` | ✅ | — | Django signing key; generate a unique production value |
+| `DEBUG` | ❌ | `False` | Enables Django debug mode |
+| `ALLOWED_HOSTS` | Production | `fitcore-k5zr.onrender.com` | Comma-separated host allowlist |
+| `RENDER_EXTERNAL_HOSTNAME` | Render only | Provided by Render | Public Render hostname; auto-added to host/CSRF allowlists |
+| `DB_NAME` | Production | `gym_db` | PostgreSQL database name |
+| `DB_USER` | Production | `postgres` | PostgreSQL user |
+| `DB_PASSWORD` | Production | `postgres` | PostgreSQL password |
+| `DB_HOST` | Production | `localhost` | PostgreSQL host |
+| `DB_PORT` | Production | `5432` | PostgreSQL port |
+| `CORS_ALLOWED_ORIGINS` | ❌ | Local origins built in | Extra comma-separated browser origins for a split frontend |
+| `CSRF_TRUSTED_ORIGINS` | Production | `https://fitcore-k5zr.onrender.com` | Comma-separated full origins used by Django CSRF checks |
+| `FRONTEND_URL` | Production | `https://fitcore-k5zr.onrender.com` | Public frontend URL for reset emails and OAuth redirects |
+| `TENANCY_REQUIRE_MEMBERSHIP` | Production | `False` locally / `True` on Render | Reject API requests without an active gym membership |
+| `REQUIRE_OWNER_SUBSCRIPTION` | Production | `False` locally / `True` on Render | Enforce the paid owner-plan gate on management APIs, not only in JavaScript |
+| `DATA_UPLOAD_MAX_MEMORY_SIZE` | ❌ | `5242880` | Maximum non-file request body size (5 MiB) |
+| `FILE_UPLOAD_MAX_MEMORY_SIZE` | ❌ | `5242880` | In-memory file upload threshold (5 MiB) |
+| `EMAIL_BACKEND` | ❌ | Console backend | Django email transport |
+| `EMAIL_HOST` | SMTP | `smtp.gmail.com` | SMTP host |
+| `EMAIL_PORT` | SMTP | `587` | SMTP port |
+| `EMAIL_HOST_USER` | SMTP | — | SMTP username |
+| `EMAIL_HOST_PASSWORD` | SMTP | — | SMTP password |
+| `EMAIL_USE_TLS` | SMTP | `True` | Enables STARTTLS |
 | `DEFAULT_FROM_EMAIL` | ❌ | `Gym Management <noreply@gym.local>` | Sender address |
-| `FRONTEND_URL` | ❌ | `http://127.0.0.1:5500` | Frontend base URL for reset links |
-| `KHALTI_SECRET_KEY` | ❌ | — | Khalti merchant key |
+| `TRUST_X_FORWARDED_PROTO` | Production proxy | `False` | Trust the platform's HTTPS forwarding header |
+| `SESSION_COOKIE_SECURE` | Production | `False` | Send session cookies over HTTPS only |
+| `CSRF_COOKIE_SECURE` | Production | `False` | Send CSRF cookies over HTTPS only |
+| `SECURE_SSL_REDIRECT` | Production | `False` | Redirect HTTP requests to HTTPS; enable after health checks are green |
+| `SECURE_HSTS_SECONDS` | ❌ | `0` | HSTS duration in seconds |
+| `SECURE_HSTS_INCLUDE_SUBDOMAINS` | ❌ | `False` | Add HSTS to subdomains |
+| `SECURE_HSTS_PRELOAD` | ❌ | `False` | Opt into HSTS preload |
+| `SECURE_CONTENT_TYPE_NOSNIFF` | ❌ | `True` | Prevent MIME-type sniffing |
+| `KHALTI_SECRET_KEY` | Member dues | — | Khalti sandbox/merchant secret |
 | `KHALTI_BASE_URL` | ❌ | `https://dev.khalti.com/api/v2` | Khalti API base |
-| `KHALTI_WEBHOOK_URL` | ❌ | — | Khalti webhook URL for payment verification |
-| `ESEWA_MERCHANT_CODE` | ❌ | `EPAYTEST` | eSewa test merchant code |
-| `ESEWA_SECRET_KEY` | ❌ | `8gBm/:&EnhH.1/q` | eSewa test secret |
-| `ESEWA_BASE_URL` | ❌ | `https://rc-epay.esewa.com.np/api/epay/main/v2/form` | eSewa payment URL |
-| `ESEWA_STATUS_CHECK_URL` | ❌ | `https://rc.esewa.com.np/api/epay/transaction/status/` | eSewa status check URL |
-| `GOOGLE_CLIENT_ID` | ❌ | — | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | ❌ | — | Google OAuth client secret |
-| `FACEBOOK_APP_ID` | ❌ | — | Facebook OAuth app ID |
-| `FACEBOOK_APP_SECRET` | ❌ | — | Facebook OAuth app secret |
+| `KHALTI_WEBHOOK_URL` | Production dues | — | Public Khalti webhook URL |
+| `ESEWA_MERCHANT_CODE` | Member dues | `EPAYTEST` | eSewa sandbox/merchant code |
+| `ESEWA_SECRET_KEY` | Member dues | `8gBm/:&EnhH.1/q` | Published eSewa sandbox secret |
+| `ESEWA_BASE_URL` | ❌ | eSewa sandbox form URL | eSewa checkout endpoint |
+| `ESEWA_STATUS_CHECK_URL` | ❌ | eSewa sandbox status URL | Server-side eSewa verification endpoint |
+| `GOOGLE_CLIENT_ID` | Social login | — | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Social login | — | Google OAuth client secret |
+| `FACEBOOK_APP_ID` | Social login | — | Facebook OAuth app ID |
+| `FACEBOOK_APP_SECRET` | Social login | — | Facebook OAuth app secret |
+
+> The owner-plan prices in `payment.html` are fixed demo values in `apps.accounts.views.SubscribeView`. Gateway variables above apply only to member dues under `/api/payments/`.
 
 ---
 
 ## 👤 User Guide
 
+### Owner Onboarding
+
+FitCore's public signup is for gym owners. Members, reception staff, and trainers are created later from authenticated management pages.
+
+| Plan | Annual price | Checkout code |
+|------|-------------:|---------------|
+| Starter | NPR 4,999 | `starter` |
+| Gold | NPR 9,999 | `gold` |
+| Platinum | NPR 19,999 | `platinum` |
+
+The onboarding flow is:
+
+1. `getting-started.html` sends the selected plan to `signup.html?plan=<code>` and stores it temporarily in `localStorage`.
+2. `POST /api/auth/register/` creates an `OWNER`, ignores any caller-supplied role, and immediately returns JWT access and refresh tokens.
+3. `signup.html` stores the session and opens `payment.html` with the selected plan.
+4. `payment.html` lets the owner choose eSewa, Khalti, or card for the demo and submits only `plan` and `method` to `POST /api/auth/subscribe/`.
+5. Django validates the choices, derives the annual price server-side, creates a paid `PlanSubscription`, and returns a `TXN-...` reference.
+6. The owner enters `dashboard.html`. Until a subscription exists, `GET /api/auth/subscription/` returns `{"has_plan": false}` and `api.js` redirects app pages back to checkout.
+
+`payment.html` is intentionally a **simulated checkout**: no card data is collected and no gateway is contacted. Its prices live in `SubscribeView.PLAN_PRICES`; the browser copy is display-only. The stored record has no automatic renewal billing or expiry enforcement. This is separate from the sandbox eSewa/Khalti integration used for actual member dues.
+
+### Multi-gym tenancy
+
+The API now treats a `Gym` as the tenant boundary. Public owner registration provisions a gym, an owner membership, and a primary branch atomically. Existing installations are assigned a legacy gym and branch by migration; operational records are backfilled before the new constraints are enabled.
+
+- `GymMembership` stores the role (`OWNER`, `STAFF`, `TRAINER`, or `MEMBER`) per gym. A user may belong to more than one gym and switch with `POST /api/gyms/switch/`.
+- `Branch` and `BranchMembership` provide physical-location access. Non-owner requests may use `X-Branch-ID`; the branch must be granted to the membership.
+- Tenant-owned operational models use a request-local manager and a `gym`/`branch` boundary. Gym-wide records with a null branch remain visible to each granted branch.
+- Invitations are one-time and hashed at rest. Existing users must confirm their current password when accepting an invitation; accepting never silently resets an account password.
+- Owner impersonation requires a reason, is limited to 15 minutes, records actor/subject/session metadata, and is rejected after the session ends. The owner must also have an active subscription when production enforcement is enabled.
+- `AuditLog` records membership, branch, invitation, subscription, and impersonation lifecycle events.
+
+Useful headers are `X-Gym-ID` (validated active membership) and `X-Branch-ID` (validated branch access). The frontend stores the active IDs and `switchGym()` in `frontend/js/api.js` rotates the JWT for the selected gym.
+
 ### Roles & Permissions
 
 | Role | Can Do | Cannot Do |
 |------|--------|-----------|
-| **Owner** | Everything — full admin access, reports, settings, staff management | — |
-| **Staff** | Manage members, attendance, payments, memberships, freeze requests | View reports, manage trainers, system settings |
-| **Trainer** | View assigned members, create workout/diet plans, log attendance | Manage payments, view other trainers' members |
-| **Member** | View own profile, plans, progress, log meals, check in/out | Access admin features, see other members' data |
+| **Owner** | Full gym administration, reports/imports, staff and trainer management, plan configuration | — |
+| **Staff / Receptionist** | Manage day-to-day members, attendance, payments, memberships, offers, freezes, and trainer profiles | View owner reports/imports; the bundled staff navigation hides workout/diet builders and owner settings |
+| **Trainer** | View assigned members, create workout/diet plans and meals, review attendance, message assigned members | Manage payments, staff, reports, or other trainers' members |
+| **Member** | View/edit own profile, membership, progress, workouts and diet; log meals/workouts; check in/out; pay own dues; message permitted staff/trainers | Access management data or see other members' private records |
+| **Admin** | Developer/Django-admin role; not a normal gym workflow role | Does not inherit application-owner permissions |
 
 ### Frontend Pages
 
-#### Public Pages (no login required)
+#### Public / Authentication Pages
 | Page | URL | Purpose |
 |------|-----|---------|
-| Landing | `index.html` | Marketing page with features and pricing |
-| Login | `login.html` | JWT login with email + password, Google & Facebook social login |
-| Sign Up | `signup.html` | New member registration with social signup options |
-| Forgot Password | `forgot-password.html` | Request password reset email |
-| Reset Password | `reset-password.html` | Set new password via token |
-| Getting Started | `getting-started.html` | Plan selection page after signup |
+| Landing | `index.html` | Marketing page, feature overview, and pricing entry point |
+| Pricing | `getting-started.html` | Compare Starter, Gold, and Platinum annual plans |
+| Login | `login.html` | Email/password JWT login and optional social login |
+| Sign Up | `signup.html` | Create a gym-owner account and preserve the selected plan |
+| Accept invitation | `accept-invitation.html` | Accept a one-time gym invitation and set up the account |
+| Checkout | `payment.html` | Simulated annual owner-plan checkout (normally authenticated) |
+| Forgot Password | `forgot-password.html` | Request a password-reset email |
+| Reset Password | `reset-password.html` | Set a new password with a one-time token |
 
 #### Member Pages
 | Page | URL | Purpose |
@@ -239,46 +341,49 @@ gym_management/          # Django project settings & URLs
 | Member Card | `member-card.html` | QR code for check-in |
 | My Messages | `my-messages.html` | Direct messaging with staff/trainers |
 
-#### Staff/Admin Pages
+#### Owner / Staff / Trainer Pages
 | Page | URL | Purpose |
 |------|-----|---------|
-| Dashboard | `dashboard.html` | KPI overview, charts, quick actions |
-| Members | `members.html` | Member list, search, CRUD |
-| Member Detail | `member-detail.html` | Individual member profile drill-down |
-| Attendance | `attendance.html` | Manual attendance marking, today's stats |
-| Memberships | `memberships.html` | Plan management, assign/renew/freeze |
-| Payments | `payments.html` | Payment collection, history, refunds |
-| Staff | `staff.html` | Staff profiles, departments, leaves |
-| Workouts | `workouts.html` | Exercise library, template builder |
-| Diet | `diet.html` | Diet plan builder, meal management |
-| Progress | `progress.html` | All members' progress entries |
-| Lockers | `lockers.html` | Locker inventory & assignments |
-| Equipment | `equipment.html` | Equipment inventory & maintenance |
-| Notifications | `notifications.html` | Send/manage notifications |
-| Reports | `reports.html` | Analytics dashboards, CSV/Excel export |
-| Staff Detail | `staff-detail.html` | Individual staff profile drill-down |
-| Messages | `messages.html` | Direct messaging with members/trainers |
-
-#### Trainer Pages
-| Page | URL | Purpose |
-|------|-----|---------|
-| Trainer Dashboard | `trainer-dashboard.html` | Assigned members, stat cards, charts |
-| Trainer Members | `trainer-members.html` | List of assigned members with details |
-| Workout Template Detail | `workout-template-detail.html` | View/edit workout template details |
-| Trainer Messages | `trainer-messages.html` | Direct messaging with members |
+| Dashboard | `dashboard.html` | Role-aware KPIs, charts, and quick actions |
+| Members | `members.html` | Member list, search, and account creation |
+| Member Detail | `member-detail.html` | Individual member drill-down |
+| Attendance | `attendance.html` | Manual and QR check-in/out management |
+| Attendance Devices | `attendance-devices.html` | Biometric enrollment and verification stats |
+| Memberships | `memberships.html` | Gym membership plans, assignments, renewals, and freezes |
+| Offers | `offers.html` | Percentage/fixed discounts and promo codes |
+| Payments | `payments.html` | Member-dues collection, history, filters, and receipts |
+| Staff | `staff.html` | Staff profiles and leave management |
+| Staff Detail | `staff-detail.html` | Individual staff profile |
+| Trainers | `trainers.html` | Trainer profiles and availability |
+| Trainer Assignments | `trainer-assignments.html` | Assign members to trainers |
+| Workouts | `workouts.html` | Exercise library and template builder |
+| Workout Detail | `workout-template-detail.html` | Template days, exercises, versions, and review actions |
+| Diet | `diet.html` | Diet-plan builder |
+| Meals | `meals.html` | Meal library and plan assignment |
+| Progress | `progress.html` | Progress entries and personal records |
+| Lockers | `lockers.html` | Locker inventory and assignments |
+| Equipment | `equipment.html` | Equipment inventory and maintenance |
+| Reports | `reports.html` | Owner analytics and CSV/Excel exports |
+| Import | `import.html` | Owner-only `.xlsx` template, dry run, and commit |
+| Messages | `messages.html` | Direct and group messaging |
+| Notifications | `notifications.html` | Notification center and read state |
+| Trainer Dashboard | `trainer-dashboard.html` | Assigned-member overview |
+| Trainer Members | `trainer-members.html` | Trainer-scoped member list |
+| Trainer Messages | `trainer-messages.html` | Trainer conversation view |
 
 ### Common Workflows
 
 #### Adding a New Member
-1. **Sign up** via `signup.html` (creates a MEMBER account)
-2. **Staff assigns a membership plan** via `memberships.html`
-3. **Payment collected** via `payments.html`
-4. **Member assigned to a trainer** by Owner/Staff via staff management
+1. An authenticated Owner or Staff member opens `members.html` and creates the member account/profile.
+2. Staff assigns a gym membership plan in `memberships.html`.
+3. Payment is collected in `payments.html`, or the member pays their own dues through `my-payments.html`.
+4. Owner/Staff optionally assign a trainer in `trainer-assignments.html`.
+5. The member signs in with the credentials issued for that account. Public `signup.html` is reserved for owner onboarding.
 
 #### Member Check-In
-1. Member opens `my-attendance.html` and shows their QR code
-2. Staff scans the QR code or manually marks attendance via `attendance.html`
-3. Attendance record is created with timestamp
+1. A member can use their QR code, a kiosk/shared QR flow, an enrolled biometric ID, or a staff member's manual action.
+2. QR and biometric scan endpoints validate the token/device reference before creating the daily attendance record.
+3. The member can also use the authenticated self-service check-in/check-out endpoints; the record includes check-in, check-out, and duration.
 
 #### Workout Assignment Flow
 1. Trainer creates a **Workout Template** with days and exercises
@@ -297,6 +402,12 @@ gym_management/          # Django project settings & URLs
 2. Plan is assigned to a specific member
 3. Member sees the plan in `my-diet.html` and logs daily meals
 
+#### Member Dues and Online Payment
+1. A member opens `my-payments.html`; the frontend requests `GET /api/payments/my-dues/`.
+2. The member chooses a due and a method. The server recomputes the amount from the referenced membership or locker and never trusts a client-supplied amount.
+3. Khalti/eSewa payments are verified server-side against the gateway and stored with a unique receipt number.
+4. Paid records can be downloaded as PDF receipts. Payment lists support server-side filtering and pagination.
+
 #### Social Login (Google/Facebook)
 1. User clicks "Google" or "Facebook" button on `login.html` or `signup.html`
 2. Browser redirects to provider's OAuth consent screen
@@ -306,6 +417,8 @@ gym_management/          # Django project settings & URLs
 6. User is redirected to `FRONTEND_URL` with JWT tokens
 7. Frontend stores tokens and routes to the appropriate dashboard
 
+The password-based `/api/auth/register/` endpoint is the owner-onboarding path. OAuth provisioning is separate and should only be enabled with the intended role policy for social accounts.
+
 ---
 
 ## 🛠️ Developer Guide
@@ -314,75 +427,104 @@ gym_management/          # Django project settings & URLs
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Django 5.2, Django REST Framework 3.15 |
-| Database | PostgreSQL 14+ |
-| Auth | JWT (SimpleJWT) with token blacklist, Social login (django-allauth, dj-rest-auth) |
-| Frontend | Vanilla HTML/CSS/JS (no framework) |
-| Payments | eSewa (sandbox), Khalti (sandbox) |
-| Exports | CSV (stdlib), Excel (openpyxl) |
-| QR Codes | `qrcode` library |
-| Images | Pillow |
+| Backend | Django 5.2.16, Django REST Framework 3.15.2 |
+| Database | PostgreSQL 14+ (`psycopg2`) |
+| Auth | SimpleJWT access/refresh rotation, token blacklist/versioning, django-allauth + dj-rest-auth |
+| Frontend | Vanilla HTML/CSS/JavaScript; Bootstrap 5 and Bootstrap Icons via CDN |
+| Production serving | Gunicorn + WhiteNoise; same-origin frontend/API |
+| Payments | Simulated owner-plan checkout; eSewa/Khalti sandbox for member dues |
+| Imports/exports | `openpyxl` workbooks, CSV, ReportLab PDF receipts |
+| QR / images | `qrcode`, Pillow |
+| Testing | Django test runner, pytest/pytest-django compatible |
 
 ### App Module Reference
 
-#### `accounts` — Authentication & User Model
-- **Model**: Custom `User` with roles (OWNER, STAFF, TRAINER, MEMBER)
-- **Key features**: JWT login/logout, password reset via email, profile management, Google & Facebook social login
-- **Permission classes**: `IsOwner`, `IsStaff`, `IsTrainer`, `IsMember`, `IsOwnerOrStaff`, `IsOwnerOrStaffOrTrainer`
-- **Social auth**: Custom OAuth2 adapters for Google & Facebook with localhost callback support
+#### `accounts` — Authentication, Users & Owner Plans
+- **Models**: `User`, `RoleSequence`, `PlanSubscription`, `PasswordResetToken`
+- **Key features**: owner-only public registration, JWT rotation/versioning, password reset, profile management, plan checkout/status, Google/Facebook OAuth
+- **Roles**: `OWNER`, `STAFF`, `TRAINER`, `MEMBER`, and developer-only `ADMIN`
+- **Permissions**: single-role, owner/staff, staff-role, member, object-owner, and read-only member variants
+
+#### `gyms` — Multi-gym Tenancy & Security
+- **Models**: `Gym`, `GymMembership`, `Branch`, `BranchMembership`, `Invitation`, `ImpersonationSession`, `AuditLog`
+- **Key features**: tenant provisioning, per-gym roles, branch access, gym switching, hashed invitations, audited time-bound impersonation, owner subscription enforcement
 
 #### `members` — Member Profiles
-- **Model**: `MemberProfile` (OneToOne with User)
-- **Key features**: Fitness goals, BMI calculation, emergency contacts
+- **Model**: `MemberProfile` (one profile per user per gym)
+- **Key features**: profile management, deactivation/reactivation, fitness goals, BMI, emergency contacts, template UI routes
 
-#### `memberships` — Plans & Subscriptions
-- **Models**: `MembershipPlan`, `Membership`, `FreezeRequest`
-- **Key features**: Auto-computed end dates, freeze/unfreeze with day extension, renewal chain, approval workflow
+#### `memberships` — Gym Memberships & Discounts
+- **Models**: `MembershipPlan`, `Membership`, `FreezeRequest`, `Offer`, `PromoCode`, `PromoCodeUsage`
+- **Key features**: assignment/renewal/cancellation, freeze workflow, auto-unfreeze support, percentage/fixed offers, promo redemption audit trail
 
 #### `attendance` — Check-In/Out
-- **Models**: `Attendance`, `QRAttendanceToken`
-- **Key features**: QR code scanning, duration calculation, daily uniqueness
+- **Models**: `Attendance`, `QRAttendanceToken`, `BiometricRecord`
+- **Key features**: one record per user/date, self-service check-in/out, QR/kiosk flows, biometric reference enrollment and verification, duration calculation
 
-#### `payments` — Financial Transactions
+#### `payments` — Member Dues & Gateways
 - **Model**: `Payment`
-- **Key features**: Receipt numbers, discounts, eSewa/Khalti integration, status tracking
+- **Key features**: server-calculated member dues, unique receipts, discounts, PDF receipts, eSewa/Khalti initiation and verification, Khalti webhook reconciliation
 
-#### `workouts` — Exercise & Workout Management
-- **Models**: `Exercise`, `WorkoutTemplate`, `WorkoutDay`, `WorkoutDayExercise`, `WorkoutAssignment`, `WorkoutCompletionLog`, `WorkoutTemplateVersion`
-- **Key features**: Exercise library, template builder with clone, version history, assignment tracking
+#### `staff` — Staff Operations
+- **Models**: `StaffProfile`, `LeaveRequest`
+- **Key features**: staff CRUD, role/compensation fields, document upload, password reset, leave review/cancellation, expired-leave cleanup
+
+#### `trainers` — Trainer Operations
+- **Models**: `TrainerProfile`, `TrainerMemberAssignment`
+- **Key features**: specialties/certifications, availability, member assignment, trainer-scoped member lists
+
+#### `workouts` — Workouts & Messaging
+- **Models**: `Exercise`, `WorkoutTemplate`, `WorkoutDay`, `WorkoutDayExercise`, `WorkoutAssignment`, `WorkoutTemplateVersion`, `WorkoutCompletionLog`
+- **Key features**: template builder, review/archive/clone/restore, assignment lifecycle, completion logs/export, direct and group messaging
 
 #### `diet` — Nutrition Plans
 - **Models**: `DietPlan`, `Meal`, `MealLog`
-- **Key features**: Macro targets, meal scheduling, daily intake logging, calorie summary
+- **Key features**: macro targets, meal assignment, daily intake logging, daily/weekly summaries
 
 #### `progress` — Body Metrics & PRs
 - **Models**: `ProgressEntry`, `PersonalRecord`
-- **Key features**: BMI calculation, body measurements, exercise PRs, trend tracking
+- **Key features**: BMI, body measurements, exercise records, trend/stat summaries
 
-#### `notifications` — In-App Alerts
-- **Model**: `Notification`
-- **Key features**: Auto-generated alerts, read/unread tracking, email delivery
-- **Management command**: `send_reminders` — generates daily notifications
+#### `lockers` — Locker Inventory
+- **Models**: `Locker`, `LockerAssignment`
+- **Key features**: inventory/fees, bulk creation, assignment lifecycle, member read-only access
+
+#### `equipment` — Equipment & Maintenance
+- **Models**: `Equipment`, `MaintenanceRecord`
+- **Key features**: inventory/photos, condition tracking, scheduled/completed maintenance, cost and due-date reporting
+
+#### `notifications` — Alerts & Group Messaging
+- **Models**: `Notification`, `MessageGroup`, `GroupMessage`, `PinnedConversation`
+- **Key features**: typed alerts, read state, email helpers, direct/group chat, pins, scheduled reminder commands
 
 #### `reports` — Analytics & Export
-- **No models** (queries across all apps)
-- **Key features**: Revenue/attendance/membership/equipment dashboards, CSV and Excel export with date filtering
+- **No models** (queries across the operational apps)
+- **Key features**: owner-only revenue, membership, attendance, equipment, locker, staff, and retention reports; CSV/Excel exports
+
+#### `dataimport` — Bulk Excel Import
+- **No models**
+- **Key features**: owner-only schema discovery, downloadable `.xlsx` template, dry-run validation, bounded multipart upload, transactional commit
 
 ---
 
 ### Database Schema (Key Relationships)
 
-```
-User ──1:1──> MemberProfile
+```text
+User ──1:1──> MemberProfile / StaffProfile / TrainerProfile
+User ──1:N──> PlanSubscription / PasswordResetToken
 User ──1:N──> Membership ──N:1──> MembershipPlan
-User ──1:N──> Attendance
-User ──1:N──> Payment
+MembershipPlan <──M:N──> Offer (specific plans); Offer ──1:N──> PromoCode
+Membership ──1:N──> FreezeRequest / Payment
+User ──1:N──> Attendance / ProgressEntry / Notification
+User ──1:1──> QRAttendanceToken / BiometricRecord
+User ──N:1──> TrainerMemberAssignment ──N:1──> User (member)
 User ──1:N──> WorkoutAssignment ──N:1──> WorkoutTemplate
-User ──1:N──> DietPlan ──1:N──> Meal
-User ──1:N──> ProgressEntry
+WorkoutTemplate ──1:N──> WorkoutDay ──1:N──> WorkoutDayExercise ──N:1──> Exercise
+WorkoutAssignment ──1:N──> WorkoutCompletionLog
+DietPlan ──1:N──> Meal; User ──1:N──> MealLog
 User ──1:N──> PersonalRecord ──N:1──> Exercise
-User ──1:N──> Notification
-User ──1:N──> FreezeRequest ──N:1──> Membership
+User ──1:N──> LockerAssignment ──N:1──> Locker
+User ──1:N──> MessageGroup; MessageGroup ──1:N──> GroupMessage
 ```
 
 ---
@@ -391,8 +533,9 @@ User ──1:N──> FreezeRequest ──N:1──> Membership
 
 ### Base URL
 
-```
-http://127.0.0.1:8000/api
+```text
+Local backend:  http://127.0.0.1:8000/api
+Production API: https://fitcore-k5zr.onrender.com/api
 ```
 
 ### Authentication
@@ -428,7 +571,36 @@ POST /api/auth/token/refresh/
 { "refresh": "<refresh_token>" }
 ```
 
+**Owner registration and demo checkout:**
+
+```http
+POST /api/auth/register/
+Content-Type: application/json
+
+{
+  "first_name": "Gym",
+  "last_name": "Owner",
+  "email": "owner@example.com",
+  "password": "StrongPassword123!",
+  "password2": "StrongPassword123!"
+}
+```
+
+The response contains `message`, `user`, and `tokens: { access, refresh }`. The user is always `OWNER`; a submitted `role` is not part of the serializer. Then use the returned access token:
+
+```http
+POST /api/auth/subscribe/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{ "plan": "gold", "method": "khalti" }
+```
+
+`plan` accepts `starter|gold|platinum`; `method` accepts `esewa|khalti|card`. The response includes the server-derived `price`, `status`, and unique `reference`. This endpoint records a demo subscription only and does not charge a gateway.
+
 ### Endpoint Summary
+
+In the tables below, **staff-side** follows the application's `IsAnyStaffRole` policy and includes Owner, Staff, Trainer, and Admin. Rows that say **Owner/Staff** are narrower. Authenticated tenant requests may include `X-Gym-ID` and `X-Branch-ID`; both are checked against active `GymMembership`/`BranchMembership` records rather than trusted as raw IDs.
 
 #### Health (`/api/health/`)
 | Method | Endpoint | Auth | Description |
@@ -438,13 +610,15 @@ POST /api/auth/token/refresh/
 #### Auth (`/api/auth/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/register/` | ❌ | Register new member |
+| POST | `/register/` | ❌ | Register a gym `OWNER`; returns nested access/refresh tokens |
+| POST | `/subscribe/` | ✅ | Record a simulated owner-plan purchase; server enforces price |
+| GET | `/subscription/` | ✅ | Return the caller's latest plan subscription or `has_plan: false` |
 | POST | `/login/` | ❌ | Get JWT tokens |
 | POST | `/token/refresh/` | ❌ | Refresh access token |
 | POST | `/logout/` | ✅ | Blacklist refresh token |
 | GET | `/me/` | ✅ | Get own profile |
 | PATCH | `/me/` | ✅ | Update own profile |
-| POST | `/change-password/` | ✅ | Change password |
+| PUT/PATCH | `/change-password/` | ✅ | Change password; invalidates existing sessions |
 | POST | `/forgot-password/` | ❌ | Request reset email |
 | POST | `/reset-password/` | ❌ | Reset password with token |
 | GET | `/google/login/` | ❌ | Google OAuth login (redirect) |
@@ -455,23 +629,38 @@ POST /api/auth/token/refresh/
 | POST | `/3rdparty/login/` | ❌ | Social account login (allauth) |
 | POST | `/3rdparty/login/callback/` | ❌ | Social account callback (allauth) |
 
+#### Gym tenancy (`/api/gyms/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/` | ✅ | List gyms available to the current user |
+| GET | `/current/` | ✅ | Return the active gym from the JWT/header context |
+| POST | `/switch/` | ✅ | Issue a JWT pair for another active gym membership |
+| GET/POST | `/<gym_id>/memberships/` | Owner/Staff | List or create gym memberships |
+| PATCH | `/<gym_id>/memberships/<membership_id>/` | Owner/Staff | Change role, status, or branch access |
+| GET/POST | `/<gym_id>/branches/` | Owner/Staff | List or create branches (create is Owner-only) |
+| POST | `/<gym_id>/invitations/` | Owner/Staff | Create a one-time invitation; response contains its accept URL |
+| POST | `/invitations/accept/` | ❌ | Accept an invitation (existing users confirm their password) |
+| POST | `/<gym_id>/impersonate/` | Owner | Start a 15-minute audited impersonation session |
+| POST | `/impersonations/<session_id>/end/` | Participant | End an impersonation session |
+| GET | `/<gym_id>/audit/` | Owner | List recent tenant audit events |
+
 #### Members (`/api/members/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/` | Staff+ | List all members |
-| POST | `/` | Staff+ | Create member profile |
-| GET | `/<id>/` | Staff+ | Member detail |
-| PATCH | `/<id>/` | Staff+ | Update member |
-| DELETE | `/<id>/` | Staff+ | Deactivate member |
-| GET | `/ui/` | Staff+ | Member list (template) |
-| GET | `/ui/<id>/` | Staff+ | Member detail (template) |
+| GET | `/` | Owner/Staff/Trainer | List member accounts/profiles |
+| POST | `/` | Owner/Staff | Create a member account/profile |
+| GET/PATCH | `/me/` | Member | Retrieve/update the current member profile |
+| GET/PUT/PATCH/DELETE | `/<id>/` | Role-scoped | Retrieve, update, or deactivate a member |
+| GET | `/<id>/profile-detail/` | Role-scoped | Member profile details |
+| POST | `/<id>/reactivate/` | Owner/Staff | Reactivate a member |
+| GET | `/ui/`, `/ui/add/`, `/ui/<id>/`, `/ui/<id>/edit/` | Owner/Staff | Django template member screens |
 
 #### Memberships (`/api/memberships/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/plans/` | ✅ | List membership plans |
 | POST | `/plans/` | Owner/Staff | Create plan |
-| GET/PUT/PATCH/DELETE | `/plans/<id>/` | Owner/Staff | Plan detail (DELETE = deactivate) |
+| GET/PUT/PATCH/DELETE | `/plans/<id>/` | Authenticated / Owner-Staff write | Plan detail (DELETE = deactivate) |
 | GET | `/` | ✅ | List memberships |
 | POST | `/` | ✅ | Assign membership |
 | GET | `/<id>/` | ✅ | Membership detail |
@@ -480,7 +669,7 @@ POST /api/auth/token/refresh/
 | POST | `/<id>/freeze/` | Owner/Staff | Freeze membership |
 | POST | `/<id>/unfreeze/` | Owner/Staff | Unfreeze (extends end date) |
 | POST | `/<id>/renew/` | ✅ | Renew membership |
-| GET | `/expiring/?days=7` | Owner/Staff | Expiring soon |
+| GET | `/expiring/?days=7` | Owner/Staff/Trainer | Expiring soon |
 | GET/POST | `/freeze-requests/` | ✅ | List/create freeze requests |
 | POST | `/freeze-requests/<id>/approve/` | Owner/Staff | Approve freeze request |
 | POST | `/freeze-requests/<id>/reject/` | Owner/Staff | Reject freeze request |
@@ -488,46 +677,63 @@ POST /api/auth/token/refresh/
 #### Attendance (`/api/attendance/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/records/` | ✅ | List attendance records |
-| POST | `/records/` | Staff+ | Mark attendance |
-| GET/PUT/PATCH/DELETE | `/records/<id>/` | Staff+ | Record detail |
-| POST | `/check-in/` | ✅ | Quick check-in |
-| POST | `/check-out/` | ✅ | Quick check-out |
-| GET | `/today/` | ✅ | Today's attendance |
-| GET | `/stats/` | Owner/Staff | Attendance statistics |
-| GET/POST | `/qr-tokens/` | ✅ | QR token management |
-| POST | `/qr-scan/` | Staff+ | Scan QR code for attendance |
+| GET/POST | `/records/` | Authenticated / staff-side write | Role-scoped attendance list or manual record |
+| GET/PATCH/DELETE | `/records/<id>/` | Role-scoped | Record detail; members may only update their own check-out |
+| POST | `/records/check-in/` | Member | Self check-in for today |
+| POST | `/records/check-out/` | Member | Self check-out for today |
+| GET | `/records/current-occupancy/` | Authenticated | Members currently checked in |
+| GET | `/checkin-qr/` | Staff-side | Shared entrance/kiosk QR |
+| GET | `/qr/my/`, `/qr/<member_id>/` | Authenticated / staff for another member | Attendance QR images/data |
+| POST | `/qr/scan/` | Public kiosk token validation | Scan an attendance token and check in/out |
+| GET/POST | `/biometric/` | Staff-side | List or enroll biometric references |
+| GET/PATCH/DELETE | `/biometric/<id>/` | Staff-side | Manage an enrollment |
+| POST | `/biometric/scan/` | Public device token validation | Verify a device/biometric reference |
+| GET | `/biometric/stats/` | Staff-side | Biometric verification statistics |
+| GET | `/member-profile/<id>/` | Public | Limited QR profile returned to a scanner |
 
 #### Payments (`/api/payments/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/` | Staff+ | List payments |
-| POST | `/` | Staff+ | Record payment |
-| GET | `/<id>/` | Staff+ | Payment detail |
-| POST | `/<id>/refund/` | Owner/Staff | Refund payment |
-| GET | `/stats/` | Owner/Staff | Payment statistics |
+| GET/POST | `/` | Authenticated / staff-side write | Paginated, role-scoped history or staff-recorded payment |
+| GET/PATCH/DELETE | `/<id>/` | Authenticated / staff-side write | Payment detail or staff-managed update |
+| GET | `/my-dues/` | Member | Server-calculated membership/locker balances |
+| POST | `/pay/` | Member | Start payment for a selected due; amount is server-derived |
+| POST | `/verify-khalti/`, `/verify-esewa/` | Member | Verify gateway return against the stored transaction and amount |
+| POST | `/retry-khalti/`, `/retry-esewa/` | Member | Retry a pending gateway payment |
+| GET | `/<id>/receipt/` | Owner/Staff/Trainer or owning member | Download a PDF receipt for a paid payment |
+| GET | `/summary/` | Owner/Staff | Totals by status and payment method |
+| POST | `/khalti-webhook/` | Public gateway callback | Look up the transaction with Khalti; the webhook body is not trusted as proof |
 
-#### Workouts (`/api/workouts/`)
+#### Workouts & Messaging (`/api/workouts/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET/POST | `/exercises/` | ✅ | Exercise library |
-| GET/PUT/PATCH/DELETE | `/exercises/<id>/` | Trainer+ | Exercise detail |
-| GET/POST | `/templates/` | Trainer+ | Workout templates |
-| GET/PUT/PATCH/DELETE | `/templates/<id>/` | Trainer+ | Template detail |
-| POST | `/templates/<id>/submit/` | Trainer | Submit for review |
-| POST | `/templates/<id>/approve/` | Owner/Staff | Approve template |
-| GET/POST | `/assignments/` | ✅ | Workout assignments |
-| GET/POST | `/completions/` | ✅ | Completion logs |
+| GET/POST | `/exercises/` | Authenticated / Owner-Staff-Trainer write | Exercise library |
+| GET/PATCH/DELETE | `/exercises/<id>/` | Authenticated / scoped write | Exercise detail |
+| GET/POST | `/templates/` | Authenticated / Owner-Staff-Trainer write | Workout templates |
+| GET/PATCH/DELETE | `/templates/<id>/` | Authenticated / scoped write | Template detail |
+| POST | `/templates/<id>/submit-review/`, `/approve/`, `/archive/`, `/duplicate/` | Role-scoped | Template review/lifecycle actions |
+| GET | `/templates/<id>/versions/` | Owner/Staff/Trainer | Version history |
+| POST | `/templates/<id>/versions/<version_id>/restore/` | Owner/Staff/Trainer | Restore a template version |
+| GET/POST/PATCH/DELETE | `/days/`, `/days/<id>/`, `/day-exercises/` | Owner/Staff/Trainer | Template builder resources |
+| GET/POST/PATCH/DELETE | `/assignments/`, `/assignments/<id>/` | Authenticated / Owner-Staff-Trainer write | Workout assignments |
+| POST | `/assignments/<id>/pause/`, `/resume/`, `/cancel/` | Owning member | Member assignment lifecycle |
+| GET/POST | `/completion-logs/` | Authenticated / assignment-scoped | Workout completion history |
+| GET | `/export-csv/` | Authenticated / assignment-scoped | Completion-log CSV export |
+| GET/POST | `/messages/direct/`, `/message-groups/` | Authenticated | Direct/group message lists and creation |
+| POST | `/message-trainer/` | Member | Send a message to the assigned trainer |
+| GET | `/trainer-messages/` | Authenticated / role-scoped | Trainer conversation inbox |
+| POST | `/trainer-reply/` | Owner/Staff/Trainer | Reply to a member conversation |
 
 #### Diet (`/api/diet/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET/POST | `/diet-plans/` | ✅ | Diet plans (scoped by role) |
-| GET/PUT/PATCH/DELETE | `/diet-plans/<id>/` | ✅ | Plan detail |
-| GET | `/diet-plans/stats/` | ✅ | Plan statistics |
-| GET/POST | `/meals/` | Trainer+ | Meals (filter by `?diet_plan=<id>`) |
-| GET/POST | `/meal-logs/` | ✅ | Daily meal logs |
-| GET | `/meal-logs/daily-summary/` | ✅ | Daily calorie/macro summary |
+| GET/POST | `/diet-plans/` | Authenticated / Owner-Staff-Trainer write | Role-scoped diet plans |
+| GET/PATCH/DELETE | `/diet-plans/<id>/` | Role-scoped | Plan detail and lifecycle |
+| GET | `/diet-plans/stats/` | Authenticated | Diet-plan statistics |
+| GET/POST | `/meals/` | Owner/Staff/Trainer | Meals; filter with `?diet_plan=<id>` |
+| GET/POST/PATCH/DELETE | `/meal-logs/` | Authenticated / own-record write | Daily meal logs |
+| GET | `/meal-logs/daily-summary/` | Authenticated | Calorie and macro summary |
+| GET | `/meal-logs/weekly-summary/` | Authenticated | Seven-day meal summary |
 
 #### Progress (`/api/progress/`)
 | Method | Endpoint | Auth | Description |
@@ -569,11 +775,12 @@ POST /api/auth/token/refresh/
 #### Notifications (`/api/notifications/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/` | ✅ | List notifications |
-| GET/PATCH/DELETE | `/<id>/` | ✅ | Notification detail |
-| PATCH | `/<id>/read/` | ✅ | Mark as read |
-| POST | `/read-all/` | ✅ | Mark all as read |
-| GET | `/unread-count/` | ✅ | Unread count |
+| GET | `/` | Authenticated | Current user's notifications |
+| POST | `/` | Owner/Staff | Send a notification to one or more recipients |
+| GET | `/unread-count/` | Authenticated | Current unread count |
+| POST | `/mark-all-read/` | Authenticated | Mark all visible notifications as read |
+| PATCH | `/<id>/read/` | Authenticated / own notification | Mark one notification as read |
+| DELETE | `/<id>/` | Owner/Staff or owning recipient | Delete a notification |
 
 #### Offers & Promo Codes (`/api/memberships/offers/`, `/api/memberships/promo-codes/`)
 | Method | Endpoint | Auth | Description |
@@ -581,7 +788,7 @@ POST /api/auth/token/refresh/
 | GET | `/offers/` | Owner/Staff | List all offers |
 | POST | `/offers/` | Owner/Staff | Create offer |
 | GET/PUT/PATCH/DELETE | `/offers/<id>/` | Owner/Staff | Offer detail |
-| POST | `/offers/validate/` | Member | Validate promo code and get discounted price |
+| POST | `/offers/validate/` | Authenticated | Validate a promo code and calculate the discounted price |
 | GET | `/promo-codes/` | Owner/Staff | List all promo codes |
 | POST | `/promo-codes/` | Owner/Staff | Create promo code |
 | GET/PUT/PATCH/DELETE | `/promo-codes/<id>/` | Owner/Staff | Promo code detail |
@@ -590,9 +797,46 @@ POST /api/auth/token/refresh/
 #### Trainers (`/api/trainers/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/profiles/` | Owner/Staff | List trainer profiles |
-| GET/POST | `/assignments/` | Owner/Staff | Member assignments |
-| GET | `/my-members/` | Trainer | My assigned members |
+| GET/POST | `/profiles/` | Owner/Staff read; Owner write | Trainer profiles and availability |
+| GET/PATCH/DELETE | `/profiles/<id>/` | Owner/Staff read; Owner write | Trainer profile detail |
+| GET/POST | `/assignments/` | Owner/Staff | Trainer/member assignment management |
+| GET/PATCH/DELETE | `/assignments/<id>/` | Role-scoped | Assignment detail/lifecycle |
+| GET | `/my-members/` | Trainer | Members assigned to the current trainer |
+
+#### Staff (`/api/staff/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET/POST | `/profiles/` | Owner/Staff | Staff profile list/creation |
+| GET/PATCH/DELETE | `/profiles/<id>/` | Owner/Staff | Staff profile detail/lifecycle |
+| POST | `/profiles/<id>/activate/`, `/deactivate/`, `/reset-password/` | Owner/Staff | Account lifecycle and credential reset |
+| GET/POST | `/leave-requests/` | Staff-side | Leave request list/submission |
+| GET/PATCH/DELETE | `/leave-requests/<id>/` | Role-scoped | Leave request detail/lifecycle |
+| POST | `/leave-requests/<id>/review/` | Owner/Staff | Approve or reject with a status payload |
+| POST | `/leave-requests/<id>/cancel/` | Owning requester | Cancel a pending request |
+
+#### Lockers (`/api/lockers/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET/POST | `/lockers/` | Owner/Staff | Locker inventory |
+| POST | `/lockers/bulk-create/` | Owner/Staff | Generate up to 200 numbered lockers from a prefix/range |
+| GET/PATCH/DELETE | `/lockers/<id>/` | Owner/Staff | Locker detail/status |
+| GET/POST | `/assignments/` | Owner/Staff write; member read | Locker assignments |
+| GET/PATCH/DELETE | `/assignments/<id>/` | Owner/Staff write; member read | Assignment lifecycle |
+
+#### Equipment (`/api/equipment/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET/POST | `/equipment/` | Owner/Staff | Equipment inventory |
+| GET/PATCH/DELETE | `/equipment/<id>/` | Owner/Staff | Equipment detail/lifecycle |
+| GET/POST | `/maintenance/` | Owner/Staff | Maintenance records |
+| GET/PATCH/DELETE | `/maintenance/<id>/` | Owner/Staff | Maintenance detail/lifecycle |
+
+#### Data Import (`/api/import/`)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/` | Owner | Supported workbook sheets, columns, and limits |
+| GET | `/template/` | Owner | Download `fitcore_import_template.xlsx` |
+| POST | `/` | Owner | Multipart `.xlsx` dry run (`dry_run=true`) or commit (`false`) |
 
 ---
 
@@ -600,10 +844,11 @@ POST /api/auth/token/refresh/
 
 **JWT Flow:**
 1. Login → receive `access` (60 min) + `refresh` (7 days) tokens
-2. Use `access` token in `Authorization: Bearer <token>` header
-3. When access expires, POST refresh token to `/api/auth/token/refresh/`
-4. Refresh tokens rotate on each use (old one is blacklisted)
-5. Logout blacklists the refresh token
+2. Use the access token in `Authorization: Bearer <token>`
+3. When access expires, POST the refresh token to `/api/auth/token/refresh/`
+4. Refresh tokens rotate on use and the previous token is blacklisted
+5. Logout blacklists the supplied refresh token
+6. Password changes/resets bump `token_version` and blacklist outstanding refresh tokens, so old access/refresh sessions stop authenticating immediately
 
 **Rate Limits on Auth:**
 - Login: 10 requests/hour per IP
@@ -619,7 +864,11 @@ POST /api/auth/token/refresh/
 
 **Setup:**
 1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/) or [Facebook Developers](https://developers.facebook.com/)
-2. Set redirect URI to `http://127.0.0.1:8000/api/auth/<provider>/callback/`
+2. Register the applicable redirect URIs:
+   - Local: `http://localhost:8000/api/auth/<provider>/callback/`
+   - Production: `https://fitcore-k5zr.onrender.com/api/auth/<provider>/callback/`
+
+   The custom adapters use `localhost` for local HTTP OAuth; Render uses the HTTPS production origin above.
 3. Add client ID and secret to `.env` file
 
 ---
@@ -628,22 +877,23 @@ POST /api/auth/token/refresh/
 
 | Scope | Rate | Applied To |
 |-------|------|------------|
-| Anonymous | 50/hour | All unauthenticated requests |
-| Authenticated | 200/hour | All authenticated requests |
-| Auth endpoints | 10/hour | Login, register, password reset |
-| Membership writes | 30/min | Freeze, unfreeze, renew operations |
+| Anonymous | 200/hour | All unauthenticated requests |
+| Authenticated | 2000/hour | All authenticated requests |
+| Auth endpoints | 10/hour | Login, register, forgot/reset password |
+| Membership writes | 30/min | Freeze, unfreeze, and renew operations |
 
-Rate limit headers are included in responses:
-```
+DRF includes rate metadata when a scope is active:
+```http
+Retry-After: 3600
 X-RateLimit-Limit: 200
 X-RateLimit-Remaining: 195
 X-RateLimit-Reset: 1693500000
 ```
 
-When rate limited, the API returns:
+When rate limited, the API returns HTTP `429`:
 ```json
 {
-  "detail": "Request was throttled. Please try again in 1234 seconds."
+  "detail": "Request was throttled. Expected available in 1234 seconds."
 }
 ```
 
@@ -651,45 +901,59 @@ When rate limited, the API returns:
 
 ### Dark Mode
 
-The frontend supports light/dark mode with a toggle button in the topbar.
+The frontend supports light/dark mode with a toggle button in the topbar and defaults to dark for a new browser.
 
 **Implementation:**
-- CSS custom properties in `theme.css` with `[data-theme="dark"]` overrides
-- Toggle button injected dynamically by `api.js`
-- Preference persisted in `localStorage`
-- Applied immediately on page load (no flash)
+- Light tokens are defined on `:root` in `theme.css`
+- Dark tokens/component overrides use `html:not([data-theme="light"])`
+- `api.js` applies the saved `theme` immediately and injects the toggle into the topbar
+- The preference is persisted in `localStorage`
 
-**To extend dark mode:**
-1. Add CSS variables to the `[data-theme="dark"]` block in `theme.css`
-2. Use `var(--bg-card)`, `var(--text-primary)`, etc. in your styles
-3. Test with the toggle button in the topbar
+**To extend either theme:**
+1. Add shared variables to `:root` in `theme.css`
+2. Override only the values that differ under `html:not([data-theme="light"])`
+3. Use semantic variables such as `var(--bg-card)` and `var(--text-primary)` rather than hard-coded colors
+4. Test both themes and the persisted preference
 
 ---
 
 ### Notifications System
 
-**Auto-generated notifications (via `send_reminders` command):**
-- Membership expiry (7 days before)
-- Pending payments
-- Member inactivity (14+ days no check-in)
-- Workout reminders (active plan but no session in 3+ days)
-- Welcome messages for new members
-- Workout/diet plan assignments
+**Automated/event-driven notifications include:**
+- Membership renewal reminders (3 days before expiry) and expiry notices
+- Auto-unfreeze notices when a frozen period ends
+- Pending/partial payment reminders
+- Paid-payment receipts and gateway confirmations
+- Member inactivity alerts (14+ days without a check-in)
+- Workout reminders (active assignment with no completion for 3+ days)
+- Trainer assignment, workout-plan, and diet-plan events
+- Welcome/announcement helpers and direct/group chat events
 
-**Notification delivery:**
-- In-app notifications (via API)
-- Email notifications (via Django email backend)
-- Notification types: GENERAL, MEMBERSHIP, PAYMENT, WORKOUT, DIET, ATTENDANCE
+**Delivery and storage:**
+- In-app records are exposed through `/api/notifications/`
+- Notification services can also send email through Django's configured backend
+- Stored types include membership expiry/renewal, payment due/received, inactivity, workout reminder, general, announcement, member message, trainer reply, and trainer assigned
+- Direct/group conversation read state and pins are managed by the messaging endpoints
 
 ---
 
 ### Scheduled Tasks
 
-The `send_reminders` management command runs daily to generate notifications.
+Run the operational commands from an external scheduler (Render Cron, cron, or Windows Task Scheduler):
+
+| Command | Purpose | Suggested cadence |
+|---------|---------|-------------------|
+| `python manage.py send_reminders` | Auto-unfreeze memberships; renewal/expiry, due-payment, inactivity, and workout reminders | Daily |
+| `python manage.py send_scheduled_notifications` | Alternate 7/3/1-day expiry schedule, overdue-payment alerts, and inactivity notifications; supports `--dry-run` | Daily, if used |
+| `python manage.py expire_stale_khalti_payments` | Reconcile pending Khalti transactions older than 30 minutes; supports `--minutes` and `--dry-run` | Every 15–30 min |
+| `python manage.py auto_reject_expired_leaves` | Reject pending leave requests whose end date passed; supports `--dry-run` | Daily |
+| `python manage.py backup_db` | Create a timestamped PostgreSQL dump; `--compress` is available | Per retention policy |
+
+Choose one notification schedule if both reminder commands would create overlapping alerts.
 
 **Windows (Task Scheduler):**
 ```powershell
-# One-time setup:
+# Import the included daily reminder definition:
 schtasks /create /xml "scripts\GymDailyReminders.xml" /tn "GymDailyReminders"
 
 # Manual run:
@@ -697,8 +961,9 @@ schtasks /run /tn "GymDailyReminders"
 ```
 
 **Linux (cron):**
-```bash
+```cron
 0 8 * * * cd /path/to/gym && venv/bin/python manage.py send_reminders >> logs/reminders.log 2>&1
+*/30 * * * * cd /path/to/gym && venv/bin/python manage.py expire_stale_khalti_payments >> logs/khalti-reconcile.log 2>&1
 ```
 
 ---
@@ -714,24 +979,33 @@ python manage.py test
 ### Run Specific App Tests
 
 ```bash
-python manage.py test apps.diet.tests        # 35 tests
-python manage.py test apps.progress.tests    # 33 tests
-python manage.py test apps.memberships.tests # 50 tests
-python manage.py test apps.reports.tests     # 60 tests
-python manage.py test apps.trainers.tests    # 31 tests
+python manage.py test apps.accounts.tests     # 62 tests
+python manage.py test apps.memberships.tests  # 71 tests
+python manage.py test apps.workouts.tests     # 65 tests
+python manage.py test apps.reports.tests      # 60 tests
 ```
 
 ### Test Coverage Summary
 
-| App | Tests | What's Tested |
-|-----|-------|---------------|
-| **diet** | 35 | DietPlan CRUD, nested meals, Meal CRUD, MealLog, DailySummaryView, filtering (`?q=`, `?goal=`), stats, disclaimer |
-| **progress** | 33 | ProgressEntry CRUD, BMI calculation, PersonalRecord CRUD + validation, MemberStatsView, role-based access |
-| **memberships** | 50 | Plan CRUD, membership assign/cancel, freeze/unfreeze (end_date extension), renew, FreezeRequest create/approve/reject, expiring endpoint, auto-expiry sync, search/filter/ordering |
-| **reports** | 60 | CSV/Excel header validation, row content parsing, date range filtering, status/plan/member filtering, empty datasets, Content-Disposition, role-based access |
-| **trainers** | 31 | TrainerMemberAssignment CRUD, my-members endpoint, workout/diet/attendance visibility, notification access |
+| App | Tests | Main coverage |
+|-----|------:|---------------|
+| **accounts** | 62 | Owner-only registration, server-priced checkout/status, JWT rotation/versioning, password/reset/session security, display IDs |
+| **attendance** | 40 | Manual/self attendance, QR flows, biometric enrollment/scanning/stats, role scoping |
+| **dataimport** | 25 | Workbook schema, template, dry-run/commit behavior, validation, owner-only access |
+| **diet** | 35 | Plans, meals, meal logs, daily/weekly summaries, filtering, RBAC |
+| **equipment** | 21 | Inventory and maintenance CRUD/validation/RBAC |
+| **lockers** | 46 | Inventory, bulk creation, assignment lifecycle, status synchronization, filters |
+| **members** | 39 | Profile CRUD, reactivation, own-profile access, validation |
+| **memberships** | 71 | Plans, assignment/renewal/cancel, freeze workflows, offers/promo codes, expiry sync, filters |
+| **notifications** | 53 | Notification types/read state, scheduled services/commands, group messaging and pins |
+| **payments** | 20 | Staff recording, member scoping, discounts, summaries and access control |
+| **progress** | 33 | Progress/PR CRUD, BMI, member stats, trainer/member scoping |
+| **reports** | 60 | JSON analytics plus CSV/Excel content, filters, empty datasets, and RBAC |
+| **staff** | 29 | Staff profiles/actions, password reset, leave lifecycle/review/date rules |
+| **trainers** | 34 | Trainer profiles, assignments, trainer-scoped members and notifications |
+| **workouts** | 65 | Exercise/template/version workflows, assignments/completions, messaging, exports, RBAC |
 
-**Total: 212+ tests across 5+ apps**
+**Total: 633 tests across 15 local apps.** Latest full run: **633 passed**, with Django system checks clean.
 
 ### Test Patterns Used
 
@@ -739,46 +1013,64 @@ python manage.py test apps.trainers.tests    # 31 tests
 - JWT token authentication via `RefreshToken.for_user()`
 - CSV parsing with `csv.reader` for content validation
 - Excel parsing with `openpyxl.load_workbook()` for .xlsx validation
-- Role-based test coverage (Owner, Staff, Trainer, Member)
+- Role-based test coverage (Owner, Staff, Trainer, Member, public kiosk/gateway callbacks)
+- Versioned-JWT and password/session invalidation tests
+- Server-authoritative price/amount and owner-plan tamper-resistance tests
 
 ---
 
 ## 🚀 Deployment
 
+### Current Production Deployment
+
+FitCore is currently deployed at **https://fitcore-k5zr.onrender.com**. The checked-in `render.yaml` configures this hostname for `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, and `FRONTEND_URL`; settings also reads Render's `RENDER_EXTERNAL_HOSTNAME` automatically.
+
+Production requests use:
+
+```text
+Frontend:  https://fitcore-k5zr.onrender.com
+API:       https://fitcore-k5zr.onrender.com/api
+Health:    https://fitcore-k5zr.onrender.com/api/health/
+Admin:     https://fitcore-k5zr.onrender.com/admin/
+```
+
 ### Production Checklist
 
-1. **Environment variables**: Set `DEBUG=False`, configure real database credentials
-2. **Static files**: `python manage.py collectstatic`
-3. **Database**: Run `python manage.py migrate`
-4. **Secret key**: Generate a new `SECRET_KEY` (never use the dev key)
-5. **Allowed hosts**: Set to your production domain
-6. **HTTPS**: Configure SSL (nginx, Cloudflare, etc.)
-7. **Email**: Switch to production SMTP backend
-8. **Payment gateways**: Switch Khalti/eSewa to production URLs and keys
-9. **Task scheduler**: Set up cron/Task Scheduler for `send_reminders`
-10. **Logs**: Configure structured logging (consider Sentry for error tracking)
-11. **Site**: Run `python manage.py ensure_site --domain your-domain.com --name FitCore`
-12. **Backups**: Set up `python manage.py backup_db` in cron/Task Scheduler
+1. Set `DEBUG=False` and generate a unique `SECRET_KEY`.
+2. Configure PostgreSQL through `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`.
+3. Set `ALLOWED_HOSTS=fitcore-k5zr.onrender.com`, `CSRF_TRUSTED_ORIGINS=https://fitcore-k5zr.onrender.com`, and `FRONTEND_URL=https://fitcore-k5zr.onrender.com`.
+4. Run `python manage.py migrate --noinput` during deployment.
+5. Run `python manage.py collectstatic --noinput`; WhiteNoise serves `frontend/` and collected static assets.
+6. Bind Gunicorn to the platform-assigned port (`0.0.0.0:$PORT` on Render).
+7. Configure production SMTP if email is required.
+8. Use production Khalti/eSewa credentials for member dues; the owner-plan checkout remains simulated.
+9. Schedule reminders, Khalti reconciliation, database backups, and log monitoring.
+10. Configure persistent storage for `media/`; without a Render disk, uploaded files are ephemeral.
+11. Create the allauth site if it is missing: `python manage.py ensure_site --domain fitcore-k5zr.onrender.com --name FitCore`; update an existing `Site(id=1)` in Django admin when its domain changes.
+12. Keep `logs/` and any database backups outside the deployed source tree when possible.
 
-### Docker (Not Yet Implemented)
+### Redeploy to Render with the Included Blueprint
 
-```dockerfile
-# Dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-RUN python manage.py collectstatic --noinput
-CMD ["gunicorn", "gym_management.wsgi:application", "--bind", "0.0.0.0:8000"]
-```
+The current service at `fitcore-k5zr.onrender.com` was created from `render.yaml`. The blueprint provisions one Python web service and one PostgreSQL database in the same region (Singapore). The frontend and API share one origin, so production does not require split-origin CORS.
 
-### WSGI Server (Production)
+1. Push the repository to the GitHub/GitLab repository connected to the existing Render service.
+2. Normal deployments run from the connected branch's auto-deploy configuration. For a first-time setup only, choose **New → Blueprint** and apply `render.yaml`.
+3. Render maps the managed database connection into the app's `DB_*` variables.
+4. The build runs `pip install -r requirements.txt && python manage.py collectstatic --noinput`.
+5. Startup runs migrations, then `gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT`.
+6. Render health-checks `/api/health/`, which also verifies database connectivity.
+
+The blueprint currently uses free plans. Free web services sleep after inactivity, and the free database is time-limited. If Render changes the generated service hostname, update `FRONTEND_URL`; `settings.py` automatically appends `RENDER_EXTERNAL_HOSTNAME` to host and CSRF allowlists.
+
+### Generic WSGI Deployment
 
 ```bash
-pip install gunicorn
-gunicorn gym_management.wsgi:application --bind 0.0.0.0:8000 --workers 4
+python manage.py migrate --noinput
+python manage.py collectstatic --noinput
+gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT --workers 4
 ```
+
+There is no committed Dockerfile. The deployment path currently provided by the repository is the Render blueprint plus Gunicorn/WhiteNoise.
 
 ---
 
@@ -786,17 +1078,18 @@ gunicorn gym_management.wsgi:application --bind 0.0.0.0:8000 --workers 4
 
 ### File Structure
 
-```
+```text
 frontend/
 ├── css/
-│   ├── theme.css        # Design tokens, component styles, dark mode
-│   ├── landing.css      # Landing page styles
-│   └── login.css        # Login/signup page styles
+│   ├── theme.css        # Shared design tokens/components, dark/light themes
+│   ├── landing.css      # Landing and pricing pages
+│   └── login.css        # Login, signup, and checkout pages
 ├── js/
-│   ├── api.js           # API client, auth helpers, dark mode, utilities
+│   ├── api.js           # API/auth client, role guards, owner-plan gate, router, shared UI
+│   ├── validate.js      # Shared form validation
 │   └── bottom-tabs.js   # Mobile bottom navigation
-├── *.html               # 36 page files (one per view)
-└── logo.png             # App logo
+├── *.html               # 43 page files
+└── logo.png             # Application logo
 ```
 
 ### Design System (`theme.css`)
@@ -804,22 +1097,21 @@ frontend/
 All visual properties use CSS custom properties:
 
 ```css
-/* Light mode (default) */
+/* Light tokens */
 :root {
-  --brand-red: #E63946;
-  --bg-root: #F1F5F9;
-  --bg-card: #FFFFFF;
-  --text-primary: #1E293B;
-  --border-light: #E2E8F0;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --brand-red: #e63946;
+  --bg-root: #f5f6f8;
+  --bg-card: #ffffff;
+  --text-primary: #111827;
+  --border-light: #e5e7eb;
 }
 
-/* Dark mode */
-[data-theme="dark"] {
-  --bg-root: #0C1220;
-  --bg-card: #151D2E;
-  --text-primary: #E2E8F0;
-  --border-light: #1E2D42;
+/* Dark tokens (the default selected by api.js) */
+html:not([data-theme="light"]) {
+  --bg-root: #07070a;
+  --bg-card: #101117;
+  --text-primary: #f2f3f5;
+  --border-light: rgba(255,255,255,0.08);
 }
 ```
 
@@ -835,34 +1127,37 @@ All visual properties use CSS custom properties:
 ### API Client (`api.js`)
 
 ```javascript
-// Base URL (configurable)
-const API_BASE = window.FITCORE_API_BASE || 'http://127.0.0.1:8000/api';
+// Split-host local development uses :8000; same-origin deployments use /api.
+const API_BASE = window.FITCORE_API_BASE || detectApiBase();
 
-// Auth helpers
-function getToken()        // Get access token from localStorage
-function getRefreshToken() // Get refresh token
-function setTokens(access, refresh)  // Store tokens
-function clearTokens()     // Logout
+// Token/session helpers
+getAccessToken()
+getRefreshToken()
+saveTokens(access, refresh)
+clearTokens()
+refreshAccessToken()
 
-// API helpers
-async function apiGet(path)           // GET request
-async function apiPost(path, data)    // POST request
-async function apiPatch(path, data)   // PATCH request
-async function apiDelete(path)        // DELETE request
+// One request helper for every verb; callers pass method/body as needed.
+apiRequest(path, { method: 'POST', body: JSON.stringify(data) })
 
-// UI utilities
-function showToast(message, type)     // Toast notifications
-function formatDate(dateStr)          // Human-readable dates
-function formatCurrency(amount)       // NPR currency formatting
+// Shared application behavior
+buildSidebar(activePage)
+enforcePageRoleAccess()
+enforceOwnerPlanGate()
+exportTableToCsv(tableId, filename)
+formatApiError(error)
+confirmAction(message, options)
 ```
+
+`apiRequest()` attaches the bearer token, serializes failures consistently, retries one request after a coordinated token refresh, and sends the active `X-Gym-ID` header. Shared in-flight refresh logic prevents concurrent 401 responses from consuming multiple rotating refresh tokens. `switchGym()` rotates the token when a user changes gyms. `enforceOwnerPlanGate()` redirects authenticated owners without a plan subscription, while public/auth pages are excluded to prevent loops.
 
 ### Dark Mode Toggle
 
 Automatically injected into the topbar by `api.js`:
-- Toggle button with moon/sun icon
-- Saves preference to `localStorage`
-- Applies `[data-theme="dark"]` to `<html>` element
-- No flash of wrong theme on page load
+- Moon/sun toggle with `dark` as the first-visit default
+- Saves the choice in `localStorage.theme`
+- Sets `data-theme="light"` or `data-theme="dark"` on `<html>`
+- Applies the saved theme during script initialization to avoid a theme flash
 
 ---
 
@@ -870,40 +1165,60 @@ Automatically injected into the topbar by `api.js`:
 
 ### Common Issues
 
-**"column \"accounts_user.display_id\" does not exist"**
+**Migration/column errors** (for example, `accounts_user.display_id` or `plan_subscriptions` missing):
 ```bash
+python manage.py showmigrations accounts
 python manage.py migrate
 ```
 
-**"database 'test_gym_db' already exists"**
+**A stale test database blocks the test runner**
 ```bash
-# Drop the test database:
-python -c "
-import os; os.environ['DJANGO_SETTINGS_MODULE']='gym_management.settings'
-import django; django.setup()
-from django.db import connection
-conn = connection.cursor().connection; conn.autocommit = True
-conn.cursor().execute('DROP DATABASE IF EXISTS test_gym_db')
-"
+# Reuse an existing test database when its schema is disposable:
+python manage.py test --keepdb
+
+# Or terminate connections and remove it with PostgreSQL tools:
+psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='test_gym_db';"
+psql -d postgres -c "DROP DATABASE IF EXISTS test_gym_db;"
 ```
 
-**CORS errors in browser**
-- Check `CORS_ALLOWED_ORIGINS` in `settings.py`
-- Ensure your frontend port is listed
+**CORS or CSRF errors in the browser**
+- Add the exact frontend origin to `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS` (scheme + host + port).
+- Keep `FRONTEND_URL` equal to the public frontend origin.
+- When Django serves the frontend in production, the same-origin `/api` request needs no split-origin CORS allowance.
 
 **JWT 401 errors**
-- Access tokens expire after 60 minutes
-- Use the refresh endpoint to get a new access token
-- Check that `Authorization: Bearer <token>` header is set
+- Access tokens expire after 60 minutes; `api.js` normally refreshes once and retries the request.
+- Verify `Authorization: Bearer <token>` and the refresh token in `localStorage`.
+- Password changes/resets intentionally invalidate old access and refresh tokens; log in again.
+- Check `token_version` if a token issued after a password change is still rejected.
 
-**Email not sending**
-- In development, emails print to console (`console.EmailBackend`)
-- Configure SMTP credentials in `.env` for production
+**Owner keeps returning to checkout**
+- Confirm the session has `user_role=OWNER` and a valid access token.
+- `GET /api/auth/subscription/` should return `has_plan: true` after a successful checkout.
+- Run migrations if `PlanSubscription` queries fail.
+- The gate fails open if the status request cannot complete, so a persistent redirect normally means a successful API response with `has_plan: false`.
 
-**Rate limiting (429 errors)**
+**Render returns HTTP 400 / `DisallowedHost`**
+- Confirm the live application is available at `https://fitcore-k5zr.onrender.com` and check `https://fitcore-k5zr.onrender.com/api/health/`.
+- Verify the public hostname in `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`.
+- `RENDER_EXTERNAL_HOSTNAME` is automatically added by settings when Render provides it.
+- Confirm Gunicorn binds to `0.0.0.0:$PORT` and `/api/health/` is reachable.
+
+**Static frontend or assets return 404 in production**
+- Run `python manage.py collectstatic --noinput`.
+- Confirm WhiteNoise is enabled and the static/frontend files were included in the deployed build.
+- The frontend is served from `frontend/`; the API remains under `/api/`.
+
+**Email is not sending**
+- In development, messages print to the console with `console.EmailBackend`.
+- Configure the production SMTP backend, host, port, credentials, TLS flag, and sender in the environment.
+
+**Rate limiting (HTTP 429)**
 - Auth endpoints: 10/hour per IP
-- General API: 200/hour per authenticated user
-- Wait for the `X-RateLimit-Reset` time or reduce request frequency
+- General anonymous API: 200/hour per IP
+- Authenticated API: 2000/hour per user
+- Membership writes: 30/min per user
+- Wait for `Retry-After` / `X-RateLimit-Reset` or reduce request frequency
 
 ---
 

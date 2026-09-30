@@ -33,6 +33,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
+from apps.gyms.tenancy import tenant_queryset
 from apps.members.models import MemberProfile
 from apps.members.serializers import (
     MemberAggregatedProfileSerializer,
@@ -78,15 +79,23 @@ class MemberListCreateView(generics.ListCreateAPIView):
         from django.db.models import Prefetch
         from apps.memberships.models import Membership
 
-        qs = MemberProfile.objects.select_related('user').filter(
-            user__role=User.Role.MEMBER
-        ).prefetch_related(
+        qs = MemberProfile.objects.select_related('user')
+        if getattr(self.request, 'gym', None) is not None:
+            qs = qs.filter(
+                user__gym_memberships__gym=self.request.gym,
+                user__gym_memberships__role=User.Role.MEMBER,
+                user__gym_memberships__status='ACTIVE',
+            )
+        else:
+            qs = qs.filter(user__role=User.Role.MEMBER)
+        qs = qs.prefetch_related(
             Prefetch(
                 'user__memberships',
                 queryset=Membership.objects.exclude(status='CANCELLED').select_related('plan'),
                 to_attr='_current_memberships',
             )
         )
+        qs = tenant_queryset(qs, self.request)
 
         # ── Search ──────────────────────────────────────────────────────────
         search = self.request.query_params.get('search', '').strip()
@@ -129,7 +138,10 @@ class MemberListCreateView(generics.ListCreateAPIView):
         return qs
 
     def create(self, request, *args, **kwargs):
-        serializer = MemberCreateSerializer(data=request.data)
+        serializer = MemberCreateSerializer(
+            data=request.data,
+            context={'request': request},
+        )
         serializer.is_valid(raise_exception=True)
         profile = serializer.save()
         return Response(
@@ -154,7 +166,10 @@ class MemberDetailView(APIView):
 
     def _can_read(self, request, profile):
         """Owner, Staff, Trainer can read any profile. Member can only read their own."""
-        if request.user.role in (
+        if getattr(request, 'gym', None) is not None and profile.gym_id != request.gym.id:
+            return False
+        role = getattr(request, 'gym_role', request.user.role)
+        if role in (
             User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER
         ):
             return True
@@ -162,13 +177,15 @@ class MemberDetailView(APIView):
 
     def _can_write(self, request, profile):
         """Owner/Staff can update any profile. Member can update their own."""
-        if request.user.role in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym', None) is not None and profile.gym_id != request.gym.id:
+            return False
+        if getattr(request, 'gym_role', request.user.role) in (User.Role.OWNER, User.Role.STAFF):
             return True
         return profile.user == request.user
 
     def _can_delete(self, request):
         """Only Owner/Staff can deactivate a member."""
-        return request.user.role in (User.Role.OWNER, User.Role.STAFF)
+        return getattr(request, 'gym_role', request.user.role) in (User.Role.OWNER, User.Role.STAFF)
 
     def get(self, request, pk):
         profile = self._get_profile(pk)
@@ -193,7 +210,7 @@ class MemberDetailView(APIView):
         return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
     def put(self, request, pk):
-        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner/Staff can perform full profile updates.')
         profile = self._get_profile(pk)
 
@@ -213,10 +230,27 @@ class MemberDetailView(APIView):
             raise PermissionDenied('Only Owner/Staff can deactivate members.')
         profile = self._get_profile(pk)
         user = profile.user
-        user.is_active = False
-        user.save(update_fields=['is_active'])
+        gym = getattr(request, 'gym', None)
+        if gym is not None:
+            from apps.gyms.models import GymMembership
+            GymMembership.objects.filter(
+                user=user,
+                gym=gym,
+                role=GymMembership.Role.MEMBER,
+                status=GymMembership.Status.ACTIVE,
+            ).update(status=GymMembership.Status.INACTIVE)
+            if not user.gym_memberships.filter(
+                status=GymMembership.Status.ACTIVE,
+            ).exists():
+                user.is_active = False
+                user.save(update_fields=['is_active'])
+        else:
+            user.is_active = False
+            user.save(update_fields=['is_active'])
+        # Soft delete the profile → recoverable from Trash.
+        profile.delete(user=request.user)
         return Response(
-            {'detail': f'Member {user.get_full_name()} has been deactivated.'},
+            {'detail': f'Member {user.get_full_name()} has been deactivated and moved to trash.'},
             status=status.HTTP_200_OK,
         )
 
@@ -337,12 +371,39 @@ class MemberReactivateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner/Staff can reactivate members.')
-        profile = get_profile_or_404(pk)
+        # Fetch from all_objects: a soft-deleted profile is exactly the row
+        # this endpoint exists to bring back — the live manager would 404 it.
+        profile = MemberProfile.all_objects.select_related('user').filter(pk=pk).first()
+        if profile is None:
+            raise NotFound(f'Member profile with id={pk} not found.')
+        if getattr(request, 'gym', None) is not None and profile.gym_id != request.gym.id:
+            raise PermissionDenied('You do not have access to this member.')
+        # Revive the profile if it was soft-deleted (trash recovery path).
+        if profile.is_deleted:
+            profile.restore(user=request.user)
         user = profile.user
-        user.is_active = True
-        user.save(update_fields=['is_active'])
+        gym = getattr(request, 'gym', None)
+        if gym is not None:
+            from apps.gyms.models import GymMembership
+            membership, _ = GymMembership.objects.update_or_create(
+                user=user,
+                gym=gym,
+                defaults={
+                    'role': GymMembership.Role.MEMBER,
+                    'status': GymMembership.Status.ACTIVE,
+                },
+            )
+            branch = profile.branch
+            if branch:
+                membership.branch_memberships.get_or_create(branch=branch)
+            if not user.is_active:
+                user.is_active = True
+                user.save(update_fields=['is_active'])
+        else:
+            user.is_active = True
+            user.save(update_fields=['is_active'])
         return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
 
@@ -357,22 +418,25 @@ class MyProfileView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def _get_own_profile(self, user):
+    def _get_own_profile(self, user, request=None):
         try:
-            return MemberProfile.objects.select_related('user').get(user=user)
+            qs = MemberProfile.objects.select_related('user').filter(user=user)
+            if request is not None:
+                qs = tenant_queryset(qs, request)
+            return qs.first()
         except MemberProfile.DoesNotExist:
             raise NotFound('Member profile not found for your account.')
 
     def get(self, request):
-        if not request.user.is_member:
+        if getattr(request, 'gym_role', request.user.role) != User.Role.MEMBER:
             raise PermissionDenied('This endpoint is for members only.')
-        profile = self._get_own_profile(request.user)
+        profile = self._get_own_profile(request.user, request)
         return Response(MemberProfileSerializer(profile, context={'request': request}).data)
 
     def patch(self, request):
-        if not request.user.is_member:
+        if getattr(request, 'gym_role', request.user.role) != User.Role.MEMBER:
             raise PermissionDenied('This endpoint is for members only.')
-        profile = self._get_own_profile(request.user)
+        profile = self._get_own_profile(request.user, request)
 
         # profile_picture lives on User
         if 'profile_picture' in request.FILES:
@@ -396,7 +460,9 @@ class MemberProfileDetailView(APIView):
 
     def get(self, request, pk):
         profile = get_profile_or_404(pk)
-        if not (request.user.role in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER)
+        if getattr(request, 'gym', None) is not None and profile.gym_id != request.gym.id:
+            raise PermissionDenied('You do not have access to this profile.')
+        if not (getattr(request, 'gym_role', request.user.role) in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER)
                 or profile.user == request.user):
             raise PermissionDenied('You do not have permission to view this profile.')
         return Response(MemberAggregatedProfileSerializer(profile, context={'request': request}).data)

@@ -96,9 +96,11 @@ class Command(BaseCommand):
 
             if not self._already_sent_today(
                 membership.member_id, Notification.NotificationType.GENERAL,
-                related_membership_id=membership.id,
+                related_membership_id=membership.id, gym=membership.gym,
             ):
                 Notification.objects.create(
+                    gym=membership.gym,
+                    branch=membership.branch,
                     recipient_id=membership.member_id,
                     notification_type=Notification.NotificationType.GENERAL,
                     title='Membership unfrozen',
@@ -124,11 +126,13 @@ class Command(BaseCommand):
         for membership in expiring:
             if self._already_sent_today(
                 membership.member_id, Notification.NotificationType.MEMBERSHIP_RENEWAL,
-                related_membership_id=membership.id,
+                related_membership_id=membership.id, gym=membership.gym,
             ):
                 continue
             days_left = (membership.end_date - today).days
             Notification.objects.create(
+                gym=membership.gym,
+                branch=membership.branch,
                 recipient_id=membership.member_id,
                 notification_type=Notification.NotificationType.MEMBERSHIP_RENEWAL,
                 title='Membership renewal reminder',
@@ -147,10 +151,12 @@ class Command(BaseCommand):
             membership.save(update_fields=['status'])
             if self._already_sent_today(
                 membership.member_id, Notification.NotificationType.MEMBERSHIP_EXPIRY,
-                related_membership_id=membership.id,
+                related_membership_id=membership.id, gym=membership.gym,
             ):
                 continue
             Notification.objects.create(
+                gym=membership.gym,
+                branch=membership.branch,
                 recipient_id=membership.member_id,
                 notification_type=Notification.NotificationType.MEMBERSHIP_EXPIRY,
                 title='Membership expired',
@@ -170,11 +176,13 @@ class Command(BaseCommand):
         for payment in pending:
             if self._already_sent_today(
                 payment.member_id, Notification.NotificationType.PAYMENT_DUE,
-                related_payment_id=payment.id,
+                related_payment_id=payment.id, gym=payment.gym,
             ):
                 continue
             outstanding = payment.amount - payment.discount
             Notification.objects.create(
+                gym=payment.gym,
+                branch=payment.branch,
                 recipient_id=payment.member_id,
                 notification_type=Notification.NotificationType.PAYMENT_DUE,
                 title='Payment due',
@@ -189,27 +197,74 @@ class Command(BaseCommand):
 
     # ── Inactivity ───────────────────────────────────────────────────────────
     def _send_inactivity_alerts(self, today):
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
         cutoff = today - timedelta(days=INACTIVITY_THRESHOLD_DAYS)
         count = 0
 
-        active_members = User.objects.filter(role=User.Role.MEMBER, is_active=True)
-        for member in active_members:
+        # Iterate memberships rather than global User rows so attendance is
+        # evaluated independently for every gym a member belongs to.
+        active_memberships = Membership.objects.filter(
+            status=Membership.Status.ACTIVE,
+        ).select_related('member', 'gym')
+        for membership in active_memberships:
+            member = membership.member
+            last_visit = (
+                Attendance.objects.filter(
+                    gym=membership.gym,
+                    user=member,
+                )
+                .order_by('-date')
+                .values_list('date', flat=True)
+                .first()
+            )
+            if last_visit is None or last_visit >= cutoff:
+                continue
+
+            if self._already_sent_today(
+                member.id,
+                Notification.NotificationType.INACTIVITY,
+                gym=membership.gym,
+            ):
+                continue
+
+            days_absent = (today - last_visit).days
+            Notification.objects.create(
+                gym=membership.gym,
+                branch=membership.branch,
+                recipient_id=member.id,
+                notification_type=Notification.NotificationType.INACTIVITY,
+                title='We miss you at the gym!',
+                message=(
+                    f"You haven't checked in for {days_absent} days. "
+                    f"Come back and keep your progress going!"
+                ),
+            )
+            count += 1
+
+        # Compatibility path for installations created before GymMembership
+        # was introduced. Once the tenancy backfill has run, these users are
+        # excluded by the membership-derived loop above.
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        tenant_member_ids = set(
+            active_memberships.values_list('member_id', flat=True)
+        )
+        legacy_members = User.objects.filter(
+            role=User.Role.MEMBER,
+            is_active=True,
+        ).exclude(pk__in=tenant_member_ids)
+        for member in legacy_members:
             last_visit = (
                 Attendance.objects.filter(user=member)
                 .order_by('-date')
                 .values_list('date', flat=True)
                 .first()
             )
-            if last_visit is not None and last_visit >= cutoff:
-                continue  # visited recently, nothing to do
-            if last_visit is None:
-                continue  # never checked in at all — not an "inactivity" case
-
-            if self._already_sent_today(member.id, Notification.NotificationType.INACTIVITY):
+            if last_visit is None or last_visit >= cutoff:
                 continue
-
+            if self._already_sent_today(
+                member.id, Notification.NotificationType.INACTIVITY,
+            ):
+                continue
             days_absent = (today - last_visit).days
             Notification.objects.create(
                 recipient_id=member.id,
@@ -239,31 +294,26 @@ class Command(BaseCommand):
 
         cutoff = today - timedelta(days=WORKOUT_REMINDER_DAYS)
         count = 0
+        assignments = WorkoutAssignment.objects.filter(
+            status=WorkoutAssignment.Status.ACTIVE,
+        ).select_related('member', 'gym', 'template')
 
-        # Members with at least one active assignment
-        members_with_plan = (
-            WorkoutAssignment.objects.filter(status=WorkoutAssignment.Status.ACTIVE)
-            .values_list('member_id', flat=True)
-            .distinct()
-        )
-
-        # Of those, find who logged a workout recently — we'll exclude them
-        recently_logged = (
-            WorkoutCompletionLog.objects.filter(
-                assignment__member_id__in=members_with_plan,
+        for assignment in assignments:
+            if WorkoutCompletionLog.objects.filter(
+                assignment=assignment,
                 date__gte=cutoff,
-            )
-            .values_list('assignment__member_id', flat=True)
-            .distinct()
-        )
-
-        overdue_member_ids = set(members_with_plan) - set(recently_logged)
-
-        for member_id in overdue_member_ids:
-            if self._already_sent_today(member_id, Notification.NotificationType.WORKOUT_REMINDER):
+            ).exists():
+                continue
+            if self._already_sent_today(
+                assignment.member_id,
+                Notification.NotificationType.WORKOUT_REMINDER,
+                gym=assignment.gym,
+            ):
                 continue
             Notification.objects.create(
-                recipient_id=member_id,
+                gym=assignment.gym,
+                branch=assignment.branch,
+                recipient_id=assignment.member_id,
                 notification_type=Notification.NotificationType.WORKOUT_REMINDER,
                 title="Time for your workout! 💪",
                 message=(
@@ -277,8 +327,14 @@ class Command(BaseCommand):
 
     # ── Helper ───────────────────────────────────────────────────────────────
     @staticmethod
-    def _already_sent_today(recipient_id, notification_type, related_membership_id=None, related_payment_id=None):
-        today = timezone.now().date()
+    def _already_sent_today(
+        recipient_id, notification_type, related_membership_id=None,
+        related_payment_id=None, gym=None,
+    ):
+        # localdate() — created_at__date resolves in the current timezone;
+        # now().date() is UTC, and the two diverge between 18:15 UTC and
+        # midnight UTC, silently breaking this guard (date-rot).
+        today = timezone.localdate()
         qs = Notification.objects.filter(
             recipient_id=recipient_id,
             notification_type=notification_type,
@@ -288,4 +344,6 @@ class Command(BaseCommand):
             qs = qs.filter(related_membership_id=related_membership_id)
         if related_payment_id is not None:
             qs = qs.filter(related_payment_id=related_payment_id)
+        if gym is not None:
+            qs = qs.filter(gym=gym)
         return qs.exists()

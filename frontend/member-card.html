@@ -155,15 +155,19 @@
       return map[status] || '#6c757d';
     }
 
+    window.__isPageAlive = window.__isPageAlive || (() => true);
+
     async function loadProfile() {
       const memberId = getParam('id');
+      const gymId = getParam('gym_id');
       if (!memberId) {
         showError('No member ID provided.');
         return;
       }
 
       try {
-        const res = await fetch(`${API_BASE}/attendance/member-profile/${memberId}/`);
+        const query = gymId ? `?gym_id=${encodeURIComponent(gymId)}` : '';
+        const res = await fetch(`${API_BASE}/attendance/member-profile/${memberId}/${query}`);
         if (!res.ok) {
           showError('Member not found or inactive.');
           return;

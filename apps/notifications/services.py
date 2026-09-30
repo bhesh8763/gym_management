@@ -100,6 +100,8 @@ def notify(
     send_sms: bool = False,
     related_membership_id: Optional[int] = None,
     related_payment_id: Optional[int] = None,
+    gym=None,
+    branch=None,
 ):
     """
     Create an in-app notification and optionally send email/SMS.
@@ -121,8 +123,24 @@ def notify(
     if isinstance(recipient, int):
         recipient = User.objects.get(pk=recipient)
 
+    # Background callers should pass the tenant explicitly. As a compatibility
+    # fallback, infer it only when the recipient has exactly one active gym.
+    if gym is None:
+        memberships = list(
+            recipient.gym_memberships.filter(
+                status='ACTIVE', gym__status__in=['ACTIVE', 'TRIAL'],
+            ).select_related('gym')
+        )
+        if len(memberships) == 1:
+            gym = memberships[0].gym
+            if branch is None:
+                access = memberships[0].branch_memberships.select_related('branch').first()
+                branch = access.branch if access else None
+
     # 1. Create in-app notification
     notification = Notification.objects.create(
+        gym=gym,
+        branch=branch,
         recipient=recipient,
         notification_type=notification_type,
         title=title,
@@ -162,7 +180,7 @@ def notify(
     return notification
 
 
-def notify_membership_expiry_warning(recipient, days_left: int, plan_name: str, end_date):
+def notify_membership_expiry_warning(recipient, days_left: int, plan_name: str, end_date, gym=None, branch=None):
     """Send membership expiry warning at 7, 3, and 1 day marks."""
     urgency = 'tomorrow' if days_left == 1 else f'in {days_left} days'
     title = f'Membership expiring {urgency}'
@@ -179,10 +197,12 @@ def notify_membership_expiry_warning(recipient, days_left: int, plan_name: str, 
         message=message,
         send_email=True,
         send_sms=days_left <= 1,
+        gym=gym,
+        branch=branch,
     )
 
 
-def notify_payment_received(recipient, amount, payment_for, receipt_number):
+def notify_payment_received(recipient, amount, payment_for, receipt_number, gym=None, branch=None):
     """Notify member that their payment was received."""
     title = f'Payment of NPR {amount:,.0f} received'
     message = (
@@ -199,10 +219,12 @@ def notify_payment_received(recipient, amount, payment_for, receipt_number):
         message=message,
         send_email=True,
         send_sms=False,
+        gym=gym,
+        branch=branch,
     )
 
 
-def notify_payment_due(recipient, amount, payment_for, days_overdue=0):
+def notify_payment_due(recipient, amount, payment_for, days_overdue=0, gym=None, branch=None):
     """Notify member about pending payment."""
     if days_overdue > 0:
         title = f'Payment of NPR {amount:,.0f} overdue by {days_overdue} days'
@@ -221,10 +243,12 @@ def notify_payment_due(recipient, amount, payment_for, days_overdue=0):
         message=message,
         send_email=True,
         send_sms=days_overdue >= 3,
+        gym=gym,
+        branch=branch,
     )
 
 
-def notify_welcome(recipient):
+def notify_welcome(recipient, gym=None, branch=None):
     """Send welcome email after registration."""
     title = 'Welcome to FitCore!'
     message = (
@@ -245,10 +269,12 @@ def notify_welcome(recipient):
         message=message,
         send_email=True,
         send_sms=False,
+        gym=gym,
+        branch=branch,
     )
 
 
-def notify_workout_assigned(recipient, template_name, trainer_name):
+def notify_workout_assigned(recipient, template_name, trainer_name, gym=None, branch=None):
     """Notify member when a trainer assigns a workout."""
     title = f'New workout assigned: {template_name}'
     message = (
@@ -264,10 +290,12 @@ def notify_workout_assigned(recipient, template_name, trainer_name):
         message=message,
         send_email=True,
         send_sms=False,
+        gym=gym,
+        branch=branch,
     )
 
 
-def notify_diet_assigned(recipient, plan_name, trainer_name):
+def notify_diet_assigned(recipient, plan_name, trainer_name, gym=None, branch=None):
     """Notify member when a trainer assigns a diet plan."""
     title = f'New diet plan assigned: {plan_name}'
     message = (
@@ -283,4 +311,6 @@ def notify_diet_assigned(recipient, plan_name, trainer_name):
         message=message,
         send_email=True,
         send_sms=False,
+        gym=gym,
+        branch=branch,
     )

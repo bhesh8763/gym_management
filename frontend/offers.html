@@ -296,15 +296,22 @@ async function loadPlans() {
   allPlans = data.results || data;
 
   var sel = document.getElementById('offerPlans');
-  sel.innerHTML = allPlans.map(function(p) {
-    return '<option value="' + p.id + '">' + p.name + ' (NPR ' + p.price + ')</option>';
-  }).join('');
-
-  var offerSel = document.getElementById('promoOffer');
-  offerSel.innerHTML = '<option value="">Select offer…</option>' +
-    allOffers.map(function(o) {
-      return '<option value="' + o.id + '">' + o.name + ' (' + (o.discount_type === 'PERCENTAGE' ? o.discount_value + '%' : 'NPR ' + o.discount_value) + ')</option>';
+  if (sel) {
+    sel.innerHTML = allPlans.map(function(p) {
+      return '<option value="' + p.id + '">' + p.name + ' (NPR ' + p.price + ')</option>';
     }).join('');
+  }
+
+  // Only populate the promo offer dropdown if offers have been loaded
+  if (allOffers && allOffers.length) {
+    var offerSel = document.getElementById('promoOffer');
+    if (offerSel) {
+      offerSel.innerHTML = '<option value="">Select offer…</option>' +
+        allOffers.map(function(o) {
+          return '<option value="' + o.id + '">' + o.name + ' (' + (o.discount_type === 'PERCENTAGE' ? o.discount_value + '%' : 'NPR ' + o.discount_value) + ')</option>';
+        }).join('');
+    }
+  }
 }
 
 async function loadOffers() {

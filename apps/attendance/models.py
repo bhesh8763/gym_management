@@ -7,8 +7,10 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from apps.gyms.models import TenantScopedModel
 
-class Attendance(models.Model):
+
+class Attendance(TenantScopedModel):
     """
     Records a single attendance event for any user.
     Staff mark attendance manually through the dashboard.
@@ -52,8 +54,15 @@ class Attendance(models.Model):
         verbose_name = 'Attendance'
         verbose_name_plural = 'Attendance Records'
         ordering = ['-date', '-check_in']
-        # Prevent duplicate check-in for same user on same date
-        unique_together = [('user', 'date')]
+        # Prevent duplicate check-in for the same member at the same gym/date.
+        unique_together = [('gym', 'user', 'date')]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'date'],
+                condition=models.Q(gym__isnull=True),
+                name='unique_legacy_attendance_user_date',
+            ),
+        ]
         indexes = [
             models.Index(fields=['date', 'attendance_type'], name='idx_attendance_date_type'),
             models.Index(fields=['date', 'status'], name='idx_attendance_date_status'),
@@ -74,15 +83,15 @@ class Attendance(models.Model):
         return None
 
 
-class QRAttendanceToken(models.Model):
+class QRAttendanceToken(TenantScopedModel):
     """
     A persistent QR code token assigned to each member.
     Scanning the token creates or updates the Attendance record for that day.
     """
-    member = models.OneToOneField(
+    member = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='qr_attendance_token',
+        related_name='qr_attendance_tokens',
         limit_choices_to={'role': 'MEMBER'},
     )
     token = models.CharField(max_length=64, unique=True, db_index=True)
@@ -92,18 +101,28 @@ class QRAttendanceToken(models.Model):
     class Meta:
         db_table = 'qr_attendance_tokens'
         verbose_name = 'QR Attendance Token'
+        constraints = [
+            models.UniqueConstraint(fields=['gym', 'member'], name='unique_qr_token_per_gym_member'),
+        ]
 
     def __str__(self):
         return f'QR token for {self.member.get_full_name()}'
 
     @classmethod
-    def get_or_create_for_member(cls, member):
-        """Return existing token or create a new one."""
-        obj, _ = cls.objects.get_or_create(
+    def get_or_create_for_member(cls, member, gym=None, branch=None):
+        """Return the member's token in this gym, or create a new one."""
+        lookup = {'member': member}
+        if gym is not None:
+            lookup['gym'] = gym
+        obj = cls._base_manager.filter(**lookup).order_by('-gym_id').first()
+        if obj is not None:
+            return obj
+        return cls.objects.create(
             member=member,
-            defaults={'token': secrets.token_urlsafe(48)},
+            gym=gym,
+            branch=branch,
+            token=secrets.token_urlsafe(48),
         )
-        return obj
 
     def regenerate(self):
         """Issue a fresh token (e.g., if the old one was lost/compromised)."""
@@ -112,7 +131,7 @@ class QRAttendanceToken(models.Model):
         return self
 
 
-class BiometricRecord(models.Model):
+class BiometricRecord(TenantScopedModel):
     """
     Stores biometric data for members to support fingerprint/face recognition
     attendance via a separate biometric scanner device.
@@ -135,7 +154,7 @@ class BiometricRecord(models.Model):
         FAILED = 'FAILED', 'Enrollment Failed'
         DISABLED = 'DISABLED', 'Disabled'
 
-    member = models.OneToOneField(
+    member = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='biometric_records',
@@ -172,6 +191,9 @@ class BiometricRecord(models.Model):
         db_table = 'biometric_records'
         verbose_name = 'Biometric Record'
         verbose_name_plural = 'Biometric Records'
+        constraints = [
+            models.UniqueConstraint(fields=['gym', 'member'], name='unique_biometric_record_per_gym_member'),
+        ]
         ordering = ['member__first_name', 'member__last_name']
 
     def __str__(self):

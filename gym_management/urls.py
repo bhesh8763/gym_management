@@ -65,6 +65,23 @@ def _build_provider_urls():
     return custom
 
 
+def backend_root(request):
+    """Identify the local Django backend without duplicating the frontend.
+
+    In production WhiteNoise handles `/` before Django and serves
+    ``frontend/index.html``. With DEBUG=True, WhiteNoise root serving is off,
+    so this small JSON response makes port 8000 clearly the API service.
+    """
+    return JsonResponse({
+        'service': 'FitCore API',
+        'status': 'running',
+        'api_base': '/api/',
+        'health_check': '/api/health/',
+        'frontend': settings.FRONTEND_URL.rstrip('/'),
+        'debug': settings.DEBUG,
+    })
+
+
 def health_check(request):
     """Return API health status, including a database connectivity check."""
     db_ok = True
@@ -85,6 +102,7 @@ def health_check(request):
 
 
 urlpatterns = [
+    path('', backend_root, name='backend-root'),
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health-check'),
 
@@ -94,6 +112,7 @@ urlpatterns = [
     # Social auth — provider login/callback (google/login/, facebook/login/, etc.)
     path('api/auth/', include(_build_provider_urls())),
     path('api/auth/3rdparty/', include('allauth.socialaccount.urls')),
+    path('api/gyms/', include('apps.gyms.urls', namespace='gyms')),
 
     # Members — API (/api/members/…) + UI (/members/ui/…) both served from
     # the same URLconf with the 'members' app_name namespace.

@@ -27,13 +27,15 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 from .models import PasswordResetToken, PlanSubscription
+from .tokens import token_for_membership
 from .serializers import (
     CustomTokenObtainPairSerializer,
+    TenantTokenRefreshSerializer,
     RegisterSerializer,
     SubscribeSerializer,
     UserDetailSerializer,
@@ -43,6 +45,12 @@ from .serializers import (
 
 User = get_user_model()
 logger = logging.getLogger('apps.accounts')
+
+
+class TenantTokenRefreshView(TokenRefreshView):
+    """Refresh endpoint that re-checks tenant and impersonation state."""
+
+    serializer_class = TenantTokenRefreshSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -64,8 +72,8 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # Issue tokens immediately after registration
-        refresh = RefreshToken.for_user(user)
+        # Issue a tenant-aware token immediately after registration.
+        refresh = token_for_membership(user)
         return Response(
             {
                 'message': 'Registration successful.',
@@ -91,6 +99,8 @@ class SubscribeView(APIView):
     PLAN_PRICES = {'starter': 4999, 'gold': 9999, 'platinum': 19999}
 
     def post(self, request):
+        if getattr(request, 'gym_role', request.user.role) != User.Role.OWNER:
+            return Response({'detail': 'Only gym owners can start a subscription.'}, status=403)
         serializer = SubscribeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         plan = serializer.validated_data['plan']
@@ -101,14 +111,36 @@ class SubscribeView(APIView):
             if not PlanSubscription.objects.filter(reference=reference).exists():
                 break
 
+        gym = getattr(request, 'gym', None)
+        if gym is None:
+            from apps.gyms.tenancy import get_user_membership
+            membership = get_user_membership(request.user)
+            if membership and membership.role != User.Role.OWNER:
+                return Response({'detail': 'Only gym owners can start a subscription.'}, status=403)
+            gym = membership.gym if membership else None
+        if gym is None and getattr(settings, 'TENANCY_REQUIRE_MEMBERSHIP', False):
+            return Response({'detail': 'An active gym membership is required.'}, status=403)
+
         sub = PlanSubscription.objects.create(
             user=request.user,
+            gym=gym,
             plan=plan,
             price=self.PLAN_PRICES[plan],
             method=method,
             reference=reference,
             status='paid',
         )
+        if gym is not None:
+            from apps.gyms.services import mark_gym_onboarded, record_audit
+            mark_gym_onboarded(gym)
+            record_audit(
+                gym=gym,
+                actor=request.user,
+                action='gym.subscription.started',
+                request=request,
+                target=sub,
+                metadata={'plan': sub.plan, 'reference': sub.reference},
+            )
         return Response(
             {
                 'reference': sub.reference,
@@ -131,11 +163,11 @@ class SubscriptionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        sub = (
-            PlanSubscription.objects.filter(user=request.user)
-            .order_by('-created_at')
-            .first()
-        )
+        gym = getattr(request, 'gym', None)
+        queryset = PlanSubscription.objects.filter(user=request.user)
+        if gym is not None:
+            queryset = queryset.filter(gym=gym)
+        sub = queryset.filter(status='paid').order_by('-created_at').first()
         if not sub:
             return Response({'has_plan': False})
         return Response({

@@ -7,8 +7,10 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
 
-class Payment(models.Model):
+
+class Payment(TenantScopedModel):
     """
     Records a payment transaction for a membership or any other service.
     """
@@ -53,7 +55,8 @@ class Payment(models.Model):
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
     amount_paid = models.DecimalField(
         max_digits=10, decimal_places=2,
-        help_text='Actual amount received (amount - discount)'
+        default=Decimal('0'),
+        help_text='Actual amount received on THIS payment record (partial payments allowed)'
     )
     payment_method = models.CharField(
         max_length=10, choices=PaymentMethod.choices, default=PaymentMethod.CASH
@@ -89,10 +92,20 @@ class Payment(models.Model):
         return f'#{self.receipt_number} — {self.member.get_full_name()} — NPR {self.amount_paid}'
 
     def save(self, *args, **kwargs):
-        # Only PAID/PARTIAL payments have actually received money.
-        # PENDING/FAILED/REFUNDED should not show a collected amount.
-        if self.status in (self.PaymentStatus.PAID, self.PaymentStatus.PARTIAL):
+        # ``amount_paid`` is the money actually received on this record.
+        # - PAID    : the full (amount - discount) is received.
+        # - PARTIAL : whatever the client recorded/verified — never auto-
+        #             overwritten, because partial payments accumulate
+        #             toward the membership balance.
+        # - PENDING/FAILED/REFUNDED : no money received.
+        if self.status == self.PaymentStatus.PAID:
             self.amount_paid = self.amount - self.discount
-        else:
+        elif self.status in (self.PaymentStatus.PENDING, self.PaymentStatus.FAILED, self.PaymentStatus.REFUNDED):
             self.amount_paid = Decimal('0')
+        # PARTIAL: leave amount_paid exactly as set by the caller.
         super().save(*args, **kwargs)
+
+    @property
+    def due_remaining(self):
+        """Outstanding balance on this payment's due (amount - discount - paid)."""
+        return max(self.amount - self.discount - self.amount_paid, Decimal('0'))

@@ -4,6 +4,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from apps.accounts.models import User
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrMemberReadOnly
+from apps.gyms.tenancy import tenant_queryset
 from .models import Locker, LockerAssignment
 from .serializers import LockerSerializer, LockerAssignmentSerializer
 from django.contrib.auth import get_user_model
@@ -18,11 +19,17 @@ class LockerViewSet(viewsets.ModelViewSet):
     queryset = Locker.objects.all()
 
     def get_queryset(self):
-        qs = Locker.objects.all()
+        qs = tenant_queryset(Locker.objects.all(), self.request)
         status_ = self.request.query_params.get('status')
         if status_:
             qs = qs.filter(status=status_)
         return qs
+
+    def perform_create(self, serializer):
+        serializer.save(
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
     @action(detail=False, methods=['post'], url_path='bulk-create')
     def bulk_create(self, request):
@@ -83,7 +90,12 @@ class LockerViewSet(viewsets.ModelViewSet):
                 .values_list('locker_number', flat=True)
             )
             to_create = [
-                Locker(locker_number=num, **shared_fields)
+                Locker(
+                    gym=getattr(self.request, 'gym', None),
+                    branch=getattr(self.request, 'branch', None),
+                    locker_number=num,
+                    **shared_fields,
+                )
                 for num in numbers if num not in existing
             ]
             Locker.objects.bulk_create(to_create)
@@ -125,14 +137,17 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
         self._release_expired_assignments()
 
         user = self.request.user
-        if user.role in (User.Role.OWNER, User.Role.STAFF):
-            qs = LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').all()
+        if getattr(self.request, 'gym_role', user.role) in (User.Role.OWNER, User.Role.STAFF):
+            qs = tenant_queryset(
+            LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').all(),
+            self.request,
+        )
         else:
             qs = LockerAssignment.objects.select_related('locker', 'member', 'assigned_by').filter(member=user)
 
         member_id = self.request.query_params.get('member')
         active_only = self.request.query_params.get('active')
-        if member_id and user.role in (User.Role.OWNER, User.Role.STAFF):
+        if member_id and getattr(self.request, 'gym_role', user.role) in (User.Role.OWNER, User.Role.STAFF):
             qs = qs.filter(member_id=member_id)
         if active_only == 'true':
             qs = qs.filter(is_active=True)
@@ -146,8 +161,11 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
         """
         from django.utils import timezone
         today = timezone.now().date()
-        expired = LockerAssignment.objects.select_related('locker').filter(
-            is_active=True, end_date__isnull=False, end_date__lt=today,
+        expired = tenant_queryset(
+            LockerAssignment.objects.select_related('locker').filter(
+                is_active=True, end_date__isnull=False, end_date__lt=today,
+            ),
+            self.request,
         )
         for assignment in expired:
             assignment.is_active = False
@@ -171,7 +189,11 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
                 {'member': 'This member already has an active locker assignment.'}
             )
 
-        assignment = serializer.save(assigned_by=self.request.user)
+        assignment = serializer.save(
+            assigned_by=self.request.user,
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
         _sync_locker_status(assignment.locker)
 
     def perform_update(self, serializer):
@@ -190,5 +212,5 @@ class LockerAssignmentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         with transaction.atomic():
             locker = instance.locker
-            instance.delete()
+            instance.delete(user=self.request.user)  # soft delete → trash
             _sync_locker_status(locker)

@@ -15,6 +15,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
+
 
 class Exercise(models.Model):
     """
@@ -70,7 +72,7 @@ class Exercise(models.Model):
         return f'{self.name} ({self.muscle_group})'
 
 
-class WorkoutTemplate(models.Model):
+class WorkoutTemplate(TenantScopedModel):
     """
     A reusable training program. Not tied to any member — build once,
     assign to as many members as needed via WorkoutAssignment.
@@ -155,6 +157,8 @@ class WorkoutTemplate(models.Model):
     def clone(self, new_name=None):
         """Deep-copies this template (days + exercises) as a new Draft."""
         clone = WorkoutTemplate.objects.create(
+            gym=self.gym,
+            branch=self.branch,
             trainer=self.trainer,
             name=new_name or f'{self.name} (Copy)',
             goal=self.goal,
@@ -248,7 +252,7 @@ class WorkoutDayExercise(models.Model):
         return f'{self.workout_day} — {self.exercise.name}'
 
 
-class WorkoutAssignment(models.Model):
+class WorkoutAssignment(TenantScopedModel):
     """
     Links one WorkoutTemplate to one member. This is the only place a
     member ever appears in the workout module — templates stay reusable.
@@ -420,7 +424,7 @@ class WorkoutTemplateVersion(models.Model):
         return template
 
 
-class WorkoutCompletionLog(models.Model):
+class WorkoutCompletionLog(TenantScopedModel):
     """A member's actual result for one day of an assignment."""
 
     class Status(models.TextChoices):

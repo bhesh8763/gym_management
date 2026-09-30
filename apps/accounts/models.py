@@ -158,7 +158,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             # create it inside the same locked transaction so two concurrent
             # creators can't both allocate the same sequence number.
             try:
-                seq = RoleSequence.objects.select_for_update(nowait=True).get(role=self.role)
+                seq = RoleSequence.objects.select_for_update().get(role=self.role)
             except RoleSequence.DoesNotExist:
                 try:
                     seq = RoleSequence.objects.create(role=self.role, last_value=0)
@@ -171,6 +171,25 @@ class User(AbstractBaseUser, PermissionsMixin):
             return f'{prefix}-{seq.last_value:04d}'
 
     # ─── Role helpers ─────────────────────────────────────────────────────────
+    @property
+    def member_profile(self):
+        """Backward-compatible access to the first member profile.
+
+        A user may now have one profile per gym; callers that need an explicit
+        tenant should use ``member_profiles.filter(gym=...)`` instead.
+        """
+        return self.member_profiles.order_by('-gym_id').first()
+
+    @property
+    def staff_profile(self):
+        """Backward-compatible access to the first staff profile."""
+        return self.staff_profiles.order_by('-gym_id').first()
+
+    @property
+    def trainer_profile(self):
+        """Backward-compatible access to the first trainer profile."""
+        return self.trainer_profiles.order_by('-gym_id').first()
+
     @property
     def is_owner(self):
         return self.role == self.Role.OWNER
@@ -211,6 +230,13 @@ class PlanSubscription(models.Model):
         'accounts.User',
         on_delete=models.CASCADE,
         related_name='plan_subscriptions',
+    )
+    gym = models.ForeignKey(
+        'gyms.Gym',
+        on_delete=models.CASCADE,
+        related_name='plan_subscriptions',
+        null=True,
+        blank=True,
     )
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES)
     price = models.PositiveIntegerField()  # NPR, billed annually

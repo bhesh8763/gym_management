@@ -7,8 +7,10 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from apps.gyms.models import TenantScopedModel
 
-class MembershipPlan(models.Model):
+
+class MembershipPlan(TenantScopedModel):
     """
     Defines a membership tier (e.g., Monthly Basic, Annual Premium).
     Created and managed by Owner/Staff.
@@ -21,7 +23,7 @@ class MembershipPlan(models.Model):
         ANNUAL = 'ANNUAL', 'Annual'
         CUSTOM = 'CUSTOM', 'Custom'
 
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     billing_cycle = models.CharField(
         max_length=15, choices=BillingCycle.choices, default=BillingCycle.MONTHLY
@@ -43,12 +45,20 @@ class MembershipPlan(models.Model):
         verbose_name = 'Membership Plan'
         verbose_name_plural = 'Membership Plans'
         ordering = ['price']
+        constraints = [
+            models.UniqueConstraint(fields=['gym', 'name'], name='unique_membership_plan_name_per_gym'),
+            models.UniqueConstraint(
+                fields=['name'],
+                condition=models.Q(gym__isnull=True),
+                name='unique_legacy_membership_plan_name',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.name} – NPR {self.price}'
 
 
-class Membership(models.Model):
+class Membership(TenantScopedModel):
     """
     Links a member to a plan with start/end dates and status tracking.
     Handles renewals, freezes, and cancellations.
@@ -133,7 +143,7 @@ class Membership(models.Model):
         return 0
 
 
-class FreezeRequest(models.Model):
+class FreezeRequest(TenantScopedModel):
     """
     A member-submitted request to freeze their membership.
     Staff/Owner reviews and approves or rejects it.
@@ -183,7 +193,7 @@ class FreezeRequest(models.Model):
 # ─── Discount / Offer Management ──────────────────────────────────────────────
 
 
-class Offer(models.Model):
+class Offer(TenantScopedModel):
     """
     A discount offer that can be applied to membership plans.
     Supports percentage or fixed-amount discounts, with validity windows
@@ -198,7 +208,7 @@ class Offer(models.Model):
         ALL_PLANS = 'ALL_PLANS', 'All Plans'
         SPECIFIC_PLANS = 'SPECIFIC_PLANS', 'Specific Plans'
 
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     discount_type = models.CharField(
         max_length=15, choices=DiscountType.choices, default=DiscountType.PERCENTAGE
@@ -234,6 +244,14 @@ class Offer(models.Model):
         verbose_name = 'Offer'
         verbose_name_plural = 'Offers'
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['gym', 'name'], name='unique_offer_name_per_gym'),
+            models.UniqueConstraint(
+                fields=['name'],
+                condition=models.Q(gym__isnull=True),
+                name='unique_legacy_offer_name',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.name} ({self.get_discount_type_display()}: {self.discount_value})'
@@ -275,7 +293,7 @@ class Offer(models.Model):
         return self.plans.filter(pk=plan.pk).exists()
 
 
-class PromoCode(models.Model):
+class PromoCode(TenantScopedModel):
     """
     A unique redemption code linked to an Offer.
     Members enter this code during membership purchase to get the discount.
@@ -287,7 +305,7 @@ class PromoCode(models.Model):
         EXHAUSTED = 'EXHAUSTED', 'Exhausted'
         DISABLED = 'DISABLED', 'Disabled'
 
-    code = models.CharField(max_length=50, unique=True)
+    code = models.CharField(max_length=50)
     offer = models.ForeignKey(Offer, on_delete=models.CASCADE, related_name='promo_codes')
     status = models.CharField(
         max_length=12, choices=Status.choices, default=Status.ACTIVE, db_index=True
@@ -310,6 +328,14 @@ class PromoCode(models.Model):
         verbose_name = 'Promo Code'
         verbose_name_plural = 'Promo Codes'
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['gym', 'code'], name='unique_promo_code_per_gym'),
+            models.UniqueConstraint(
+                fields=['code'],
+                condition=models.Q(gym__isnull=True),
+                name='unique_legacy_promo_code',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.code} — {self.offer.name} ({self.status})'
@@ -340,7 +366,7 @@ class PromoCode(models.Model):
         return self.offer.calculate_discount(original_price)
 
 
-class PromoCodeUsage(models.Model):
+class PromoCodeUsage(TenantScopedModel):
     """
     Records each time a promo code is redeemed, storing the price breakdown
     for audit and reporting.

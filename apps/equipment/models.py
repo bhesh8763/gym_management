@@ -6,8 +6,10 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
 
-class Equipment(models.Model):
+
+class Equipment(TenantScopedModel):
     """Gym equipment inventory item."""
 
     class Condition(models.TextChoices):
@@ -21,7 +23,7 @@ class Equipment(models.Model):
     category = models.CharField(max_length=100, blank=True, help_text='e.g. Cardio, Free Weights')
     brand = models.CharField(max_length=100, blank=True)
     model_number = models.CharField(max_length=100, blank=True)
-    serial_number = models.CharField(max_length=100, null=True, blank=True, unique=True)
+    serial_number = models.CharField(max_length=100, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     purchase_date = models.DateField(null=True, blank=True)
     purchase_price = models.DecimalField(
@@ -45,12 +47,24 @@ class Equipment(models.Model):
         verbose_name = 'Equipment'
         verbose_name_plural = 'Equipment'
         ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['gym', 'serial_number'],
+                condition=~models.Q(serial_number__isnull=True),
+                name='unique_equipment_serial_per_gym',
+            ),
+            models.UniqueConstraint(
+                fields=['serial_number'],
+                condition=models.Q(gym__isnull=True, serial_number__isnull=False),
+                name='unique_legacy_equipment_serial',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.name} ({self.quantity}x)'
 
 
-class MaintenanceRecord(models.Model):
+class MaintenanceRecord(TenantScopedModel):
     """
     Tracks maintenance events for a piece of equipment.
     Supports scheduled (future) and completed maintenance.

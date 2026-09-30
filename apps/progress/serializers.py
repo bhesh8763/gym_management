@@ -2,6 +2,8 @@ from datetime import date
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
+from apps.gyms.tenancy import user_has_branch_access
+
 from .models import ProgressEntry, PersonalRecord
 
 User = get_user_model()
@@ -10,27 +12,49 @@ User = get_user_model()
 class ProgressEntrySerializer(serializers.ModelSerializer):
     bmi = serializers.ReadOnlyField()
     member = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role='MEMBER'),
+        queryset=User.objects.all(),
         required=False,
     )
 
     class Meta:
         model = ProgressEntry
         fields = "__all__"
-        read_only_fields = ["recorded_by"]
+        read_only_fields = ["gym", "branch", "recorded_by"]
         validators = []  # Disable auto-generated UniqueTogetherValidator
 
     def validate(self, data):
         request = self.context.get('request')
-        if request and request.user.role == 'MEMBER':
-            data['member'] = request.user
-
-        # Manual unique_together check (replaces auto-generated validator)
-        member = data.get('member')
+        if request:
+            role = getattr(request, 'gym_role', request.user.role)
+            if role == 'MEMBER':
+                data['member'] = request.user
+            gym = getattr(request, 'gym', None)
+            if gym and data.get('member'):
+                from apps.gyms.models import GymMembership
+                if not GymMembership.objects.filter(
+                    gym=gym, user=data['member'], role=GymMembership.Role.MEMBER,
+                    status=GymMembership.Status.ACTIVE,
+                ).exists():
+                    raise serializers.ValidationError({'member': 'Member is not active in this gym.'})
+                if not user_has_branch_access(data['member'], gym, getattr(request, 'branch', None)):
+                    raise serializers.ValidationError({'member': 'Member does not have access to this branch.'})
+        else:
+            member = data.get('member', getattr(self.instance, 'member', None))
+            if member is not None and member.role != 'MEMBER':
+                raise serializers.ValidationError({'member': 'The selected user is not a member.'})
+        member = data.get('member', getattr(self.instance, 'member', None))
         entry_date = data.get('date')
         if member and entry_date:
             instance = self.instance
-            qs = ProgressEntry.objects.filter(member=member, date=entry_date)
+            qs = ProgressEntry.objects.filter(
+                gym_id=(
+                    getattr(self.context.get('request'), 'gym_id', None)
+                    if self.context.get('request') is not None
+                    else getattr(self.instance, 'gym_id', None)
+                ),
+                member=member,
+                date=entry_date,
+            )
             if instance:
                 qs = qs.exclude(pk=instance.pk)
             if qs.exists():
@@ -63,27 +87,51 @@ class PersonalRecordSerializer(serializers.ModelSerializer):
     exercise_name = serializers.CharField(source="exercise.name", read_only=True)
     exercise_muscle_group = serializers.CharField(source="exercise.muscle_group", read_only=True)
     member = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role='MEMBER'),
+        queryset=User.objects.all(),
         required=False,
     )
 
     class Meta:
         model = PersonalRecord
         fields = "__all__"
+        read_only_fields = ["gym", "branch"]
         validators = []  # Disable auto-generated UniqueTogetherValidator
 
     def validate(self, data):
         request = self.context.get('request')
-        if request and request.user.role == 'MEMBER':
-            data['member'] = request.user
-
-        # Manual unique check for (member, exercise, date)
-        member = data.get('member')
-        exercise = data.get('exercise')
+        if request:
+            role = getattr(request, 'gym_role', request.user.role)
+            if role == 'MEMBER':
+                data['member'] = request.user
+            gym = getattr(request, 'gym', None)
+            if gym and data.get('member'):
+                from apps.gyms.models import GymMembership
+                if not GymMembership.objects.filter(
+                    gym=gym, user=data['member'], role=GymMembership.Role.MEMBER,
+                    status=GymMembership.Status.ACTIVE,
+                ).exists():
+                    raise serializers.ValidationError({'member': 'Member is not active in this gym.'})
+                if not user_has_branch_access(data['member'], gym, getattr(request, 'branch', None)):
+                    raise serializers.ValidationError({'member': 'Member does not have access to this branch.'})
+        else:
+            member = data.get('member', getattr(self.instance, 'member', None))
+            if member is not None and member.role != 'MEMBER':
+                raise serializers.ValidationError({'member': 'The selected user is not a member.'})
+        member = data.get('member', getattr(self.instance, 'member', None))
+        exercise = data.get('exercise', getattr(self.instance, 'exercise', None))
         pr_date = data.get('date')
         if member and exercise and pr_date:
             instance = self.instance
-            qs = PersonalRecord.objects.filter(member=member, exercise=exercise, date=pr_date)
+            qs = PersonalRecord.objects.filter(
+                gym_id=(
+                    getattr(self.context.get('request'), 'gym_id', None)
+                    if self.context.get('request') is not None
+                    else getattr(self.instance, 'gym_id', None)
+                ),
+                member=member,
+                exercise=exercise,
+                date=pr_date,
+            )
             if instance:
                 qs = qs.exclude(pk=instance.pk)
             if qs.exists():

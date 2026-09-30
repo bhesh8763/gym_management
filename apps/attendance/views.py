@@ -4,6 +4,7 @@ import base64
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, SuspiciousFileOperation
 from django.db import models
 from django.utils import timezone
@@ -15,6 +16,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAnyStaffRole, IsOwnerOrStaff
+from apps.gyms.tenancy import gym_users, tenant_queryset
+from apps.gyms.models import GymMembership
 from .models import Attendance, QRAttendanceToken, BiometricRecord
 from .serializers import (
     AttendanceSerializer,
@@ -80,10 +83,13 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             queryset=Membership.objects.filter(status='ACTIVE').select_related('plan'),
             to_attr='prefetched_active_memberships',
         )
-        qs = Attendance.objects.select_related('user', 'marked_by').prefetch_related(active_memberships).all()
+        qs = tenant_queryset(
+            Attendance.objects.select_related('user', 'marked_by').prefetch_related(active_memberships).all(),
+            self.request,
+        )
 
         user = self.request.user
-        if user.role not in STAFF_SIDE_ROLES:
+        if getattr(self.request, 'gym_role', user.role) not in STAFF_SIDE_ROLES:
             # Members (and any other non-staff-side role) only ever see
             # their own attendance — they can't browse everyone else's.
             qs = qs.filter(user=user)
@@ -102,16 +108,20 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         requester = self.request.user
 
-        if requester.role not in STAFF_SIDE_ROLES:
+        if getattr(self.request, 'gym_role', requester.role) not in STAFF_SIDE_ROLES:
             raise PermissionDenied('Only staff-side roles can create attendance records.')
 
-        serializer.save(marked_by=requester)
+        serializer.save(
+            marked_by=requester,
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
     def perform_update(self, serializer):
         requester = self.request.user
         instance = self.get_object()
 
-        if requester.role not in STAFF_SIDE_ROLES:
+        if getattr(self.request, 'gym_role', requester.role) not in STAFF_SIDE_ROLES:
             if instance.user != requester:
                 raise PermissionDenied('You can only update your own attendance.')
             # Members may only self-checkout — everything else (status,
@@ -133,13 +143,16 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         with the current time, unless one already exists.
         """
         user = request.user
-        if user.role != User.Role.MEMBER:
+        if getattr(request, 'gym_role', user.role) != User.Role.MEMBER:
             raise PermissionDenied('Only members can self check-in here.')
 
         today = timezone.localdate()
         now_time = timezone.localtime().time()
 
+        gym = getattr(request, 'gym', None)
         attendance, created = Attendance.objects.get_or_create(
+            gym=gym,
+            branch=getattr(request, 'branch', None),
             user=user,
             date=today,
             defaults={
@@ -164,12 +177,15 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         (checked in today but not yet checked out).
         """
         today = timezone.localdate()
-        currently_in = Attendance.objects.filter(
-            date=today,
+        currently_in = tenant_queryset(
+            Attendance.objects.filter(
+                date=today,
             check_in__isnull=False,
             check_out__isnull=True,
         ).select_related('user').values(
             'user__id', 'user__first_name', 'user__last_name', 'check_in'
+        ),
+            request,
         )
         members_list = list(currently_in)
         return Response({
@@ -184,12 +200,16 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         Member self check-out for today's existing attendance record.
         """
         user = request.user
-        if user.role != User.Role.MEMBER:
+        if getattr(request, 'gym_role', user.role) != User.Role.MEMBER:
             raise PermissionDenied('Only members can self check-out here.')
 
         today = timezone.localdate()
         try:
-            attendance = Attendance.objects.get(user=user, date=today)
+            attendance = Attendance.objects.get(
+                gym=getattr(request, 'gym', None),
+                user=user,
+                date=today,
+            )
         except Attendance.DoesNotExist:
             return Response(
                 {'error': 'You have not checked in today yet.'},
@@ -224,21 +244,26 @@ class MemberQRCodeView(APIView):
             return Response(_QR_NOT_INSTALLED, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if member_id is not None:
-            if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+            if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
                 raise PermissionDenied('Only Owner or Staff can view other members\' QR codes.')
             try:
-                member = User.objects.get(pk=member_id, role=User.Role.MEMBER)
+                member = gym_users(
+                    gym=getattr(request, 'gym', None),
+                    role=GymMembership.Role.MEMBER,
+                ).get(pk=member_id)
             except User.DoesNotExist:
                 return Response({'error': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            if request.user.role != User.Role.MEMBER:
+            if getattr(request, 'gym_role', request.user.role) != User.Role.MEMBER:
                 return Response(
                     {'error': 'Only members have QR attendance tokens.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             member = request.user
 
-        qr_token = QRAttendanceToken.get_or_create_for_member(member)
+        qr_token = QRAttendanceToken.get_or_create_for_member(
+            member, gym=getattr(request, 'gym', None), branch=getattr(request, 'branch', None)
+        )
         img_base64 = _generate_qr_image(qr_token.token)
 
         return Response({
@@ -263,18 +288,24 @@ class MemberProfileQRView(APIView):
         if not QR_AVAILABLE:
             return Response(_QR_NOT_INSTALLED, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner or Staff can generate profile QR codes.')
 
         try:
-            member = User.objects.get(pk=member_id, role=User.Role.MEMBER)
+            member = gym_users(
+                gym=getattr(request, 'gym', None),
+                role=GymMembership.Role.MEMBER,
+            ).get(pk=member_id)
         except User.DoesNotExist:
             return Response({'error': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Build the public profile URL — points to the member-card page
         from django.conf import settings as django_settings
         frontend_url = getattr(django_settings, 'FRONTEND_URL', 'http://127.0.0.1:5500')
-        profile_url = f"{frontend_url}/member-card.html?id={member.id}"
+        profile_url = (
+            f"{frontend_url}/member-card.html?id={member.id}"
+            f"&gym_id={getattr(request, 'gym', None).public_id if getattr(request, 'gym', None) else ''}"
+        )
 
         img_base64 = _generate_qr_image(profile_url)
 
@@ -315,11 +346,28 @@ class QRScanCheckInView(APIView):
         member = qr_token.member
         if not member.is_active:
             return Response({'error': 'Member account is inactive.'}, status=status.HTTP_403_FORBIDDEN)
+        if qr_token.gym_id:
+            from apps.gyms.models import Gym
+            if qr_token.gym.status not in (Gym.Status.ACTIVE, Gym.Status.TRIAL) or not GymMembership.objects.filter(
+                gym=qr_token.gym,
+                user=member,
+                role=GymMembership.Role.MEMBER,
+                status=GymMembership.Status.ACTIVE,
+            ).exists():
+                return Response({'error': 'This member is not active in this gym.'}, status=status.HTTP_403_FORBIDDEN)
+            if qr_token.branch_id and not GymMembership.objects.filter(
+                gym=qr_token.gym,
+                user=member,
+                branch_memberships__branch=qr_token.branch,
+            ).exists():
+                return Response({'error': 'This member is not active in this branch.'}, status=status.HTTP_403_FORBIDDEN)
 
         today = timezone.localdate()
         now_time = timezone.localtime().time()
 
         attendance, created = Attendance.objects.get_or_create(
+            gym=qr_token.gym,
+            branch=qr_token.branch,
             user=member,
             date=today,
             defaults={
@@ -359,18 +407,23 @@ class RegenerateQRView(APIView):
 
     def post(self, request, member_id=None):
         if member_id is not None:
-            if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+            if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
                 raise PermissionDenied('Only Owner or Staff can regenerate other members\' QR codes.')
             try:
-                member = User.objects.get(pk=member_id, role=User.Role.MEMBER)
+                member = gym_users(
+                    gym=getattr(request, 'gym', None),
+                    role=GymMembership.Role.MEMBER,
+                ).get(pk=member_id)
             except User.DoesNotExist:
                 return Response({'error': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            if request.user.role != User.Role.MEMBER:
+            if getattr(request, 'gym_role', request.user.role) != User.Role.MEMBER:
                 return Response({'error': 'Only members can use this endpoint.'}, status=status.HTTP_400_BAD_REQUEST)
             member = request.user
 
-        qr_token = QRAttendanceToken.get_or_create_for_member(member)
+        qr_token = QRAttendanceToken.get_or_create_for_member(
+            member, gym=getattr(request, 'gym', None), branch=getattr(request, 'branch', None)
+        )
         qr_token.regenerate()
 
         return Response({
@@ -394,7 +447,7 @@ class SharedCheckinQRView(APIView):
         if not QR_AVAILABLE:
             return Response(_QR_NOT_INSTALLED, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if request.user.role not in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(request, 'gym_role', request.user.role) not in (User.Role.OWNER, User.Role.STAFF):
             raise PermissionDenied('Only Owner or Staff can generate the shared check-in QR.')
 
         from django.conf import settings as django_settings
@@ -430,16 +483,34 @@ class BiometricEnrollmentView(APIView):
         data = request.data.copy()
         user = request.user
 
-        # Validate member exists and is a member
-        member = User.objects.filter(pk=data.get('member'), role=User.Role.MEMBER).first()
+        # Validate member exists in the active gym
+        gym = getattr(request, 'gym', None)
+        member_qs = gym_users(gym=gym, role=GymMembership.Role.MEMBER) if gym is not None else User.objects.filter(
+            pk=data.get('member'), role=User.Role.MEMBER,
+        )
+        member = member_qs.filter(pk=data.get('member')).first()
         if not member:
             return Response(
                 {'error': 'Valid member ID is required.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        from apps.gyms.models import GymMembership
+        if getattr(request, 'gym', None) is not None and not GymMembership.objects.filter(
+            gym=getattr(request, 'gym', None),
+            user=member,
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+        ).exists():
+            return Response(
+                {'error': 'Member is not active in this gym.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # Check if already enrolled
-        existing = BiometricRecord.objects.filter(member=member).first()
+        # Check if already enrolled in this gym/branch
+        existing = BiometricRecord._base_manager.filter(
+            member=member,
+            gym=getattr(request, 'gym', None),
+        ).first()
         if existing and existing.status == BiometricRecord.BiometricStatus.ENROLLED:
             return Response(
                 {'error': 'This member already has an active biometric enrollment.'},
@@ -457,7 +528,10 @@ class BiometricEnrollmentView(APIView):
             serializer = BiometricRecordSerializer(data=data)
 
         if serializer.is_valid():
-            record = serializer.save()
+            record = serializer.save(
+                gym=getattr(request, 'gym', None),
+                branch=getattr(request, 'branch', None),
+            )
             return Response(BiometricRecordSerializer(record).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -500,7 +574,7 @@ class BiometricRecordDetailView(APIView):
         except BiometricRecord.DoesNotExist:
             return Response({'error': 'Biometric record not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        record.delete()
+        record.delete(hard=True)  # biometric data must not persist (privacy)
         return Response({'message': 'Biometric enrollment removed.'}, status=status.HTTP_200_OK)
 
 
@@ -522,7 +596,10 @@ class BiometricCheckInView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = BiometricAttendanceSerializer(data=request.data)
+        serializer = BiometricAttendanceSerializer(
+            data=request.data,
+            context={'request': request},
+        )
         if serializer.is_valid():
             biometric_record = serializer.context['biometric_record']
             member = biometric_record.member
@@ -542,6 +619,8 @@ class BiometricCheckInView(APIView):
                 now_time = timezone.localtime().time()
 
             attendance, created = Attendance.objects.get_or_create(
+                gym=biometric_record.gym,
+                branch=biometric_record.branch,
                 user=member,
                 date=today,
                 defaults={
@@ -616,20 +695,45 @@ class PublicMemberProfileView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, member_id):
+        gym_public_id = request.query_params.get('gym_id')
+        gym = None
+        if gym_public_id:
+            from apps.gyms.models import Gym
+            gym = Gym.objects.filter(
+                public_id=gym_public_id,
+                status__in=[Gym.Status.ACTIVE, Gym.Status.TRIAL],
+            ).first()
+            if gym is None:
+                return Response({'error': 'Gym not found.'}, status=status.HTTP_404_NOT_FOUND)
         try:
-            member = User.objects.get(pk=member_id, role=User.Role.MEMBER, is_active=True)
+            member_qs = User.objects.filter(
+                pk=member_id, role=User.Role.MEMBER, is_active=True,
+            )
+            if gym is not None:
+                member_qs = member_qs.filter(
+                    gym_memberships__gym=gym,
+                    gym_memberships__role=GymMembership.Role.MEMBER,
+                    gym_memberships__status=GymMembership.Status.ACTIVE,
+                ).distinct()
+            elif getattr(settings, 'TENANCY_REQUIRE_MEMBERSHIP', False):
+                return Response({'error': 'gym_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            member = member_qs.get()
         except User.DoesNotExist:
             return Response({'error': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Get active membership
-        active_membership = member.memberships.filter(
-            status='ACTIVE'
-        ).select_related('plan').order_by('-start_date').first()
+        active_membership_qs = member.memberships.filter(status='ACTIVE')
+        if gym is not None:
+            active_membership_qs = active_membership_qs.filter(gym=gym)
+        active_membership = active_membership_qs.select_related('plan').order_by('-start_date').first()
 
         # Get member profile
         profile = None
         try:
-            profile = member.member_profile
+            profile_qs = member.member_profiles.all()
+            if gym is not None:
+                profile_qs = profile_qs.filter(gym=gym)
+            profile = profile_qs.first()
         except ObjectDoesNotExist:
             pass
 

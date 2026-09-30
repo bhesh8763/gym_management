@@ -20,6 +20,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
+from apps.gyms.tenancy import branch_queryset, gym_users, tenant_queryset
+from apps.gyms.models import GymMembership
 
 from .models import DietPlan, Meal, MealLog, MealChecklist
 from .serializers import (
@@ -141,16 +143,19 @@ def _general_plan_for(member):
     }
 
 
-def _visible_diet_plans(user):
+def _visible_diet_plans(user, request=None):
     """Return the queryset of DietPlan records the requesting user may see."""
     qs = DietPlan.objects.select_related('member', 'created_by').prefetch_related('meals')
-    if user.role in (User.Role.OWNER, User.Role.STAFF):
-        return qs.all()
-    if user.is_member:
-        return qs.filter(member=user)
-    if user.is_trainer:
-        return qs.filter(created_by=user)
-    return qs.none()
+    role = getattr(request, 'gym_role', user.role) if request is not None else user.role
+    if role in (User.Role.OWNER, User.Role.STAFF):
+        qs = qs.all()
+    elif role == User.Role.MEMBER:
+        qs = qs.filter(member=user)
+    elif role == User.Role.TRAINER:
+        qs = qs.filter(created_by=user)
+    else:
+        qs = qs.none()
+    return tenant_queryset(qs, request) if request is not None else qs
 
 
 # ─── ViewSets ─────────────────────────────────────────────────────────────────
@@ -171,7 +176,7 @@ class DietPlanViewSet(viewsets.ModelViewSet):
     # ── Queryset & filtering ──────────────────────────────────────────────────
 
     def get_queryset(self):
-        qs = _visible_diet_plans(self.request.user)
+        qs = _visible_diet_plans(self.request.user, self.request)
 
         q = self.request.query_params.get('q', '').strip()
         if q:
@@ -198,6 +203,12 @@ class DietPlanViewSet(viewsets.ModelViewSet):
             return [IsOwnerOrStaffOrTrainer()]
         return [IsAuthenticated()]
 
+    def perform_create(self, serializer):
+        serializer.save(
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
+
     # ── Custom actions ────────────────────────────────────────────────────────
 
     @action(detail=False, methods=['get'], url_path='stats', permission_classes=[IsAuthenticated])
@@ -213,7 +224,7 @@ class DietPlanViewSet(viewsets.ModelViewSet):
                 "muscleGain":  <int>
             }
         """
-        qs = _visible_diet_plans(request.user)
+        qs = _visible_diet_plans(request.user, request)
         data = {
             'total':      qs.count(),
             'active':     qs.filter(is_active=True).count(),
@@ -240,7 +251,10 @@ class MealViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerOrStaffOrTrainer]
 
     def get_queryset(self):
-        qs = Meal.objects.select_related('diet_plan').all()
+        qs = Meal.objects.select_related('diet_plan').filter(
+            diet_plan__gym=getattr(self.request, 'gym', None),
+        )
+        qs = branch_queryset(qs, self.request, field='diet_plan__branch')
         diet_plan_id = self.request.query_params.get('diet_plan')
         if diet_plan_id:
             qs = qs.filter(diet_plan_id=diet_plan_id)
@@ -259,9 +273,9 @@ class MealLogViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in (User.Role.OWNER, User.Role.STAFF):
+        if getattr(self.request, 'gym_role', user.role) in (User.Role.OWNER, User.Role.STAFF):
             qs = MealLog.objects.all()
-        elif user.is_trainer:
+        elif getattr(self.request, 'gym_role', user.role) == User.Role.TRAINER:
             from apps.trainers.models import TrainerMemberAssignment
             assigned = TrainerMemberAssignment.objects.filter(
                 trainer=user, is_active=True
@@ -269,6 +283,7 @@ class MealLogViewSet(viewsets.ModelViewSet):
             qs = MealLog.objects.filter(member_id__in=assigned)
         else:
             qs = MealLog.objects.filter(member=user)
+        qs = tenant_queryset(qs, self.request)
 
         date_filter = self.request.query_params.get('date')
         if date_filter:
@@ -283,13 +298,17 @@ class MealLogViewSet(viewsets.ModelViewSet):
             qs = qs.filter(date__lte=date_to)
 
         member_id = self.request.query_params.get('member')
-        if member_id and user.role in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER):
+        if member_id and getattr(self.request, 'gym_role', user.role) in (User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER):
             qs = qs.filter(member_id=member_id)
 
         return qs.order_by('-date')
 
     def perform_create(self, serializer):
-        serializer.save(member=self.request.user)
+        serializer.save(
+            member=self.request.user,
+            gym=getattr(self.request, 'gym', None),
+            branch=getattr(self.request, 'branch', None),
+        )
 
     @action(detail=False, methods=['get'], url_path='weekly-summary')
     def weekly_summary(self, request):
@@ -301,12 +320,15 @@ class MealLogViewSet(viewsets.ModelViewSet):
         """
         user = request.user
         member_id = request.query_params.get('member')
-        if member_id and user.role in ('OWNER', 'STAFF', 'TRAINER'):
+        if member_id and getattr(request, 'gym_role', user.role) in ('OWNER', 'STAFF', 'TRAINER'):
             try:
-                member = User.objects.get(pk=member_id, role='MEMBER')
+                member = gym_users(
+                    gym=getattr(request, 'gym', None),
+                    role=GymMembership.Role.MEMBER,
+                ).get(pk=member_id)
             except User.DoesNotExist:
                 return Response({'error': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
-        elif user.is_member:
+        elif getattr(request, 'gym_role', user.role) == User.Role.MEMBER:
             member = user
         else:
             return Response({'error': 'Specify ?member=<id>.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -375,13 +397,16 @@ class MealLogDailySummaryView(APIView):
 
         # Resolve target member
         member_id = request.query_params.get('member')
-        if member_id and user.role in ('OWNER', 'STAFF', 'TRAINER'):
+        if member_id and getattr(request, 'gym_role', user.role) in ('OWNER', 'STAFF', 'TRAINER'):
             try:
-                member = User.objects.get(pk=member_id, role='MEMBER')
+                member = gym_users(
+                    gym=getattr(request, 'gym', None),
+                    role=GymMembership.Role.MEMBER,
+                ).get(pk=member_id)
             except User.DoesNotExist:
                 return Response({'error': 'Member not found.'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            if user.role != 'MEMBER':
+            if getattr(request, 'gym_role', user.role) != 'MEMBER':
                 return Response(
                     {'error': "Specify ?member=<id> to view a member's summary."},
                     status=status.HTTP_400_BAD_REQUEST,

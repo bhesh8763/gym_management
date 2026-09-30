@@ -44,9 +44,18 @@ class _Abort(Exception):
 class Ctx:
     """Everything one import run needs to share between its sheets."""
 
-    def __init__(self, actor=None, default_password=None):
+    def __init__(self, actor=None, default_password=None, gym=None, branch=None):
         self.actor = actor                    # the user running the import
         self.default_password = default_password
+        if gym is None and actor is not None:
+            from apps.gyms.tenancy import get_user_membership
+            membership = get_user_membership(actor)
+            if membership:
+                gym = membership.gym
+                branch = membership.branch_memberships.select_related('branch').first()
+                branch = branch.branch if branch else None
+        self.gym = gym
+        self.branch = branch
         self.passwordless_accounts = 0
 
         self.users = {}                       # email -> User (in the database)
@@ -68,13 +77,34 @@ class Ctx:
         self.active_trainee_members = set()
 
     def load(self):
-        """Cache every lookup table used by validation (four queries total)."""
-        self.users = {user.email.lower(): user for user in User.objects.all()}
-        self.plans = {plan.name.lower(): plan for plan in MembershipPlan.objects.all()}
-        self.lockers = {locker.locker_number.lower(): locker for locker in Locker.objects.all()}
-        self.offers = {offer.name.lower(): offer for offer in Offer.objects.all()}
+        """Cache lookup tables, restricted to the importing gym when present."""
+        users = User.objects.all()
+        plans = MembershipPlan.objects.all()
+        lockers = Locker.objects.all()
+        offers = Offer.objects.all()
+        if self.gym is not None:
+            from apps.gyms.tenancy import gym_users
+            users = gym_users(gym=self.gym)
+            plans = plans.filter(gym=self.gym)
+            lockers = lockers.filter(gym=self.gym)
+            offers = offers.filter(gym=self.gym)
+        self.users = {user.email.lower(): user for user in users}
+        self.plans = {plan.name.lower(): plan for plan in plans}
+        self.lockers = {locker.locker_number.lower(): locker for locker in lockers}
+        self.offers = {offer.name.lower(): offer for offer in offers}
 
     # ── Lookups used while validating ──────────────────────────────────────
+
+    def membership_role(self, user):
+        if self.gym is None:
+            return user.role
+        membership = user.gym_memberships.filter(gym=self.gym).first()
+        return membership.role if membership else None
+
+    def in_gym(self, user):
+        return self.gym is None or user.gym_memberships.filter(
+            gym=self.gym, status='ACTIVE',
+        ).exists()
 
     def resolve_user(self, email, column, role=None, required=True):
         """Find an account, honouring accounts this same file will create.
@@ -87,7 +117,9 @@ class Ctx:
             if required:
                 raise RowError(column, 'This field is required.')
             return None
-        user = self.users.get(key)
+        user = self.users.get(key) or User.objects.filter(email__iexact=key).first()
+        if user is not None:
+            self.users.setdefault(key, user)
         if user is None:
             planned_role = self.planned.get(key)
             if planned_role is None:
@@ -103,8 +135,10 @@ class Ctx:
                     f'row needs a {role} account.',
                 )
             return None
-        if role and user.role != role:
-            raise RowError(column, f'"{key}" is a {user.role} account, not a {role} account.')
+        if role:
+            current_role = self.membership_role(user)
+            if current_role not in (None, role):
+                raise RowError(column, f'"{key}" is a {current_role} account, not a {role} account.')
         return user
 
     def require_user(self, email, column, role=None):
@@ -183,6 +217,9 @@ class Ctx:
         if key in self.memberships or key in self.planned_memberships:
             return True
         return Membership.objects.filter(
+            gym=self.gym,
+            member__email__iexact=key[0], plan__name__iexact=key[1],
+        ).exists() if self.gym is not None else Membership.objects.filter(
             member__email__iexact=key[0], plan__name__iexact=key[1],
         ).exists()
 
@@ -190,9 +227,12 @@ class Ctx:
         key = (email.strip().lower(), plan_name.strip().lower())
         membership = self.memberships.get(key)
         if membership is None:
-            membership = Membership.objects.filter(
+            membership_qs = Membership.objects.filter(
                 member__email__iexact=key[0], plan__name__iexact=key[1],
-            ).order_by('-start_date').first()
+            )
+            if self.gym is not None:
+                membership_qs = membership_qs.filter(gym=self.gym)
+            membership = membership_qs.order_by('-start_date').first()
             if membership is None:
                 raise RowError(column, f'No "{plan_name}" membership found for {key[0]}.')
             self.memberships[key] = membership
@@ -377,7 +417,7 @@ def _commit_sheet(sheet_cls, entry, rows, ctx):
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_import(upload, *, actor, dry_run=True, default_password=None):
+def run_import(upload, *, actor, dry_run=True, default_password=None, gym=None, branch=None):
     """Validate (dry_run=True) or import an uploaded workbook.
 
     Always returns a report dict; `report['ok']` is True only when the file
@@ -393,7 +433,12 @@ def run_import(upload, *, actor, dry_run=True, default_password=None):
         'accounts_without_password': 0,
         'totals': {'rows': 0, 'to_create': 0, 'skipped': 0, 'errors': 0},
     }
-    ctx = Ctx(actor=actor, default_password=default_password)
+    ctx = Ctx(
+        actor=actor,
+        default_password=default_password,
+        gym=gym,
+        branch=branch,
+    )
 
     try:
         workbook = load_workbook(upload, read_only=True, data_only=True)

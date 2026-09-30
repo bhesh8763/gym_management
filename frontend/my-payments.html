@@ -148,6 +148,23 @@
                       <label class="form-label">Amount Due</label>
                       <input type="text" id="payAmountDisplay" class="form-control" disabled>
                     </div>
+                    <div class="mb-3">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="payPartialToggle" onchange="togglePartialAmount()">
+                        <label class="form-check-label" for="payPartialToggle">Pay a partial amount</label>
+                      </div>
+                      <div id="partialAmountGroup" class="mt-2" style="display:none;">
+                        <label class="form-label">Amount to Pay Now <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                          <span class="input-group-text">NPR</span>
+                          <input type="number" id="payPartialAmount" class="form-control" min="1" step="0.01" placeholder="Minimum 1.00">
+                          <button class="btn btn-outline-secondary" type="button" id="payHalfBtn" onclick="fillHalfAmount()">Pay half</button>
+                        </div>
+                        <div class="form-text">
+                          <i class="bi bi-info-circle"></i> Any amount up to the balance. The rest stays due and you can pay it later in instalments.
+                        </div>
+                      </div>
+                    </div>
                     <div class="mb-2">
                       <label class="form-label">Payment Method</label>
                       <select id="payMethod" class="form-select" required>
@@ -370,8 +387,28 @@ function openPayModal(idx) {
     document.getElementById('payForm').reset();
     document.getElementById('payMethod').value = 'KHALTI';
     document.getElementById('paySpinner').classList.add('d-none');
+    togglePartialAmount();
     updatePayMethodUI();
     new bootstrap.Modal(document.getElementById('payModal')).show();
+}
+
+// Partial-payment toggle: show/hide the amount input, prefill with half the
+// balance as a sensible starting point.
+function togglePartialAmount() {
+    const on = document.getElementById('payPartialToggle')?.checked;
+    const group = document.getElementById('partialAmountGroup');
+    const amountInput = document.getElementById('payPartialAmount');
+    if (!group) return;
+    group.style.display = on ? '' : 'none';
+    if (on && amountInput && !amountInput.value && selectedDue) {
+        amountInput.value = (selectedDue.amount / 2).toFixed(2);
+    }
+}
+
+function fillHalfAmount() {
+    if (!selectedDue) return;
+    const input = document.getElementById('payPartialAmount');
+    if (input) input.value = (selectedDue.amount / 2).toFixed(2);
 }
 
 function updatePayMethodUI() {
@@ -403,6 +440,29 @@ document.getElementById('payForm')?.addEventListener('submit', async (e) => {
         return_url: window.location.origin + window.location.pathname,
     });
 
+    // Optional partial amount — only sent when the toggle is on and a valid
+    // amount is entered. Omitted (= full payment) otherwise.
+    const partialOn = document.getElementById('payPartialToggle')?.checked;
+    if (partialOn) {
+        const rawAmount = document.getElementById('payPartialAmount')?.value;
+        const parsed = parseFloat(rawAmount);
+        if (!rawAmount || isNaN(parsed) || parsed <= 0) {
+            errorBox.textContent = 'Enter the amount you want to pay now, or switch the partial toggle off to pay in full.';
+            errorBox.classList.remove('d-none');
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+            return;
+        }
+        if (parsed > selectedDue.amount) {
+            errorBox.textContent = 'Amount cannot exceed the outstanding balance. Switch the partial toggle off to pay in full.';
+            errorBox.classList.remove('d-none');
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+            return;
+        }
+        payload.amount = parsed;
+    }
+
     try {
         const res = await apiRequest('/payments/pay/', { method: 'POST', body: JSON.stringify(payload) });
         if (!res) return;
@@ -427,7 +487,9 @@ document.getElementById('payForm')?.addEventListener('submit', async (e) => {
         }
 
         bootstrap.Modal.getInstance(document.getElementById('payModal'))?.hide();
-        showToast('Payment recorded — pending verification.');
+        showToast(data.status === 'PARTIAL'
+            ? `Instalment of NPR ${parseFloat(data.amount_paid).toFixed(2)} recorded — NPR ${parseFloat(selectedDue.amount - data.amount_paid).toFixed(2)} still due.`
+            : 'Payment recorded — pending verification.');
         await loadDues();
         await loadHistory();
     } catch (err) {

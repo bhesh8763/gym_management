@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.accounts.permissions import IsOwnerOrStaff
+from apps.gyms.tenancy import tenant_queryset
 from apps.notifications.models import Notification
 from apps.notifications.serializers import NotificationCreateSerializer, NotificationSerializer
 
@@ -45,7 +46,10 @@ class NotificationListCreateView(generics.ListCreateAPIView):
         return NotificationSerializer
 
     def get_queryset(self):
-        qs = Notification.objects.filter(recipient=self.request.user)
+        qs = tenant_queryset(
+            Notification.objects.filter(recipient=self.request.user),
+            self.request,
+        )
 
         is_read = self.request.query_params.get('is_read')
         if is_read is not None:
@@ -58,7 +62,10 @@ class NotificationListCreateView(generics.ListCreateAPIView):
         return qs
 
     def create(self, request, *args, **kwargs):
-        serializer = NotificationCreateSerializer(data=request.data)
+        serializer = NotificationCreateSerializer(
+            data=request.data,
+            context={'request': request},
+        )
         serializer.is_valid(raise_exception=True)
         created = serializer.save()
         return Response(
@@ -74,7 +81,10 @@ class UnreadCountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+        count = tenant_queryset(
+            Notification.objects.filter(recipient=request.user, is_read=False),
+            request,
+        ).count()
         return Response({'unread_count': count})
 
 
@@ -85,9 +95,11 @@ class MarkAsReadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
-        try:
-            notification = Notification.objects.get(pk=pk, recipient=request.user)
-        except Notification.DoesNotExist:
+        notification = tenant_queryset(
+            Notification.objects.filter(pk=pk, recipient=request.user),
+            request,
+        ).first()
+        if notification is None:
             raise NotFound('Notification not found.')
         notification.mark_read()
         return Response(NotificationSerializer(notification).data)
@@ -101,8 +113,9 @@ class MarkAllAsReadView(APIView):
 
     def post(self, request):
         from django.utils import timezone
-        updated = Notification.objects.filter(
-            recipient=request.user, is_read=False
+        updated = tenant_queryset(
+            Notification.objects.filter(recipient=request.user, is_read=False),
+            request,
         ).update(is_read=True, read_at=timezone.now())
         return Response({'detail': f'{updated} notification(s) marked as read.'})
 
@@ -118,8 +131,10 @@ class NotificationDeleteView(APIView):
             notification = Notification.objects.get(pk=pk)
         except Notification.DoesNotExist:
             raise NotFound('Notification not found.')
+        if getattr(request, 'gym', None) is not None and notification.gym_id != getattr(request, 'gym', None).id:
+            raise NotFound('Notification not found.')
 
-        is_privileged = request.user.role in (User.Role.OWNER, User.Role.STAFF)
+        is_privileged = getattr(request, 'gym_role', request.user.role) in (User.Role.OWNER, User.Role.STAFF)
         if not is_privileged and notification.recipient != request.user:
             raise PermissionDenied('You do not have permission to delete this notification.')
 

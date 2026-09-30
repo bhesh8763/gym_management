@@ -6,14 +6,16 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from apps.gyms.models import TenantScopedModel
 
-class TrainerProfile(models.Model):
+
+class TrainerProfile(TenantScopedModel):
     """Profile for users with role=TRAINER."""
 
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='trainer_profile',
+        related_name='trainer_profiles',
     )
     specializations = models.JSONField(
         default=list,
@@ -40,12 +42,20 @@ class TrainerProfile(models.Model):
         db_table = 'trainer_profiles'
         verbose_name = 'Trainer Profile'
         verbose_name_plural = 'Trainer Profiles'
+        constraints = [
+            models.UniqueConstraint(fields=['gym', 'user'], name='unique_trainer_profile_per_gym'),
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(gym__isnull=True),
+                name='unique_legacy_trainer_profile_user',
+            ),
+        ]
 
     def __str__(self):
         return f'Trainer: {self.user.get_full_name()}'
 
 
-class TrainerMemberAssignment(models.Model):
+class TrainerMemberAssignment(TenantScopedModel):
     """
     Tracks which trainer is assigned to which member.
     A member can have one active trainer at a time.

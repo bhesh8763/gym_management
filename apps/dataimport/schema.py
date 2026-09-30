@@ -26,6 +26,7 @@ from django.conf import settings
 from django.utils import timezone as django_timezone
 
 from apps.accounts.models import User
+from apps.gyms.models import GymMembership
 from apps.attendance.models import Attendance
 from apps.equipment.models import Equipment
 from apps.lockers.models import Locker, LockerAssignment
@@ -406,27 +407,47 @@ class Sheet:
 
     @classmethod
     def existing_user(cls, data, ctx):
-        if ctx.users.get(data['email']) is not None:
-            return 'Account already exists'
+        user = ctx.users.get(data['email']) or User.objects.filter(email__iexact=data['email']).first()
+        if user is not None and ctx.in_gym(user):
+            return 'Account already exists in this gym'
         return None
 
     @classmethod
     def create_user(cls, data, ctx, role):
         password = data.get('password') or ctx.default_password
-        user = User(
-            email=data['email'],
-            first_name=data['first_name'],
-            middle_name=data.get('middle_name', ''),
-            last_name=data['last_name'],
-            phone=data.get('phone', ''),
-            role=role,
-            is_active=data.get('is_active', True),
-        )
-        if password:
-            user.set_password(password)
-        else:
-            user.set_unusable_password()
-        user.save()
+        user = User.objects.filter(email__iexact=data['email']).first()
+        if user is None:
+            user = User(
+                email=data['email'],
+                first_name=data['first_name'],
+                middle_name=data.get('middle_name', ''),
+                last_name=data['last_name'],
+                phone=data.get('phone', ''),
+                role=role,
+                is_active=data.get('is_active', True),
+            )
+            if password:
+                user.set_password(password)
+            else:
+                user.set_unusable_password()
+            user.save()
+        if ctx.gym is not None:
+            membership, _ = GymMembership.objects.get_or_create(
+                user=user,
+                gym=ctx.gym,
+                defaults={
+                    'role': role,
+                    'status': GymMembership.Status.ACTIVE,
+                },
+            )
+            if membership.status != GymMembership.Status.ACTIVE:
+                membership.status = GymMembership.Status.ACTIVE
+                membership.save(update_fields=['status', 'updated_at'])
+            if not user.gym_memberships.filter(is_default=True).exists():
+                membership.is_default = True
+                membership.save(update_fields=['is_default', 'updated_at'])
+            if ctx.branch is not None:
+                membership.branch_memberships.get_or_create(branch=ctx.branch)
         ctx.users[user.email] = user
         return user
 
@@ -497,6 +518,8 @@ class MembershipPlansSheet(Sheet):
     @classmethod
     def insert(cls, data, ctx):
         plan = MembershipPlan.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             name=data['name'],
             description=data['description'],
             billing_cycle=data['billing_cycle'],
@@ -588,7 +611,21 @@ class MembersSheet(Sheet):
     @classmethod
     def insert(cls, data, ctx):
         user = cls.create_user(data, ctx, User.Role.MEMBER)
-        profile = MemberProfile.objects.get(user=user)
+        profile = MemberProfile._base_manager.filter(
+            user=user, gym=ctx.gym,
+        ).first()
+        if profile is None:
+            profile = MemberProfile._base_manager.filter(
+                user=user, gym__isnull=True,
+            ).first()
+        if profile is None:
+            profile = MemberProfile(user=user, gym=ctx.gym, branch=ctx.branch)
+        elif profile.gym_id is None:
+            profile.gym = ctx.gym
+            profile.branch = ctx.branch
+        elif profile.is_deleted:
+            # Re-importing a member revives their trashed profile.
+            profile.restore()
         profile.date_of_birth = data['date_of_birth']
         profile.gender = data['gender']
         profile.address = data['address']
@@ -677,6 +714,8 @@ class StaffSheet(Sheet):
         user = cls.create_user(data, ctx, User.Role.STAFF)
         StaffProfile.objects.create(
             user=user,
+            gym=ctx.gym,
+            branch=ctx.branch,
             role=data['staff_role'],
             joined_date=data['joined_date'],
             salary=data['salary'],
@@ -758,6 +797,8 @@ class TrainersSheet(Sheet):
         user = cls.create_user(data, ctx, User.Role.TRAINER)
         TrainerProfile.objects.create(
             user=user,
+            gym=ctx.gym,
+            branch=ctx.branch,
             specializations=data['specializations'],
             experience_years=data['experience_years'],
             bio=data['bio'],
@@ -833,6 +874,8 @@ class OffersSheet(Sheet):
     @classmethod
     def insert(cls, data, ctx):
         offer = Offer.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             name=data['name'],
             description=data['description'],
             discount_type=data['discount_type'],
@@ -895,13 +938,18 @@ class PromoCodesSheet(Sheet):
 
     @classmethod
     def existing(cls, data, ctx):
-        if PromoCode.objects.filter(code__iexact=data['code']).exists():
+        lookup = {'code__iexact': data['code']}
+        if ctx.gym is not None:
+            lookup['gym_id'] = ctx.gym.id
+        if PromoCode.objects.filter(**lookup).exists():
             return 'Promo code already exists'
         return None
 
     @classmethod
     def insert(cls, data, ctx):
         return PromoCode.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             code=data['code'].upper(),
             offer=ctx.require_offer(data['offer_name'], 'Offer Name'),
             status=data['status'],
@@ -975,15 +1023,20 @@ class MembershipsSheet(Sheet):
         plan = ctx.plans.get(data['plan_name'].lower())
         if user is None or plan is None:
             return None  # this file creates them — nothing to collide with
-        if Membership.objects.filter(
+        membership_qs = Membership.objects.filter(
             member=user, plan=plan, start_date=data['start_date']
-        ).exists():
+        )
+        if ctx.gym is not None:
+            membership_qs = membership_qs.filter(gym=ctx.gym)
+        if membership_qs.exists():
             return 'Membership already exists'
         return None
 
     @classmethod
     def insert(cls, data, ctx):
         membership = Membership.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             member=ctx.require_user(data['member_email'], 'Member Email', role=User.Role.MEMBER),
             plan=ctx.require_plan(data['plan_name'], 'Plan Name'),
             status=data['status'],
@@ -1079,6 +1132,8 @@ class PaymentsSheet(Sheet):
         if data['collected_by']:
             collected_by = ctx.require_user(data['collected_by'], 'Collected By')
         return Payment.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             member=ctx.require_user(data['member_email'], 'Member Email', role=User.Role.MEMBER),
             membership=membership,
             payment_for=data['payment_for'],
@@ -1137,7 +1192,7 @@ class AttendanceSheet(Sheet):
     def clean(cls, row_number, raw, ctx):
         data = super().clean(row_number, raw, ctx)
         user = ctx.resolve_user(data['email'], 'Email')
-        role = user.role if user is not None else ctx.planned.get(data['email'])
+        role = (ctx.membership_role(user) or user.role) if user is not None else ctx.planned.get(data['email'])
         if data['attendance_type']:
             if role and role != data['attendance_type']:
                 raise RowError(
@@ -1164,7 +1219,10 @@ class AttendanceSheet(Sheet):
         user = ctx.users.get(data['email'])
         if user is None:
             return None  # brand-new account, no attendance possible yet
-        if Attendance.objects.filter(user=user, date=data['date']).exists():
+        attendance_qs = Attendance.objects.filter(user=user, date=data['date'])
+        if ctx.gym is not None:
+            attendance_qs = attendance_qs.filter(gym=ctx.gym)
+        if attendance_qs.exists():
             return 'Attendance already recorded for this date'
         return None
 
@@ -1172,6 +1230,8 @@ class AttendanceSheet(Sheet):
     def insert(cls, data, ctx):
         marked_by = ctx.require_user(data['marked_by'], 'Marked By') if data['marked_by'] else ctx.actor
         return Attendance.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             user=ctx.require_user(data['email'], 'Email'),
             attendance_type=data['attendance_type'],
             date=data['date'],
@@ -1231,10 +1291,13 @@ class EquipmentSheet(Sheet):
     @classmethod
     def existing(cls, data, ctx):
         serial = data['serial_number'].strip()
+        equipment_qs = Equipment.objects.all()
+        if ctx.gym is not None:
+            equipment_qs = equipment_qs.filter(gym=ctx.gym)
         if serial:
-            if Equipment.objects.filter(serial_number__iexact=serial).exists():
+            if equipment_qs.filter(serial_number__iexact=serial).exists():
                 return 'Equipment with this serial number already exists'
-        elif Equipment.objects.filter(
+        elif equipment_qs.filter(
             name__iexact=data['name'],
             model_number__iexact=data['model_number'],
             location__iexact=data['location'],
@@ -1245,6 +1308,8 @@ class EquipmentSheet(Sheet):
     @classmethod
     def insert(cls, data, ctx):
         return Equipment.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             name=data['name'],
             category=data['category'],
             brand=data['brand'],
@@ -1306,6 +1371,8 @@ class LockersSheet(Sheet):
     @classmethod
     def insert(cls, data, ctx):
         locker = Locker.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             locker_number=data['locker_number'],
             location=data['location'],
             status=data['status'],
@@ -1376,18 +1443,27 @@ class LockerAssignmentsSheet(Sheet):
         # Each side is checked on its own: a brand-new member can still clash
         # with a locker that is already taken, and vice versa.
         if locker is not None and member is not None:
-            if LockerAssignment.objects.filter(
+            assignment_qs = LockerAssignment.objects.filter(
                 locker=locker, member=member, start_date=data['start_date']
-            ).exists():
+            )
+            if ctx.gym is not None:
+                assignment_qs = assignment_qs.filter(gym=ctx.gym)
+            if assignment_qs.exists():
                 return 'Assignment already exists'
         if data['is_active'] and locker is not None:
-            if LockerAssignment.objects.filter(locker=locker, is_active=True).exists():
+            active_qs = LockerAssignment.objects.filter(locker=locker, is_active=True)
+            if ctx.gym is not None:
+                active_qs = active_qs.filter(gym=ctx.gym)
+            if active_qs.exists():
                 raise RowError(
                     'Locker Number',
                     f'Locker {data["locker_number"]} already has an active assignment.',
                 )
         if data['is_active'] and member is not None:
-            if LockerAssignment.objects.filter(member=member, is_active=True).exists():
+            member_active_qs = LockerAssignment.objects.filter(member=member, is_active=True)
+            if ctx.gym is not None:
+                member_active_qs = member_active_qs.filter(gym=ctx.gym)
+            if member_active_qs.exists():
                 raise RowError(
                     'Member Email',
                     f'{data["member_email"]} already has an active locker assignment.',
@@ -1399,6 +1475,8 @@ class LockerAssignmentsSheet(Sheet):
         locker = ctx.require_locker(data['locker_number'], 'Locker Number')
         member = ctx.require_user(data['member_email'], 'Member Email', role=User.Role.MEMBER)
         assignment = LockerAssignment.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             locker=locker,
             member=member,
             start_date=data['start_date'],
@@ -1465,16 +1543,26 @@ class TrainerAssignmentsSheet(Sheet):
         # member" rule only needs the member, who may be new to this file.
         if trainer is not None and member is not None:
             if data['is_active']:
-                if TrainerMemberAssignment.objects.filter(
+                assignment_qs = TrainerMemberAssignment.objects.filter(
                     trainer=trainer, member=member, is_active=True
-                ).exists():
+                )
+                if ctx.gym is not None:
+                    assignment_qs = assignment_qs.filter(gym=ctx.gym)
+                if assignment_qs.exists():
                     return 'Active assignment already exists'
-            elif TrainerMemberAssignment.objects.filter(
-                trainer=trainer, member=member, is_active=False
-            ).exists():
-                return 'Assignment already exists'
+            else:
+                assignment_qs = TrainerMemberAssignment.objects.filter(
+                    trainer=trainer, member=member, is_active=False
+                )
+                if ctx.gym is not None:
+                    assignment_qs = assignment_qs.filter(gym=ctx.gym)
+                if assignment_qs.exists():
+                    return 'Assignment already exists'
         if data['is_active'] and member is not None:
-            if TrainerMemberAssignment.objects.filter(member=member, is_active=True).exists():
+            active_qs = TrainerMemberAssignment.objects.filter(member=member, is_active=True)
+            if ctx.gym is not None:
+                active_qs = active_qs.filter(gym=ctx.gym)
+            if active_qs.exists():
                 raise RowError(
                     'Member Email',
                     f'{data["member_email"]} already has an active trainer assignment.',
@@ -1484,6 +1572,8 @@ class TrainerAssignmentsSheet(Sheet):
     @classmethod
     def insert(cls, data, ctx):
         assignment = TrainerMemberAssignment.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             trainer=ctx.require_user(data['trainer_email'], 'Trainer Email', role=User.Role.TRAINER),
             member=ctx.require_user(data['member_email'], 'Member Email', role=User.Role.MEMBER),
             end_date=data['end_date'],
@@ -1560,13 +1650,18 @@ class ProgressSheet(Sheet):
         user = ctx.users.get(data['member_email'])
         if user is None:
             return None  # brand-new member, no history possible yet
-        if ProgressEntry.objects.filter(member=user, date=data['date']).exists():
+        progress_qs = ProgressEntry.objects.filter(member=user, date=data['date'])
+        if ctx.gym is not None:
+            progress_qs = progress_qs.filter(gym=ctx.gym)
+        if progress_qs.exists():
             return 'Progress entry already exists for this date'
         return None
 
     @classmethod
     def insert(cls, data, ctx):
         return ProgressEntry.objects.create(
+            gym=ctx.gym,
+            branch=ctx.branch,
             member=ctx.require_user(data['member_email'], 'Member Email', role=User.Role.MEMBER),
             date=data['date'],
             weight_kg=data['weight_kg'],

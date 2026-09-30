@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from apps.gyms.tenancy import user_has_branch_access
+
 from .models import (
     Exercise,
     WorkoutTemplate,
@@ -33,6 +35,17 @@ class WorkoutDayExerciseSerializer(serializers.ModelSerializer):
         model = WorkoutDayExercise
         fields = "__all__"
 
+    def validate(self, attrs):
+        request = self.context.get('request')
+        day = attrs.get('workout_day', getattr(self.instance, 'workout_day', None))
+        gym = getattr(request, 'gym', None) if request else None
+        if gym is not None and day and day.template.gym_id != gym.id:
+            raise serializers.ValidationError({'workout_day': 'Workout day does not belong to this gym.'})
+        branch = getattr(request, 'branch', None) if request else None
+        if branch is not None and day and day.template.branch_id not in (None, branch.id):
+            raise serializers.ValidationError({'workout_day': 'Workout day does not belong to this branch.'})
+        return attrs
+
 
 class WorkoutDaySerializer(serializers.ModelSerializer):
     exercises = WorkoutDayExerciseSerializer(many=True, read_only=True)
@@ -52,6 +65,17 @@ class WorkoutDayNestedWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutDay
         fields = "__all__"
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        template = attrs.get('template', getattr(self.instance, 'template', None))
+        gym = getattr(request, 'gym', None) if request else None
+        if gym is not None and template and template.gym_id != gym.id:
+            raise serializers.ValidationError({'template': 'Template does not belong to this gym.'})
+        branch = getattr(request, 'branch', None) if request else None
+        if branch is not None and template and template.branch_id not in (None, branch.id):
+            raise serializers.ValidationError({'template': 'Template does not belong to this branch.'})
+        return attrs
 
     def create(self, validated_data):
         exercises_data = validated_data.pop('exercises', [])
@@ -82,7 +106,7 @@ class WorkoutTemplateSerializer(serializers.ModelSerializer):
     # Owners and staff can explicitly assign any trainer by supplying a trainer id.
     trainer = serializers.PrimaryKeyRelatedField(
 
-        queryset=User.objects.filter(role='TRAINER'),
+        queryset=User.objects.all(),
         
         required=False,
         allow_null=True,
@@ -91,15 +115,31 @@ class WorkoutTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutTemplate
         fields = "__all__"
-        read_only_fields = ["status", "reviewed_by"]  # changed only via action endpoints below
+        read_only_fields = ["gym", "branch", "status", "reviewed_by"]  # changed only via action endpoints below
 
     def get_assigned_member_count(self, obj):
         return _get_assigned_member_count(obj)
 
     def validate(self, data):
         request = self.context.get('request')
-        if request and request.user.role == 'TRAINER':
-            data['trainer'] = request.user
+        gym = getattr(request, 'gym', None) if request else None
+        trainer = data.get('trainer', getattr(self.instance, 'trainer', None))
+        if request:
+            role = getattr(request, 'gym_role', request.user.role)
+            if role == 'TRAINER':
+                data['trainer'] = request.user
+                trainer = request.user
+            if gym is not None and trainer is not None:
+                from apps.gyms.models import GymMembership
+                if not GymMembership.objects.filter(
+                    gym=gym, user=trainer, role=GymMembership.Role.TRAINER,
+                    status=GymMembership.Status.ACTIVE,
+                ).exists():
+                    raise serializers.ValidationError({'trainer': 'Trainer is not active in this gym.'})
+                if not user_has_branch_access(trainer, gym, getattr(request, 'branch', None)):
+                    raise serializers.ValidationError({'trainer': 'Trainer does not have access to this branch.'})
+        elif trainer and trainer.role != 'TRAINER':
+            raise serializers.ValidationError({'trainer': 'The selected user is not a trainer.'})
         return data
 
 
@@ -110,7 +150,7 @@ class WorkoutTemplateListSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutTemplate
         fields = [
-            'id', 'name', 'goal', 'difficulty', 'status',
+            'id', 'gym', 'branch', 'name', 'goal', 'difficulty', 'status',
             'duration_weeks', 'assigned_member_count', 'updated_at',
         ]
 
@@ -122,6 +162,7 @@ class WorkoutCompletionLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutCompletionLog
         fields = "__all__"
+        read_only_fields = ["gym", "branch"]
 
 
 class WorkoutAssignmentSerializer(serializers.ModelSerializer):
@@ -130,16 +171,36 @@ class WorkoutAssignmentSerializer(serializers.ModelSerializer):
     completion_pct = serializers.IntegerField(read_only=True)
 
     member = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role='MEMBER'),
+        queryset=User.objects.all(),
     )
 
     class Meta:
         model = WorkoutAssignment
         fields = "__all__"
-        read_only_fields = ["assigned_by", "end_date"]
+        read_only_fields = ["gym", "branch", "assigned_by", "end_date"]
 
     def validate(self, data):
         template = data.get('template') or getattr(self.instance, 'template', None)
+        member = data.get('member', getattr(self.instance, 'member', None))
+        request = self.context.get('request')
+        gym = getattr(request, 'gym', None) if request else None
+        if gym is not None:
+            if template and template.gym_id != gym.id:
+                raise serializers.ValidationError({'template': 'Template does not belong to this gym.'})
+            branch = getattr(request, 'branch', None)
+            if branch is not None and template and template.branch_id not in (None, branch.id):
+                raise serializers.ValidationError({'template': 'Template does not belong to this branch.'})
+            if member is not None:
+                from apps.gyms.models import GymMembership
+                if not GymMembership.objects.filter(
+                    gym=gym, user=member, role=GymMembership.Role.MEMBER,
+                    status=GymMembership.Status.ACTIVE,
+                ).exists():
+                    raise serializers.ValidationError({'member': 'Member is not active in this gym.'})
+                if not user_has_branch_access(member, gym, getattr(request, 'branch', None)):
+                    raise serializers.ValidationError({'member': 'Member does not have access to this branch.'})
+        elif member is not None and member.role != 'MEMBER':
+            raise serializers.ValidationError({'member': 'The selected user is not a member.'})
         if template and template.status != WorkoutTemplate.Status.APPROVED:
             raise serializers.ValidationError(
                 'Only approved templates can be assigned to members.'
@@ -149,6 +210,9 @@ class WorkoutAssignmentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context.get('request')
         validated_data['assigned_by'] = request.user if request else None
+        if request is not None:
+            validated_data['gym'] = getattr(request, 'gym', None)
+            validated_data['branch'] = getattr(request, 'branch', None)
         return super().create(validated_data)
 
 
