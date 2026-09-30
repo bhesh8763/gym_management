@@ -70,6 +70,14 @@
   .msg-no-chat-inner { text-align: center; color: var(--text-muted); }
   .msg-no-chat-inner i { font-size: 4rem; opacity: 0.15; display: block; margin-bottom: 12px; }
 </style>
+  <!-- PWA: installable app + service-worker registration (scripts/inject_pwa_tags.py) -->
+  <meta name="theme-color" content="#0f1015">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script src="js/pwa.js" defer></script>
 </head>
 <body data-allowed-roles="TRAINER">
 

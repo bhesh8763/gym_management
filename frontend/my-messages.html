@@ -74,6 +74,14 @@
   .btn-new-msg { display: inline-flex; align-items: center; gap: 6px; background: var(--brand-red, #e63946); color: #fff; border: none; padding: 6px 14px; border-radius: var(--radius-full, 20px); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
   .btn-new-msg:hover { background: var(--brand-red-dark, #c62828); }
 </style>
+  <!-- PWA: installable app + service-worker registration (scripts/inject_pwa_tags.py) -->
+  <meta name="theme-color" content="#0f1015">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script src="js/pwa.js" defer></script>
 </head>
 <body data-allowed-roles="MEMBER">
 

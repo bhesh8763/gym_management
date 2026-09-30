@@ -879,6 +879,7 @@ Every page follows this structure:
 3. Include `css/theme.css` and `js/api.js`
 4. Use `apiGet()`, `apiPost()`, etc. for API calls
 5. Use CSS classes from `theme.css` for consistent styling
+6. Run `python scripts/inject_pwa_tags.py` — adds the web-app manifest, theme-color, and service-worker registration tags (idempotent; only touches pages that lack them)
 
 ### Dark Mode Checklist
 

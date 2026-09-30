@@ -123,6 +123,14 @@
     html:not([data-theme="light"]) .info-row { border-bottom-color: rgba(255,255,255,0.08); }
     html:not([data-theme="light"]) .info-value { color: #f2f3f5; }
   </style>
+  <!-- PWA: installable app + service-worker registration (scripts/inject_pwa_tags.py) -->
+  <meta name="theme-color" content="#0f1015">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script src="js/pwa.js" defer></script>
 </head>
 <body>
   <div class="card-wrap">

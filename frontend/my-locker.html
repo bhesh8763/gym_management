@@ -23,6 +23,14 @@
         .status-unpaid { background:rgba(245,158,11,0.1);color:#d97706; }
         .status-paid { background:rgba(16,185,129,0.1);color:#059669; }
     </style>
+  <!-- PWA: installable app + service-worker registration (scripts/inject_pwa_tags.py) -->
+  <meta name="theme-color" content="#0f1015">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script src="js/pwa.js" defer></script>
 </head>
 <body data-allowed-roles="MEMBER">
 

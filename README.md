@@ -191,7 +191,7 @@ gym_management/          # Django project settings & URLs
 │   ├── notifications/   # Alerts, group messages, pinned conversations
 │   ├── reports/         # Analytics and CSV/Excel exports
 │   └── dataimport/      # Owner-only Excel import preview/commit
-├── frontend/            # 43 static HTML pages plus CSS/JS assets
+├── frontend/            # 47 static HTML pages plus CSS/JS assets, PWA manifest and service worker
 │   ├── css/             # theme, landing, and authentication styles
 │   └── js/              # shared API client, validation, mobile navigation
 ├── templates/           # Django/allauth and notification email templates
@@ -1086,11 +1086,55 @@ frontend/
 │   └── login.css        # Login, signup, and checkout pages
 ├── js/
 │   ├── api.js           # API/auth client, role guards, owner-plan gate, router, shared UI
+│   ├── pwa.js           # Service-worker registration (included by every page)
 │   ├── validate.js      # Shared form validation
 │   └── bottom-tabs.js   # Mobile bottom navigation
-├── *.html               # 43 page files
-└── logo.png             # Application logo
+├── icons/               # Generated PWA icons (scripts/generate_pwa_icons.py)
+├── *.html               # 47 page files
+├── logo.png             # Application logo
+├── manifest.webmanifest # Web app manifest (install metadata)
+├── offline.html         # Offline fallback page served by the service worker
+└── sw.js                # Service worker (offline/caching strategy)
 ```
+
+### Progressive Web App (PWA)
+
+FitCore is installable as a PWA (Add to Home Screen / install icon) and shows an
+offline fallback page when the network is unavailable. Live data always requires
+a connection — API responses are deliberately never cached.
+
+| File | Purpose |
+|------|---------|
+| `manifest.webmanifest` | Install metadata: name, icons, standalone display, dark theme colour, page shortcuts |
+| `sw.js` | Service worker: precaches the shell, decides the caching strategy per request type |
+| `offline.html` | Self-contained offline fallback page (no external assets) |
+| `js/pwa.js` | Registers `sw.js`; injected into the `<head>` of every page |
+| `icons/` | 192/512 icons, a maskable 512 icon, and a 180px `apple-touch-icon` |
+
+**Caching policy (`sw.js`):**
+
+| Request type | Strategy |
+|--------------|----------|
+| Page navigations | Network-first; offline falls back to a cached copy of the landing page, then `offline.html` |
+| Same-origin CSS/JS/images | Stale-while-revalidate (served from cache instantly, refreshed in the background) |
+| `/api/*` | Strict network-only, **never cached** (JWT-protected, user-specific; returns `503` JSON offline) |
+| Cross-origin CDN/fonts | Stale-while-revalidate so the shell renders offline after the first visit |
+
+**Scripts** (both are idempotent and safe to re-run):
+
+```bash
+# Regenerate frontend/icons/ from frontend/logo.png (needs Pillow)
+venv\Scripts\python.exe scripts/generate_pwa_icons.py
+
+# Inject manifest/theme-color/service-worker tags into any new HTML pages
+python scripts/inject_pwa_tags.py
+```
+
+**Maintenance notes:**
+- Add the injection script run to your routine whenever you add a new `frontend/*.html` page — new pages need `js/pwa.js` to register the worker.
+- Bump `VERSION` in `sw.js` to force every client to drop its caches and refetch the shell.
+- Browsers only grant service workers/installability over HTTPS or on `localhost` — production (Render, HTTPS) and the local dev origins both qualify.
+- Verify with Chrome DevTools → **Application → Manifest / Service Workers**, or a Lighthouse audit.
 
 ### Design System (`theme.css`)
 
