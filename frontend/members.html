@@ -263,7 +263,7 @@
           <tr>
             <th class="member-bulk-col" data-no-export><input type="checkbox" id="memberSelectAll" onchange="toggleMemberSelectAll(this.checked)"></th>
             <th>Member</th><th>Phone</th>
-            <th>Membership Plan</th><th>Expires</th>
+            <th>Membership Plan</th>
             <th>Fitness Goal</th><th>Status</th><th data-no-export>Actions</th>
           </tr>
         </thead>
@@ -655,7 +655,7 @@ buildSidebar('members');
     if (!tbody) return;
     selectedMemberIds.clear();
     updateMemberBulkBar();
-    tbody.innerHTML = Array(5).fill(null).map(() => `<tr><td colspan="8" style="padding:12px 0;"><div class="skeleton-table-row"><div style="flex:2;"><div class="skeleton-text" style="width:60%;"></div></div><div><div class="skeleton-text" style="width:70%;"></div></div><div><div class="skeleton-text" style="width:50%;"></div></div><div><div class="skeleton-text" style="width:65%;"></div></div><div><div class="skeleton-text" style="width:40%;"></div></div><div><div class="skeleton-text" style="width:55%;"></div></div><div><div class="skeleton-text" style="width:30%;"></div></div></div></td></tr>`).join('');
+    tbody.innerHTML = Array(5).fill(null).map(() => `<tr><td colspan="7" style="padding:12px 0;"><div class="skeleton-table-row"><div style="flex:2;"><div class="skeleton-text" style="width:60%;"></div></div><div><div class="skeleton-text" style="width:70%;"></div></div><div><div class="skeleton-text" style="width:50%;"></div></div><div><div class="skeleton-text" style="width:40%;"></div></div><div><div class="skeleton-text" style="width:55%;"></div></div><div><div class="skeleton-text" style="width:30%;"></div></div></div></td></tr>`).join('');
     const params = new URLSearchParams();
     const search = document.getElementById('filterSearch').value.trim();
     if (search) params.set('search', search);
@@ -706,7 +706,7 @@ buildSidebar('members');
 
       if (allMembers.length === 0) {
         tbody.innerHTML = `
-          <tr><td colspan="8" class="text-center text-muted py-4">
+          <tr><td colspan="7" class="text-center text-muted py-4">
             <i class="bi bi-people display-6 d-block mb-2"></i>
             No members found. Click "Add Member" to create your first member.
           </td></tr>`;
@@ -714,7 +714,6 @@ buildSidebar('members');
         pageRows.forEach(row => {
           const ms = row.current_membership;
           const planCell = ms ? ms.plan_name : '<span class="text-muted">No plan</span>';
-          const expiresCell = ms ? ms.end_date : '-';
 
           // Determine member status based on membership
           let memberStatusBadge;
@@ -745,7 +744,6 @@ buildSidebar('members');
               </td>
               <td>${row.phone || '-'}</td>
               <td>${planCell}</td>
-              <td>${expiresCell}</td>
               <td>${row.fitness_goal_display || '-'}</td>
               <td>${memberStatusBadge}</td>
               <td>
@@ -769,7 +767,7 @@ buildSidebar('members');
     } catch (err) {
       console.error('renderPage failed:', err);
       document.getElementById('memberTableBody').innerHTML =
-        `<tr><td colspan="8" class="text-center text-danger py-4">Something went wrong rendering this table. Check the console for details.</td></tr>`;
+        `<tr><td colspan="7" class="text-center text-danger py-4">Something went wrong rendering this table. Check the console for details.</td></tr>`;
     }
   }
 
