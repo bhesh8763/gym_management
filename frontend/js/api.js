@@ -259,7 +259,9 @@ function formatApiError(err) {
   const lines = [];
   for (const [field, messages] of Object.entries(err)) {
     const msgList = Array.isArray(messages) ? messages : [messages];
-    const label = field === 'non_field_errors' ? '' : `${field}: `;
+    // `non_field_errors` and `detail` are already whole sentences — don't
+    // prefix them with a field name. Everything else keeps its label.
+    const label = (field === 'non_field_errors' || field === 'detail') ? '' : `${field}: `;
     msgList.forEach(m => lines.push(`${label}${m}`));
   }
   return lines.join('\n') || 'Something went wrong. Please try again.';
