@@ -39,7 +39,7 @@ def activate_membership_on_payment(sender, instance, created, **kwargs):
     if not membership:
         return
 
-    # Recompute the accumulated total across ALL confirmed payments for this    # membership (PAID + PARTIAL). Recomputing — rather than incrementing —    # keeps the number correct even if a payment is later edited or refunded.
+    # Recompute the accumulated total across ALL confirmed payments for this    # membership (PAID + PARTIAL). Recomputing — rather than incrementing —    # keeps the number correct even if a payment is later edited or refunded.
     confirmed_total = Payment.objects.filter(
         membership_id=membership.id,
         status__in=(Payment.PaymentStatus.PAID, Payment.PaymentStatus.PARTIAL),

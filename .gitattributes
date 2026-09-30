@@ -1,0 +1,19 @@
+# Normalize line endings: store LF in the repository, check out the
+# platform-native ending (CRLF on Windows, LF on Linux).
+#
+# Why: this repo is developed on Windows and deployed from Linux (Render).
+# Without these rules, every cross-platform edit rewrote whole files in
+# `git status`/`git diff`, hiding real changes in line-ending noise.
+# The clean filter below converts worktree CRLF to LF before comparison,
+# so edits stay content-only no matter which OS made them.
+* text=auto
+
+# Windows Task Scheduler scripts must stay CRLF in the worktree — cmd.exe
+# label/`goto` handling is unreliable in LF-only batch files.
+scripts/*.bat text eol=crlf
+
+# Binary assets: never line-convert or diff.
+*.png binary
+*.ico binary
+*.xlsx binary
+*.pdf binary
