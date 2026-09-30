@@ -14,15 +14,17 @@ Usage:
         send_sms=False,
     )
 """
+import json
 import logging
 from typing import Optional
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
-from apps.notifications.models import Notification
+from apps.notifications.models import Notification, PushSubscription
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,81 @@ def _send_sms(phone: str, message: str):
     logger.info(f'SMS (placeholder) to {phone}: {message[:50]}...')
 
 
+# ── Web Push ────────────────────────────────────────────────────────────────
+
+# Page each notification type deep-links to when the user taps the push.
+_PUSH_PAGES = {
+    'MEMBERSHIP_EXPIRY': 'my-memberships.html',
+    'MEMBERSHIP_RENEWAL': 'my-memberships.html',
+    'PAYMENT_DUE': 'my-payments.html',
+    'PAYMENT_RECEIVED': 'my-payments.html',
+    'INACTIVITY': 'my-attendance.html',
+    'WORKOUT_REMINDER': 'my-workouts.html',
+    'WORKOUT_ASSIGNED': 'my-workouts.html',
+    'MEMBER_MESSAGE': 'my-messages.html',
+    'TRAINER_REPLY': 'my-messages.html',
+    'TRAINER_ASSIGNED': 'my-trainer.html',
+}
+
+
+def _push_url(notification_type: str) -> str:
+    """Absolute deep link for a tapped notification (falls back to the inbox)."""
+    base = (getattr(settings, 'FRONTEND_URL', '') or '').rstrip('/')
+    page = _PUSH_PAGES.get(notification_type, 'notifications.html')
+    return f'{base}/{page}' if base else f'/{page}'
+
+
+def send_push(recipient, title: str, message: str, notification_type: str = 'GENERAL') -> int:
+    """
+    Best-effort Web Push to every device the recipient subscribed with.
+
+    Returns the number of deliveries. Never raises — push is a bonus channel,
+    the in-app notification row is what matters. Subscriptions that the push
+    service has expired (HTTP 404/410) are deleted as they are hit.
+    """
+    if not (getattr(settings, 'VAPID_PUBLIC_KEY', '') and getattr(settings, 'VAPID_PRIVATE_KEY', '')):
+        return 0  # Web Push not configured on this deployment
+    try:
+        from pywebpush import WebPushException, webpush
+    except ImportError:
+        logger.warning('pywebpush is not installed — skipping Web Push (pip install pywebpush)')
+        return 0
+
+    payload = json.dumps({
+        'title': title,
+        'body': (message or '')[:400],
+        'icon': '/logo.png',
+        'badge': '/icons/icon-192.png',
+        'tag': notification_type,
+        'url': _push_url(notification_type),
+    })
+    delivered = 0
+    for sub in PushSubscription.objects.filter(user=recipient):
+        try:
+            webpush(
+                subscription_info={
+                    'endpoint': sub.endpoint,
+                    'keys': {'p256dh': sub.p256dh, 'auth': sub.auth},
+                },
+                data=payload,
+                vapid_private_key=settings.VAPID_PRIVATE_KEY,
+                vapid_claims={'sub': settings.VAPID_SUBJECT},
+                ttl=24 * 60 * 60,
+                timeout=10,
+            )
+            delivered += 1
+        except WebPushException as exc:
+            code = exc.response.status_code if getattr(exc, 'response', None) is not None else None
+            if code in (404, 410):
+                sub.delete()  # push service says this subscription is dead
+                logger.info(f'Web Push: removed expired subscription for user {recipient.pk}')
+            else:
+                logger.warning(f'Web Push failed for user {recipient.pk}: {exc}')
+        except Exception as exc:  # noqa: BLE001 — must never raise to the caller
+            logger.warning(f'Web Push error for user {recipient.pk}: {exc}')
+    return delivered
+
+
 def notify(
     recipient,
     notification_type: str,
@@ -149,7 +226,18 @@ def notify(
         related_payment_id=related_payment_id,
     )
 
-    # 2. Send email if requested
+    # 2. Web Push to the recipient's installed devices. Deferred until the
+    #    surrounding transaction commits (never push for a rolled-back row)
+    #    and wrapped so a push failure can never break the caller.
+    def _push_now():
+        try:
+            send_push(recipient, title, message, notification_type)
+        except Exception as exc:  # noqa: BLE001 — push must never break the caller  # pragma: no cover
+            logger.warning(f'Web Push dispatch failed for user {getattr(recipient, "pk", recipient)}: {exc}')
+
+    transaction.on_commit(_push_now)
+
+    # 3. Send email if requested
     if send_email and recipient.email:
         template_info = EMAIL_TEMPLATES.get(notification_type)
         if template_info:
@@ -173,7 +261,7 @@ def notify(
             """
             _send_email(recipient.email, title, html_message)
 
-    # 3. Send SMS if requested
+    # 4. Send SMS if requested
     if send_sms and recipient.phone:
         _send_sms(recipient.phone, f'{title}\n\n{message}')
 

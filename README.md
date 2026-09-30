@@ -261,6 +261,9 @@ gym_management/          # Django project settings & URLs
 | `GOOGLE_CLIENT_SECRET` | Social login | — | Google OAuth client secret |
 | `FACEBOOK_APP_ID` | Social login | — | Facebook OAuth app ID |
 | `FACEBOOK_APP_SECRET` | Social login | — | Facebook OAuth app secret |
+| `VAPID_PUBLIC_KEY` | Web Push | `manage.py generate_vapid_keys` | VAPID public key handed to browsers when they subscribe to push |
+| `VAPID_PRIVATE_KEY` | Web Push | Same command (keep secret!) | VAPID private key used to sign outgoing Web Push requests |
+| `VAPID_SUBJECT` | Web Push | `mailto:you@example.com` | Contact mailbox or URL the push protocol requires |
 
 > The owner-plan prices in `payment.html` are fixed demo values in `apps.accounts.views.SubscribeView`. Gateway variables above apply only to member dues under `/api/payments/`.
 
@@ -1119,6 +1122,42 @@ a connection — API responses are deliberately never cached.
 | Same-origin CSS/JS/images | Stale-while-revalidate (served from cache instantly, refreshed in the background) |
 | `/api/*` | Strict network-only, **never cached** (JWT-protected, user-specific; returns `503` JSON offline) |
 | Cross-origin CDN/fonts | Stale-while-revalidate so the shell renders offline after the first visit |
+
+**Web Push notifications:**
+
+Every in-app notification is also delivered as a Web Push to the recipient's
+subscribed devices (installed PWAs and browsers that allowed notifications).
+Push is best-effort: the in-app `Notification` row is always created first,
+push failures are only logged (a push can never break the calling code), and
+subscriptions a push service reports as dead (HTTP 404/410) are deleted
+automatically.
+
+| Piece | Purpose |
+|-------|---------|
+| `manage.py generate_vapid_keys` | Generates the VAPID keypair; paste the output into `.env` and Render's env vars |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Identify this server to the browser push services (see Environment Variables) |
+| `apps.notifications.models.PushSubscription` | One row per browser endpoint; a user may have several devices |
+| `GET /api/notifications/push/public-key/` | Hands the VAPID public key to the browser |
+| `POST /api/notifications/push/subscribe/` | Registers the browser's subscription for the logged-in user (upserts by endpoint — a new login on the same browser reassigns it) |
+| `POST /api/notifications/push/unsubscribe/` | Removes it (called on logout) |
+| `apps.notifications.services.send_push()` | Sends from the central `notify()` after the DB transaction commits |
+| `sw.js` `push` / `notificationclick` handlers | Shows the notification and deep-links into the page for that notification type when tapped |
+
+**User flow:** after a successful login (or signup) the browser asks for
+notification permission inside the click gesture — iOS only accepts the prompt
+there, and iOS 16.4+ requires the PWA on the Home Screen (which this PWA
+satisfies). The prompt appears at most once per browser; a dismissed prompt is
+never repeated. Every subsequent authenticated page load silently re-registers
+the subscription (repairs endpoints the browser rotates).
+
+**Setup for production:**
+
+1. `python manage.py generate_vapid_keys` and copy the printed keys.
+2. Add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` to
+   Render → Environment (keep the private key secret; changing keys only
+   invalidates subscriptions — users re-subscribe on next login).
+3. Deploy — no other wiring needed; `notify()` already pushes everywhere it runs
+   (signals, reminders command, messaging, manual announcements).
 
 **Scripts** (both are idempotent and safe to re-run):
 

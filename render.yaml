@@ -57,6 +57,13 @@ services:
       # Enable after the first green deploy (redirects can confuse health checks):
       - key: SECURE_SSL_REDIRECT
         value: "False"
+      # Web Push (PWA notifications): the VAPID keypair must be generated as a
+      # PAIR, so Render's `generateValue` cannot produce it. Run
+      #   python manage.py generate_vapid_keys
+      # locally, then add these three in the Render dashboard -> Environment:
+      #   - key: VAPID_PUBLIC_KEY   value: <generated>
+      #   - key: VAPID_PRIVATE_KEY  value: <generated>   # keep secret
+      #   - key: VAPID_SUBJECT      value: mailto:you@example.com
       # DB_* consumed by gym_management/settings.py (python-decouple).
       - key: DB_HOST
         fromDatabase:

@@ -19,12 +19,14 @@ Coverage:
       * POST /api/notifications/mark-all-read/
       * DELETE /api/notifications/<id>/
 """
+import json
 import uuid
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -33,7 +35,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.attendance.models import Attendance
 from apps.memberships.models import Membership, MembershipPlan
-from apps.notifications.models import Notification
+from apps.notifications.models import Notification, PushSubscription
+from apps.notifications.services import notify, send_push
 from apps.payments.models import Payment
 from apps.workouts.models import (
     WorkoutAssignment,
@@ -701,3 +704,218 @@ class NotificationSenderFieldTest(APITestCase):
         self.assertEqual(serialized['sender_id'], self.trainer.pk)
         # The old parsed-name convention would have put the title itself here.
         self.assertNotEqual(serialized['sender_name'], 'Trainer reply')
+
+
+# ─── Web Push tests ───────────────────────────────────────────────────────────
+
+
+class PushSubscriptionAPITest(APITestCase):
+    """GET /push/public-key/ · POST /push/subscribe/ · POST /push/unsubscribe/."""
+
+    def setUp(self):
+        self.member = make_user(role=User.Role.MEMBER)
+        self.other = make_user(role=User.Role.MEMBER)
+        self.key_url = reverse('notification-push-key')
+        self.sub_url = reverse('notification-push-subscribe')
+        self.unsub_url = reverse('notification-push-unsubscribe')
+        self.body = {
+            'endpoint': 'https://push.example.com/sub-abc',
+            'p256dh': 'B' + 'a' * 110,
+            'auth': 'b' * 50,
+            'user_agent': 'Mozilla/5.0 (test)',
+        }
+
+    def test_public_key_requires_auth(self):
+        r = self.client.get(self.key_url)
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_public_key_returns_key_and_enabled_flag(self):
+        with self.settings(VAPID_PUBLIC_KEY='PUBKEY', VAPID_PRIVATE_KEY='PRIVKEY'):
+            self.client.credentials(**auth_header(self.member))
+            r = self.client.get(self.key_url)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.json(), {'key': 'PUBKEY', 'enabled': True})
+
+    def test_public_key_reports_disabled_when_unconfigured(self):
+        with self.settings(VAPID_PUBLIC_KEY='', VAPID_PRIVATE_KEY=''):
+            self.client.credentials(**auth_header(self.member))
+            r = self.client.get(self.key_url)
+        self.assertEqual(r.json()['enabled'], False)
+
+    def test_subscribe_requires_auth(self):
+        r = self.client.post(self.sub_url, self.body, format='json')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_subscribe_creates_row_for_logged_in_user(self):
+        self.client.credentials(**auth_header(self.member))
+        r = self.client.post(self.sub_url, self.body, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        sub = PushSubscription.objects.get(endpoint=self.body['endpoint'])
+        self.assertEqual(sub.user, self.member)
+        self.assertEqual(sub.p256dh, self.body['p256dh'])
+        self.assertEqual(sub.auth, self.body['auth'])
+
+    def test_subscribe_twice_keeps_single_row(self):
+        self.client.credentials(**auth_header(self.member))
+        first = self.client.post(self.sub_url, self.body, format='json')
+        second = self.client.post(self.sub_url, self.body, format='json')
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            PushSubscription.objects.filter(endpoint=self.body['endpoint']).count(), 1,
+        )
+
+    def test_subscribe_reassigns_endpoint_to_new_user(self):
+        """Same browser, different user logs in — the row follows the user."""
+        self.client.credentials(**auth_header(self.member))
+        self.client.post(self.sub_url, self.body, format='json')
+        self.client.credentials(**auth_header(self.other))
+        r = self.client.post(self.sub_url, self.body, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            PushSubscription.objects.get(endpoint=self.body['endpoint']).user, self.other,
+        )
+
+    def test_subscribe_rejects_non_http_endpoint(self):
+        self.client.credentials(**auth_header(self.member))
+        bad = {**self.body, 'endpoint': 'javascript:alert(1)'}
+        r = self.client.post(self.sub_url, bad, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_unsubscribe_removes_own_row(self):
+        self.client.credentials(**auth_header(self.member))
+        self.client.post(self.sub_url, self.body, format='json')
+        r = self.client.post(self.unsub_url, {'endpoint': self.body['endpoint']}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.json()['deleted'], 1)
+        self.assertFalse(PushSubscription.objects.exists())
+
+    def test_unsubscribe_does_not_touch_other_users_rows(self):
+        other_sub = PushSubscription.objects.create(
+            user=self.other,
+            endpoint='https://push.example.com/other',
+            p256dh='B' + 'c' * 110,
+            auth='d' * 50,
+        )
+        self.client.credentials(**auth_header(self.member))
+        r = self.client.post(self.unsub_url, {'endpoint': other_sub.endpoint}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.json()['deleted'], 0)
+        self.assertTrue(PushSubscription.objects.filter(pk=other_sub.pk).exists())
+
+
+@override_settings(
+    VAPID_PUBLIC_KEY='PUBKEY',
+    VAPID_PRIVATE_KEY='PRIVKEY',
+    VAPID_SUBJECT='mailto:test@example.com',
+)
+class SendPushTest(TestCase):
+    """services.send_push() — delivery, dead-subscription cleanup, config gating."""
+
+    def setUp(self):
+        self.member = make_user(role=User.Role.MEMBER)
+        self.sub = PushSubscription.objects.create(
+            user=self.member,
+            endpoint='https://push.example.com/ep-1',
+            p256dh='B' + 'a' * 110,
+            auth='b' * 50,
+        )
+
+    def test_delivers_to_each_subscription_with_payload(self):
+        with mock.patch('pywebpush.webpush') as webpush_mock:
+            delivered = send_push(self.member, 'Hello', 'World message', 'PAYMENT_DUE')
+        self.assertEqual(delivered, 1)
+        webpush_mock.assert_called_once()
+        kwargs = webpush_mock.call_args.kwargs
+        payload = json.loads(kwargs['data'])
+        self.assertEqual(payload['title'], 'Hello')
+        self.assertEqual(payload['body'], 'World message')
+        self.assertTrue(payload['url'].endswith('/my-payments.html'))  # deep link
+        self.assertEqual(kwargs['subscription_info']['endpoint'], self.sub.endpoint)
+        self.assertEqual(kwargs['vapid_claims'], {'sub': 'mailto:test@example.com'})
+
+    def test_no_subscriptions_means_no_network_call(self):
+        PushSubscription.objects.all().delete()
+        with mock.patch('pywebpush.webpush') as webpush_mock:
+            delivered = send_push(self.member, 'Hi', 'Body')
+        self.assertEqual(delivered, 0)
+        webpush_mock.assert_not_called()
+
+    @override_settings(VAPID_PUBLIC_KEY='', VAPID_PRIVATE_KEY='')
+    def test_skips_entirely_when_vapid_unconfigured(self):
+        with mock.patch('pywebpush.webpush') as webpush_mock:
+            delivered = send_push(self.member, 'Hi', 'Body')
+        self.assertEqual(delivered, 0)
+        webpush_mock.assert_not_called()
+
+    def test_removes_subscription_when_push_service_says_gone(self):
+        """HTTP 410 Gone → the subscription is dead and must be deleted."""
+        from pywebpush import WebPushException
+
+        response = mock.Mock(status_code=410)
+        with mock.patch(
+            'pywebpush.webpush',
+            side_effect=WebPushException('gone', response=response),
+        ):
+            delivered = send_push(self.member, 'Hi', 'Body')
+        self.assertEqual(delivered, 0)
+        self.assertFalse(PushSubscription.objects.filter(pk=self.sub.pk).exists())
+
+    def test_keeps_subscription_on_transient_errors(self):
+        with mock.patch('pywebpush.webpush', side_effect=RuntimeError('boom')):
+            delivered = send_push(self.member, 'Hi', 'Body')
+        self.assertEqual(delivered, 0)
+        self.assertTrue(PushSubscription.objects.filter(pk=self.sub.pk).exists())
+
+    def test_never_raises_to_the_caller(self):
+        """send_push is best-effort — notify() must never break because of it."""
+        with mock.patch('pywebpush.webpush', side_effect=RuntimeError('boom')):
+            send_push(self.member, 'Hi', 'Body')  # must not raise
+
+
+class NotifyPushHookTest(TestCase):
+    """notify() must schedule a Web Push for the recipient after commit."""
+
+    def setUp(self):
+        self.member = make_user(role=User.Role.MEMBER)
+        # The recipient must actually have a device subscribed.
+        self.sub = PushSubscription.objects.create(
+            user=self.member,
+            endpoint='https://push.example.com/ep-hook',
+            p256dh='B' + 'a' * 110,
+            auth='b' * 50,
+        )
+
+    @override_settings(
+        VAPID_PUBLIC_KEY='PUBKEY',
+        VAPID_PRIVATE_KEY='PRIVKEY',
+        VAPID_SUBJECT='mailto:test@example.com',
+    )
+    def test_notify_dispatches_push_on_commit(self):
+        with mock.patch('pywebpush.webpush') as webpush_mock, \
+                self.captureOnCommitCallbacks(execute=True):
+            notification = notify(
+                self.member,
+                Notification.NotificationType.GENERAL,
+                'Title here',
+                'Body here',
+                send_email=False,
+            )
+        self.assertIsNotNone(notification.pk)
+        webpush_mock.assert_called_once()
+        payload = json.loads(webpush_mock.call_args.kwargs['data'])
+        self.assertEqual(payload['title'], 'Title here')
+
+    @override_settings(VAPID_PUBLIC_KEY='', VAPID_PRIVATE_KEY='')
+    def test_notify_without_vapid_configured_is_safe(self):
+        with mock.patch('pywebpush.webpush') as webpush_mock, \
+                self.captureOnCommitCallbacks(execute=True):
+            notify(
+                self.member,
+                Notification.NotificationType.GENERAL,
+                'Title',
+                'Body',
+                send_email=False,
+            )
+        self.assertEqual(Notification.objects.filter(recipient=self.member).count(), 1)
+        webpush_mock.assert_not_called()

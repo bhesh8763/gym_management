@@ -3,7 +3,7 @@ Serializers for the Notifications app.
 """
 from rest_framework import serializers
 
-from apps.notifications.models import Notification
+from apps.notifications.models import Notification, PushSubscription
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -68,3 +68,23 @@ class NotificationCreateSerializer(serializers.ModelSerializer):
             for user in recipients
         ]
         return Notification.objects.bulk_create(notifications)
+
+
+class PushSubscriptionSerializer(serializers.ModelSerializer):
+    """Payload the browser sends from pushManager.subscribe()."""
+
+    # Uniqueness is the view's job (subscribe upserts by endpoint), so the
+    # ModelSerializer's default UniqueValidator must not reject re-subscribes.
+    endpoint = serializers.URLField(max_length=500, validators=[])
+
+    class Meta:
+        model = PushSubscription
+        fields = ['endpoint', 'p256dh', 'auth', 'user_agent']
+
+    def validate_endpoint(self, value):
+        # Push service endpoints are always https (or http on localhost dev).
+        if not value.startswith(('https://', 'http://127.0.0.1', 'http://localhost')):
+            raise serializers.ValidationError('Endpoint must be an https:// URL.')
+        if len(value) > 500:
+            raise serializers.ValidationError('Endpoint is too long.')
+        return value

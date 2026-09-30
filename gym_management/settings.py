@@ -284,6 +284,15 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Gym Management <norep
 # Frontend base URL — used in password reset emails
 FRONTEND_URL = config('FRONTEND_URL', default='http://192.168.100.234:5500')
 
+# ─── Web Push (PWA notifications) ────────────────────────────────────────────
+# VAPID keypair identifying this server to the browser push services.
+# Generate with:  python manage.py generate_vapid_keys
+# Put both keys in .env locally and in Render's env vars for production.
+# VAPID_SUBJECT is a contact URL/mailbox required by the push protocol.
+VAPID_PUBLIC_KEY = config('VAPID_PUBLIC_KEY', default='')
+VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='')
+VAPID_SUBJECT = config('VAPID_SUBJECT', default='mailto:admin@localhost')
+
 # ─── LOGGING ─────────────────────────────────────────────────────────────────
 LOG_DIR = BASE_DIR / 'logs'
 LOG_DIR.mkdir(exist_ok=True)

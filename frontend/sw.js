@@ -146,3 +146,47 @@ self.addEventListener('fetch', (event) => {
   //    renders offline after the first visit.
   event.respondWith(staleWhileRevalidate(event, request, RUNTIME_CACHE));
 });
+
+/* ── Web Push ────────────────────────────────────────────────────────── *
+ * The server sends a small JSON payload:
+ *   { title, body, icon, badge, tag, url }
+ * `url` is an absolute deep link into the app (see _push_url() in
+ * apps/notifications/services.py) — tapping the notification opens it.
+ */
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (err) {
+      data = { body: event.data.text() };
+    }
+  }
+  const title = data.title || 'FitCore';
+  const scope = self.registration.scope;
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || data.message || '',
+      icon: data.icon ? new URL(data.icon, scope).href : new URL('logo.png', scope).href,
+      badge: new URL('icons/icon-192.png', scope).href,
+      tag: data.tag || 'fitcore',
+      data: { url: data.url || scope },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || self.registration.scope;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Focus an already-open app window and take it to the right page.
+      for (const client of windowClients) {
+        if ('focus' in client) {
+          return client.focus().then((focused) => (focused && 'navigate' in focused ? focused.navigate(target) : focused));
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});

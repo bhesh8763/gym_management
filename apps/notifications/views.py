@@ -19,11 +19,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.conf import settings
+
 from apps.accounts.models import User
 from apps.accounts.permissions import IsOwnerOrStaff
 from apps.gyms.tenancy import tenant_queryset
-from apps.notifications.models import Notification
-from apps.notifications.serializers import NotificationCreateSerializer, NotificationSerializer
+from apps.notifications.models import Notification, PushSubscription
+from apps.notifications.serializers import NotificationCreateSerializer, NotificationSerializer, PushSubscriptionSerializer
 
 
 # ─── List (mine) + Create (push to others) ────────────────────────────────────
@@ -140,3 +142,48 @@ class NotificationDeleteView(APIView):
 
         notification.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ─── Web Push subscriptions ─────────────────────────────────────────────────────
+
+class PushPublicKeyView(APIView):
+    """GET /api/notifications/push/public-key/ — the VAPID key the browser needs to subscribe."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        enabled = bool(settings.VAPID_PUBLIC_KEY and settings.VAPID_PRIVATE_KEY)
+        return Response({'key': settings.VAPID_PUBLIC_KEY, 'enabled': enabled})
+
+
+class PushSubscribeView(APIView):
+    """
+    POST /api/notifications/push/subscribe/ — register this device for push.
+
+    Upserts by endpoint: if the same browser endpoint comes in again (another
+    user logs in on the same device) the row is reassigned to the new user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PushSubscriptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        sub, created = PushSubscription.objects.update_or_create(
+            endpoint=serializer.validated_data['endpoint'],
+            defaults={**serializer.validated_data, 'user': request.user},
+        )
+        return Response(
+            {'id': sub.id, 'created': created},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class PushUnsubscribeView(APIView):
+    """POST /api/notifications/push/unsubscribe/ — remove this device (used on logout)."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        endpoint = request.data.get('endpoint', '')
+        deleted, _ = PushSubscription.objects.filter(
+            user=request.user, endpoint=endpoint,
+        ).delete()
+        return Response({'deleted': deleted})

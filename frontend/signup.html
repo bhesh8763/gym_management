@@ -245,6 +245,8 @@
         localStorage.setItem('gym_public_id', data.user.gym_public_id || '');
         localStorage.setItem('user_name', data.user.full_name);
         localStorage.setItem('user_picture', data.user.profile_picture || '');
+        // Offer Web Push inside the signup click gesture (same as login).
+        try { await FitCorePush.askAfterLogin(); } catch (e) { /* push is optional */ }
         // Account created (as OWNER) — next step is the plan checkout.
         const chosenPlan = localStorage.getItem('pending_plan') || planParam || '';
         window.location.href = 'payment.html' + (chosenPlan ? '?plan=' + chosenPlan : '');

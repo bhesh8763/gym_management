@@ -71,6 +71,36 @@ class Notification(TenantScopedModel):
             self.save(update_fields=['is_read', 'read_at'])
 
 
+class PushSubscription(models.Model):
+    """
+    Browser push subscription for Web Push delivery to an installed PWA.
+
+    One row per browser endpoint (a user may have several: phone, desktop).
+    Deliberately NOT tenant-scoped: the endpoint belongs to the device, so a
+    user switching gyms keeps the same subscription, and the next login on
+    that browser reassigns the row to whoever logged in.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='push_subscriptions',
+    )
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=128)   # per-subscription public key
+    auth = models.CharField(max_length=64)      # per-subscription auth secret
+    user_agent = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'push_subscriptions'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'PushSubscription({self.user_id}): {self.endpoint[:48]}…'
+
+
 class MessageGroup(TenantScopedModel):
     """
     A shared group chat thread. Members see the same messages.

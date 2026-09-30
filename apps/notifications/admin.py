@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Notification, MessageGroup, GroupMessage, PinnedConversation
+from .models import Notification, MessageGroup, GroupMessage, PinnedConversation, PushSubscription
 
 
 @admin.register(Notification)
@@ -45,3 +45,10 @@ class PinnedConversationAdmin(admin.ModelAdmin):
     list_display = ('user', 'kind', 'target_id', 'created_at')
     list_filter = ('kind',)
     search_fields = ('user__email',)
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'created_at', 'last_used_at', 'endpoint')
+    search_fields = ('user__email', 'endpoint')
+    readonly_fields = ('created_at', 'last_used_at')

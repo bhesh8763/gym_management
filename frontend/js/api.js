@@ -805,6 +805,9 @@ function toggleDropdown(id) {
 }
 
 function logout() {
+  // Drop this browser's Web Push subscription first (fire-and-forget: it
+  // captures its auth headers synchronously, before clearTokens() below).
+  if (window.FitCorePush) FitCorePush.logout();
   clearTokens();
   window.location.href = 'login.html';
 }
@@ -848,6 +851,13 @@ function initProfileHeader() {
   }
 }
 initProfileHeader();
+
+// Keep this browser's Web Push subscription registered while logged in —
+// silent (only runs when permission was already granted), and repairs the
+// server-side record if the browser rotated its push endpoint.
+if (window.FitCorePush && localStorage.getItem('access_token')) {
+  FitCorePush.sync();
+}
 
 // Syncs the signed-in user's effective permission set (and custom role name)
 // from /auth/me/ into localStorage, then re-applies sidebar visibility.

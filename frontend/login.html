@@ -166,6 +166,9 @@
       localStorage.setItem('gym_public_id', data.user.gym_public_id || '');
       localStorage.setItem('user_name', data.user.full_name);
       localStorage.setItem('user_picture', data.user.profile_picture || '');
+      // Offer Web Push while still inside the login click gesture — iOS only
+      // shows the permission prompt there. Never block login on it.
+      try { await FitCorePush.askAfterLogin(); } catch (e) { /* push is optional */ }
       // Route trainers to their dedicated dashboard
       const role = data.user.gym_role || data.user.role;
       window.location.href = role === 'TRAINER' ? 'trainer-dashboard.html' : 'dashboard.html';
