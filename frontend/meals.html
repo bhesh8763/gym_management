@@ -238,9 +238,15 @@ async function loadMeals() {
   }).join('');
 }
 
+function setAlert(el, message) {
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.toggle('d-none', !message);
+}
+
 function openMealModal(meal) {
   if (!__isPageAlive()) return;
-  document.getElementById('mealError').style.display = 'none';
+  setAlert(document.getElementById('mealError'), '');
   if (meal) {
     document.getElementById('mealModalTitle').textContent = 'Edit Meal';
     document.getElementById('mealId').value = meal.id;
@@ -280,7 +286,7 @@ var mealFieldRules = {
 
 async function submitMeal() {
   var errBox = document.getElementById('mealError');
-  errBox.style.display = 'none';
+  setAlert(errBox, '');
   if (!validateForm(document.getElementById('mealModal'), mealFieldRules)) return;
   var id = document.getElementById('mealId').value;
   var payload = sanitizePayload({
@@ -292,20 +298,19 @@ async function submitMeal() {
     time_suggestion: document.getElementById('mealTime').value || null,
     notes: document.getElementById('mealNotes').value.trim(),
   });
-  if (!payload.food_name) { errBox.textContent = 'Food name is required.'; errBox.style.display = ''; return; }
+  if (!payload.food_name) { setAlert(errBox, 'Food name is required.'); return; }
 
   var url = id ? '/diet/meals/' + id + '/' : '/diet/meals/';
   var method = id ? 'PATCH' : 'POST';
   var res = await apiRequest(url, { method: method, body: JSON.stringify(payload) });
-  if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (!res) { setAlert(errBox, 'Network error.'); return; }
   if (!__isPageAlive()) return;
   if (res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('mealModal')).hide();
     loadMeals();
   } else {
     var err = await res.json().catch(function() { return {}; });
-    errBox.textContent = formatApiError(err);
-    errBox.style.display = '';
+    setAlert(errBox, formatApiError(err));
   }
 }
 

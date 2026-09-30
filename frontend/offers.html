@@ -351,9 +351,15 @@ async function loadOffers() {
   loadPlans();
 }
 
+function setAlert(el, message) {
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.toggle('d-none', !message);
+}
+
 function openOfferModal(offer) {
   if (!__isPageAlive()) return;
-  document.getElementById('offerError').style.display = 'none';
+  setAlert(document.getElementById('offerError'), '');
   if (offer) {
     document.getElementById('offerModalTitle').textContent = 'Edit Offer';
     document.getElementById('offerId').value = offer.id;
@@ -399,7 +405,7 @@ function editOffer(id) {
 
 async function submitOffer() {
   var errBox = document.getElementById('offerError');
-  errBox.style.display = 'none';
+  setAlert(errBox, '');
   var id = document.getElementById('offerId').value;
   var payload = {
     name: document.getElementById('offerName').value.trim(),
@@ -422,15 +428,14 @@ async function submitOffer() {
   var url = id ? '/memberships/offers/' + id + '/' : '/memberships/offers/';
   var method = id ? 'PATCH' : 'POST';
   var res = await apiRequest(url, { method: method, body: JSON.stringify(payload) });
-  if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (!res) { setAlert(errBox, 'Network error.'); return; }
   if (!__isPageAlive()) return;
   if (res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('offerModal')).hide();
     loadOffers();
   } else {
     var err = await res.json().catch(function() { return {}; });
-    errBox.textContent = formatApiError(err);
-    errBox.style.display = '';
+    setAlert(errBox, formatApiError(err));
   }
 }
 
@@ -476,7 +481,7 @@ async function loadPromoCodes() {
 }
 
 function openPromoModal(promo) {
-  document.getElementById('promoError').style.display = 'none';
+  setAlert(document.getElementById('promoError'), '');
   if (promo) {
     document.getElementById('promoModalTitle').textContent = 'Edit Promo Code';
     document.getElementById('promoId').value = promo.id;
@@ -512,7 +517,7 @@ function editPromo(id) {
 
 async function submitPromo() {
   var errBox = document.getElementById('promoError');
-  errBox.style.display = 'none';
+  setAlert(errBox, '');
   var id = document.getElementById('promoId').value;
   var payload = {
     code: document.getElementById('promoCode').value.trim().toUpperCase(),
@@ -522,20 +527,19 @@ async function submitPromo() {
     valid_from: document.getElementById('promoValidFrom').value || null,
     valid_until: document.getElementById('promoValidUntil').value || null,
   };
-  if (!payload.code || !payload.offer) { errBox.textContent = 'Code and Offer are required.'; errBox.style.display = ''; return; }
+  if (!payload.code || !payload.offer) { setAlert(errBox, 'Code and Offer are required.'); return; }
 
   var url = id ? '/memberships/promo-codes/' + id + '/' : '/memberships/promo-codes/';
   var method = id ? 'PATCH' : 'POST';
   var res = await apiRequest(url, { method: method, body: JSON.stringify(payload) });
-  if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (!res) { setAlert(errBox, 'Network error.'); return; }
   if (!__isPageAlive()) return;
   if (res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('promoModal')).hide();
     loadPromoCodes();
   } else {
     var err = await res.json().catch(function() { return {}; });
-    errBox.textContent = formatApiError(err);
-    errBox.style.display = '';
+    setAlert(errBox, formatApiError(err));
   }
 }
 

@@ -340,8 +340,14 @@ async function loadBiometric() {
   }).join('');
 }
 
+function setAlert(el, message) {
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.toggle('d-none', !message);
+}
+
 function openEnrollModal() {
-  document.getElementById('enrollError').style.display = 'none';
+  setAlert(document.getElementById('enrollError'), '');
   document.getElementById('enrollMember').innerHTML = '<option value="">Loading members…</option>';
   document.getElementById('enrollBioId').value = '';
   document.getElementById('enrollDeviceId').value = '';
@@ -352,7 +358,7 @@ function openEnrollModal() {
 
 async function submitEnroll() {
   var errBox = document.getElementById('enrollError');
-  errBox.style.display = 'none';
+  setAlert(errBox, '');
   var payload = {
     member: parseInt(document.getElementById('enrollMember').value),
     biometric_type: document.getElementById('enrollType').value,
@@ -360,18 +366,17 @@ async function submitEnroll() {
     device_id: document.getElementById('enrollDeviceId').value.trim(),
     notes: document.getElementById('enrollNotes').value.trim(),
   };
-  if (!payload.member || !payload.biometric_id) { errBox.textContent = 'Member and Biometric ID are required.'; errBox.style.display = ''; return; }
+  if (!payload.member || !payload.biometric_id) { setAlert(errBox, 'Member and Biometric ID are required.'); return; }
 
   var res = await apiRequest('/attendance/biometric/', { method: 'POST', body: JSON.stringify(payload) });
-  if (!res) { errBox.textContent = 'Network error.'; errBox.style.display = ''; return; }
+  if (!res) { setAlert(errBox, 'Network error.'); return; }
   if (!__isPageAlive()) return;
   if (res.ok) {
     bootstrap.Modal.getInstance(document.getElementById('enrollModal')).hide();
     loadBiometric();
   } else {
     var err = await res.json().catch(function() { return {}; });
-    errBox.textContent = formatApiError(err);
-    errBox.style.display = '';
+    setAlert(errBox, formatApiError(err));
   }
 }
 
