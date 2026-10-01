@@ -241,8 +241,14 @@ async function apiRequest(path, options = {}) {
     if (res.status === 401) {
       // Refresh failed, or the retry itself still came back unauthorized —
       // either way, this is a real logout.
-      clearTokens();
-      window.location.href = 'login.html';
+      // EXCEPT on the reception kiosk (attendance-kiosk.html): it must stay
+      // on screen all day, so it fails quietly and shows its own fallback
+      // (e.g. "count unavailable") instead of bouncing to login.html.
+      const onKioskPage = (location.pathname.split('/').pop() || '') === 'attendance-kiosk.html';
+      if (!onKioskPage) {
+        clearTokens();
+        window.location.href = 'login.html';
+      }
       return null;
     }
   }

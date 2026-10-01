@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="logo.png">
+  <title>QR Kiosk – FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    /* ── Full-screen kiosk shell: no sidebar, no normal topbar ──────────── */
+    body.kiosk-mode .topbar,
+    body.kiosk-mode .sidebar { display: none !important; }
+
+    .kiosk-shell {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: var(--bg-root);
+    }
+    .kiosk-topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 20px;
+      background: var(--bg-topbar);
+      color: #fff;
+      border-bottom: 1px solid rgba(230, 57, 70, 0.3);
+    }
+    .kiosk-gym-name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.25rem;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .kiosk-topbar .kiosk-sub { font-size: 0.75rem; color: var(--text-sidebar); }
+    .kiosk-clock { text-align: center; line-height: 1.2; flex: 0 0 auto; }
+    .kiosk-clock .kiosk-time {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.6rem;
+      letter-spacing: 0.02em;
+    }
+    .kiosk-clock .kiosk-date { font-size: 0.75rem; color: var(--text-sidebar); }
+
+    .kiosk-main {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow: auto;
+    }
+    .kiosk-panel {
+      position: relative;
+      width: 100%;
+      max-width: 660px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      padding: 20px;
+      text-align: center;
+    }
+    .kiosk-footer {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      padding: 9px 16px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border-light);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* ── Camera box — larger for a standing-distance kiosk ──────────────── */
+    #qr-reader {
+      width: min(66vmin, 520px);
+      height: min(66vmin, 520px);
+      margin: 0 auto;
+      overflow: hidden;
+      position: relative;
+      background: #000;
+      border-radius: 14px;
+    }
+    #qr-reader section { width: 100% !important; height: 100% !important; }
+    #qr-reader video { width: 100% !important; height: 100% !important; object-fit: cover; }
+
+    .kiosk-result {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 28px;
+      border-radius: 16px;
+    }
+    .kiosk-result.tone-success  { background: #d1e7dd; color: #0f5132; }
+    .kiosk-result.tone-primary  { background: #cfe2ff; color: #084298; }
+    .kiosk-result.tone-warning  { background: #fff3cd; color: #664d03; }
+    .kiosk-result.tone-danger   { background: #f8d7da; color: #842029; }
+
+    .kiosk-avatar {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid rgba(255, 255, 255, .8);
+    }
+    .kiosk-avatar-fallback {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d6efd;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.6rem;
+    }
+  </style>
+</head>
+<body class="kiosk-mode" data-allowed-roles="OWNER,STAFF">
+
+<div id="page-content">
+  <div class="kiosk-shell">
+
+    <header class="kiosk-topbar">
+      <div class="d-flex align-items-center gap-2" style="min-width:0;">
+        <img src="logo.png" alt="FitCore" style="height:34px;width:34px;object-fit:contain;">
+        <div class="text-start" style="min-width:0;">
+          <div class="kiosk-gym-name" id="kioskGymName">FitCore</div>
+          <div class="kiosk-sub">Reception Kiosk</div>
+        </div>
+      </div>
+
+      <div class="kiosk-clock">
+        <div class="kiosk-time" id="kioskTime">--:--:--</div>
+        <div class="kiosk-date" id="kioskDate">&nbsp;</div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-outline-light btn-sm" id="kioskFsBtn" onclick="toggleFullscreen()">
+          <i class="bi bi-arrows-fullscreen me-1"></i> Fullscreen
+        </button>
+        <button type="button" class="btn btn-light btn-sm" onclick="exitKiosk()">
+          <i class="bi bi-box-arrow-right me-1"></i> Exit kiosk
+        </button>
+      </div>
+    </header>
+
+    <main class="kiosk-main">
+      <div class="kiosk-panel">
+        <div id="kioskStatus" class="alert d-none mb-3" role="alert"></div>
+        <div id="qr-reader" class="mx-auto"></div>
+        <p class="text-muted small mt-3 mb-0" id="scanHint">Starting camera…</p>
+        <div id="resultPanel" class="kiosk-result d-none" aria-live="polite"></div>
+      </div>
+    </main>
+
+    <footer class="kiosk-footer">
+      <span id="kioskWakeNote" class="d-none">
+        <i class="bi bi-info-circle me-1"></i>Screen sleep isn’t blocked here — set this device to never sleep.
+      </span>
+      <span id="kioskCountRow">Today's attendance: <span id="kioskCount" class="fw-bold">–</span></span>
+      <span id="kioskCountNote" class="d-none fst-italic">Today's count unavailable</span>
+    </footer>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+  // This page runs standalone (no sidebar → api.js's SPA router no-ops, and
+  // attendance.html links to it without .spa-link so it's always a full load).
+
+  var scanner = null;
+  var scannerStarted = false;
+  var startInProgress = false;
+  var processing = false;
+  var lastHandled = null; // { value, time } — identical value ignored within 3s
+
+  // ── Beeps (Web Audio, no files) ──────────────────────────────────────────
+  var audioCtx = null;
+  function beep(ok) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      if (ok) {
+        [880, 1320].forEach(function (freq, i) {
+          var osc = audioCtx.createOscillator();
+          var gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          gain.gain.setValueAtTime(0.0001, t0 + i * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.15, t0 + i * 0.12 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.12 + 0.12);
+          osc.start(t0 + i * 0.12);
+          osc.stop(t0 + i * 0.12 + 0.14);
+        });
+      } else {
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 220;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.3, t0 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+        osc.start(t0);
+        osc.stop(t0 + 0.37);
+      }
+    } catch (e) { /* audio unavailable — ignore */ }
+  }
+
+  // ── Status alert (camera errors / restarts) ──────────────────────────────
+  // Alerts are always shown/hidden via classList add/remove('d-none').
+  function showStatus(msg, tone, withRetry) {
+    var el = document.getElementById('kioskStatus');
+    el.innerHTML = escapeHtml(msg) + (withRetry
+      ? ' <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="startScanner()">Retry</button>'
+      : '');
+    el.classList.remove('alert-danger', 'alert-warning');
+    el.classList.add(tone === 'warning' ? 'alert-warning' : 'alert-danger');
+    el.classList.remove('d-none');
+  }
+  function hideStatus() {
+    document.getElementById('kioskStatus').classList.add('d-none');
+  }
+
+  // ── Result panel (full panel, shown for 3s) ─────────────────────────────
+  function showResult(tone, heading, metaParts) {
+    var panel = document.getElementById('resultPanel');
+    panel.innerHTML = '<h4 class="fw-bold mb-1">' + escapeHtml(heading) + '</h4>' +
+      (metaParts && metaParts.length
+        ? '<div class="small opacity-75">' + metaParts.map(escapeHtml).join(' &middot; ') + '</div>'
+        : '');
+    panel.className = 'kiosk-result tone-' + tone;
+    panel.classList.remove('d-none');
+  }
+  function hideResult() {
+    document.getElementById('resultPanel').classList.add('d-none');
+  }
+
+  function memberAvatarHtml(m) {
+    if (!m || !m.name) return '';
+    if (m.profile_picture) {
+      return '<img src="' + escapeHtml(m.profile_picture) + '" alt="" class="kiosk-avatar">';
+    }
+    var initials = m.name.trim().split(/\s+/).map(function (w) { return w.charAt(0); })
+      .slice(0, 2).join('').toUpperCase() || '?';
+    return '<span class="kiosk-avatar kiosk-avatar-fallback">' + escapeHtml(initials) + '</span>';
+  }
+
+  function showScanResult(data) {
+    var code = data.code;
+    var m = data.member || {};
+    var tone, heading;
+
+    if (code === 'CHECK_IN') {
+      tone = 'success';
+      heading = 'Welcome, ' + (m.name || 'Member');
+    } else if (code === 'CHECK_OUT') {
+      tone = 'primary';
+      heading = 'Goodbye, ' + (m.name || 'Member');
+    } else if (code === 'COOLDOWN' || code === 'ALREADY_COMPLETED') {
+      tone = 'warning';
+      heading = data.message || 'Please wait before scanning again.';
+    } else {
+      tone = 'danger';
+      heading = data.message || 'Scan not accepted.';
+    }
+
+    var meta = [];
+    if (data.time) meta.push(data.time);
+    if (m.plan_name) meta.push(m.plan_name);
+    if (m.end_date) meta.push('ends ' + m.end_date);
+    if (typeof m.days_left === 'number') meta.push(m.days_left + ' days left');
+
+    var panel = document.getElementById('resultPanel');
+    panel.innerHTML = memberAvatarHtml(m) +
+      '<h4 class="fw-bold mb-1">' + escapeHtml(heading) + '</h4>' +
+      (meta.length ? '<div class="small opacity-75">' + meta.map(escapeHtml).join(' &middot; ') + '</div>' : '');
+    panel.className = 'kiosk-result tone-' + tone;
+    panel.classList.remove('d-none');
+  }
+
+  // ── Clock ────────────────────────────────────────────────────────────────
+  function tickClock() {
+    var now = new Date();
+    document.getElementById('kioskTime').textContent =
+      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    document.getElementById('kioskDate').textContent =
+      now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // ── Today's attendance count ─────────────────────────────────────────────
+  // Local date (not toISOString) so the count matches the gym's local day
+  // all day — Asia/Kathmandu sits ahead of UTC, so UTC midnight would flip
+  // the date mid-morning here.
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  // On failure — including 401 after the shared refresh flow (apiRequest
+  // tries refresh once, then returns null on this page instead of redirecting
+  // to login) — hide the count and show a small note.
+  function markCountUnavailable() {
+    document.getElementById('kioskCountRow').classList.add('d-none');
+    document.getElementById('kioskCountNote').classList.remove('d-none');
+  }
+
+  async function refreshCount() {
+    var res = await apiRequest('/attendance/records/?date=' + todayStr());
+    if (!__isPageAlive()) return;
+    if (!res || !res.ok) { markCountUnavailable(); return; }
+    var data = await res.json().catch(function () { return null; });
+    if (!__isPageAlive()) return;
+    var n = (data && typeof data.count === 'number')
+      ? data.count
+      : (Array.isArray(data) ? data.length : (data && data.results ? data.results.length : null));
+    if (n === null) { markCountUnavailable(); return; }
+    document.getElementById('kioskCount').textContent = n;
+    document.getElementById('kioskCountRow').classList.remove('d-none');
+    document.getElementById('kioskCountNote').classList.add('d-none');
+  }
+
+  // ── Gym name (header) ────────────────────────────────────────────────────
+  async function loadGymName() {
+    var res = await apiRequest('/gyms/current/');
+    if (!__isPageAlive()) return;
+    if (!res || !res.ok) return; // keep the "FitCore" brand fallback
+    var data = await res.json().catch(function () { return null; });
+    if (__isPageAlive() && data && data.name) {
+      document.getElementById('kioskGymName').textContent = data.name;
+    }
+  }
+
+  // ── Decoded-text filtering ───────────────────────────────────────────────
+  function isPlausibleToken(text) {
+    if (!text) return false;
+    var t = String(text).trim();
+    if (t.length < 6) return false;   // very short — not a member token
+    if (/\s/.test(t)) return false;   // spaces — not a raw token
+    if (/http/i.test(t)) return false; // URLs — profile QRs, not attendance tokens
+    return true;
+  }
+
+  function onDecoded(text) {
+    if (processing) return;
+    var value = String(text || '').trim();
+    if (!isPlausibleToken(value)) return;
+    var now = Date.now();
+    if (lastHandled && lastHandled.value === value && now - lastHandled.time < 3000) return;
+    lastHandled = { value: value, time: now };
+    handleToken(value);
+  }
+
+  // ── Scan → POST → 3s result → resume ─────────────────────────────────────
+  async function handleToken(token) {
+    processing = true;
+    document.getElementById('scanHint').textContent = 'Checking…';
+
+    // Pause the camera before hitting the API
+    try { if (scanner && scannerStarted) await scanner.pause(true); } catch (e) {}
+
+    var res = null;
+    try {
+      // Plain fetch, NOT apiRequest: the scan endpoint is public (the QR
+      // token IS the authentication), so an expired access token must never
+      // trigger apiRequest's login redirect. The backend resolves the gym
+      // from the QR token's own gym FK (qr_token.gym) — X-Gym-ID is NOT
+      // required; it's only sent from the stored session as context.
+      var headers = { 'Content-Type': 'application/json' };
+      var gymId = localStorage.getItem('gym_id');
+      if (gymId) headers['X-Gym-ID'] = gymId;
+      res = await fetch(API_BASE + '/attendance/qr/scan/', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ token: token }),
+      });
+    } catch (e) { res = null; }
+    var data = (res && res.ok) ? await res.json().catch(function () { return null; }) : null;
+
+    if (!__isPageAlive()) return;
+    if (!data) {
+      showResult('danger', 'Connection failed', ['Could not reach the server. Try again.']);
+      beep(false);
+    } else {
+      showScanResult(data);
+      beep(!!data.success);
+      if (data.success) refreshCount();
+    }
+
+    await new Promise(function (r) { setTimeout(r, 3000); });
+    if (!__isPageAlive()) return;
+    hideResult();
+
+    // Same QR still in front right after resume → ignore for another 3s
+    if (lastHandled) lastHandled.time = Date.now();
+    document.getElementById('scanHint').textContent = "Point the camera at the member's QR code.";
+    processing = false;
+    try { if (scanner && scannerStarted) await scanner.resume(); } catch (e) {}
+  }
+
+  // ── Camera start & error handling ────────────────────────────────────────
+  function cameraErrorMessage(err) {
+    var name = (err && err.name) || '';
+    var msg = String((err && err.message) || err || '');
+    var s = (name + ' ' + msg).toLowerCase();
+    if (s.includes('notallow') || s.includes('permission') || s.includes('denied')) {
+      return 'Camera permission denied. Allow camera access for this site in your browser settings, then retry.';
+    }
+    if (s.includes('notfound') || s.includes('no camera') || s.includes('no cameras') || s.includes('device not found')) {
+      return 'No camera found. Connect a camera to this device, then retry.';
+    }
+    if (s.includes('notreadable') || s.includes('in use') || s.includes('trackstart') || s.includes('could not start')) {
+      return 'Camera is in use by another application. Close it, then retry.';
+    }
+    return 'Could not start the camera: ' + (msg || 'unknown error.');
+  }
+
+  async function startScanner(pendingMsg) {
+    if (startInProgress) return;
+    startInProgress = true;
+    try {
+      if (typeof Html5Qrcode === 'undefined') {
+        showStatus('Scanner library failed to load. Check your internet connection and refresh the page.', 'danger', false);
+        return;
+      }
+      // While auto-restarting, keep a visible status until the camera is back.
+      if (pendingMsg) showStatus(pendingMsg, 'warning', false);
+      else hideStatus();
+
+      if (!scanner) scanner = new Html5Qrcode('qr-reader', { verbose: false });
+
+      // Scale the detection box to the (larger) kiosk camera box.
+      var el = document.getElementById('qr-reader');
+      var side = Math.min(el.clientWidth || 320, el.clientHeight || 320);
+      side = Math.max(160, Math.floor(side * 0.6));
+
+      try {
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: side, height: side } },
+          onDecoded,
+          function () { /* no QR in frame — expected */ }
+        );
+        scannerStarted = true;
+        hideStatus();
+        document.getElementById('scanHint').textContent = "Point the camera at the member's QR code.";
+      } catch (err) {
+        scannerStarted = false;
+        showStatus(cameraErrorMessage(err), 'danger', true);
+      }
+    } finally {
+      startInProgress = false;
+    }
+  }
+
+  // ── Camera watchdog: restart automatically every 10s if the stream died ─
+  // Covers tab-hidden, camera unplugged, and any silent stream stop.
+  function cameraAlive() {
+    if (!scanner || !scannerStarted) return false;
+    var video = document.querySelector('#qr-reader video');
+    if (!video) return false;
+    var stream = video.srcObject;
+    if (!stream) return false;
+    var tracks = (stream.getVideoTracks && stream.getVideoTracks()) || [];
+    var track = tracks[0];
+    if (!track || track.readyState === 'ended') return false;
+    if (video.readyState < 2 || !video.videoWidth) return false;
+    return true;
+  }
+
+  async function ensureCamera() {
+    if (startInProgress || processing || document.hidden) return;
+    if (cameraAlive()) return;
+    showStatus('Camera stopped — restarting camera…', 'warning', false);
+    try { if (scanner && scannerStarted) await scanner.stop(); } catch (e) {}
+    scannerStarted = false;
+    await startScanner('Camera stopped — restarting camera…');
+  }
+  setInterval(ensureCamera, 10000);
+
+  // ── Screen Wake Lock (keep the kiosk awake all day) ──────────────────────
+  var wakeLock = null;
+  function setWakeNote(show) {
+    document.getElementById('kioskWakeNote').classList.toggle('d-none', !show);
+  }
+  async function requestWakeLock() {
+    if (!navigator.wakeLock || !navigator.wakeLock.request) {
+      setWakeNote(true); // unsupported → safe fallback: hint to disable sleep
+      return;
+    }
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', function () { wakeLock = null; });
+      setWakeNote(false);
+    } catch (err) {
+      setWakeNote(true); // e.g. NotAllowedError — retried on gesture/visibility
+    }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    requestWakeLock();          // browsers release the lock when hidden
+    ensureCamera();             // camera may have been killed while hidden
+  });
+  // Some browsers only grant the lock after a user gesture — retry once.
+  ['pointerdown', 'keydown'].forEach(function (evt) {
+    window.addEventListener(evt, function retryOnce() {
+      window.removeEventListener(evt, retryOnce);
+      if (!wakeLock) requestWakeLock();
+    });
+  });
+
+  // ── Fullscreen (Fullscreen API) ──────────────────────────────────────────
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+  function toggleFullscreen() {
+    var doc = document;
+    var el = doc.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) return;
+    try {
+      var p = fullscreenElement()
+        ? (doc.exitFullscreen || doc.webkitExitFullscreen).call(doc)
+        : req.call(el);
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) { /* browser refused — ignore */ }
+  }
+  function updateFullscreenBtn() {
+    var btn = document.getElementById('kioskFsBtn');
+    if (!btn) return;
+    var req = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+    if (!req) { btn.classList.add('d-none'); return; } // unsupported → hide button
+    var active = !!fullscreenElement();
+    btn.innerHTML = active
+      ? '<i class="bi bi-fullscreen-exit me-1"></i> Exit fullscreen'
+      : '<i class="bi bi-arrows-fullscreen me-1"></i> Fullscreen';
+  }
+  document.addEventListener('fullscreenchange', updateFullscreenBtn);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenBtn);
+
+  // ── Exit kiosk → back to attendance.html ─────────────────────────────────
+  function exitKiosk() {
+    try {
+      if (fullscreenElement()) {
+        var exit = document.exitFullscreen || document.webkitExitFullscreen;
+        var p = exit.call(document);
+        if (p && p.catch) p.catch(function () {});
+      }
+    } catch (e) { /* ignore */ }
+    window.location.href = 'attendance.html';
+  }
+
+  window.addEventListener('pagehide', function () {
+    if (scanner && scannerStarted) {
+      try { scanner.stop().catch(function () {}); } catch (e) {}
+      scannerStarted = false;
+    }
+    if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
+  });
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  // No login redirect here — scanning is public, and every authenticated
+  // request either refreshes once (apiRequest) or fails quietly on this page.
+  tickClock();
+  setInterval(tickClock, 1000);
+  updateFullscreenBtn();
+  refreshCount();
+  loadGymName();
+  startScanner();
+  requestWakeLock();
+</script>
+</body>
+</html>

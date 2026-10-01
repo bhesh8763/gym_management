@@ -104,9 +104,14 @@
 
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h5 class="mb-0">All Attendance Records</h5>
-      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#markAttendanceModal">
-        <i class="bi bi-plus-circle"></i> Mark Attendance
-      </button>
+      <div class="d-flex gap-2">
+        <a href="attendance-kiosk.html" class="btn btn-outline-primary">
+          <i class="bi bi-upc-scan"></i> QR Kiosk
+        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#markAttendanceModal">
+          <i class="bi bi-plus-circle"></i> Mark Attendance
+        </button>
+      </div>
     </div>
 
     <div class="row g-2 mb-3 align-items-center">
@@ -516,63 +521,6 @@
 <script>
 buildSidebar('attendance');
   if (!getAccessToken()) window.location.href = 'login.html';
-
-  // -- Shared Check-In QR ----------------------------------------------------
-  const checkinQRModalEl = document.getElementById('checkinQRModal');
-  if (checkinQRModalEl) {
-    checkinQRModalEl.addEventListener('show.bs.modal', async () => {
-      const loadingEl = document.getElementById('checkinQRLoading');
-      const imgEl     = document.getElementById('checkinQRImage');
-      const urlEl     = document.getElementById('checkinQRUrl');
-      // Reset
-      loadingEl.style.display = 'block';
-      imgEl.style.display     = 'none';
-      urlEl.textContent       = '';
-
-      const res = await apiRequest('/attendance/checkin-qr/');
-      if (!res || !res.ok) {
-        loadingEl.innerHTML = '<p class="text-danger">Failed to load QR code.</p>';
-        return;
-      }
-      const data = await res.json();
-      imgEl.src             = data.qr_image_base64;
-      imgEl.style.display   = 'block';
-      loadingEl.style.display = 'none';
-      urlEl.textContent     = data.checkin_url;
-    });
-  }
-
-  function printCheckinQR() {
-    const imgSrc = document.getElementById('checkinQRImage').src;
-    if (!imgSrc) return;
-    const win = window.open('', '_blank', 'width=400,height=520');
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>FitCore Member Check-In QR</title>
-        <style>
-          body { text-align: center; font-family: sans-serif; padding: 2rem; }
-          img  { width: 260px; height: 260px; }
-          h2   { margin-bottom: 0.25rem; }
-          p    { color: #555; font-size: 0.9rem; }
-        </style>
-      </head>
-      <body>
-        <h2>FitCore - Member Check-In</h2>
-        <p>Scan to check in</p>
-        <br>
-        <img src="${imgSrc}" alt="Check-In QR">
-        <br><br>
-        <p style="font-size:0.75rem;color:#aaa;">Powered by FitCore Gym Management</p>
-       <script>window.onload = () => { window.print(); window.close(); }<\/script>
-      <\/body>
-      <\/html>
-    `);
-    win.document.close();
-  }
-
-
 
   function todayStr() {
     return new Date().toISOString().split('T')[0];

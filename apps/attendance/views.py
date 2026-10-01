@@ -25,6 +25,7 @@ from .serializers import (
     BiometricRecordSerializer,
     QRTokenSerializer,
 )
+from .services import scan_qr
 
 User = get_user_model()
 
@@ -139,35 +140,12 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     def check_in(self, request):
         """
         POST /api/attendance/records/check-in/
-        Member self check-in for today. Creates today's attendance record
-        with the current time, unless one already exists.
+        Disabled — members check in by scanning their QR at the kiosk.
+        Route kept so old clients get a clear 403 instead of a 404.
         """
-        user = request.user
-        if getattr(request, 'gym_role', user.role) != User.Role.MEMBER:
-            raise PermissionDenied('Only members can self check-in here.')
-
-        today = timezone.localdate()
-        now_time = timezone.localtime().time()
-
-        gym = getattr(request, 'gym', None)
-        attendance, created = Attendance.objects.get_or_create(
-            gym=gym,
-            branch=getattr(request, 'branch', None),
-            user=user,
-            date=today,
-            defaults={
-                'attendance_type': Attendance.AttendanceType.MEMBER,
-                'status': Attendance.Status.PRESENT,
-                'check_in': now_time,
-            },
+        raise PermissionDenied(
+            'Self check-in is disabled. Please scan your QR code at the gym kiosk.'
         )
-        if not created:
-            return Response(
-                {'error': 'You are already checked in for today.',
-                 'attendance': AttendanceSerializer(attendance).data},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(AttendanceSerializer(attendance).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'], url_path='current-occupancy')
     def current_occupancy(self, request):
@@ -197,35 +175,12 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     def check_out(self, request):
         """
         POST /api/attendance/records/check-out/
-        Member self check-out for today's existing attendance record.
+        Disabled — members check out by scanning their QR at the kiosk.
+        Route kept so old clients get a clear 403 instead of a 404.
         """
-        user = request.user
-        if getattr(request, 'gym_role', user.role) != User.Role.MEMBER:
-            raise PermissionDenied('Only members can self check-out here.')
-
-        today = timezone.localdate()
-        try:
-            attendance = Attendance.objects.get(
-                gym=getattr(request, 'gym', None),
-                user=user,
-                date=today,
-            )
-        except Attendance.DoesNotExist:
-            return Response(
-                {'error': 'You have not checked in today yet.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if attendance.check_out is not None:
-            return Response(
-                {'error': 'You are already checked out for today.',
-                 'attendance': AttendanceSerializer(attendance).data},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        attendance.check_out = timezone.localtime().time()
-        attendance.save(update_fields=['check_out'])
-        return Response(AttendanceSerializer(attendance).data)
+        raise PermissionDenied(
+            'Self check-in is disabled. Please scan your QR code at the gym kiosk.'
+        )
 
 
 class MemberQRCodeView(APIView):
@@ -334,68 +289,18 @@ class QRScanCheckInView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        token_value = request.data.get('token', '').strip()
-        if not token_value:
-            return Response({'error': 'Token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        token_value = request.data.get('token', '')
+        result = scan_qr(token_value, request=request)
 
-        try:
-            qr_token = QRAttendanceToken.objects.select_related('member').get(token=token_value)
-        except QRAttendanceToken.DoesNotExist:
-            return Response({'error': 'Invalid QR token.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        member = qr_token.member
-        if not member.is_active:
-            return Response({'error': 'Member account is inactive.'}, status=status.HTTP_403_FORBIDDEN)
-        if qr_token.gym_id:
-            from apps.gyms.models import Gym
-            if qr_token.gym.status not in (Gym.Status.ACTIVE, Gym.Status.TRIAL) or not GymMembership.objects.filter(
-                gym=qr_token.gym,
-                user=member,
-                role=GymMembership.Role.MEMBER,
-                status=GymMembership.Status.ACTIVE,
-            ).exists():
-                return Response({'error': 'This member is not active in this gym.'}, status=status.HTTP_403_FORBIDDEN)
-            if qr_token.branch_id and not GymMembership.objects.filter(
-                gym=qr_token.gym,
-                user=member,
-                branch_memberships__branch=qr_token.branch,
-            ).exists():
-                return Response({'error': 'This member is not active in this branch.'}, status=status.HTTP_403_FORBIDDEN)
-
-        today = timezone.localdate()
-        now_time = timezone.localtime().time()
-
-        attendance, created = Attendance.objects.get_or_create(
-            gym=qr_token.gym,
-            branch=qr_token.branch,
-            user=member,
-            date=today,
-            defaults={
-                'attendance_type': Attendance.AttendanceType.MEMBER,
-                'status': Attendance.Status.PRESENT,
-                'check_in': now_time,
-            },
-        )
-
-        action_taken = 'checked_in'
-        if not created:
-            if attendance.check_out is None:
-                # Second scan — record check-out
-                attendance.check_out = now_time
-                attendance.save(update_fields=['check_out'])
-                action_taken = 'checked_out'
-            else:
-                action_taken = 'already_completed'
-
-        return Response({
-            'action': action_taken,
-            'member_name': member.get_full_name(),
-            'display_id': member.display_id,
-            'date': today,
-            'check_in': attendance.check_in,
-            'check_out': attendance.check_out,
-            'duration_minutes': attendance.duration_minutes,
-        })
+        response_data = {
+            'success': result.success,
+            'action': result.action,
+            'code': result.code,
+            'message': result.message,
+            'time': result.time,
+            'member': result.member_data,
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class RegenerateQRView(APIView):
@@ -627,12 +532,14 @@ class BiometricCheckInView(APIView):
                     'attendance_type': Attendance.AttendanceType.MEMBER,
                     'status': Attendance.Status.PRESENT,
                     'check_in': now_time,
+                    'source': Attendance.Source.BIOMETRIC,
                 },
             )
 
             if not created and attendance.check_out is None:
                 attendance.check_out = now_time
-                attendance.save(update_fields=['check_out'])
+                attendance.source = Attendance.Source.BIOMETRIC
+                attendance.save(update_fields=['check_out', 'source'])
                 action = 'checked_out'
             elif not created and attendance.check_out is not None:
                 action = 'already_completed'
