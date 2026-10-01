@@ -1129,8 +1129,8 @@ itself, so no page markup carries them:
 
 | Surface | Behaviour |
 |---------|-----------|
-| Floating **Install app** pill (every page — public and app pages) | The dedicated install entry point. Always shown while the app is not installed, on every platform, without waiting for Chrome to report installability — so the app can be (re-)installed at any time, including after the user uninstalled it. The `×` hides it for the current session only (`sessionStorage`); it returns on the next visit. A `display-mode` listener re-shows both entry points if the app is uninstalled. |
-| **Install app** item in the profile menu (app pages) | A second always-available entry point, kept in the profile dropdown. |
+| Floating **Install app** pill (logged-out public pages only) | The dedicated pre-login install entry point. Always shown while the app is not installed, on every platform, without waiting for Chrome to report installability — so the app can be (re-)installed at any time, including after the user uninstalled it. Deliberately hidden after login (checked via `#profilePanel` and `access_token`) so no floating button sits over the app. The `×` hides it for the current session only (`sessionStorage`); it returns on the next visit. A `display-mode` listener re-shows the entry point if the app is uninstalled. |
+| **Install app** item in the profile menu (app pages) | The install entry point after login — always available from any logged-in page, so the app can be installed or reinstalled without leaving the app. |
 | Android / desktop Chrome | Installs directly on click through the native install dialog (`beforeinstallprompt`). If the browser hasn't reported installability yet, the click waits up to 2s for the event (Chrome fires it late, and re-fires it after a dismissed dialog) before falling back to the manual steps — which only browsers without the install API ever reach |
 | iOS Safari / any iOS browser (no install event exists) | Click opens the step-by-step instructions immediately: **Share → Add to Home Screen → Add** (iOS 16.4+ also enables push in the installed PWA) |
 

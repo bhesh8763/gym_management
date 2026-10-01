@@ -174,11 +174,13 @@ window.FitCorePush = (function () {
  *     "Share → Add to Home Screen" instructions instead.
  *
  * The buttons are injected by this file (no per-page HTML needed):
- *   - a floating "Install app" pill on EVERY page (public and app pages) —
- *     the dedicated install entry point, always available while the app is
- *     not installed, so it can be (re-)installed at any time, including
- *     after the user uninstalled it
- *   - an "Install app" item in the profile dropdown on app pages
+ *   - a floating "Install app" pill on logged-out PUBLIC pages — the
+ *     dedicated pre-login install entry point. It is deliberately NOT
+ *     shown after login (no floating button over the app); the profile
+ *     dropdown item below covers installed-from-here users instead.
+ *   - an "Install app" item in the profile dropdown on app pages —
+ *     always reachable after login, so the app can be (re-)installed at
+ *     any time, including after the user uninstalled it
  * The pill's × hides it for the current session only (sessionStorage), so
  * the option always comes back on the next visit — it can never get lost
  * permanently the way the old localStorage dismissal could.
@@ -329,7 +331,13 @@ window.FitCorePWA = (function () {
     // next visit, so the dedicated install option is always available again.
     if (sessionStorage.getItem(FLAG_DISMISSED) === '1') return;
     if (document.getElementById('fitcoreInstallPill')) return;
-    // Shown on every page (public and app) and on every platform, WITHOUT
+    // After login the install option lives in the profile menu instead —
+    // no floating button over the app (user request). The menu entry is
+    // always available, so the app can still be installed/reinstalled
+    // anytime from any logged-in page.
+    if (document.getElementById('profilePanel')) return;
+    if (localStorage.getItem('access_token')) return;
+    // Shown on logged-out public pages and on every platform, WITHOUT
     // waiting for beforeinstallprompt: the browser may withhold that event
     // (engagement heuristics, right after an uninstall, …), and the install
     // option must work anyway. Clicking runs the native dialog when one was
