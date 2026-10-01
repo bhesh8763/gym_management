@@ -188,6 +188,7 @@ window.FitCorePWA = (function () {
 
   let deferredPrompt = null;
   let installed = false;
+  let installing = false;
   const FLAG_DISMISSED = 'fitcore_install_dismissed';
   // Older builds persisted the dismissal in localStorage forever, so a single
   // × made the install option disappear permanently — after uninstalling the
@@ -381,6 +382,28 @@ window.FitCorePWA = (function () {
   document.addEventListener('fitcore:installable', inject);
   document.addEventListener('fitcore:installed', inject);
 
+  // Resolves with the deferred prompt, waiting up to `timeout` ms for the
+  // browser to report installability. Chrome fires beforeinstallprompt late
+  // (engagement heuristics) and re-fires it after the user dismisses the
+  // native dialog — an install click right after that must still install
+  // directly instead of falling back to manual instructions.
+  function waitForPrompt(timeout) {
+    return new Promise((resolve) => {
+      if (deferredPrompt) return resolve(deferredPrompt);
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        document.removeEventListener('fitcore:installable', onInstallable);
+        resolve(value);
+      };
+      const onInstallable = () => finish(deferredPrompt);
+      document.addEventListener('fitcore:installable', onInstallable);
+      const timer = setTimeout(() => finish(null), timeout);
+    });
+  }
+
   return {
     platform: platform,
     isInstallable: () => !!deferredPrompt,
@@ -389,22 +412,37 @@ window.FitCorePWA = (function () {
     install: async function () {
       const kind = platform();
       if (installed || kind === 'installed') return 'installed';
-      if (deferredPrompt) {
-        const promptEvent = deferredPrompt;
-        deferredPrompt = null; // the event can only be used once
-        try {
-          promptEvent.prompt();
-          const choice = await promptEvent.userChoice;
-          return choice.outcome; // 'accepted' | 'dismissed'
-        } catch (err) {
-          console.warn('[pwa] install prompt failed:', err);
-          return 'error';
+      if (installing) return 'pending'; // ignore double-clicks while a prompt is open
+      installing = true;
+      try {
+        // iOS Safari (any browser on iOS) never fires an install event —
+        // its "Share → Add to Home Screen" instructions are the only path.
+        if (kind === 'ios') {
+          showInstructions('ios');
+          return 'instructions';
         }
+        // Android/desktop: install directly through the native dialog.
+        // Wait briefly if the browser hasn't reported installability yet.
+        if (!deferredPrompt) await waitForPrompt(2000);
+        if (deferredPrompt) {
+          const promptEvent = deferredPrompt;
+          deferredPrompt = null; // the event can only be used once
+          try {
+            promptEvent.prompt();
+            const choice = await promptEvent.userChoice;
+            return choice.outcome; // 'accepted' | 'dismissed'
+          } catch (err) {
+            console.warn('[pwa] install prompt failed:', err);
+            return 'error';
+          }
+        }
+        // Last resort only (browser without the install API, or Chrome
+        // deciding the app isn't installable): manual step-by-step steps.
+        showInstructions(kind);
+        return 'instructions';
+      } finally {
+        installing = false;
       }
-      // No native prompt (iOS Safari, or not reported installable yet):
-      // walk the user through the manual steps instead.
-      showInstructions(kind);
-      return 'instructions';
     },
 
     showInstructions: showInstructions,

@@ -1131,8 +1131,8 @@ itself, so no page markup carries them:
 |---------|-----------|
 | Floating **Install app** pill (every page — public and app pages) | The dedicated install entry point. Always shown while the app is not installed, on every platform, without waiting for Chrome to report installability — so the app can be (re-)installed at any time, including after the user uninstalled it. The `×` hides it for the current session only (`sessionStorage`); it returns on the next visit. A `display-mode` listener re-shows both entry points if the app is uninstalled. |
 | **Install app** item in the profile menu (app pages) | A second always-available entry point, kept in the profile dropdown. |
-| Android / desktop Chrome | Triggers the native install dialog (`beforeinstallprompt`); if no dialog was captured, opens the manual step-by-step instructions instead |
-| iOS Safari (no install event exists) | Opens step-by-step instructions: **Share → Add to Home Screen → Add** (iOS 16.4+ also enables push in the installed PWA) |
+| Android / desktop Chrome | Installs directly on click through the native install dialog (`beforeinstallprompt`). If the browser hasn't reported installability yet, the click waits up to 2s for the event (Chrome fires it late, and re-fires it after a dismissed dialog) before falling back to the manual steps — which only browsers without the install API ever reach |
+| iOS Safari / any iOS browser (no install event exists) | Click opens the step-by-step instructions immediately: **Share → Add to Home Screen → Add** (iOS 16.4+ also enables push in the installed PWA) |
 
 **Web Push notifications:**
 
