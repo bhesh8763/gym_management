@@ -20,6 +20,9 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.attendance.models import Attendance, BiometricRecord, QRAttendanceToken
+from apps.attendance.services import _get_member_data
+from apps.gyms.models import Gym, GymMembership
+from apps.memberships.models import MembershipPlan, Membership
 
 User = get_user_model()
 
@@ -179,47 +182,59 @@ class AttendanceListTests(AttendanceAPITestCase):
         self.assertEqual(r.data['results'][0]['attendance_type'], 'STAFF')
 
 
-class AttendanceCheckInTests(AttendanceAPITestCase):
-    def test_member_can_self_check_in(self):
-        self.auth_as(self.member)
-        r = self.client.post('/api/attendance/records/check-in/')
-        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(r.data['user'], self.member.id)
+class SelfCheckInOutDisabledTests(AttendanceAPITestCase):
+    """Self check-in/out actions are disabled for everyone — QR kiosk only."""
 
-    def test_member_cannot_check_in_twice(self):
-        self.auth_as(self.member)
-        self.client.post('/api/attendance/records/check-in/')
-        r = self.client.post('/api/attendance/records/check-in/')
-        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+    MSG = 'Self check-in is disabled. Please scan your QR code at the gym kiosk.'
 
-    def test_staff_cannot_self_check_in(self):
-        self.auth_as(self.staff)
+    def test_member_check_in_forbidden_and_no_row_created(self):
+        self.auth_as(self.member)
+        before = Attendance.objects.count()
         r = self.client.post('/api/attendance/records/check-in/')
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(r.data['detail'], self.MSG)
+        self.assertEqual(Attendance.objects.count(), before)
 
-
-class AttendanceCheckOutSelfServiceTests(AttendanceAPITestCase):
-    def setUp(self):
-        super().setUp()
+    def test_member_check_out_forbidden_and_no_row_created(self):
         self.auth_as(self.member)
-        self.client.post('/api/attendance/records/check-in/')
-
-    def test_member_can_self_check_out(self):
+        before = Attendance.objects.count()
         r = self.client.post('/api/attendance/records/check-out/')
-        self.assertEqual(r.status_code, status.HTTP_200_OK)
-        self.assertIsNotNone(r.data['check_out'])
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(r.data['detail'], self.MSG)
+        self.assertEqual(Attendance.objects.count(), before)
 
-    def test_member_cannot_check_out_without_check_in(self):
-        # Create a second member who hasn't checked in
-        member2 = make_user('bob@gym.com', role=User.Role.MEMBER, first_name='Bob', last_name='Jones')
-        self.auth_as(member2)
+    def test_member_check_out_does_not_modify_existing_record(self):
+        record = Attendance.objects.create(
+            user=self.member,
+            attendance_type='MEMBER',
+            date=self.get_today_str(),
+            check_in='08:00:00',
+        )
+        self.auth_as(self.member)
         r = self.client.post('/api/attendance/records/check-out/')
-        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        record.refresh_from_db()
+        self.assertIsNone(record.check_out)
 
-    def test_member_cannot_check_out_twice(self):
-        self.client.post('/api/attendance/records/check-out/')
+    def test_staff_check_in_forbidden(self):
+        self.auth_as(self.staff)
+        before = Attendance.objects.count()
+        r = self.client.post('/api/attendance/records/check-in/')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(r.data['detail'], self.MSG)
+        self.assertEqual(Attendance.objects.count(), before)
+
+    def test_staff_check_out_forbidden(self):
+        self.auth_as(self.staff)
         r = self.client.post('/api/attendance/records/check-out/')
-        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(r.data['detail'], self.MSG)
+
+    def test_owner_check_in_forbidden(self):
+        self.auth_as(self.owner)
+        r = self.client.post('/api/attendance/records/check-in/')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(r.data['detail'], self.MSG)
 
 
 class AttendanceUnauthenticatedTests(AttendanceAPITestCase):
@@ -640,3 +655,336 @@ class BiometricStatsTests(APITestCase):
         self.auth_as(self.member1)
         r = self.client.get('/api/attendance/biometric/stats/')
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+
+# ─── QR Scan Tests ──────────────────────────────────────────────────────────────
+
+class QRScanTests(APITestCase):
+    """Tests for POST /api/attendance/qr/scan/ endpoint."""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.member = make_user('alice@gym.com', role=User.Role.MEMBER,
+                                 first_name='Alice', last_name='Smith')
+        self.inactive_member = make_user('inactive@qrtest.local', role=User.Role.MEMBER,
+                                          is_active=False)
+        self.expired_member = make_user('expired@qrtest.local', role=User.Role.MEMBER)
+        self.frozen_member = make_user('frozen@qrtest.local', role=User.Role.MEMBER)
+        self.no_membership_member = make_user('nomembership@qrtest.local', role=User.Role.MEMBER)
+
+        # Create gym
+        self.gym = Gym.objects.create(
+            name='Test Gym',
+            phone='+1234567890',
+            address='123 Test St',
+            status=Gym.Status.ACTIVE,
+        )
+
+        # Create membership plan
+        self.plan = MembershipPlan.objects.create(
+            gym=self.gym,
+            name='Monthly',
+            price=50.00,
+            duration_days=30,
+        )
+
+        # Active membership for member
+        self.membership = GymMembership.objects.create(
+            gym=self.gym,
+            user=self.member,
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+        )
+        self.member_plan = Membership.objects.create(
+            member=self.member,
+            gym=self.gym,
+            plan=self.plan,
+            status=Membership.Status.ACTIVE,
+            start_date=timezone.now().date() - timedelta(days=10),
+            end_date=timezone.now().date() + timedelta(days=20),
+            price_paid=50.00,
+        )
+
+        # Expired membership
+        self.expired_membership = GymMembership.objects.create(
+            gym=self.gym,
+            user=self.expired_member,
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+        )
+        self.expired_member_plan = Membership.objects.create(
+            member=self.expired_member,
+            gym=self.gym,
+            plan=self.plan,
+            status=Membership.Status.EXPIRED,
+            start_date=timezone.now().date() - timedelta(days=40),
+            end_date=timezone.now().date() - timedelta(days=5),
+            price_paid=50.00,
+        )
+
+        # Frozen membership
+        self.frozen_membership = GymMembership.objects.create(
+            gym=self.gym,
+            user=self.frozen_member,
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+        )
+        self.frozen_member_plan = Membership.objects.create(
+            member=self.frozen_member,
+            gym=self.gym,
+            plan=self.plan,
+            status=Membership.Status.FROZEN,
+            start_date=timezone.now().date() - timedelta(days=10),
+            end_date=timezone.now().date() + timedelta(days=20),
+            price_paid=50.00,
+        )
+
+        # No membership member (has gym membership but no plan membership)
+        self.no_membership_member = make_user('nomembership@gym.com', role=User.Role.MEMBER)
+        GymMembership.objects.create(
+            gym=self.gym,
+            user=self.no_membership_member,
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+        )
+
+        # Create QR tokens
+        self.token = QRAttendanceToken.objects.create(
+            member=self.member,
+            gym=self.gym,
+            token='VALID-TOKEN-12345',
+        )
+        self.inactive_token = QRAttendanceToken.objects.create(
+            member=self.inactive_member,
+            gym=self.gym,
+            token='INACTIVE-TOKEN',
+        )
+        self.expired_token = QRAttendanceToken.objects.create(
+            member=self.expired_member,
+            gym=self.gym,
+            token='EXPIRED-TOKEN',
+        )
+        self.frozen_token = QRAttendanceToken.objects.create(
+            member=self.frozen_member,
+            gym=self.gym,
+            token='FROZEN-TOKEN',
+        )
+        self.no_membership_token = QRAttendanceToken.objects.create(
+            member=self.no_membership_member,
+            gym=self.gym,
+            token='NO-MEMBERSHIP-TOKEN',
+        )
+
+        # Token not linked to any gym
+        self.no_gym_member = make_user('nogym@qrtest.local', role=User.Role.MEMBER)
+        self.no_gym_token = QRAttendanceToken.objects.create(
+            member=self.no_gym_member,
+            gym=None,
+            token='NO-GYM-TOKEN',
+        )
+
+    def test_valid_check_in(self):
+        """First scan of the day creates check-in."""
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertTrue(r.data['success'])
+        self.assertEqual(r.data['action'], 'CHECK_IN')
+        self.assertEqual(r.data['code'], 'CHECK_IN')
+        self.assertIn('Checked in', r.data['message'])
+        self.assertIsNotNone(r.data['time'])
+        self.assertEqual(r.data['member']['name'], 'Alice Smith')
+        self.assertEqual(r.data['member']['member_id'], self.member.id)
+        self.assertIsNotNone(r.data['member']['plan_name'])
+        self.assertIsNotNone(r.data['member']['end_date'])
+        self.assertIsNotNone(r.data['member']['days_left'])
+
+        # Verify attendance created with source=QR
+        attendance = Attendance.objects.get(user=self.member, date=timezone.localdate())
+        self.assertEqual(attendance.source, 'QR')
+        self.assertIsNotNone(attendance.check_in)
+        self.assertIsNone(attendance.check_out)
+
+    def test_valid_check_out(self):
+        """Second scan same day sets check-out."""
+        # First scan
+        self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+
+        # Advance created_at to bypass cooldown (60 seconds)
+        attendance = Attendance.objects.get(user=self.member, date=timezone.localdate())
+        attendance.created_at = timezone.now() - timedelta(seconds=120)
+        attendance.save(update_fields=['created_at'])
+
+        # Second scan
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertTrue(r.data['success'])
+        self.assertEqual(r.data['action'], 'CHECK_OUT')
+        self.assertEqual(r.data['code'], 'CHECK_OUT')
+        self.assertIn('Checked out', r.data['message'])
+
+        attendance = Attendance.objects.get(user=self.member, date=timezone.localdate())
+        self.assertEqual(attendance.source, 'QR')
+        self.assertIsNotNone(attendance.check_in)
+        self.assertIsNotNone(attendance.check_out)
+
+    def test_cooldown_within_60_seconds(self):
+        """Scanning twice within 60 seconds returns COOLDOWN and does not modify record."""
+        # First scan
+        r1 = self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+        self.assertEqual(r1.data['action'], 'CHECK_IN')
+
+        # Immediate second scan (within 60 seconds)
+        r2 = self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+        self.assertEqual(r2.status_code, status.HTTP_200_OK)
+        self.assertFalse(r2.data['success'])
+        self.assertEqual(r2.data['code'], 'COOLDOWN')
+        self.assertIn('Scanned too recently', r2.data['message'])
+
+        # Verify check_out was NOT set
+        attendance = Attendance.objects.get(user=self.member, date=timezone.localdate())
+        self.assertIsNone(attendance.check_out)
+
+    def test_already_completed(self):
+        """Third scan after check-in and check-out returns ALREADY_COMPLETED."""
+        # Check in
+        self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+
+        # Advance created_at to bypass cooldown
+        attendance = Attendance.objects.get(user=self.member, date=timezone.localdate())
+        attendance.created_at = timezone.now() - timedelta(seconds=120)
+        attendance.save(update_fields=['created_at'])
+
+        # Check out
+        self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+
+        # Advance created_at again for the check-out record
+        attendance = Attendance.objects.get(user=self.member, date=timezone.localdate())
+        attendance.created_at = timezone.now() - timedelta(seconds=120)
+        attendance.save(update_fields=['created_at'])
+
+        # Third scan
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'ALREADY_COMPLETED')
+        self.assertIn('already completed', r.data['message'].lower())
+
+        # Verify no changes to attendance
+        attendance = Attendance.objects.get(user=self.member, date=timezone.localdate())
+        self.assertEqual(Attendance.objects.filter(user=self.member).count(), 1)
+
+    def test_invalid_token(self):
+        """Unknown token returns INVALID_TOKEN."""
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'UNKNOWN-TOKEN'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'INVALID_TOKEN')
+        self.assertIn('Invalid QR token', r.data['message'])
+
+    def test_inactive_user(self):
+        """Inactive member account returns INACTIVE."""
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'INACTIVE-TOKEN'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'INACTIVE')
+        self.assertIn('inactive', r.data['message'].lower())
+
+    def test_no_membership(self):
+        """Member without gym membership returns NO_MEMBERSHIP."""
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'NO-MEMBERSHIP-TOKEN'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'NO_MEMBERSHIP')
+        self.assertIn('membership', r.data['message'].lower())
+
+    def test_expired_membership(self):
+        """Expired membership returns EXPIRED with expiry date."""
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'EXPIRED-TOKEN'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'EXPIRED')
+        self.assertIn('expired', r.data['message'].lower())
+        # Message should contain the expiry date
+        self.assertIn(str(self.expired_member_plan.end_date), r.data['message'])
+
+    def test_frozen_membership(self):
+        """Frozen membership returns FROZEN."""
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'FROZEN-TOKEN'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'FROZEN')
+        self.assertIn('frozen', r.data['message'].lower())
+
+    def test_denied_scan_creates_no_attendance_row(self):
+        """Denied scans (inactive, expired, frozen, no membership, no gym) never create attendance rows."""
+        initial_count = Attendance.objects.count()
+
+        for token in ['INACTIVE-TOKEN', 'EXPIRED-TOKEN', 'FROZEN-TOKEN',
+                      'NO-MEMBERSHIP-TOKEN', 'NO-GYM-TOKEN']:
+            self.client.post('/api/attendance/qr/scan/', {'token': token})
+
+        self.assertEqual(Attendance.objects.count(), initial_count)
+
+    def test_token_without_gym_denied(self):
+        """Token with no gym link returns INVALID_TOKEN and creates no attendance."""
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'NO-GYM-TOKEN'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'INVALID_TOKEN')
+        self.assertEqual(r.data['message'], 'QR code is not linked to a gym.')
+        self.assertIsNone(r.data['time'])
+        self.assertFalse(Attendance.objects.filter(user=self.no_gym_member).exists())
+
+    def test_member_data_active_membership(self):
+        """_get_member_data returns latest plan info for an ACTIVE membership."""
+        data = _get_member_data(self.member)
+        self.assertEqual(data['plan_name'], 'Monthly')
+        self.assertEqual(data['end_date'], str(self.member_plan.end_date))
+        self.assertEqual(data['days_left'], 20)
+
+    def test_member_data_expired_membership(self):
+        """Denied scans still show the expired plan; days_left is 0."""
+        data = _get_member_data(self.expired_member)
+        self.assertEqual(data['plan_name'], 'Monthly')
+        self.assertEqual(data['end_date'], str(self.expired_member_plan.end_date))
+        self.assertEqual(data['days_left'], 0)
+
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'EXPIRED-TOKEN'})
+        self.assertEqual(r.data['code'], 'EXPIRED')
+        self.assertEqual(r.data['member']['plan_name'], 'Monthly')
+        self.assertEqual(r.data['member']['end_date'], str(self.expired_member_plan.end_date))
+        self.assertEqual(r.data['member']['days_left'], 0)
+
+    def test_member_data_frozen_membership(self):
+        """Denied scans still show the frozen plan."""
+        data = _get_member_data(self.frozen_member)
+        self.assertEqual(data['plan_name'], 'Monthly')
+        self.assertEqual(data['end_date'], str(self.frozen_member_plan.end_date))
+        self.assertEqual(data['days_left'], 20)
+
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'FROZEN-TOKEN'})
+        self.assertEqual(r.data['code'], 'FROZEN')
+        self.assertEqual(r.data['member']['plan_name'], 'Monthly')
+        self.assertEqual(r.data['member']['end_date'], str(self.frozen_member_plan.end_date))
+        self.assertEqual(r.data['member']['days_left'], 20)
+
+    def test_empty_token(self):
+        """Empty token returns INVALID_TOKEN."""
+        r = self.client.post('/api/attendance/qr/scan/', {'token': ''})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'INVALID_TOKEN')
+
+    def test_missing_token(self):
+        """Missing token returns INVALID_TOKEN."""
+        r = self.client.post('/api/attendance/qr/scan/', {})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertFalse(r.data['success'])
+        self.assertEqual(r.data['code'], 'INVALID_TOKEN')
+
+    def test_no_auth_required(self):
+        """Endpoint works without JWT authentication."""
+        self.client.credentials()
+        r = self.client.post('/api/attendance/qr/scan/', {'token': 'VALID-TOKEN-12345'})
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertTrue(r.data['success'])

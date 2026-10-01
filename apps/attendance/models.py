@@ -25,6 +25,11 @@ class Attendance(TenantScopedModel):
         PRESENT = 'PRESENT', 'Present'
         ABSENT = 'ABSENT', 'Absent'
 
+    class Source(models.TextChoices):
+        QR = 'QR', 'QR Code'
+        BIOMETRIC = 'BIOMETRIC', 'Biometric'
+        MANUAL = 'MANUAL', 'Manual'
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -39,6 +44,9 @@ class Attendance(TenantScopedModel):
     )
     check_in = models.TimeField(null=True, blank=True)
     check_out = models.TimeField(null=True, blank=True)
+    source = models.CharField(
+        max_length=12, choices=Source.choices, default=Source.MANUAL, db_index=True,
+    )
     marked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
