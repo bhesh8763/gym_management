@@ -654,6 +654,10 @@ console.error('SPA page script threw — code after the error point did not run:
       if (newSidebar && newSidebar.parentNode) {
         newSidebar.parentNode.replaceChild(oldSidebar, newSidebar);
         oldSidebar.scrollTop = savedScroll;
+        // The preserved element carries its classes over — drop 'mobile-open'
+        // so the drawer doesn't stay open on top of the page the user just
+        // navigated to.
+        oldSidebar.classList.remove('mobile-open');
       }
     }
 
@@ -723,6 +727,18 @@ console.error('SPA page script threw — code after the error point did not run:
     if (href === current) return;
 
     navigateTo(href, true);
+  });
+
+  // Mobile drawer: there is no backdrop element, so tapping the page content
+  // (or the topbar) behind the open drawer closes it. Sidebar links and the
+  // hamburger are excluded — links navigate (navigateTo drops 'mobile-open')
+  // and the hamburger toggles itself.
+  document.addEventListener('click', (e) => {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar || !sidebar.classList.contains('mobile-open')) return;
+    if (sidebar.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.sidebar-toggle')) return;
+    sidebar.classList.remove('mobile-open');
   });
 
   window.addEventListener('popstate', () => {

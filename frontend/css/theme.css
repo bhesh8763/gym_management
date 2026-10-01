@@ -220,6 +220,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .profile-trigger .profile-name{font-size:var(--text-sm);font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-trigger .profile-role{font-size:0.65rem;color:rgba(255,255,255,0.5);text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:429px){.topbar .profile-trigger .profile-meta{display:none}}
+@media(max-width:340px){.topbar .navbar-brand span{display:none}}
 .profile-menu{min-width:160px;width:100%}
 .profile-menu a,.profile-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 12px;background:none;border:none;color:var(--text-primary);text-decoration:none;font-size:0.8rem;cursor:pointer;transition:background var(--transition-fast)}
 .profile-menu a:hover,.profile-menu button:hover{background:var(--bg-hover)}
@@ -228,8 +229,8 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 
 /* ── Layout ───────────────────────────────────────────────────────────────── */
 #page-content{display:flex;flex:1 1 auto;min-height:0;transition:background-color var(--duration-base) var(--ease-in-out)}
-#page-content > .d-flex{flex:1 1 auto;min-height:0;transition:background-color var(--duration-base) var(--ease-in-out)}
-#page-content .flex-grow-1{height:100%;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;transition:background-color var(--duration-base) var(--ease-in-out)}
+#page-content > .d-flex{flex:1 1 auto;min-height:0;min-width:0;transition:background-color var(--duration-base) var(--ease-in-out)}
+#page-content .flex-grow-1{height:100%;min-height:0;min-width:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;transition:background-color var(--duration-base) var(--ease-in-out)}
 #page-content .flex-grow-1::-webkit-scrollbar{width:6px}
 #page-content .flex-grow-1::-webkit-scrollbar-track{background:transparent}
 #page-content .flex-grow-1::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
@@ -1412,6 +1413,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .profile-trigger .profile-name{font-size:var(--text-sm);font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-trigger .profile-role{font-size:0.65rem;color:rgba(255,255,255,0.5);text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:429px){.topbar .profile-trigger .profile-meta{display:none}}
+@media(max-width:340px){.topbar .navbar-brand span{display:none}}
 .profile-menu{min-width:160px;width:100%}
 .profile-menu a,.profile-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 12px;background:none;border:none;color:var(--text-primary);text-decoration:none;font-size:0.8rem;cursor:pointer;transition:background var(--transition-fast)}
 .profile-menu a:hover,.profile-menu button:hover{background:var(--bg-hover)}
@@ -1420,8 +1422,8 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 
 /* ── Layout ───────────────────────────────────────────────────────────────── */
 #page-content{display:flex;flex:1 1 auto;min-height:0;transition:background-color var(--duration-base) var(--ease-in-out)}
-#page-content > .d-flex{flex:1 1 auto;min-height:0;transition:background-color var(--duration-base) var(--ease-in-out)}
-#page-content .flex-grow-1{height:100%;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;transition:background-color var(--duration-base) var(--ease-in-out)}
+#page-content > .d-flex{flex:1 1 auto;min-height:0;min-width:0;transition:background-color var(--duration-base) var(--ease-in-out)}
+#page-content .flex-grow-1{height:100%;min-height:0;min-width:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;transition:background-color var(--duration-base) var(--ease-in-out)}
 #page-content .flex-grow-1::-webkit-scrollbar{width:6px}
 #page-content .flex-grow-1::-webkit-scrollbar-track{background:transparent}
 #page-content .flex-grow-1::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
@@ -2665,6 +2667,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .profile-trigger .profile-name{font-size:var(--text-sm);font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-trigger .profile-role{font-size:0.65rem;color:rgba(255,255,255,0.5);text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:429px){.topbar .profile-trigger .profile-meta{display:none}}
+@media(max-width:340px){.topbar .navbar-brand span{display:none}}
 .profile-menu{min-width:160px;width:100%}
 .profile-menu a,.profile-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 12px;background:none;border:none;color:var(--text-primary);text-decoration:none;font-size:0.8rem;cursor:pointer;transition:background var(--transition-fast)}
 .profile-menu a:hover,.profile-menu button:hover{background:var(--bg-hover)}
@@ -2673,8 +2676,8 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 
 /* ── Layout ───────────────────────────────────────────────────────────────── */
 #page-content{display:flex;flex:1 1 auto;min-height:0;transition:background-color var(--duration-base) var(--ease-in-out)}
-#page-content > .d-flex{flex:1 1 auto;min-height:0;transition:background-color var(--duration-base) var(--ease-in-out)}
-#page-content .flex-grow-1{height:100%;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;transition:background-color var(--duration-base) var(--ease-in-out)}
+#page-content > .d-flex{flex:1 1 auto;min-height:0;min-width:0;transition:background-color var(--duration-base) var(--ease-in-out)}
+#page-content .flex-grow-1{height:100%;min-height:0;min-width:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d1d5db transparent;transition:background-color var(--duration-base) var(--ease-in-out)}
 #page-content .flex-grow-1::-webkit-scrollbar{width:6px}
 #page-content .flex-grow-1::-webkit-scrollbar-track{background:transparent}
 #page-content .flex-grow-1::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
