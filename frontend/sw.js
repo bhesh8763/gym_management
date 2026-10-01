@@ -179,11 +179,19 @@ self.addEventListener('notificationclick', (event) => {
   const target = (event.notification.data && event.notification.data.url) || self.registration.scope;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Focus an already-open app window and take it to the right page.
+      // Prefer focusing an already-open app window and taking it straight to
+      // the notification's detail page; fall back to a fresh window. If
+      // navigate() is unavailable or rejects (some browsers refuse in-place
+      // navigation), open the target instead of silently doing nothing —
+      // a tap must always land on the notification's page.
       for (const client of windowClients) {
-        if ('focus' in client) {
-          return client.focus().then((focused) => (focused && 'navigate' in focused ? focused.navigate(target) : focused));
-        }
+        if (!('focus' in client)) continue;
+        return client.focus().then((focused) => {
+          if (focused && 'navigate' in focused) {
+            return focused.navigate(target).catch(() => self.clients.openWindow(target));
+          }
+          return self.clients.openWindow(target);
+        });
       }
       return self.clients.openWindow(target);
     })

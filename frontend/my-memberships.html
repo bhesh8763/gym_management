@@ -478,6 +478,8 @@
 <script>
 buildSidebar('my-memberships');
 if (!getAccessToken()) window.location.href = 'login.html';
+// Populate the topbar bell (see my-attendance.html for why).
+loadTopbarNotifications();
 
 let plansCache = [];
 let membershipsCache = [];

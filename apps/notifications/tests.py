@@ -643,6 +643,41 @@ class NotificationDeleteViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+class NotificationDetailViewTest(APITestCase):
+    """GET /api/notifications/<id>/ — backs the notification detail page."""
+
+    def setUp(self):
+        self.member = make_user(role=User.Role.MEMBER)
+        self.other = make_user(role=User.Role.MEMBER)
+        self.notification = Notification.objects.create(
+            recipient=self.member, notification_type='PAYMENT_DUE',
+            title='Payment due', message='Full detail body', is_read=False,
+        )
+        self.url = reverse('notification-delete', args=[self.notification.pk])
+
+    def test_recipient_gets_own_notification(self):
+        response = self.client.get(self.url, **auth_header(self.member))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], self.notification.pk)
+        self.assertEqual(response.data['title'], 'Payment due')
+        self.assertEqual(response.data['message'], 'Full detail body')
+        self.assertFalse(response.data['is_read'])
+
+    def test_another_users_row_is_404_not_403(self):
+        """No existence leak: other recipients see plain not-found."""
+        response = self.client.get(self.url, **auth_header(self.other))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_nonexistent_returns_404(self):
+        url = reverse('notification-delete', args=[99999])
+        response = self.client.get(url, **auth_header(self.member))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_requires_auth(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
 class NotificationSenderFieldTest(APITestCase):
     """Verify the new ``sender`` FK on Notification is used by the messaging API
     and that legacy inbox serialization no longer parses the title."""
@@ -834,6 +869,16 @@ class SendPushTest(TestCase):
         self.assertEqual(kwargs['subscription_info']['endpoint'], self.sub.endpoint)
         self.assertEqual(kwargs['vapid_claims'], {'sub': 'mailto:test@example.com'})
 
+    def test_payload_deep_links_to_the_detail_page_when_id_given(self):
+        """With a notification id the tap opens THAT notification's page."""
+        with mock.patch('pywebpush.webpush') as webpush_mock:
+            send_push(self.member, 'Hello', 'World', 'PAYMENT_DUE', notification_id=42)
+        payload = json.loads(webpush_mock.call_args.kwargs['data'])
+        self.assertTrue(
+            payload['url'].endswith('/notification-detail.html?id=42'),
+            payload['url'],
+        )
+
     def test_no_subscriptions_means_no_network_call(self):
         PushSubscription.objects.all().delete()
         with mock.patch('pywebpush.webpush') as webpush_mock:
@@ -905,6 +950,25 @@ class NotifyPushHookTest(TestCase):
         webpush_mock.assert_called_once()
         payload = json.loads(webpush_mock.call_args.kwargs['data'])
         self.assertEqual(payload['title'], 'Title here')
+
+    @override_settings(
+        VAPID_PUBLIC_KEY='PUBKEY',
+        VAPID_PRIVATE_KEY='PRIVKEY',
+        VAPID_SUBJECT='mailto:test@example.com',
+    )
+    def test_notify_push_url_targets_that_notifications_detail_page(self):
+        """The pushed deep link goes straight to the new notification's detail page."""
+        with mock.patch('pywebpush.webpush') as webpush_mock, \
+                self.captureOnCommitCallbacks(execute=True):
+            notification = notify(
+                self.member,
+                Notification.NotificationType.GENERAL,
+                'T',
+                'B',
+                send_email=False,
+            )
+        payload = json.loads(webpush_mock.call_args.kwargs['data'])
+        self.assertIn(f'notification-detail.html?id={notification.pk}', payload['url'])
 
     @override_settings(VAPID_PUBLIC_KEY='', VAPID_PRIVATE_KEY='')
     def test_notify_without_vapid_configured_is_safe(self):

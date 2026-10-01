@@ -97,6 +97,8 @@
 <script src="js/api.js"></script>
 <script>
 buildSidebar('my-trainer');
+// Populate the topbar bell (see my-attendance.html for why).
+loadTopbarNotifications();
 async function loadMyTrainer() {
   const loadingEl = document.getElementById('loadingState');
   const noTrainerEl = document.getElementById('noTrainerState');

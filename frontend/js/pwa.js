@@ -33,13 +33,19 @@
 })();
 
 /* ── Web Push opt-in ─────────────────────────────────────────────────── *
- * window.FitCorePush — three entry points used by the app:
+ * window.FitCorePush — entry points used by the app:
  *   askAfterLogin() — call from a login/signup click handler so the browser's
  *                     permission prompt appears inside the user gesture (iOS
  *                     requires this). Asks at most once ever per browser.
+ *   enable()        — explicit user-gesture opt-in (the "Turn on
+ *                     notifications" button). Ignores the once-ever nag
+ *                     guard, so a dismissed prompt can be re-requested, and
+ *                     returns WHY push isn't on ('server-disabled', …).
+ *   status()        — synchronous Notification.permission state.
  *   sync()          — silently re-registers an already-granted subscription
- *                     (runs on every authenticated page load; repairs
- *                     subscriptions after the browser rotates endpoints).
+ *                     (runs on every authenticated page load and on resume;
+ *                     repairs subscriptions after the browser rotates
+ *                     endpoints).
  *   logout()        — best-effort server + local unsubscribe on logout.
  * All methods swallow their own errors: push must never break login,
  * navigation, or logout.
@@ -85,36 +91,50 @@ window.FitCorePush = (function () {
   }
 
   // Fetch the VAPID public key, make sure a PushSubscription exists, and
-  // register it with the API for the logged-in user.
+  // register it with the API for the logged-in user. Returns a status
+  // string (instead of a bare bool) so UI can explain WHY push isn't on:
+  //   'granted'         — subscribed and registered with the API
+  //   'server-disabled' — the server has no VAPID keys configured
+  //   'error'           — network/auth/subscribe failure
   async function ensureSubscribed() {
-    const keyRes = await fetch(apiBase() + '/notifications/push/public-key/', {
-      headers: authHeaders(false),
-    });
-    if (!keyRes.ok) return false;
-    const payload = await keyRes.json();
-    if (!payload.key || !payload.enabled) return false; // server has no VAPID keys yet
-
-    const registration = await navigator.serviceWorker.ready;
-    let subscription = await registration.pushManager.getSubscription();
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(payload.key),
+    let payload;
+    try {
+      const keyRes = await fetch(apiBase() + '/notifications/push/public-key/', {
+        headers: authHeaders(false),
       });
+      if (!keyRes.ok) return 'error';
+      payload = await keyRes.json();
+    } catch (err) {
+      return 'error';
     }
+    if (!payload.key || !payload.enabled) return 'server-disabled'; // no VAPID keys yet
 
-    const keys = subscription.toJSON().keys || {};
-    const res = await fetch(apiBase() + '/notifications/push/subscribe/', {
-      method: 'POST',
-      headers: authHeaders(true),
-      body: JSON.stringify({
-        endpoint: subscription.endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        user_agent: navigator.userAgent.slice(0, 300),
-      }),
-    });
-    return res.ok;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(payload.key),
+        });
+      }
+
+      const keys = subscription.toJSON().keys || {};
+      const res = await fetch(apiBase() + '/notifications/push/subscribe/', {
+        method: 'POST',
+        headers: authHeaders(true),
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth,
+          user_agent: navigator.userAgent.slice(0, 300),
+        }),
+      });
+      return res.ok ? 'granted' : 'error';
+    } catch (err) {
+      console.warn('[pwa] subscribe failed:', err);
+      return 'error';
+    }
   }
 
   return {
@@ -133,6 +153,37 @@ window.FitCorePush = (function () {
       } catch (err) {
         console.warn('[pwa] push opt-in failed:', err);
       }
+    },
+
+    // Explicit user-gesture entry point — the "Turn on notifications"
+    // button on the notifications page. Unlike askAfterLogin() it ignores
+    // the once-ever nag guard: a user who deliberately taps the button
+    // must be able to re-trigger the browser prompt after dismissing it
+    // the first time. Returns 'granted' | 'denied' | 'default' |
+    // 'server-disabled' | 'unsupported' | 'error'.
+    enable: async function () {
+      if (!supported()) return 'unsupported';
+      if (Notification.permission === 'denied') return 'denied';
+      if (Notification.permission === 'default') {
+        let permission;
+        try {
+          permission = await Notification.requestPermission();
+        } catch (err) {
+          return 'error';
+        }
+        if (permission !== 'granted') return permission; // 'denied' | 'default'
+      }
+      try {
+        return await ensureSubscribed();
+      } catch (err) {
+        console.warn('[pwa] push enable failed:', err);
+        return 'error';
+      }
+    },
+
+    // Quick synchronous state for status UI.
+    status: function () {
+      return supported() ? Notification.permission : 'unsupported';
     },
 
     sync: async function () {

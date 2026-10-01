@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="logo.png">
+  <title>Notification — FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+  /* ── Notification detail card ──────────────────────────────────────── */
+  .notif-detail-icon {
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+  }
+  .notif-detail-title { font-size: 1.35rem; font-weight: 700; line-height: 1.3; }
+  .notif-detail-body {
+    white-space: pre-wrap;
+    line-height: 1.65;
+    font-size: 1.02rem;
+  }
+  .notif-detail-meta { font-size: 0.85rem; }
+</style>
+  <!-- PWA: installable app + service-worker registration (scripts/inject_pwa_tags.py) -->
+  <meta name="theme-color" content="#0f1015">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script src="js/pwa.js" defer></script>
+</head>
+
+<body>
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')">
+      <i class="bi bi-bell"></i>
+      <span class="notif-badge" id="notifCount" style="display:none;">0</span>
+    </button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="dropdown-header">Notifications</div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta">
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-role" id="profileRole">—</div>
+      </span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr>
+      <button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content">
+<div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <!-- ── Main content ─────────────────────────────────────────────────── -->
+  <div class="p-4 flex-grow-1">
+
+    <!-- Page header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+      <div>
+        <h3 class="mb-0"><i class="bi bi-envelope-paper me-2 text-danger"></i>Notification</h3>
+        <div class="text-muted small" id="detailCrumb">Loading…</div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="goBackToList()">
+        <i class="bi bi-arrow-left me-1"></i>Back to notifications
+      </button>
+    </div>
+
+    <!-- Loading skeleton -->
+    <div class="card p-4" id="detailLoading">
+      <div class="d-flex align-items-start gap-3">
+        <div class="skeleton-avatar lg" style="width:52px;height:52px;"></div>
+        <div class="flex-grow-1">
+          <div class="skeleton-text" style="width:55%;height:20px;margin-bottom:8px;"></div>
+          <div class="skeleton-text" style="width:35%;margin-bottom:16px;"></div>
+          <div class="skeleton-text" style="width:90%;margin-bottom:6px;"></div>
+          <div class="skeleton-text" style="width:75%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail card -->
+    <div class="card p-4 d-none" id="detailCard">
+      <div class="d-flex align-items-start gap-3 flex-wrap">
+        <div class="notif-detail-icon" id="detailIcon"><i class="bi bi-bell"></i></div>
+        <div class="flex-grow-1" style="min-width:0;">
+          <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+            <h4 class="notif-detail-title mb-1" id="detailTitle">—</h4>
+            <div class="d-flex gap-2 align-items-center flex-shrink-0">
+              <span class="badge text-bg-secondary" id="detailReadBadge">Read</span>
+              <span class="badge" id="detailTypeBadge">General</span>
+            </div>
+          </div>
+          <div class="notif-detail-meta text-muted mb-3" id="detailMeta">—</div>
+          <div class="notif-detail-body" id="detailMessage">—</div>
+          <div class="d-flex gap-2 flex-wrap mt-4" id="detailActions">
+            <a class="btn btn-sm btn-danger d-none" id="detailRelatedBtn" href="#">—</a>
+            <button class="btn btn-sm btn-outline-secondary" onclick="goBackToList()">
+              <i class="bi bi-arrow-left me-1"></i>Back to notifications
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Not found / error state -->
+    <div class="card p-5 text-center d-none" id="detailMissing">
+      <i class="bi bi-bell-slash text-muted" style="font-size:2.5rem;opacity:.35;"></i>
+      <div class="mt-3 fw-semibold" id="missingTitle">Notification not found</div>
+      <div class="text-muted small mt-1" id="missingText">It may have been deleted, or it belongs to a different account.</div>
+      <div class="d-flex gap-2 justify-content-center mt-4">
+        <button class="btn btn-sm btn-outline-secondary" onclick="goBackToList()">
+          <i class="bi bi-arrow-left me-1"></i>Back to notifications
+        </button>
+        <button class="btn btn-sm btn-danger d-none" id="missingRetryBtn" onclick="loadDetail()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Try again
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /main content -->
+</div><!-- /d-flex -->
+</div><!-- /page-content -->
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script>
+  // This page is reached two ways: SPA taps inside the app (bell dropdown or
+  // the notifications list) and full-page loads from a system-notification
+  // click — the push payload's url points straight here (?id=<pk>).
+  buildSidebar('notifications');
+  if (!getAccessToken()) window.location.href = 'login.html';
+
+  // ── Type meta (mirrors notifications.html) ───────────────────────────────
+  const TYPE_META = {
+    MEMBERSHIP_EXPIRY:  { icon: 'bi-calendar-x',       bg: '#fff0f0', color: '#c0392b' },
+    MEMBERSHIP_RENEWAL: { icon: 'bi-arrow-repeat',      bg: '#fff8e1', color: '#f39c12' },
+    PAYMENT_DUE:        { icon: 'bi-exclamation-circle', bg: '#fff3cd', color: '#d68910' },
+    PAYMENT_RECEIVED:   { icon: 'bi-cash-coin',          bg: '#e8f8f5', color: '#1a8a6e' },
+    INACTIVITY:         { icon: 'bi-person-dash',        bg: '#f0f0ff', color: '#5c5ce0' },
+    WORKOUT_REMINDER:   { icon: 'bi-heart-pulse',        bg: '#fce4ec', color: '#c2185b' },
+    ANNOUNCEMENT:       { icon: 'bi-megaphone',          bg: '#e3f2fd', color: '#1565c0' },
+    GENERAL:            { icon: 'bi-info-circle',        bg: '#f5f5f5', color: '#555'    },
+    MEMBER_MESSAGE:     { icon: 'bi-chat-dots',          bg: '#e3f2fd', color: '#1565c0' },
+    TRAINER_REPLY:      { icon: 'bi-reply',              bg: '#e8f5e9', color: '#2e7d32' },
+  };
+
+  // Same type → page mapping the push payload uses server-side
+  // (apps/notifications/services.py `_PUSH_PAGES`), plus friendly labels.
+  const RELATED_PAGES = {
+    MEMBERSHIP_EXPIRY:  { href: 'my-memberships.html', label: 'My memberships' },
+    MEMBERSHIP_RENEWAL: { href: 'my-memberships.html', label: 'My memberships' },
+    PAYMENT_DUE:        { href: 'my-payments.html',    label: 'My payments' },
+    PAYMENT_RECEIVED:   { href: 'my-payments.html',    label: 'My payments' },
+    INACTIVITY:         { href: 'my-attendance.html',  label: 'My attendance' },
+    WORKOUT_REMINDER:   { href: 'my-workouts.html',    label: 'My workouts' },
+    WORKOUT_ASSIGNED:   { href: 'my-workouts.html',    label: 'My workouts' },
+    MEMBER_MESSAGE:     { href: 'my-messages.html',    label: 'Messages' },
+    TRAINER_REPLY:      { href: 'my-messages.html',    label: 'Messages' },
+    TRAINER_ASSIGNED:   { href: 'my-trainer.html',     label: 'My trainer' },
+  };
+
+  function typeMeta(type) {
+    return TYPE_META[type] || TYPE_META['GENERAL'];
+  }
+
+  function typeLabel(type) {
+    return (type || 'GENERAL').replace(/_/g, ' ').toLowerCase()
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function timeAgo(dateStr) {
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if (diff < 60)   return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+
+  // ── State switches ──────────────────────────────────────────────────────
+  function showState(which, opts) {
+    const loading  = document.getElementById('detailLoading');
+    const card     = document.getElementById('detailCard');
+    const missing  = document.getElementById('detailMissing');
+    if (!loading || !card || !missing) return; // navigated away mid-flight
+    loading.classList.toggle('d-none', which !== 'loading');
+    card.classList.toggle('d-none', which !== 'detail');
+    missing.classList.toggle('d-none', which !== 'missing');
+    if (which === 'missing' && opts) {
+      const title = document.getElementById('missingTitle');
+      const text  = document.getElementById('missingText');
+      const retry = document.getElementById('missingRetryBtn');
+      if (title && opts.title) title.textContent = opts.title;
+      if (text && opts.text) text.textContent = opts.text;
+      if (retry) retry.classList.toggle('d-none', !opts.retry);
+    }
+  }
+
+  function goBackToList() {
+    navigateTo('notifications.html', true);
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────
+  function renderDetail(n) {
+    const meta = typeMeta(n.notification_type);
+
+    const icon = document.getElementById('detailIcon');
+    if (!icon) return; // page navigated away during the fetch
+    icon.style.background = meta.bg;
+    icon.style.color = meta.color;
+    icon.innerHTML = `<i class="bi ${meta.icon}"></i>`;
+
+    document.getElementById('detailTitle').textContent = n.title || '(no title)';
+
+    const typeBadge = document.getElementById('detailTypeBadge');
+    typeBadge.textContent = typeLabel(n.notification_type);
+    typeBadge.style.background = meta.color;
+
+    const readBadge = document.getElementById('detailReadBadge');
+    if (n.is_read) {
+      readBadge.textContent = 'Read';
+      readBadge.className = 'badge text-bg-secondary';
+    } else {
+      readBadge.textContent = 'Unread';
+      readBadge.className = 'badge text-bg-danger';
+    }
+
+    const created = new Date(n.created_at);
+    document.getElementById('detailMeta').textContent =
+      `${timeAgo(n.created_at)} · ${created.toLocaleString()}`;
+
+    document.getElementById('detailMessage').textContent =
+      n.message || '(no details)';
+
+    // Related shortcut — only for types that map to one of my pages.
+    const related = RELATED_PAGES[n.notification_type];
+    const relBtn = document.getElementById('detailRelatedBtn');
+    if (related) {
+      relBtn.href = related.href;
+      relBtn.innerHTML = `<i class="bi bi-box-arrow-up-right me-1"></i>${related.label}`;
+      relBtn.classList.remove('d-none');
+    } else if (relBtn) {
+      relBtn.classList.add('d-none');
+    }
+
+    document.getElementById('detailCrumb').textContent =
+      `${typeLabel(n.notification_type)} · ${created.toLocaleDateString()}`;
+
+    showState('detail');
+
+    // Opening it = reading it (same rule as the list rows). Refresh the
+    // topbar bell so the badge drops without a reload.
+    if (!n.is_read) {
+      apiRequest(`/notifications/${n.id}/read/`, { method: 'PATCH' }).then(() => {
+        if (window.loadTopbarNotifications) loadTopbarNotifications();
+      });
+    }
+  }
+
+  // ── Load ────────────────────────────────────────────────────────────────
+  async function loadDetail() {
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (!id || !/^\d+$/.test(id)) {
+      showState('missing', {
+        title: 'Notification not found',
+        text: 'This link is missing its notification id.',
+        retry: false,
+      });
+      return;
+    }
+
+    showState('loading');
+    const crumb = document.getElementById('detailCrumb');
+    if (crumb) crumb.textContent = 'Loading…';
+
+    let res = null, data = null;
+    try {
+      res = await apiRequest(`/notifications/${id}/`);
+      if (res && res.ok) data = await res.json();
+    } catch (err) {
+      res = null;
+    }
+
+    // The user may have navigated elsewhere while we were fetching.
+    if (!document.getElementById('detailCard')) return;
+
+    if (res && res.ok && data) { renderDetail(data); return; }
+    if (res && res.status === 404) {
+      showState('missing', {
+        title: 'Notification not found',
+        text: 'It may have been deleted, or it belongs to a different account.',
+        retry: false,
+      });
+      return;
+    }
+    // Network error / transient failure — offer a retry.
+    showState('missing', {
+      title: 'Couldn’t load this notification',
+      text: 'Check your connection and try again.',
+      retry: true,
+    });
+  }
+
+  loadDetail();
+
+  // Populate the topbar bell like every other app page.
+  if (window.loadTopbarNotifications) loadTopbarNotifications();
+</script>
+</body>
+</html>

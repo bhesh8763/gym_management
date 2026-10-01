@@ -211,6 +211,8 @@
 <script>
 buildSidebar('my-payments');
 if (!getAccessToken()) window.location.href = 'login.html';
+// Populate the topbar bell (see my-attendance.html for why).
+loadTopbarNotifications();
 
 let duesCache = [];
 let selectedDue = null;

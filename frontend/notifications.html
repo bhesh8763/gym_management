@@ -149,6 +149,11 @@
       </div>
     </div>
 
+    <!-- Web Push status — shows whether push is on for this device and lets
+         the user turn it on with an explicit tap (the automatic prompt only
+         fires once, inside the login gesture, and can be dismissed forever). -->
+    <div id="pushStatusBanner" class="alert d-none py-2 px-3 small mb-3" role="status"></div>
+
     <!-- Filter tabs -->
     <div class="d-flex flex-wrap gap-2 mb-3" id="filterTabs">
       <button class="btn btn-sm btn-danger active-filter" data-filter="all" onclick="setFilter('all', this)">All</button>
@@ -257,6 +262,72 @@
 <script>
   buildSidebar('notifications');
   if (!getAccessToken()) window.location.href = 'login.html';
+
+  // ── Push status banner ───────────────────────────────────────────────────
+  // Web Push can be off for four reasons (permission never granted,
+  // permission blocked, server has no VAPID keys, transient error). The
+  // automatic opt-in prompt fires at most once ever during login, so this
+  // banner is the recovery path: it explains the state and, when the
+  // prompt can still be shown, offers an explicit button that re-asks.
+  const pushBanner = document.getElementById('pushStatusBanner');
+
+  function renderPushBanner(state) {
+    if (!pushBanner) return;
+    pushBanner.className = 'alert d-none py-2 px-3 small mb-3';
+    const show = (cls, html) => {
+      pushBanner.classList.remove('d-none');
+      pushBanner.classList.add(cls);
+      pushBanner.innerHTML = html;
+    };
+    if (state === 'ok') {
+      show('alert-success',
+        '<i class="bi bi-check-circle me-1"></i>Notifications are on for this device.');
+    } else if (state === 'default') {
+      show('alert-info',
+        '<i class="bi bi-bell me-1"></i>Get notified even when the app is closed. ' +
+        '<button class="btn btn-sm btn-danger ms-2" id="pushEnableBtn">Turn on notifications</button>');
+    } else if (state === 'denied') {
+      show('alert-warning',
+        '<i class="bi bi-bell-slash me-1"></i>Notifications are blocked for this site. ' +
+        'Allow them in this browser\'s site settings for FitCore, then reload this page.');
+    } else if (state === 'server-disabled') {
+      show('alert-danger',
+        '<i class="bi bi-exclamation-triangle me-1"></i>' +
+        'Push notifications aren\'t configured on this server yet — the VAPID keys are missing from its environment.');
+    } else if (state === 'error') {
+      show('alert-warning',
+        '<i class="bi bi-arrow-clockwise me-1"></i>' +
+        'Couldn\'t set up notifications — check your connection and reload this page.');
+    }
+    const btn = document.getElementById('pushEnableBtn');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Enabling…';
+        const result = await window.FitCorePush.enable();
+        renderPushBanner(result === 'granted' ? 'ok' : result);
+      });
+    }
+  }
+
+  async function initPushStatus() {
+    // pwa.js is deferred — on a full page load this inline script runs
+    // BEFORE it, so wait for window load or FitCorePush is still missing
+    // and the banner would never render. (On SPA navigations it's already
+    // defined and we proceed immediately.)
+    if (!window.FitCorePush && document.readyState !== 'complete') {
+      await new Promise((resolve) => window.addEventListener('load', resolve, { once: true }));
+    }
+    if (!window.FitCorePush) return;
+    const perm = FitCorePush.status();
+    if (perm === 'unsupported') return; // no Web Push here — banner stays hidden
+    if (perm !== 'granted') { renderPushBanner(perm); return; }
+    // Permission granted — (re-)register the subscription and surface any
+    // server-side configuration problem instead of failing silently.
+    const result = await FitCorePush.enable();
+    renderPushBanner(result === 'granted' ? 'ok' : result);
+  }
+  initPushStatus();
 
   // ── State ────────────────────────────────────────────────────────────────
   let allNotifications = [];   // full local cache (current filter page)
@@ -374,7 +445,7 @@
       const unreadClass = n.is_read ? '' : 'unread';
       const dot = n.is_read ? '' : '<div class="unread-dot"></div>';
       return `
-        <div class="notif-row ${unreadClass}" id="notif-${n.id}" onclick="markRead(${n.id})">
+        <div class="notif-row ${unreadClass}" id="notif-${n.id}" onclick="openNotifDetail(${n.id})">
           ${dot}
           <div class="notif-row-icon" style="background:${meta.bg};color:${meta.color};">
             <i class="bi ${meta.icon}"></i>
@@ -419,36 +490,11 @@
 
 
 <script>
-  // ── Mark single as read ─────────────────────────────────────────────────
-  async function markRead(id) {
-    const n = allNotifications.find(x => x.id === id);
-    if (!n || n.is_read) return;
-
-    const res = await apiRequest(`/notifications/${id}/read/`, { method: 'PATCH' });
-    if (!res || !res.ok) return;
-    if (!__isPageAlive()) return;
-
-    // Update local cache optimistically
-    n.is_read = true;
-    n.read_at = new Date().toISOString();
-
-    // Patch the DOM row without a full re-render
-    const row = document.getElementById(`notif-${id}`);
-    if (row) {
-      row.classList.remove('unread');
-      row.querySelector('.unread-dot')?.remove();
-      const meta = row.querySelector('.notif-row-meta');
-      if (meta && !meta.querySelector('.text-success')) {
-        meta.insertAdjacentHTML('beforeend',
-          ' <span class="ms-2 text-success"><i class="bi bi-check2"></i> Read</span>');
-      }
-    }
-
-    updateSummary();
-    refreshTopbarBell();
-
-    const markAllBtn = document.getElementById('markAllReadBtn');
-    markAllBtn.disabled = allNotifications.filter(x => !x.is_read).length === 0;
+  // ── Open detail page ─────────────────────────────────────────────────────
+  // Clicking a row takes the user to a dedicated page for that
+  // notification; the detail page marks it read and refreshes the bell.
+  function openNotifDetail(id) {
+    navigateTo(`notification-detail.html?id=${id}`, true);
   }
 
   // ── Mark all as read ────────────────────────────────────────────────────
@@ -473,7 +519,7 @@
 
   // ── Delete notification ─────────────────────────────────────────────────
   async function deleteNotif(event, id) {
-    event.stopPropagation();   // don't trigger markRead on the row
+    event.stopPropagation();   // don't open the detail page when deleting from a row
     const res = await apiRequest(`/notifications/${id}/`, { method: 'DELETE' });
     if (res && (res.status === 204 || res.ok)) {
       allNotifications = allNotifications.filter(n => n.id !== id);
@@ -503,7 +549,7 @@
     if (!notifListEl) return;
     notifListEl.innerHTML = items.length
       ? items.slice(0, 5).map(n => `
-          <div class="notif-item ${n.is_read ? '' : 'fw-semibold'}" onclick="markRead(${n.id})" style="cursor:pointer;">
+          <div class="notif-item ${n.is_read ? '' : 'fw-semibold'}" onclick="openNotifDetail(${n.id})" style="cursor:pointer;">
             <div>${escapeHtml(n.title)}</div>
             <div class="text-muted" style="font-size:0.78rem;">${escapeHtml(n.message.substring(0, 80))}${n.message.length > 80 ? '…' : ''}</div>
           </div>`).join('')

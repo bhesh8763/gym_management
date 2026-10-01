@@ -110,14 +110,28 @@ _PUSH_PAGES = {
 }
 
 
-def _push_url(notification_type: str) -> str:
-    """Absolute deep link for a tapped notification (falls back to the inbox)."""
+def _push_url(notification_type: str, notification_id: Optional[int] = None) -> str:
+    """Absolute deep link for a tapped notification.
+
+    With a notification id the tap opens that notification's DETAIL page
+    (notification-detail.html?id=<id>). Without one it falls back to the
+    type's list page, then the inbox.
+    """
     base = (getattr(settings, 'FRONTEND_URL', '') or '').rstrip('/')
-    page = _PUSH_PAGES.get(notification_type, 'notifications.html')
+    if notification_id is not None:
+        page = f'notification-detail.html?id={int(notification_id)}'
+    else:
+        page = _PUSH_PAGES.get(notification_type, 'notifications.html')
     return f'{base}/{page}' if base else f'/{page}'
 
 
-def send_push(recipient, title: str, message: str, notification_type: str = 'GENERAL') -> int:
+def send_push(
+    recipient,
+    title: str,
+    message: str,
+    notification_type: str = 'GENERAL',
+    notification_id: Optional[int] = None,
+) -> int:
     """
     Best-effort Web Push to every device the recipient subscribed with.
 
@@ -139,7 +153,7 @@ def send_push(recipient, title: str, message: str, notification_type: str = 'GEN
         'icon': '/logo.png',
         'badge': '/icons/icon-192.png',
         'tag': notification_type,
-        'url': _push_url(notification_type),
+        'url': _push_url(notification_type, notification_id),
     })
     delivered = 0
     for sub in PushSubscription.objects.filter(user=recipient):
@@ -231,7 +245,7 @@ def notify(
     #    and wrapped so a push failure can never break the caller.
     def _push_now():
         try:
-            send_push(recipient, title, message, notification_type)
+            send_push(recipient, title, message, notification_type, notification.pk)
         except Exception as exc:  # noqa: BLE001 — push must never break the caller  # pragma: no cover
             logger.warning(f'Web Push dispatch failed for user {getattr(recipient, "pk", recipient)}: {exc}')
 

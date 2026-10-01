@@ -225,6 +225,10 @@
 
 <script>
 buildSidebar('my-attendance');
+// Populate the topbar bell — without this the badge only refreshed on the
+// pages that happened to call it, so new notifications seemed to appear
+// "after switching sidebar options".
+loadTopbarNotifications();
 
 let recordsCache = [];
 let todayRecord = null;

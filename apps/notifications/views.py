@@ -122,11 +122,24 @@ class MarkAllAsReadView(APIView):
         return Response({'detail': f'{updated} notification(s) marked as read.'})
 
 
-# ─── Delete ─────────────────────────────────────────────────────────────────────
+# ─── Detail / Delete ──────────────────────────────────────────────────────────────
 
 class NotificationDeleteView(APIView):
-    """DELETE /api/notifications/<id>/ — Owner/Staff can delete any; a user can delete their own."""
+    """GET /api/notifications/<id>/    — one notification, for its recipient.
+    DELETE /api/notifications/<id>/   — Owner/Staff can delete any; a user can delete their own."""
     permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            notification = Notification.objects.get(pk=pk)
+        except Notification.DoesNotExist:
+            raise NotFound('Notification not found.')
+        if getattr(request, 'gym', None) is not None and notification.gym_id != getattr(request, 'gym', None).id:
+            raise NotFound('Notification not found.')
+        # Detail pages are personal — never leak another recipient's rows.
+        if notification.recipient_id != request.user.id:
+            raise NotFound('Notification not found.')
+        return Response(NotificationSerializer(notification).data)
 
     def delete(self, request, pk):
         try:

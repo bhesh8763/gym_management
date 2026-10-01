@@ -383,6 +383,16 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Already signed in → go straight to the app. The installed PWA launches
+// at this landing page (manifest start_url "./"), so without this every
+// reopen LOOKED like a logout even though the session was still valid.
+// Trainers route to their dedicated dashboard, exactly like login.html.
+if (localStorage.getItem('access_token')) {
+  const landingRole = localStorage.getItem('gym_role') || localStorage.getItem('user_role') || '';
+  window.location.replace(landingRole === 'TRAINER' ? 'trainer-dashboard.html' : 'dashboard.html');
+}
+</script>
+<script>
 // Navbar state on scroll
 const navbar = document.getElementById('navbar');
 window.addEventListener('scroll', () => {

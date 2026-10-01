@@ -690,9 +690,12 @@ console.error('SPA page script threw — code after the error point did not run:
     enforcePageRoleAccess();
     syncSidebarCollapsedState();
 
-    // Update sidebar active state after content swap
+    // Update sidebar active state after content swap. The notification
+    // detail page isn't a sidebar destination — keep "Notifications"
+    // highlighted while reading one.
+    const sidebarHref = url.split('?')[0] === 'notification-detail.html' ? 'notifications.html' : url;
     document.querySelectorAll('.sidebar a.list-group-item').forEach(a => {
-      a.classList.toggle('active', a.getAttribute('href') === url);
+      a.classList.toggle('active', a.getAttribute('href') === sidebarHref);
     });
 
     // Remove any previously injected page-specific styles
@@ -707,11 +710,15 @@ console.error('SPA page script threw — code after the error point did not run:
       document.head.appendChild(clone);
     });
 
+    // Update the URL BEFORE running the new page's inline scripts: pages
+    // such as notification-detail.html read location.search while they
+    // initialise, and would otherwise see the PREVIOUS page's query string.
+    if (push) history.pushState({ spaUrl: url }, '', url);
+
     doc.querySelectorAll('script:not([src])').forEach(scriptEl => {
       runInlineScript(scriptEl.textContent);
     });
 
-    if (push) history.pushState({ spaUrl: url }, '', url);
     window.scrollTo(0, 0);
   }
 
@@ -729,7 +736,7 @@ console.error('SPA page script threw — code after the error point did not run:
     if (!href || /^https?:\/\//.test(href) || href.startsWith('#')) return;
 
     e.preventDefault();
-    const current = window.location.pathname.split('/').pop() || 'dashboard.html';
+    const current = (window.location.pathname.split('/').pop() || 'dashboard.html') + window.location.search;
     if (href === current) return;
 
     navigateTo(href, true);
@@ -748,12 +755,19 @@ console.error('SPA page script threw — code after the error point did not run:
   });
 
   window.addEventListener('popstate', () => {
-    const current = window.location.pathname.split('/').pop() || 'dashboard.html';
+    // Keep the query string — detail pages (notification-detail.html?id=…)
+    // need it to know which record to render after back/forward.
+    const current = (window.location.pathname.split('/').pop() || 'dashboard.html') + window.location.search;
     navigateTo(current, false);
   });
 
   const currentFile = window.location.pathname.split('/').pop() || 'dashboard.html';
   history.replaceState({ spaUrl: currentFile }, '', window.location.href);
+
+  // Expose the SPA router to inline onclick handlers on every page (bell
+  // dropdown, notification rows, detail-page buttons, …). navigateTo is
+  // otherwise private to this IIFE.
+  window.navigateTo = navigateTo;
 })();
 
 // Blocks selection of any date before today on the given <input type="date">
@@ -878,9 +892,23 @@ initProfileHeader();
 // Keep this browser's Web Push subscription registered while logged in —
 // silent (only runs when permission was already granted), and repairs the
 // server-side record if the browser rotated its push endpoint.
-if (window.FitCorePush && localStorage.getItem('access_token')) {
+// pwa.js is a DEFERRED script while api.js is classic: on a full page load
+// api.js executes FIRST, so FitCorePush doesn't exist yet. Wait for window
+// load (deferred scripts have run by then) or the sync would never happen.
+function startFitCorePushSync() {
+  if (!window.FitCorePush || !localStorage.getItem('access_token')) return;
   FitCorePush.sync();
+  // Re-sync whenever the app returns to the foreground: Android kills
+  // backgrounded PWAs and push endpoints can rotate while the app is
+  // suspended — a stale server record would silently stop delivery.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && localStorage.getItem('access_token')) {
+      FitCorePush.sync();
+    }
+  });
 }
+if (document.readyState === 'complete') startFitCorePushSync();
+else window.addEventListener('load', startFitCorePushSync);
 
 // Syncs the signed-in user's effective permission set (and custom role name)
 // from /auth/me/ into localStorage, then re-applies sidebar visibility.
@@ -1335,33 +1363,20 @@ async function loadTopbarNotifications() {
   if (!listEl) return;
   listEl.innerHTML = items.length
     ? items.slice(0, 6).map(n => `
-        <div class="notif-item" onclick="markTopbarNotifRead(${n.id})" style="cursor:pointer;" id="topbar-notif-${n.id}">
+        <div class="notif-item" onclick="openTopbarNotif(${n.id})" style="cursor:pointer;" id="topbar-notif-${n.id}">
           <div style="font-size:0.85rem;font-weight:600;">${escapeHtml(n.title)}</div>
           <div class="text-muted" style="font-size:0.78rem;">${escapeHtml(n.message.length > 80 ? n.message.substring(0, 80) + '…' : n.message)}</div>
         </div>`).join('')
     : '<div class="notif-empty">No new notifications</div>';
 }
 
-async function markTopbarNotifRead(id) {
-  const res = await apiRequest(`/notifications/${id}/read/`, { method: 'PATCH' });
-  if (!res || !res.ok) return;
-  // Remove the item from the dropdown immediately
-  const row = document.getElementById(`topbar-notif-${id}`);
-  if (row) row.remove();
-  // Recount badge from remaining items
-  const remaining = document.querySelectorAll('#notifList .notif-item').length;
-  const badge = document.getElementById('notifCount');
-  if (badge) {
-    if (remaining > 0) {
-      badge.textContent = remaining > 99 ? '99+' : remaining;
-    } else {
-      badge.style.display = 'none';
-      const listEl = document.getElementById('notifList');
-      if (listEl) listEl.innerHTML = '<div class="notif-empty">No new notifications</div>';
-    }
-  }
-  const markAllBtn = document.getElementById('notifMarkAllBtn');
-  if (markAllBtn) markAllBtn.disabled = remaining === 0;
+// Open a notification's detail page from the bell dropdown (SPA nav).
+// Reading it on the detail page is what marks it read — one source of
+// truth keeps the badge and both lists in sync.
+function openTopbarNotif(id) {
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.classList.remove('show');
+  navigateTo(`notification-detail.html?id=${id}`, true);
 }
 
 async function markAllTopbarNotificationsRead() {

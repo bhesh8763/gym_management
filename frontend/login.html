@@ -125,6 +125,14 @@
 <script src="js/api.js"></script>
 <script src="js/validate.js"></script>
 <script>
+  // Already signed in → skip the form and land in the app (reopening the
+  // installed PWA or hitting login.html with a live session must not look
+  // like a logout). Trainers route to their dedicated dashboard.
+  if (localStorage.getItem('access_token')) {
+    const loginRole = localStorage.getItem('gym_role') || localStorage.getItem('user_role') || '';
+    window.location.replace(loginRole === 'TRAINER' ? 'trainer-dashboard.html' : 'dashboard.html');
+  }
+
   // Clear fields on load — prevents browser from silently pre-filling
   // a saved/generated password before the user interacts with the form.
   // The autocomplete attributes are kept so the browser still *offers*

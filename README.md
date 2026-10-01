@@ -341,6 +341,7 @@ Useful headers are `X-Gym-ID` (validated active membership) and `X-Branch-ID` (v
 | My Locker | `my-locker.html` | Locker assignment status |
 | My Trainer | `my-trainer.html` | Assigned trainer info |
 | Notifications | `notifications.html` | In-app notification center |
+| Notification Detail | `notification-detail.html` | Single-notification detail view (bell, list, and push deep link) |
 | Member Card | `member-card.html` | QR code for check-in |
 | My Messages | `my-messages.html` | Direct messaging with staff/trainers |
 
@@ -370,6 +371,7 @@ Useful headers are `X-Gym-ID` (validated active membership) and `X-Branch-ID` (v
 | Import | `import.html` | Owner-only `.xlsx` template, dry run, and commit |
 | Messages | `messages.html` | Direct and group messaging |
 | Notifications | `notifications.html` | Notification center and read state |
+| Notification Detail | `notification-detail.html` | Single-notification detail view (bell, list, and push deep link) |
 | Trainer Dashboard | `trainer-dashboard.html` | Assigned-member overview |
 | Trainer Members | `trainer-members.html` | Trainer-scoped member list |
 | Trainer Messages | `trainer-messages.html` | Trainer conversation view |
@@ -783,6 +785,7 @@ In the tables below, **staff-side** follows the application's `IsAnyStaffRole` p
 | GET | `/unread-count/` | Authenticated | Current unread count |
 | POST | `/mark-all-read/` | Authenticated | Mark all visible notifications as read |
 | PATCH | `/<id>/read/` | Authenticated / own notification | Mark one notification as read |
+| GET | `/<id>/` | Authenticated / own notification | Fetch one notification (backs the detail page) |
 | DELETE | `/<id>/` | Owner/Staff or owning recipient | Delete a notification |
 
 #### Offers & Promo Codes (`/api/memberships/offers/`, `/api/memberships/promo-codes/`)
@@ -933,7 +936,7 @@ The frontend supports light/dark mode with a toggle button in the topbar and def
 - Welcome/announcement helpers and direct/group chat events
 
 **Delivery and storage:**
-- In-app records are exposed through `/api/notifications/`
+- In-app records are exposed through `/api/notifications/`; every notification has a detail page (`notification-detail.html?id=<id>`) opened by tapping a bell/list row or the push notification itself, and reading it there is what marks it read
 - Notification services can also send email through Django's configured backend
 - Stored types include membership expiry/renewal, payment due/received, inactivity, workout reminder, general, announcement, member message, trainer reply, and trainer assigned
 - Direct/group conversation read state and pins are managed by the messaging endpoints
@@ -1000,7 +1003,7 @@ python manage.py test apps.reports.tests      # 60 tests
 | **lockers** | 46 | Inventory, bulk creation, assignment lifecycle, status synchronization, filters |
 | **members** | 39 | Profile CRUD, reactivation, own-profile access, validation |
 | **memberships** | 71 | Plans, assignment/renewal/cancel, freeze workflows, offers/promo codes, expiry sync, filters |
-| **notifications** | 53 | Notification types/read state, scheduled services/commands, group messaging and pins |
+| **notifications** | 77 | Notification types/read state/detail endpoint, scheduled services/commands, push payloads, group messaging and pins |
 | **payments** | 20 | Staff recording, member scoping, discounts, summaries and access control |
 | **progress** | 33 | Progress/PR CRUD, BMI, member stats, trainer/member scoping |
 | **reports** | 60 | JSON analytics plus CSV/Excel content, filters, empty datasets, and RBAC |
@@ -1008,7 +1011,7 @@ python manage.py test apps.reports.tests      # 60 tests
 | **trainers** | 34 | Trainer profiles, assignments, trainer-scoped members and notifications |
 | **workouts** | 65 | Exercise/template/version workflows, assignments/completions, messaging, exports, RBAC |
 
-**Total: 633 tests across 15 local apps.** Latest full run: **633 passed**, with Django system checks clean.
+**Total: 744 tests across 16 local apps.** Latest full run: **744 passed**, with Django system checks clean.
 
 ### Test Patterns Used
 
@@ -1105,6 +1108,12 @@ FitCore is installable as a PWA (Add to Home Screen / install icon) and shows an
 offline fallback page when the network is unavailable. Live data always requires
 a connection — API responses are deliberately never cached.
 
+**Session persistence:** tokens live in `localStorage` and survive app
+relaunches. The installed icon launches the landing page (`start_url "./"`), so
+`index.html` and `login.html` redirect already-signed-in users straight into
+their dashboard (trainers to `trainer-dashboard.html`) — reopening the app can
+never *look* like a logout while the session is still valid.
+
 | File | Purpose |
 |------|---------|
 | `manifest.webmanifest` | Install metadata: name, icons, standalone display, dark theme colour, page shortcuts |
@@ -1152,14 +1161,20 @@ automatically.
 | `POST /api/notifications/push/subscribe/` | Registers the browser's subscription for the logged-in user (upserts by endpoint — a new login on the same browser reassigns it) |
 | `POST /api/notifications/push/unsubscribe/` | Removes it (called on logout) |
 | `apps.notifications.services.send_push()` | Sends from the central `notify()` after the DB transaction commits |
-| `sw.js` `push` / `notificationclick` handlers | Shows the notification and deep-links into the page for that notification type when tapped |
+| `sw.js` `push` / `notificationclick` handlers | Shows the notification and opens `notification-detail.html?id=<id>` — that exact notification's page — when tapped (falls back to opening a new window if the browser refuses in-place navigation) |
 
 **User flow:** after a successful login (or signup) the browser asks for
 notification permission inside the click gesture — iOS only accepts the prompt
 there, and iOS 16.4+ requires the PWA on the Home Screen (which this PWA
 satisfies). The prompt appears at most once per browser; a dismissed prompt is
 never repeated. Every subsequent authenticated page load silently re-registers
-the subscription (repairs endpoints the browser rotates).
+the subscription (repairs endpoints the browser rotates), and it re-syncs
+whenever the app returns to the foreground (Android suspends backgrounded PWAs,
+and push endpoints can rotate while suspended). Because the automatic prompt is
+one-shot, the notifications page shows the current push state: while permission
+is still unset it offers a **Turn on notifications** button that re-asks inside
+a click gesture; blocked permission and a server without VAPID keys each get an
+explicit explanation instead of failing silently.
 
 **Setup for production:**
 
