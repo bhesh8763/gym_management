@@ -304,7 +304,8 @@ body {
   position: absolute;
   left: 0;
   top: calc(100% + 6px);
-  white-space: nowrap;
+  width: 100%;
+  white-space: normal;
   font-size: 0.8rem;
   color: #ff8f99;
   margin: 0;
@@ -312,22 +313,12 @@ body {
 }
 
 .login-form-group:has(.is-invalid) {
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
 }
 
 .login-input.is-invalid {
   border-color: var(--brand-red) !important;
   background-color: rgba(230, 57, 70, 0.06) !important;
-}
-
-@media (max-width: 500px) {
-  .login-input-wrapper { flex-wrap: wrap; }
-  .login-input-wrapper .invalid-feedback {
-    position: static;
-    width: 100%;
-    margin-top: 6px;
-    white-space: normal;
-  }
 }
 
 .login-form-footer {
