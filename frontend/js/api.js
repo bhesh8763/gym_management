@@ -789,7 +789,8 @@ document.addEventListener('click', (e) => {
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
-  if (window.innerWidth <= 768) {
+  // Match theme.css: the sidebar becomes a fixed drawer at <=991.98px.
+  if (window.innerWidth <= 991.98) {
     sidebar.classList.toggle('mobile-open');
   } else {
     sidebar.classList.toggle('collapsed');

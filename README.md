@@ -1090,8 +1090,7 @@ frontend/
 ├── js/
 │   ├── api.js           # API/auth client, role guards, owner-plan gate, router, shared UI
 │   ├── pwa.js           # Service-worker registration (included by every page)
-│   ├── validate.js      # Shared form validation
-│   └── bottom-tabs.js   # Mobile bottom navigation
+│   └── validate.js      # Shared form validation
 ├── icons/               # Generated PWA icons (scripts/generate_pwa_icons.py)
 ├── *.html               # 47 page files
 ├── logo.png             # Application logo

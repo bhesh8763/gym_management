@@ -15,7 +15,7 @@
  */
 'use strict';
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE_PREFIX = 'fitcore-';
 const STATIC_CACHE = `${CACHE_PREFIX}static-${VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${VERSION}`;
@@ -31,7 +31,6 @@ const PRECACHE_URLS = [
   'css/login.css',
   'js/api.js',
   'js/validate.js',
-  'js/bottom-tabs.js',
   'js/pwa.js',
 ];
 
