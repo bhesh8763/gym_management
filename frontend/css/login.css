@@ -321,9 +321,12 @@ body {
 }
 
 @media (max-width: 500px) {
+  .login-input-wrapper { flex-wrap: wrap; }
   .login-input-wrapper .invalid-feedback {
     position: static;
+    width: 100%;
     margin-top: 6px;
+    white-space: normal;
   }
 }
 
