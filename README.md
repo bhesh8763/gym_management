@@ -1111,7 +1111,7 @@ a connection — API responses are deliberately never cached.
 | `manifest.webmanifest` | Install metadata: name, icons, standalone display, dark theme colour, page shortcuts |
 | `sw.js` | Service worker: precaches the shell, decides the caching strategy per request type |
 | `offline.html` | Self-contained offline fallback page (no external assets) |
-| `js/pwa.js` | Registers `sw.js`; injected into the `<head>` of every page |
+| `js/pwa.js` | Registers `sw.js`; injected into the `<head>` of every page; also provides the install UI (`window.FitCorePWA`) |
 | `icons/` | 192/512 icons, a maskable 512 icon, and a 180px `apple-touch-icon` |
 
 **Caching policy (`sw.js`):**
@@ -1122,6 +1122,18 @@ a connection — API responses are deliberately never cached.
 | Same-origin CSS/JS/images | Stale-while-revalidate (served from cache instantly, refreshed in the background) |
 | `/api/*` | Strict network-only, **never cached** (JWT-protected, user-specific; returns `503` JSON offline) |
 | Cross-origin CDN/fonts | Stale-while-revalidate so the shell renders offline after the first visit |
+
+**Installing the app:**
+
+`js/pwa.js` exposes `window.FitCorePWA` and injects the install entry points
+itself, so no page markup carries them:
+
+| Surface | Behaviour |
+|---------|-----------|
+| Floating **Install app** pill (public pages: login, landing, …) | Shown once Chrome/Edge reports the app installable, or always on iOS Safari (which has no install event). The `×` dismisses it permanently (`fitcore_install_dismissed` in `localStorage`). |
+| **Install app** item in the profile menu (app pages) | Same behaviour, kept out of the way of the floating pill. |
+| Android / desktop Chrome | Triggers the native install dialog (`beforeinstallprompt`) |
+| iOS Safari (no install event exists) | Opens step-by-step instructions: **Share → Add to Home Screen → Add** (iOS 16.4+ also enables push in the installed PWA) |
 
 **Web Push notifications:**
 

@@ -165,3 +165,219 @@ window.FitCorePush = (function () {
     },
   };
 })();
+
+/* ── Install prompt (Add to Home Screen / Install app) ──────────────── *
+ * window.FitCorePWA — one entry point for every platform:
+ *   Android/desktop Chrome: captures beforeinstallprompt and runs the
+ *     native install dialog via install().
+ *   iOS Safari (no such event exists): shows step-by-step
+ *     "Share → Add to Home Screen" instructions instead.
+ *
+ * The buttons are injected by this file (no per-page HTML needed):
+ *   - "Install app" item in the profile dropdown on app pages
+ *   - a dismissible floating pill on public pages (login, landing, …)
+ */
+window.FitCorePWA = (function () {
+  'use strict';
+
+  let deferredPrompt = null;
+  let installed = false;
+  const FLAG_DISMISSED = 'fitcore_install_dismissed';
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    // Chrome/Edge fire this when the PWA is installable. Suppress the default
+    // mini-infobar — we offer our own button instead.
+    event.preventDefault();
+    deferredPrompt = event;
+    document.dispatchEvent(new Event('fitcore:installable'));
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installed = true;
+    deferredPrompt = null;
+    removePill();
+    removeMenuItem();
+    document.dispatchEvent(new Event('fitcore:installed'));
+  });
+
+  function platform() {
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true; // iOS Safari
+    if (standalone) return 'installed';
+    const ua = navigator.userAgent;
+    // iPadOS 13+ reports a desktop Mac UA but is still touch-only Safari.
+    const ios = /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios) return 'ios';
+    if (/android/i.test(ua)) return 'android';
+    return 'desktop';
+  }
+
+  // ── Instructions modal (self-contained — works on every page) ───────
+  const STEPS = {
+    ios: {
+      title: 'Add FitCore to your Home Screen',
+      icon: '<i class="bi bi-phone" style="color:#e63946;"></i>',
+      steps: [
+        'Tap the <b>Share</b> button <b>⬆︎</b> — the square with an arrow, at the bottom of the Safari screen',
+        'Scroll down and tap <b>Add to Home Screen</b>',
+        'Tap <b>Add</b> in the top-right corner',
+      ],
+      note: 'FitCore now opens from your home screen — full screen, offline fallback, and push notifications (iOS 16.4+).',
+    },
+    android: {
+      title: 'Install FitCore on your device',
+      icon: '<i class="bi bi-download" style="color:#e63946;"></i>',
+      steps: [
+        'Tap the <b>⋮</b> menu in the top-right corner of Chrome',
+        'Tap <b>Install app</b> (or <b>Add to Home screen</b>)',
+        'Tap <b>Install</b> to confirm',
+      ],
+      note: 'FitCore installs like a regular app — its own icon, full screen, and push notifications.',
+    },
+    desktop: {
+      title: 'Install FitCore on your computer',
+      icon: '<i class="bi bi-display" style="color:#e63946;"></i>',
+      steps: [
+        'Click the <b>install icon</b> at the right end of the address bar, <b>or</b>',
+        'Open the <b>⋮</b> menu → <b>Install FitCore</b>',
+      ],
+      note: 'FitCore opens in its own window and launches from your desktop shortcut.',
+    },
+  };
+
+  function showInstructions(kind) {
+    const info = STEPS[kind] || STEPS.desktop;
+    let overlay = document.getElementById('fitcoreInstallModal');
+    if (overlay) { overlay.style.display = 'flex'; return; }
+    overlay = document.createElement('div');
+    overlay.id = 'fitcoreInstallModal';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', info.title);
+    overlay.style.cssText =
+      'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.65);' +
+      'display:flex;align-items:center;justify-content:center;padding:20px;' +
+      'font-family:inherit;';
+    const card = document.createElement('div');
+    card.style.cssText =
+      'background:#17181d;color:#e8e8ee;border:1px solid #2c2d36;border-radius:14px;' +
+      'max-width:420px;width:100%;padding:22px 22px 18px;box-shadow:0 18px 50px rgba(0,0,0,.5);';
+    const stepsHtml = info.steps
+      .map((s, i) =>
+        '<li style="margin:0 0 10px;padding-left:4px;display:flex;gap:10px;align-items:flex-start;">' +
+        '<b style="color:#e63946;flex:none;">' + (i + 1) + '.</b><span>' + s + '</span></li>')
+      .join('');
+    card.innerHTML =
+      '<div style="font-size:1.6rem;">' + info.icon + '</div>' +
+      '<h3 style="margin:6px 0 12px;font-size:1.05rem;font-weight:600;">' + info.title + '</h3>' +
+      '<ol style="list-style:none;margin:0 0 12px;padding:0;font-size:.93rem;line-height:1.45;">' +
+      stepsHtml + '</ol>' +
+      '<p style="margin:0 0 16px;font-size:.82rem;color:#9a9ba6;">' + info.note + '</p>' +
+      '<button type="button" style="width:100%;padding:10px;border:0;border-radius:8px;' +
+      'background:#e63946;color:#fff;font-weight:600;cursor:pointer;">Got it</button>';
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    const close = () => { overlay.style.display = 'none'; };
+    card.querySelector('button').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
+  // ── Injected UI ─────────────────────────────────────────────────────
+  function removePill() {
+    const pill = document.getElementById('fitcoreInstallPill');
+    if (pill) pill.remove();
+  }
+
+  function removeMenuItem() {
+    const item = document.getElementById('fitcoreInstallMenuItem');
+    if (item) item.remove();
+  }
+
+  function ensurePill() {
+    if (!document.body) return; // event fired before the DOM was parsed
+    if (installed || platform() === 'installed') return;
+    if (localStorage.getItem(FLAG_DISMISSED) === '1') return;
+    if (document.getElementById('profilePanel')) return; // app pages use the menu instead
+    if (document.getElementById('fitcoreInstallPill')) return;
+    // iOS always gets the pill (it has no install event); Android/desktop
+    // only when the browser actually reported the app installable.
+    const wantsPill = platform() === 'ios' || !!deferredPrompt;
+    if (!wantsPill) return;
+
+    const pill = document.createElement('button');
+    pill.id = 'fitcoreInstallPill';
+    pill.type = 'button';
+    pill.style.cssText =
+      'position:fixed;right:14px;bottom:16px;z-index:2500;display:flex;align-items:center;gap:8px;' +
+      'padding:10px 14px;border:0;border-radius:999px;background:#e63946;color:#fff;' +
+      'font-size:.9rem;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer;';
+    pill.innerHTML =
+      '<i class="bi bi-download" aria-hidden="true"></i> Install app' +
+      '<span aria-label="Dismiss" title="Dismiss" style="margin-left:2px;padding-left:8px;' +
+      'border-left:1px solid rgba(255,255,255,.4);line-height:1;">×</span>';
+    pill.addEventListener('click', (e) => {
+      if (e.target.textContent.trim() === '×') {
+        localStorage.setItem(FLAG_DISMISSED, '1');
+        removePill();
+        return;
+      }
+      window.FitCorePWA.install();
+    });
+    document.body.appendChild(pill);
+  }
+
+  function ensureMenuItem() {
+    if (installed || platform() === 'installed') return;
+    const panel = document.getElementById('profilePanel');
+    if (!panel || document.getElementById('fitcoreInstallMenuItem')) return;
+    const item = document.createElement('button');
+    item.id = 'fitcoreInstallMenuItem';
+    item.type = 'button';
+    item.innerHTML = '<i class="bi bi-download"></i> Install app';
+    item.addEventListener('click', () => window.FitCorePWA.install());
+    const hr = panel.querySelector('hr');
+    if (hr) panel.insertBefore(item, hr);
+    else panel.appendChild(item);
+  }
+
+  // Both hooks: inject as soon as the DOM exists and whenever the
+  // installability event arrives (Android/Chrome fires it late).
+  function inject() { ensureMenuItem(); ensurePill(); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inject, { once: true });
+  } else {
+    inject();
+  }
+  document.addEventListener('fitcore:installable', inject);
+  document.addEventListener('fitcore:installed', inject);
+
+  return {
+    platform: platform,
+    isInstallable: () => !!deferredPrompt,
+
+    // One call for every entry point (dropdown item, floating pill, …).
+    install: async function () {
+      const kind = platform();
+      if (installed || kind === 'installed') return 'installed';
+      if (deferredPrompt) {
+        const promptEvent = deferredPrompt;
+        deferredPrompt = null; // the event can only be used once
+        try {
+          promptEvent.prompt();
+          const choice = await promptEvent.userChoice;
+          return choice.outcome; // 'accepted' | 'dismissed'
+        } catch (err) {
+          console.warn('[pwa] install prompt failed:', err);
+          return 'error';
+        }
+      }
+      // No native prompt (iOS Safari, or not reported installable yet):
+      // walk the user through the manual steps instead.
+      showInstructions(kind);
+      return 'instructions';
+    },
+
+    showInstructions: showInstructions,
+  };
+})();
