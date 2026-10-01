@@ -174,8 +174,14 @@ window.FitCorePush = (function () {
  *     "Share → Add to Home Screen" instructions instead.
  *
  * The buttons are injected by this file (no per-page HTML needed):
- *   - "Install app" item in the profile dropdown on app pages
- *   - a dismissible floating pill on public pages (login, landing, …)
+ *   - a floating "Install app" pill on EVERY page (public and app pages) —
+ *     the dedicated install entry point, always available while the app is
+ *     not installed, so it can be (re-)installed at any time, including
+ *     after the user uninstalled it
+ *   - an "Install app" item in the profile dropdown on app pages
+ * The pill's × hides it for the current session only (sessionStorage), so
+ * the option always comes back on the next visit — it can never get lost
+ * permanently the way the old localStorage dismissal could.
  */
 window.FitCorePWA = (function () {
   'use strict';
@@ -183,6 +189,11 @@ window.FitCorePWA = (function () {
   let deferredPrompt = null;
   let installed = false;
   const FLAG_DISMISSED = 'fitcore_install_dismissed';
+  // Older builds persisted the dismissal in localStorage forever, so a single
+  // × made the install option disappear permanently — after uninstalling the
+  // app the site could never offer it again. Drop the stale flag; dismissal
+  // is now session-scoped (see ensurePill).
+  try { localStorage.removeItem(FLAG_DISMISSED); } catch (e) { /* storage blocked */ }
 
   window.addEventListener('beforeinstallprompt', (event) => {
     // Chrome/Edge fire this when the PWA is installable. Suppress the default
@@ -199,6 +210,22 @@ window.FitCorePWA = (function () {
     removeMenuItem();
     document.dispatchEvent(new Event('fitcore:installed'));
   });
+
+  // Keep the install UI in sync with the real display mode: when the app is
+  // uninstalled (the browser tab's display-mode flips back to "browser") the
+  // entry points must reappear so the app can be installed again.
+  const standaloneQuery = window.matchMedia('(display-mode: standalone)');
+  const onDisplayModeChange = () => {
+    installed = standaloneQuery.matches || window.navigator.standalone === true;
+    if (installed) {
+      removePill();
+      removeMenuItem();
+    } else {
+      inject();
+    }
+  };
+  if (standaloneQuery.addEventListener) standaloneQuery.addEventListener('change', onDisplayModeChange);
+  else if (standaloneQuery.addListener) standaloneQuery.addListener(onDisplayModeChange); // older Safari
 
   function platform() {
     const standalone =
@@ -297,13 +324,15 @@ window.FitCorePWA = (function () {
   function ensurePill() {
     if (!document.body) return; // event fired before the DOM was parsed
     if (installed || platform() === 'installed') return;
-    if (localStorage.getItem(FLAG_DISMISSED) === '1') return;
-    if (document.getElementById('profilePanel')) return; // app pages use the menu instead
+    // Dismissal lasts for the current session only — the pill returns on the
+    // next visit, so the dedicated install option is always available again.
+    if (sessionStorage.getItem(FLAG_DISMISSED) === '1') return;
     if (document.getElementById('fitcoreInstallPill')) return;
-    // iOS always gets the pill (it has no install event); Android/desktop
-    // only when the browser actually reported the app installable.
-    const wantsPill = platform() === 'ios' || !!deferredPrompt;
-    if (!wantsPill) return;
+    // Shown on every page (public and app) and on every platform, WITHOUT
+    // waiting for beforeinstallprompt: the browser may withhold that event
+    // (engagement heuristics, right after an uninstall, …), and the install
+    // option must work anyway. Clicking runs the native dialog when one was
+    // captured, and falls back to the step-by-step instructions otherwise.
 
     const pill = document.createElement('button');
     pill.id = 'fitcoreInstallPill';
@@ -318,7 +347,7 @@ window.FitCorePWA = (function () {
       'border-left:1px solid rgba(255,255,255,.4);line-height:1;">×</span>';
     pill.addEventListener('click', (e) => {
       if (e.target.textContent.trim() === '×') {
-        localStorage.setItem(FLAG_DISMISSED, '1');
+        sessionStorage.setItem(FLAG_DISMISSED, '1'); // session-only — back next visit
         removePill();
         return;
       }

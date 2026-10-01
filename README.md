@@ -1129,9 +1129,9 @@ itself, so no page markup carries them:
 
 | Surface | Behaviour |
 |---------|-----------|
-| Floating **Install app** pill (public pages: login, landing, …) | Shown once Chrome/Edge reports the app installable, or always on iOS Safari (which has no install event). The `×` dismisses it permanently (`fitcore_install_dismissed` in `localStorage`). |
-| **Install app** item in the profile menu (app pages) | Same behaviour, kept out of the way of the floating pill. |
-| Android / desktop Chrome | Triggers the native install dialog (`beforeinstallprompt`) |
+| Floating **Install app** pill (every page — public and app pages) | The dedicated install entry point. Always shown while the app is not installed, on every platform, without waiting for Chrome to report installability — so the app can be (re-)installed at any time, including after the user uninstalled it. The `×` hides it for the current session only (`sessionStorage`); it returns on the next visit. A `display-mode` listener re-shows both entry points if the app is uninstalled. |
+| **Install app** item in the profile menu (app pages) | A second always-available entry point, kept in the profile dropdown. |
+| Android / desktop Chrome | Triggers the native install dialog (`beforeinstallprompt`); if no dialog was captured, opens the manual step-by-step instructions instead |
 | iOS Safari (no install event exists) | Opens step-by-step instructions: **Share → Add to Home Screen → Add** (iOS 16.4+ also enables push in the installed PWA) |
 
 **Web Push notifications:**
