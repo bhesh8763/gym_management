@@ -377,6 +377,20 @@ class Command(BaseCommand):
                 },
             )
             self._tally('trainer_profiles', created)
+            # The staff directory reads StaffProfile rows — trainers need one
+            # too, or they're invisible there (seed previously only gave
+            # receptionists a StaffProfile). Idempotent: (user, gym) is unique,
+            # so re-running the seed won't duplicate it.
+            _, staff_created = StaffProfile.objects.get_or_create(
+                user=user, gym=gym,
+                defaults={
+                    'branch': branch,
+                    'role': StaffProfile.Role.TRAINER,
+                    'joined_date': today - timedelta(days=200),
+                    'salary': Decimal(salary),
+                },
+            )
+            self._tally('staff_profiles', staff_created)
             trainers.append(user)
 
         receptionists = []

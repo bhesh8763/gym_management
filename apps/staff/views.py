@@ -1,12 +1,41 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework import viewsets, status
+from django.db import transaction
+from rest_framework import mixins, viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.response import Response
-from apps.accounts.permissions import IsOwner, IsOwnerOrStaff, IsAnyStaffRole
+from apps.accounts.models import User
+from apps.accounts.permissions import (
+    IsOwner, IsOwnerOrStaff, IsAnyStaffRole,
+    _subscription_allowed, _tenant_allowed,
+)
 from apps.gyms.tenancy import tenant_queryset
-from .models import StaffProfile, LeaveRequest
-from .serializers import StaffProfileSerializer, StaffCreateSerializer, LeaveRequestSerializer
+from .models import StaffProfile, LeaveRequest, Shift, StaffShift
+from .serializers import (
+    StaffProfileSerializer, StaffCreateSerializer, LeaveRequestSerializer,
+    ShiftSerializer, StaffShiftSerializer, BulkStaffShiftSerializer,
+)
+
+
+class IsOwnerOrAdminWrite(BasePermission):
+    """Owner/Admin: full write access.
+    Other staff roles (STAFF/TRAINER): read-only."""
+
+    message = 'Write access is restricted to owners and admins.'
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if not _tenant_allowed(request) or not _subscription_allowed(request):
+            return False
+        role = getattr(request, 'gym_role', None) or request.user.role
+        if request.method in SAFE_METHODS:
+            return role in (
+                User.Role.OWNER, User.Role.STAFF, User.Role.TRAINER, User.Role.ADMIN,
+            )
+        return role in (User.Role.OWNER, User.Role.ADMIN)
 
 
 class StaffProfileViewSet(viewsets.ModelViewSet):
@@ -230,3 +259,126 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         leave.status = 'CANCELLED'
         leave.save()
         return Response(LeaveRequestSerializer(leave).data)
+
+
+class ShiftViewSet(viewsets.ModelViewSet):
+    """CRUD for fixed shift templates.
+    Owner/Admin write; authenticated staff roles read."""
+    serializer_class = ShiftSerializer
+    permission_classes = [IsOwnerOrAdminWrite]
+    queryset = Shift.objects.all()
+
+
+class StaffShiftViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Weekly schedule assignments (list/create/delete only).
+
+    Owner/Admin write and see everyone's rows; STAFF/TRAINER read only
+    their own. Filters: ?staff=, ?weekday=, ?shift=.
+    """
+    serializer_class = StaffShiftSerializer
+    permission_classes = [IsOwnerOrAdminWrite]
+
+    def get_queryset(self):
+        qs = StaffShift.objects.select_related('staff', 'shift').order_by(
+            'weekday', 'shift__start_time', 'staff__last_name',
+        )
+        role = getattr(self.request, 'gym_role', None) or self.request.user.role
+        if role not in (User.Role.OWNER, User.Role.ADMIN):
+            qs = qs.filter(staff=self.request.user)
+
+        params = self.request.query_params
+        staff_id = self._int_param(params, 'staff')
+        if staff_id is not None:
+            qs = qs.filter(staff_id=staff_id)
+        weekday = self._int_param(params, 'weekday')
+        if weekday is not None:
+            if not 0 <= weekday <= 6:
+                raise ValidationError(
+                    {'weekday': 'Must be between 0 (Monday) and 6 (Sunday).'}
+                )
+            qs = qs.filter(weekday=weekday)
+        shift_id = self._int_param(params, 'shift')
+        if shift_id is not None:
+            qs = qs.filter(shift_id=shift_id)
+        return qs
+
+    @staticmethod
+    def _int_param(params, name):
+        raw = params.get(name)
+        if raw in (None, ''):
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            raise ValidationError({name: 'Must be an integer.'})
+
+    @action(detail=False, methods=['post'], url_path='bulk-set')
+    def bulk_set(self, request):
+        """POST /api/staff/schedules/bulk-set/
+        body: {staff, assignments: [{weekday, shift_ids: [...]}]}
+        Atomically replaces that person's entire weekly schedule."""
+        serializer = BulkStaffShiftSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        staff = serializer.validated_data['staff']
+        assignments = serializer.validated_data['assignments']
+
+        with transaction.atomic():
+            StaffShift.objects.filter(staff=staff).delete()
+            new_rows = [
+                StaffShift(staff=staff, shift_id=shift_id, weekday=entry['weekday'])
+                for entry in assignments
+                for shift_id in entry['shift_ids']
+            ]
+            StaffShift.objects.bulk_create(new_rows)
+
+        schedule = StaffShift.objects.filter(staff=staff).select_related('shift')
+        return Response(
+            {
+                'staff': staff.id,
+                'created': len(new_rows),
+                'schedule': StaffShiftSerializer(schedule, many=True).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=['get'], url_path='roster')
+    def roster(self, request):
+        """GET /api/staff/schedules/roster/ — the whole week grouped
+        weekday -> shift -> staff."""
+        qs = StaffShift.objects.select_related('staff', 'shift').order_by(
+            'weekday', 'shift__start_time', 'staff__last_name',
+        )
+        grouped = {day: {} for day in range(7)}
+        for row in qs:
+            slot = grouped[row.weekday].get(row.shift_id)
+            if slot is None:
+                slot = {
+                    'shift': row.shift_id,
+                    'name': row.shift.name,
+                    'start_time': row.shift.start_time,
+                    'end_time': row.shift.end_time,
+                    'staff': [],
+                }
+                grouped[row.weekday][row.shift_id] = slot
+            slot['staff'].append(
+                {
+                    'id': row.staff_id,
+                    'name': row.staff.get_full_name(),
+                    'display_id': row.staff.display_id,
+                    'role': row.staff.role,
+                }
+            )
+        week = [
+            {
+                'weekday': day,
+                'weekday_display': StaffShift.Weekday(day).label,
+                'shifts': list(grouped[day].values()),
+            }
+            for day in range(7)
+        ]
+        return Response({'week': week})

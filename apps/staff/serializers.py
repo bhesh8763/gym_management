@@ -7,7 +7,7 @@ from rest_framework import serializers
 
 from apps.gyms.tenancy import user_has_branch_access
 
-from .models import StaffProfile, LeaveRequest
+from .models import StaffProfile, LeaveRequest, Shift, StaffShift
 
 User = get_user_model()
 
@@ -19,6 +19,7 @@ class StaffProfileSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(source='user.is_active', read_only=True)
     user_phone = serializers.CharField(source='user.phone', read_only=True)
     profile_picture_url = serializers.SerializerMethodField()
+    shifts_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = StaffProfile
@@ -26,7 +27,7 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             'id', 'gym', 'branch', 'user', 'user_name', 'user_email', 'user_display_id', 'is_active',
             'user_phone', 'role', 'date_of_birth', 'gender', 'marital_status', 'nationality',
             'joined_date', 'salary', 'id_document',
-            'notes', 'created_at', 'updated_at', 'profile_picture_url',
+            'notes', 'created_at', 'updated_at', 'profile_picture_url', 'shifts_summary',
         ]
         read_only_fields = ['id', 'gym', 'branch', 'created_at', 'updated_at']
 
@@ -37,6 +38,33 @@ class StaffProfileSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(obj.user.profile_picture.url)
         return obj.user.profile_picture.url
+
+    def get_shifts_summary(self, obj):
+        """Compact weekly summary, e.g. "Mon-Fri: Morning, Night; Sat: Evening"."""
+        rows = StaffShift.objects.filter(staff=obj.user).order_by(
+            'weekday', 'shift__start_time', 'shift__name'
+        ).select_related('shift')
+        names_by_day = {}
+        for row in rows:
+            names_by_day.setdefault(row.weekday, []).append(row.shift.name)
+        if not names_by_day:
+            return None
+        labels = {day: ', '.join(names) for day, names in names_by_day.items()}
+        parts = []
+        day = 0
+        while day <= 6:
+            if day not in labels:
+                day += 1
+                continue
+            label = labels[day]
+            end = day
+            while end < 6 and labels.get(end + 1) == label:
+                end += 1
+            start_abbr = StaffShift.Weekday(day).label[:3]
+            span = start_abbr if end == day else f'{start_abbr}-{StaffShift.Weekday(end).label[:3]}'
+            parts.append(f'{span}: {label}')
+            day = end + 1
+        return '; '.join(parts)
 
     def validate_user(self, value):
         if self.instance and value != self.instance.user:
@@ -220,3 +248,127 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
                 )
 
         return data
+
+
+class ShiftSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shift
+        fields = [
+            'id', 'name', 'start_time', 'end_time', 'is_active',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate(self, data):
+        start_time = data.get('start_time', getattr(self.instance, 'start_time', None))
+        end_time = data.get('end_time', getattr(self.instance, 'end_time', None))
+        if start_time and end_time and end_time <= start_time:
+            raise serializers.ValidationError(
+                {'end_time': 'End time must be after start time.'}
+            )
+        return data
+
+
+class StaffShiftSerializer(serializers.ModelSerializer):
+    staff_name = serializers.CharField(source='staff.get_full_name', read_only=True)
+    staff_display_id = serializers.CharField(source='staff.display_id', read_only=True)
+    shift_name = serializers.CharField(source='shift.name', read_only=True)
+    shift_start = serializers.TimeField(source='shift.start_time', read_only=True)
+    shift_end = serializers.TimeField(source='shift.end_time', read_only=True)
+    weekday_display = serializers.CharField(source='get_weekday_display', read_only=True)
+
+    class Meta:
+        model = StaffShift
+        fields = [
+            'id', 'staff', 'staff_name', 'staff_display_id',
+            'shift', 'shift_name', 'shift_start', 'shift_end',
+            'weekday', 'weekday_display', 'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def validate_staff(self, value):
+        if value.role not in (User.Role.STAFF, User.Role.TRAINER):
+            raise serializers.ValidationError(
+                'Only users with the STAFF or TRAINER role can be scheduled.'
+            )
+        return value
+
+    def validate(self, data):
+        staff = data.get('staff', getattr(self.instance, 'staff', None))
+        shift = data.get('shift', getattr(self.instance, 'shift', None))
+        weekday = data.get('weekday', getattr(self.instance, 'weekday', None))
+        if staff is not None and shift is not None and weekday is not None:
+            # Overlap: existing.start < new.end AND existing.end > new.start.
+            # Back-to-back shifts (e.g. 05-10 and 10-16) do not overlap.
+            conflicts = StaffShift.objects.filter(
+                staff=staff,
+                weekday=weekday,
+                shift__start_time__lt=shift.end_time,
+                shift__end_time__gt=shift.start_time,
+            ).select_related('shift')
+            if self.instance:
+                conflicts = conflicts.exclude(pk=self.instance.pk)
+            conflict = conflicts.first()
+            if conflict:
+                raise serializers.ValidationError(
+                    f'Overlaps with existing {conflict.get_weekday_display()} shift '
+                    f'"{conflict.shift.name}" '
+                    f'({conflict.shift.start_time:%H:%M}–{conflict.shift.end_time:%H:%M}).'
+                )
+        return data
+
+
+class BulkAssignmentDaySerializer(serializers.Serializer):
+    """One weekday entry of a bulk-set payload: {weekday, shift_ids}."""
+
+    weekday = serializers.ChoiceField(choices=StaffShift.Weekday.choices)
+    shift_ids = serializers.ListField(
+        child=serializers.IntegerField(), allow_empty=True,
+    )
+
+    def validate_shift_ids(self, value):
+        if len(set(value)) != len(value):
+            raise serializers.ValidationError('Duplicate shift ids in the same day.')
+        found = set(Shift.objects.filter(pk__in=value).values_list('id', flat=True))
+        missing = sorted(set(value) - found)
+        if missing:
+            raise serializers.ValidationError(
+                f'Unknown shift ids: {", ".join(str(m) for m in missing)}.'
+            )
+        return value
+
+
+class BulkStaffShiftSerializer(serializers.Serializer):
+    """POST /api/staff/schedules/bulk-set/ payload.
+
+    {staff, assignments: [{weekday, shift_ids: [...]}]} — replaces the
+    person's entire weekly schedule.
+    """
+
+    staff = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    assignments = BulkAssignmentDaySerializer(many=True)
+
+    def validate_staff(self, value):
+        if value.role not in (User.Role.STAFF, User.Role.TRAINER):
+            raise serializers.ValidationError(
+                'Only users with the STAFF or TRAINER role can be scheduled.'
+            )
+        return value
+
+    def validate_assignments(self, value):
+        weekdays = [entry['weekday'] for entry in value]
+        if len(set(weekdays)) != len(weekdays):
+            raise serializers.ValidationError(
+                'Each weekday may appear only once.'
+            )
+        for entry in value:
+            shifts = list(Shift.objects.filter(pk__in=entry['shift_ids']))
+            for i, a in enumerate(shifts):
+                for b in shifts[i + 1:]:
+                    if a.start_time < b.end_time and b.start_time < a.end_time:
+                        raise serializers.ValidationError(
+                            f'Weekday {entry["weekday"]}: shifts "{a.name}" '
+                            f'({a.start_time:%H:%M}–{a.end_time:%H:%M}) and "{b.name}" '
+                            f'({b.start_time:%H:%M}–{b.end_time:%H:%M}) overlap.'
+                        )
+        return value

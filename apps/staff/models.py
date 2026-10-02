@@ -1,5 +1,5 @@
 """
-Staff profile and leave request models.
+Staff profile, leave request, and shift scheduling models.
 """
 from decimal import Decimal
 from django.conf import settings
@@ -108,3 +108,70 @@ class LeaveRequest(TenantScopedModel):
     @property
     def duration_days(self):
         return (self.end_date - self.start_date).days + 1
+
+
+class Shift(models.Model):
+    """Fixed shift time template (e.g. Morning 05:00–10:00)."""
+
+    name = models.CharField(max_length=50, unique=True)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'shifts'
+        verbose_name = 'Shift'
+        verbose_name_plural = 'Shifts'
+        ordering = ['start_time', 'name']
+
+    def __str__(self):
+        return f'{self.name} ({self.start_time:%H:%M}–{self.end_time:%H:%M})'
+
+
+class StaffShift(models.Model):
+    """Weekly shift assignment: one staff member may hold multiple
+    non-overlapping shifts on the same weekday."""
+
+    class Weekday(models.IntegerChoices):
+        MONDAY = 0, 'Monday'
+        TUESDAY = 1, 'Tuesday'
+        WEDNESDAY = 2, 'Wednesday'
+        THURSDAY = 3, 'Thursday'
+        FRIDAY = 4, 'Friday'
+        SATURDAY = 5, 'Saturday'
+        SUNDAY = 6, 'Sunday'
+
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='staff_shifts',
+        limit_choices_to={'role__in': ['STAFF', 'TRAINER']},
+    )
+    shift = models.ForeignKey(
+        Shift,
+        on_delete=models.CASCADE,
+        related_name='staff_shifts',
+    )
+    weekday = models.PositiveSmallIntegerField(choices=Weekday.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'staff_shifts'
+        verbose_name = 'Staff Shift'
+        verbose_name_plural = 'Staff Shifts'
+        ordering = ['weekday', 'shift__start_time', 'staff__last_name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['staff', 'shift', 'weekday'],
+                name='unique_staff_shift_per_weekday',
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.staff.get_full_name()} — {self.get_weekday_display()} '
+            f'{self.shift.name}'
+        )
