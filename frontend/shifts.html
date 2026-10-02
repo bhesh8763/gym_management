@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="logo.png">
+  <title>Shifts – FitCore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/theme.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <!-- PWA: installable app + service-worker registration (scripts/inject_pwa_tags.py) -->
+  <meta name="theme-color" content="#0f1015">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <script src="js/pwa.js" defer></script>
+  <style>
+    /* Page-specific styles live as a <head> style tag (not a <link>) so the
+       SPA router can clone them on navigation — first click renders fully
+       styled, no hard reload. */
+    .shift-grid th, .shift-grid td { vertical-align: middle; }
+    .shift-grid th:first-child, .shift-grid td:first-child { min-width: 150px; }
+    .shift-grid td:not(:first-child) { min-width: 92px; }
+    .shift-cell { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 34px; }
+  </style>
+</head>
+<body data-allowed-roles="OWNER">
+
+<!-- Toast container for save/update/delete feedback -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<nav class="topbar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
+    <img src="logo.png" alt="FitCore" style="height:32px;width:32px;margin-right:8px;object-fit:contain;">
+    <span style="font-size: 1.5rem; font-weight: 700;">FitCore</span>
+  </a>
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearch" placeholder="Search members by name, ID, or phone…" autocomplete="off">
+    <div class="topbar-search-results" id="globalSearchResults"></div>
+  </div>
+  <div class="position-relative">
+    <button class="topbar-icon-btn" onclick="toggleDropdown('notifPanel')"><i class="bi bi-bell"></i><span class="notif-badge" id="notifCount" style="display:none;">0</span></button>
+    <div class="dropdown-panel" id="notifPanel">
+      <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1 border-bottom">
+        <span class="fw-semibold small">Notifications</span>
+        <button id="notifMarkAllBtn" class="btn btn-sm btn-link text-danger p-0 small" onclick="markAllTopbarNotificationsRead()" disabled>
+          <i class="bi bi-check2-all me-1"></i>Mark all as read
+        </button>
+      </div>
+      <div id="notifList"><div class="notif-empty">No notifications</div></div>
+      <div class="border-top text-center py-2">
+        <a href="notifications.html" class="small text-danger spa-link">View all</a>
+      </div>
+    </div>
+  </div>
+  <div class="position-relative">
+    <button class="profile-trigger" onclick="toggleDropdown('profilePanel')">
+      <span class="profile-avatar" id="profileAvatar">?</span>
+      <span class="profile-meta"><div class="profile-name" id="profileName">&mdash;</div><div class="profile-role" id="profileRole">&mdash;</div></span>
+      <i class="bi bi-chevron-down text-white-50"></i>
+    </button>
+    <div class="dropdown-panel profile-menu" id="profilePanel">
+      <a href="javascript:void(0)" onclick="openEditProfileModal()"><i class="bi bi-person"></i> Profile</a>
+      <hr><button class="text-danger" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-content"><div class="d-flex">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="p-4 flex-grow-1">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="fw-bold mb-0">Shifts</h3>
+    </div>
+    <p class="text-muted mb-4">Weekly roster coverage and shift time templates.</p>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item"><button class="nav-link active" data-tab="roster" onclick="switchTab('roster')">Roster</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="templates" onclick="switchTab('templates')">Templates</button></li>
+    </ul>
+
+    <!-- ============ ROSTER TAB ============ -->
+    <div id="tab-roster">
+      <div class="row g-2 mb-2 align-items-center">
+        <div class="col-auto">
+          <label class="form-label mb-0 small text-muted" for="rosterRoleFilter">Role</label>
+        </div>
+        <div class="col-auto">
+          <select id="rosterRoleFilter" class="form-select form-select-sm" onchange="renderRoster()">
+            <option value="">All roles</option>
+            <option value="TRAINER">Trainer</option>
+            <option value="STAFF">Receptionist</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary btn-sm px-3" onclick="loadRoster()">Refresh</button>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="small text-muted mb-2 d-flex flex-wrap gap-2 align-items-center">
+        <span class="pill pill-info">Trainer</span>
+        <span class="pill pill-success">Receptionist</span>
+        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">No coverage</span>
+        <span>No coverage = nobody is scheduled for that shift at that time (under the current role filter). Person chips are not links — manage schedules on the Staff page.</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle shift-grid mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Shift</th>
+              <th scope="col" title="Monday">Mon</th>
+              <th scope="col" title="Tuesday">Tue</th>
+              <th scope="col" title="Wednesday">Wed</th>
+              <th scope="col" title="Thursday">Thu</th>
+              <th scope="col" title="Friday">Fri</th>
+              <th scope="col" title="Saturday">Sat</th>
+              <th scope="col" title="Sunday">Sun</th>
+            </tr>
+          </thead>
+          <tbody id="rosterBody">
+            <tr><td colspan="8" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading roster…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ TEMPLATES TAB ============ -->
+    <div id="tab-templates" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="small text-muted">Shift time templates used by the weekly roster.</div>
+        <button class="btn btn-primary btn-sm" onclick="openShiftModal()">
+          <i class="bi bi-plus-lg me-1"></i> Add Shift
+        </button>
+      </div>
+
+      <div id="templatesError" class="alert alert-danger d-none" role="alert"></div>
+
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Status</th>
+              <th data-no-export>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="templatesBody">
+            <tr><td colspan="5" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading shifts…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="templatesEmpty" class="text-center text-muted py-5" style="display:none;">
+        <i class="bi bi-calendar-week display-4 d-block mb-2"></i>
+        <p>No shift templates yet. Click "Add Shift" to create one.</p>
+      </div>
+
+      <p class="small text-muted mt-2">A person can work several shifts per day, but overlapping times for the same person are rejected.</p>
+    </div>
+  </div>
+</div></div>
+
+<!-- Shift Add/Edit Modal (lives outside #page-content — the SPA router carries modals over) -->
+<div class="modal fade" id="shiftModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header p-3">
+        <h5 class="modal-title fw-bold" id="shiftModalTitle">Add Shift</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div id="shiftModalError" class="alert alert-danger d-none mb-3"></div>
+        <form id="shiftForm" onsubmit="event.preventDefault(); saveShift(); return false;">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+            <input type="text" id="shiftName" class="form-control" maxlength="50" placeholder="e.g. Morning" autocomplete="off">
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col">
+              <label class="form-label fw-semibold">Start time <span class="text-danger">*</span></label>
+              <input type="time" id="shiftStart" class="form-control">
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold">End time <span class="text-danger">*</span></label>
+              <input type="time" id="shiftEnd" class="form-control">
+            </div>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="shiftActive" checked>
+            <label class="form-check-label small text-muted" for="shiftActive">Active (show in the roster grid)</label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer p-3">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" id="shiftSaveBtn" onclick="saveShift()">
+          <i class="bi bi-check-lg me-1"></i> Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/validate.js"></script>
+<script>
+// ===== Shell =====
+// Page shell: sidebar + auth guard, copied from the other pages.
+buildSidebar('shifts');
+if (!getAccessToken()) window.location.href = 'login.html';
+
+var allShifts = [];        // GET /staff/shifts/ (all pages), sorted by start time
+var rosterWeek = null;     // GET /staff/schedules/roster/ → response.week; null = not loaded/invalidated
+var rosterLoading = false;
+var rosterFailed = false;
+var editingShiftId = null; // null = Add mode
+
+var shiftFormRules = {
+  shiftName: [v => validate.required(v, 'Name')],
+  shiftStart: [v => validate.required(v, 'Start time')],
+  shiftEnd: [v => validate.required(v, 'End time')],
+};
+
+function showToast(message, variant) {
+  var toastEl = document.getElementById('appToast');
+  var bodyEl = document.getElementById('appToastBody');
+  if (!toastEl || !bodyEl) return;
+  toastEl.classList.remove('bg-success', 'bg-danger');
+  toastEl.classList.add(variant === 'error' ? 'bg-danger' : 'bg-success');
+  bodyEl.textContent = message;
+  bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 }).show();
+}
+
+// Shows/hides an alert div (d-none toggling — inline errors, never toasts).
+function setAlert(el, message) {
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.toggle('d-none', !message);
+}
+
+// Follows DRF pagination ("next") until exhausted (PAGE_SIZE is 20).
+// Returns all rows, or null if any page request failed.
+async function fetchAllPaginated(path) {
+  var all = [];
+  while (path) {
+    var res = await apiRequest(path);
+    if (!res || !res.ok) return null;
+    if (!__isPageAlive()) return null;
+    var data = await res.json();
+    all = all.concat(data.results || data);
+    path = data.next ? data.next.replace(API_BASE, '') : null;
+  }
+  return all;
+}
+
+function statusBadge(isActive) {
+  return isActive
+    ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Active</span>'
+    : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Inactive</span>';
+}
+
+function timeRange(shift) {
+  return String(shift.start_time || '').slice(0, 5) + '–' + String(shift.end_time || '').slice(0, 5);
+}
+
+// ===== Tabs =====
+// offers.html pattern: toggle display, lazy-load the roster when it's
+// (re)opened after an edit invalidated it.
+function switchTab(name) {
+  document.querySelectorAll('.nav-tabs .nav-link').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('.nav-tabs [data-tab="' + name + '"]').classList.add('active');
+  ['roster', 'templates'].forEach(function(t) {
+    document.getElementById('tab-' + t).style.display = (t === name) ? 'block' : 'none';
+  });
+  if (name === 'roster' && rosterWeek === null) loadRoster();
+}
+
+// ===== Roster Tab =====
+// GET /staff/schedules/roster/ → { week: [{weekday, weekday_display,
+// shifts: [{shift, name, start_time, end_time,
+//           staff: [{id, name, display_id, role}]}]}] } — not paginated.
+// Rows come from the active shift templates; cells from this response.
+async function loadRoster() {
+  if (rosterLoading) return;
+  rosterLoading = true;
+  rosterFailed = false;
+  renderRoster();
+  var res = await apiRequest('/staff/schedules/roster/');
+  if (!__isPageAlive()) { rosterLoading = false; return; }
+  if (!res || !res.ok) {
+    rosterLoading = false;
+    rosterFailed = true;
+    rosterWeek = null;
+    renderRoster();
+    return;
+  }
+  var data = await res.json();
+  if (!__isPageAlive()) return;
+  rosterWeek = data.week || [];
+  rosterLoading = false;
+  renderRoster();
+}
+
+// Called after any template change: drop the cache; the next roster visit
+// (or the in-flight switchTab hook) refetches it.
+function invalidateRoster() {
+  rosterWeek = null;
+  rosterFailed = false;
+}
+
+// Staff this page has seen through the roster → how many assignments a
+// shift delete would cascade-remove (StaffShift.shift is on_delete CASCADE).
+function shiftAssignmentCount(shiftId) {
+  if (!rosterWeek) return 0;
+  var n = 0;
+  rosterWeek.forEach(function(day) {
+    (day.shifts || []).forEach(function(s) {
+      if (s.shift === shiftId) n += (s.staff || []).length;
+    });
+  });
+  return n;
+}
+
+function renderRoster() {
+  var tbody = document.getElementById('rosterBody');
+  if (!tbody) return;
+
+  if (rosterLoading) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading roster…</td></tr>';
+    return;
+  }
+  if (rosterFailed) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Could not load the roster. Use Refresh to try again.</td></tr>';
+    return;
+  }
+
+  var active = allShifts.filter(function(s) { return s.is_active; }).slice().sort(function(a, b) {
+    return String(a.start_time || '').localeCompare(String(b.start_time || '')) ||
+      String(a.name || '').localeCompare(String(b.name || ''));
+  });
+  if (!active.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No active shift templates yet — add one in the Templates tab.</td></tr>';
+    return;
+  }
+
+  // Group roster rows: map[weekday][shift id] = staff[]
+  var map = {};
+  (rosterWeek || []).forEach(function(day) {
+    map[day.weekday] = {};
+    (day.shifts || []).forEach(function(s) { map[day.weekday][s.shift] = s.staff || []; });
+  });
+
+  var roleFilter = document.getElementById('rosterRoleFilter').value;
+  var noCoverage = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">No coverage</span>';
+
+  tbody.innerHTML = active.map(function(shift) {
+    var cells = '';
+    for (var d = 0; d < 7; d++) {
+      var staff = (map[d] && map[d][shift.id]) || [];
+      var chips = staff.filter(function(p) { return !roleFilter || p.role === roleFilter; })
+        .map(function(p) {
+          var pillClass = p.role === 'TRAINER' ? 'pill-info' : 'pill-success';
+          var tip = (p.display_id ? p.display_id + ' · ' : '') + (p.role === 'TRAINER' ? 'Trainer' : 'Receptionist');
+          // No deep-link support on staff.html for a person's Schedule card —
+          // the chip just shows the name (tooltip carries id + role).
+          return '<span class="pill ' + pillClass + '" title="' + escapeHtml(tip) + '">' + escapeHtml(p.name) + '</span>';
+        });
+      cells += '<td><div class="shift-cell">' + (chips.length ? chips.join('') : noCoverage) + '</div></td>';
+    }
+    return '<tr>' +
+      '<td><div class="fw-semibold">' + escapeHtml(shift.name) + '</div>' +
+      '<div class="small text-muted">' + timeRange(shift) + '</div></td>' +
+      cells +
+    '</tr>';
+  }).join('');
+}
+
+// ===== Templates Tab =====
+// GET /staff/shifts/ (paginated) feeds BOTH tabs: the table below and the
+// roster grid's rows. Sorted by start time like the model's Meta.ordering.
+async function loadShifts() {
+  var tbody = document.getElementById('templatesBody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm"></div> Loading shifts…</td></tr>';
+  }
+  var rows = await fetchAllPaginated('/staff/shifts/');
+  if (!__isPageAlive()) return;
+  if (!rows) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Could not load shift templates.</td></tr>';
+    return;
+  }
+  allShifts = rows.slice().sort(function(a, b) {
+    return String(a.start_time || '').localeCompare(String(b.start_time || '')) ||
+      String(a.name || '').localeCompare(String(b.name || ''));
+  });
+  renderTemplates();
+  renderRoster(); // the row set may have changed (template added/removed)
+}
+
+function renderTemplates() {
+  var tbody = document.getElementById('templatesBody');
+  var empty = document.getElementById('templatesEmpty');
+  if (!tbody) return;
+  var table = tbody.closest('table');
+
+  if (!allShifts.length) {
+    tbody.innerHTML = '';
+    if (table) table.style.display = 'none';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (table) table.style.display = '';
+  if (empty) empty.style.display = 'none';
+
+  tbody.innerHTML = allShifts.map(function(s) {
+    return '<tr>' +
+      '<td class="fw-semibold">' + escapeHtml(s.name) + '</td>' +
+      '<td class="text-muted">' + String(s.start_time || '').slice(0, 5) + '</td>' +
+      '<td class="text-muted">' + String(s.end_time || '').slice(0, 5) + '</td>' +
+      '<td>' + statusBadge(s.is_active) + '</td>' +
+      '<td>' +
+        '<button class="btn btn-sm btn-outline-primary me-1" onclick="openShiftModal(' + s.id + ')" title="Edit"><i class="bi bi-pencil"></i></button>' +
+        '<button class="btn btn-sm btn-outline-secondary me-1" onclick="toggleShiftActive(' + s.id + ', ' + (!s.is_active) + ')" title="' + (s.is_active ? 'Deactivate' : 'Activate') + '"><i class="bi bi-power"></i></button>' +
+        '<button class="btn btn-sm btn-outline-danger" onclick="deleteShift(' + s.id + ')" title="Delete"><i class="bi bi-trash3"></i></button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function openShiftModal(id) {
+  editingShiftId = (typeof id === 'number') ? id : null;
+  document.getElementById('shiftForm').reset();
+  setAlert(document.getElementById('shiftModalError'), '');
+  document.getElementById('shiftModalTitle').textContent = editingShiftId ? 'Edit Shift' : 'Add Shift';
+  if (editingShiftId) {
+    var s = allShifts.find(function(x) { return x.id === editingShiftId; });
+    if (s) {
+      document.getElementById('shiftName').value = s.name || '';
+      document.getElementById('shiftStart').value = String(s.start_time || '').slice(0, 5);
+      document.getElementById('shiftEnd').value = String(s.end_time || '').slice(0, 5);
+      document.getElementById('shiftActive').checked = !!s.is_active;
+    }
+  }
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('shiftModal')).show();
+}
+
+// POST (add) / PATCH (edit). Backend 400s — duplicate name, end before
+// start — render inline in the modal, never as a toast.
+async function saveShift() {
+  if (!validateForm(document.getElementById('shiftForm'), shiftFormRules)) return;
+
+  var errBox = document.getElementById('shiftModalError');
+  var btn = document.getElementById('shiftSaveBtn');
+  setAlert(errBox, '');
+
+  var payload = {
+    name: document.getElementById('shiftName').value.trim(),
+    start_time: document.getElementById('shiftStart').value,
+    end_time: document.getElementById('shiftEnd').value,
+    is_active: document.getElementById('shiftActive').checked,
+  };
+  if (!payload.name) { setAlert(errBox, 'Name is required.'); return; }
+  if (!payload.start_time || !payload.end_time) { setAlert(errBox, 'Start and end time are required.'); return; }
+
+  btn.disabled = true;
+  var isEdit = editingShiftId !== null;
+  var res = await apiRequest(isEdit ? '/staff/shifts/' + editingShiftId + '/' : '/staff/shifts/', {
+    method: isEdit ? 'PATCH' : 'POST',
+    body: JSON.stringify(payload),
+  });
+  btn.disabled = false;
+  if (!__isPageAlive()) return;
+  if (!res) {
+    setAlert(errBox, 'Network error. Please try again.');
+    return;
+  }
+  if (!res.ok) {
+    var err = await res.json().catch(function() { return null; });
+    setAlert(errBox, formatApiError(err));
+    return;
+  }
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('shiftModal')).hide();
+  showToast(isEdit ? 'Shift updated.' : 'Shift added.');
+  await loadShifts();
+  invalidateRoster();
+}
+
+// Deactivate/activate = PATCH {is_active}. Errors land inline above the table.
+async function toggleShiftActive(id, next) {
+  setAlert(document.getElementById('templatesError'), '');
+  var res = await apiRequest('/staff/shifts/' + id + '/', {
+    method: 'PATCH',
+    body: JSON.stringify({ is_active: next }),
+  });
+  if (!__isPageAlive()) return;
+  if (!res) {
+    setAlert(document.getElementById('templatesError'), 'Network error. Please try again.');
+    return;
+  }
+  if (!res.ok) {
+    var err = await res.json().catch(function() { return null; });
+    setAlert(document.getElementById('templatesError'), formatApiError(err));
+    return;
+  }
+  showToast(next ? 'Shift activated.' : 'Shift deactivated.');
+  await loadShifts();
+  invalidateRoster();
+}
+
+// Delete with a confirm that spells out the cascade: StaffShift.shift is
+// on_delete=CASCADE, so deleting a template removes those schedule rows too.
+// Deactivation is offered as the preferred alternative in the wording.
+async function deleteShift(id) {
+  var s = allShifts.find(function(x) { return x.id === id; });
+  if (!s) return;
+  setAlert(document.getElementById('templatesError'), '');
+
+  var count = rosterWeek !== null ? shiftAssignmentCount(id) : -1;
+  var msg;
+  if (count > 0) {
+    msg = 'Delete "' + s.name + '"? It is used by ' + count + ' schedule assignment' +
+      (count === 1 ? '' : 's') + ' — deleting the shift ALSO deletes those rows from people\'s weekly rosters. ' +
+      'Deactivate it instead to keep the schedule.';
+  } else if (count === 0) {
+    msg = 'Delete "' + s.name + '"? This permanently removes the template. Deactivate it instead if you just want to stop using it.';
+  } else {
+    msg = 'Delete "' + s.name + '"? This ALSO deletes every schedule assignment that uses this shift. ' +
+      'Deactivate it instead to keep the schedule.';
+  }
+  var ok = await confirmAction(msg, {
+    title: 'Delete shift template?',
+    confirmText: 'Delete',
+    variant: 'danger',
+  });
+  if (!ok) return;
+
+  var res = await apiRequest('/staff/shifts/' + id + '/', { method: 'DELETE' });
+  if (!__isPageAlive()) return;
+  if (!res) {
+    setAlert(document.getElementById('templatesError'), 'Network error. Please try again.');
+    return;
+  }
+  if (!res.ok) {
+    var err = await res.json().catch(function() { return null; });
+    setAlert(document.getElementById('templatesError'), formatApiError(err));
+    return;
+  }
+  showToast('Shift deleted.');
+  await loadShifts();
+  invalidateRoster();
+}
+
+// ===== Init =====
+loadShifts();
+loadRoster();
+loadTopbarNotifications();
+</script>
+</body>
+</html>

@@ -368,6 +368,7 @@ function buildSidebar(activePage) {
 
     ${section('Staff Management')}
     ${link('staff.html', 'bi-people', 'Staff', 'OWNER', a('staff'))}
+    ${link('shifts.html', 'bi-calendar-week', 'Shifts', 'OWNER', a('shifts'))}
     ${link('trainers.html', 'bi-person-workspace', 'Trainers', 'STAFF', a('trainers'))}
 
     ${section('Workout & Diet', 'OWNER,TRAINER')}

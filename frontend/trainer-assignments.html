@@ -128,7 +128,7 @@
         </select>
       </div>
       <div class="col-auto">
-        <button class="btn btn-outline-secondary px-3" onclick="loadAssignments()">Refresh</button>
+        <button class="btn btn-outline-secondary px-3" onclick="loadTrainers(); loadAssignments();">Refresh</button>
       </div>
     </div>
 
@@ -306,18 +306,46 @@ function statusBadge(isActive) {
     : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Inactive</span>';
 }
 
+// TRAINERS stat card tracks the loaded trainer list, not the distinct
+// trainers found in the assignments (trainers with no assignments would be
+// missed). Prefers an is_active/status flag if the API ever exposes one;
+// today's /trainers/profiles/ response has neither (is_available only means
+// "taking new members", not inactive), so every loaded trainer counts.
+function countTrainers() {
+  return allTrainers.filter(function(t) {
+    if (typeof t.is_active === 'boolean') return t.is_active;
+    if (typeof t.status === 'string') return t.status.toLowerCase() === 'active';
+    return true;
+  }).length;
+}
+
+function renderTrainerStat() {
+  var el = document.getElementById('statTrainers');
+  if (el) el.textContent = countTrainers();
+}
+
 async function loadTrainers() {
   var rows = await fetchAllPaginated('/trainers/profiles/');
   if (!rows) return;
   if (!__isPageAlive()) return;
   allTrainers = rows;
+  renderTrainerStat();
 
   var filterSel = document.getElementById('filterTrainer');
   var assignSel = document.getElementById('assignTrainer');
+  var prevFilter = filterSel.value;
+  var prevAssign = assignSel.value;
   filterSel.innerHTML = '<option value="">All Trainers</option>' +
   allTrainers.map(t => '<option value="' + t.user + '">' + t.full_name + '</option>').join('');
 assignSel.innerHTML = '<option value="">Select a trainer…</option>' +
   allTrainers.map(t => '<option value="' + t.user + '">' + t.full_name + '</option>').join('');
+  // Keep selections across reloads (the Refresh button re-fetches trainers).
+  if (prevFilter && Array.prototype.some.call(filterSel.options, function(o) { return o.value === prevFilter; })) {
+    filterSel.value = prevFilter;
+  }
+  if (prevAssign && Array.prototype.some.call(assignSel.options, function(o) { return o.value === prevAssign; })) {
+    assignSel.value = prevAssign;
+  }
 }
 
 async function loadMembersDropdown() {
@@ -401,11 +429,10 @@ async function loadAssignments() {
   // Stats
   var total = allAssignments.length;
   var active = allAssignments.filter(a => a.is_active).length;
-  var trainerSet = new Set(allAssignments.map(a => a.trainer));
   var memberSet = new Set(allAssignments.map(a => a.member));
   document.getElementById('statTotal').textContent = total;
   document.getElementById('statActive').textContent = active;
-  document.getElementById('statTrainers').textContent = trainerSet.size;
+  renderTrainerStat();
   document.getElementById('statMembers').textContent = memberSet.size;
 
   if (allAssignments.length === 0) {
@@ -550,6 +577,264 @@ async function deleteAssignment(id) {
     loadAssignments();
   }
 }
+
+// ===== Trainer Shifts =====
+// Read-only extras: shift badges for the trainer dropdowns plus a soft
+// availability warning when the member's usual check-in hour falls outside
+// every shift the selected trainer works. Never blocks the Assign button,
+// never toasts, never breaks the page — any failed fetch just shows nothing.
+//
+// Endpoints: GET /staff/schedules/ (paginated; Owner/Admin see every row, a
+// STAFF/TRAINER login only its own — an empty result is normal, not an error),
+// GET /staff/shifts/ (template times), GET /attendance/records/?user=<id>
+// (the member's recent check-ins). Rows carry {staff, shift, weekday,
+// shift_name, shift_start, shift_end}; `staff` is the User id — the same id
+// the trainer <option> values use.
+
+var tsSchedulesByUser = {};   // { <user id>: [schedule rows] } — cached for the page's lifetime
+var tsShiftById = {};         // { <shift id>: template row }
+var tsOk = false;             // both schedule/shifts fetches succeeded
+var tsMemberHourCache = {};   // { <member user id>: hour | null } — null = fewer than 5 records
+var tsWarnToken = 0;          // discards stale attendance responses (memberOptionsToken pattern)
+
+var TS_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// "Mon-Fri: Morning, Night; Sat: Evening" — mirrors StaffProfileSerializer.
+// get_shifts_summary() exactly (consecutive days with identical shift sets
+// collapse into one span, parts joined by "; ").
+function tsSummaryParts(rows) {
+  var byDay = {};
+  rows.slice().sort(function(a, b) {
+    return (a.weekday - b.weekday) ||
+      String(a.shift_start || '').localeCompare(String(b.shift_start || '')) ||
+      String(a.shift_name || '').localeCompare(String(b.shift_name || ''));
+  }).forEach(function(r) {
+    var key = r.weekday;
+    (byDay[key] = byDay[key] || []).push(r.shift_name || 'Shift');
+  });
+  var labels = {};
+  Object.keys(byDay).forEach(function(d) { labels[d] = byDay[d].join(', '); });
+  var parts = [];
+  // while (not for) — after emitting a range we jump to end+1 and must NOT
+  // also tick a loop counter, or the day right after a range gets skipped.
+  var day = 0;
+  while (day <= 6) {
+    if (!labels[day]) { day += 1; continue; }
+    var label = labels[day];
+    var end = day;
+    while (end < 6 && labels[end + 1] === label) end++;
+    var span = end === day ? TS_DAYS[day] : TS_DAYS[day] + '-' + TS_DAYS[end];
+    parts.push(span + ': ' + label);
+    day = end + 1;
+  }
+  return parts;
+}
+
+function tsMinutes(hhmm) {
+  if (!hhmm) return null;
+  var p = String(hhmm).split(':');
+  var h = parseInt(p[0], 10), m = parseInt(p[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function tsFormatHour(h) {
+  return (h % 12 || 12) + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+
+// Loads schedules + shift templates once, in parallel with the page's own
+// init loads. Failure of either fetch leaves the whole feature off, silently.
+async function tsLoadData() {
+  var results = await Promise.all([
+    fetchAllPaginated('/staff/schedules/'),
+    fetchAllPaginated('/staff/shifts/'),
+  ]);
+  if (!__isPageAlive()) return;
+  var schedules = results[0];
+  var shifts = results[1];
+  if (!schedules || !shifts) return; // silent: no badges, no warning
+  shifts.forEach(function(s) { tsShiftById[s.id] = s; });
+  schedules.forEach(function(r) {
+    var key = r.staff;
+    (tsSchedulesByUser[key] = tsSchedulesByUser[key] || []).push(r);
+  });
+  tsOk = true;
+  tsDecorateSelects();
+  tsRenderBadges();
+  tsUpdateWarning();
+}
+
+// Appends each trainer's summary to every option in both trainer dropdowns
+// (native <option>s can't render styled badges, so the per-trainer list text
+// lives here; real badges render under the Assign modal's trainer select).
+// Idempotent: the original label is stashed on the option, and loadTrainers()
+// rebuilds the options from scratch anyway.
+function tsDecorateSelects() {
+  if (!tsOk) return;
+  ['filterTrainer', 'assignTrainer'].forEach(function(id) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    Array.prototype.forEach.call(sel.options, function(opt) {
+      if (!opt.value) return;
+      if (!opt.dataset.tsBase) opt.dataset.tsBase = opt.textContent;
+      var rows = tsSchedulesByUser[opt.value] || [];
+      var summary = rows.length ? tsSummaryParts(rows).join('; ') : 'No shifts set';
+      opt.textContent = opt.dataset.tsBase + ' — ' + summary;
+    });
+  });
+}
+
+// Injects the badge strip + warning slot between the modal's Trainer and
+// Member fields (created once, from JS, so the whole feature stays in this
+// one block).
+function tsEnsureUi() {
+  if (document.getElementById('tsShiftBadges')) return;
+  var trainerSel = document.getElementById('assignTrainer');
+  var anchor = trainerSel && trainerSel.closest ? trainerSel.closest('.mb-3') : null;
+  if (!anchor) return;
+  anchor.insertAdjacentHTML('afterend',
+    '<div id="tsShiftBadges" class="d-flex flex-wrap gap-1 mb-2 d-none"></div>' +
+    '<div id="tsShiftWarning" class="alert alert-warning d-none py-2 small mb-2" role="note"></div>');
+}
+
+// Badges for the currently selected trainer: one small badge per day-group,
+// or a muted "No shifts set". Trainers are never hidden or disabled.
+function tsRenderBadges() {
+  tsEnsureUi();
+  var wrap = document.getElementById('tsShiftBadges');
+  if (!wrap) return;
+  var trainerId = document.getElementById('assignTrainer').value;
+  if (!tsOk || !trainerId) {
+    wrap.innerHTML = '';
+    wrap.classList.add('d-none');
+    return;
+  }
+  var rows = tsSchedulesByUser[trainerId] || [];
+  if (!rows.length) {
+    wrap.innerHTML = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">No shifts set</span>';
+  } else {
+    wrap.innerHTML = tsSummaryParts(rows).map(function(part) {
+      return '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">' + escapeHtml(part) + '</span>';
+    }).join('');
+  }
+  wrap.classList.remove('d-none');
+}
+
+// The member's most common check-in HOUR over roughly the last 30 days, or
+// null (failed fetch / fewer than 5 records — both silent, not cached so a
+// transient error can recover on the next selection).
+async function tsMemberUsualHour(memberId) {
+  if (Object.prototype.hasOwnProperty.call(tsMemberHourCache, memberId)) {
+    return tsMemberHourCache[memberId];
+  }
+  // /attendance/records/ has a ?user= member filter but only an exact
+  // ?date= — no range param — so filter client-side. Rows come back
+  // newest-first (Attendance.Meta ordering), so stop once past the cutoff.
+  var d = new Date(Date.now() - 30 * 86400000);
+  var cutoff = d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+  var path = '/attendance/records/?user=' + encodeURIComponent(memberId);
+  var hours = [];
+  try {
+    while (path) {
+      var res = await apiRequest(path);
+      if (!res || !res.ok) return null;
+      if (!__isPageAlive()) return null;
+      var data = await res.json();
+      var rows = data.results || data;
+      var pastCutoff = false;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].date && rows[i].date < cutoff) { pastCutoff = true; break; }
+        if (rows[i].check_in) hours.push(parseInt(String(rows[i].check_in).slice(0, 2), 10));
+      }
+      if (pastCutoff || !data.next) break;
+      path = data.next ? data.next.replace(API_BASE, '') : null;
+    }
+  } catch (e) {
+    return null; // any parse/network failure — silent, no toast, no error
+  }
+  if (hours.length < 5) {
+    tsMemberHourCache[memberId] = null;
+    return null;
+  }
+  var counts = {};
+  hours.forEach(function(h) { counts[h] = (counts[h] || 0) + 1; });
+  var best = hours[0];
+  Object.keys(counts).forEach(function(h) {
+    if (counts[h] > counts[best]) best = h;
+  });
+  tsMemberHourCache[memberId] = Number(best);
+  return Number(best);
+}
+
+// Soft warning: member + trainer both selected, trainer HAS shifts, and the
+// member's usual hour fits none of them. Informational only — the Assign
+// button and its behavior are untouched.
+async function tsUpdateWarning() {
+  tsEnsureUi();
+  var warnEl = document.getElementById('tsShiftWarning');
+  if (!warnEl) return;
+  setAlert(warnEl, '');
+  // Bump BEFORE any early return so clearing a select mid-flight can't let a
+  // stale response repaint the warning.
+  var token = ++tsWarnToken;
+  if (!tsOk) return;
+  var trainerId = document.getElementById('assignTrainer').value;
+  var memberId = document.getElementById('assignMember').value;
+  if (!trainerId || !memberId) return;
+  var trainerRows = tsSchedulesByUser[trainerId] || [];
+  if (!trainerRows.length) return; // "No shifts set" badge already says it
+
+  var hour = await tsMemberUsualHour(memberId);
+  if (!__isPageAlive() || token !== tsWarnToken) return;
+  if (hour === null || hour === undefined) return;
+
+  var covered = trainerRows.some(function(r) {
+    var t = tsShiftById[r.shift] || {};
+    var start = tsMinutes(t.start_time || r.shift_start);
+    var end = tsMinutes(t.end_time || r.shift_end);
+    if (start === null || end === null) return false;
+    return start <= hour * 60 && hour * 60 < end;
+  });
+  if (covered) return;
+
+  var names = [];
+  trainerRows.slice().sort(function(a, b) {
+    return String(a.shift_start || '').localeCompare(String(b.shift_start || '')) ||
+      String(a.shift_name || '').localeCompare(String(b.shift_name || ''));
+  }).forEach(function(r) {
+    var n = r.shift_name || 'Shift';
+    if (names.indexOf(n) === -1) names.push(n);
+  });
+  if (token !== tsWarnToken) return; // selection changed while we were working
+  setAlert(warnEl, 'Member usually trains around ' + tsFormatHour(hour) +
+    '; this trainer works ' + names.join(', ') + ' only.');
+}
+
+// Wiring: existing page code doesn't know about any of this — hooks only.
+tsEnsureUi();
+document.getElementById('assignTrainer').addEventListener('change', function() {
+  tsRenderBadges();
+  tsUpdateWarning();
+});
+document.getElementById('assignMember').addEventListener('change', function() {
+  tsUpdateWarning();
+});
+document.getElementById('assignModal').addEventListener('shown.bs.modal', function() {
+  // openAssignModal() resets the form — start from a clean strip.
+  tsRenderBadges();
+  tsUpdateWarning();
+});
+// loadTrainers() owns both dropdowns; decorate once it has built them.
+var tsLoadTrainersOriginal = loadTrainers;
+loadTrainers = function() {
+  return tsLoadTrainersOriginal().then(function() { tsDecorateSelects(); });
+};
+// Fetch schedules/shifts now — in parallel with the init calls below.
+// .catch: a bad response body must never surface as an error — feature stays off.
+tsLoadData().catch(function() {});
+// ===== End Trainer Shifts =====
 
 // Init
 loadTrainers();
