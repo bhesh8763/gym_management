@@ -4,6 +4,7 @@ Django settings for gym_management project.
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -246,6 +247,11 @@ CORS_ALLOWED_ORIGINS = [
     'https://192.168.100.234:5500',
 ]
 CORS_ALLOW_CREDENTIALS = True
+# django-cors-headers' default allow-list has no X-Gym-ID (the multi-gym
+# header sent by frontend/js/api.js), so preflights from e.g. :5500 failed
+# with "not allowed by Access-Control-Allow-Headers". Keep every default
+# and append ours.
+CORS_ALLOW_HEADERS = list(default_headers) + ["x-gym-id"]
 
 # Extra origins from env (comma-separated), e.g. a split frontend deploy:
 #   CORS_ALLOWED_ORIGINS=https://fitcore.example.com,https://www.fitcore.example.com
