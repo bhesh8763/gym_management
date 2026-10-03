@@ -187,6 +187,20 @@
       </div>
     </div>
 
+    <!-- My Shifts (TRAINER/STAFF only — hidden by data-roles check below) -->
+    <div class="row g-3 mt-1 d-none" id="myShiftsRow" data-roles="TRAINER,STAFF">
+      <div class="col-12">
+        <div class="card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-week me-2 text-primary"></i>My Shifts</h6>
+            <small class="text-muted" id="myShiftsNext" style="display:none;"></small>
+          </div>
+          <div class="small text-muted mb-2" id="myShiftsToday"></div>
+          <div id="myShiftsList" class="d-flex flex-column gap-1"></div>
+        </div>
+      </div>
+    </div>
+
     </div><!-- /adminDashboard -->
 
     <!-- ═══ MEMBER DASHBOARD ════════════════════════════════════════════════ -->
@@ -974,6 +988,107 @@ buildSidebar('dashboard');
   loadOccupancy();
   if (occupancyInterval) clearInterval(occupancyInterval);
   occupancyInterval = setInterval(loadOccupancy, 30000);
+
+  // ===== My Shifts =====
+  // Read-only weekly schedule for TRAINER and STAFF logins. The card ships
+  // hidden (d-none); the data-roles check keeps OWNER/ADMIN/MEMBER out before
+  // any fetch (dashboard.html also redirects TRAINER to trainer-dashboard.html).
+  // /staff/schedules/ returns only the logged-in person's rows for these roles
+  // (StaffShiftViewSet.get_queryset) and every row carries shift_name/
+  // shift_start/shift_end, so one paginated fetch feeds the card. A failed
+  // fetch leaves the card hidden (no toast); the result is cached in msRows
+  // for the page lifetime — rendering never re-fetches.
+  const msRoles = ['TRAINER', 'STAFF'];
+  let msRows = null;
+
+  async function msLoad() {
+    const row = document.getElementById('myShiftsRow');
+    if (!row) return;
+    const role = localStorage.getItem('user_role') || '';
+    if (msRoles.indexOf(role) === -1) return; // not our role → stays hidden
+    let all = [];
+    let path = '/staff/schedules/';
+    while (path) {
+      const res = await apiRequest(path);
+      if (!res || !res.ok) return;               // fetch failed → stay hidden
+      if (!__isPageAlive()) return;
+      const data = await res.json();
+      all = all.concat(data.results || data);
+      path = data.next ? data.next.replace(API_BASE, '') : null;
+    }
+    if (!__isPageAlive()) return;
+    msRows = all;
+    msRender();
+    row.classList.remove('d-none');
+  }
+
+  function msRender() {
+    const todayEl = document.getElementById('myShiftsToday');
+    const nextEl = document.getElementById('myShiftsNext');
+    const listEl = document.getElementById('myShiftsList');
+    if (!todayEl || !nextEl || !listEl || !msRows) return;
+
+    const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const now = new Date();
+    const todayIdx = (now.getDay() + 6) % 7;     // JS getDay 0=Sun → weekday 0=Mon
+    const nowHM = String(now.getHours()).padStart(2, '0') + ':' +
+      String(now.getMinutes()).padStart(2, '0');
+
+    const byDay = [[], [], [], [], [], [], []];
+    msRows.forEach(r => {
+      if (r.weekday >= 0 && r.weekday <= 6) byDay[r.weekday].push(r);
+    });
+    byDay.forEach(list => list.sort((a, b) =>
+      String(a.shift_start || '').localeCompare(String(b.shift_start || ''))));
+
+    const startHM = r => String(r.shift_start || '').slice(0, 5);
+    const endHM = r => String(r.shift_end || '').slice(0, 5);
+    const fmt = r => r.shift_name + ' ' + startHM(r) + '-' + endHM(r);
+
+    if (!msRows.length) {
+      todayEl.textContent = '';
+      nextEl.style.display = 'none';
+      listEl.innerHTML = '<div class="text-muted fst-italic small">No shifts assigned yet. Ask your manager.</div>';
+      return;
+    }
+
+    const todayList = byDay[todayIdx];
+    todayEl.textContent = todayList.length
+      ? 'Today: ' + todayList.map(fmt).join(', ')
+      : 'Today: Off';
+
+    // Next shift: scan forward from today; today counts only while a shift
+    // hasn't ended yet (both sides are zero-padded strings → clean compare).
+    let next = null;
+    for (let off = 0; off < 7 && !next; off++) {
+      const day = (todayIdx + off) % 7;
+      for (const r of byDay[day]) {
+        if (off === 0 && endHM(r) <= nowHM) continue;
+        next = { day: day, row: r };
+        break;
+      }
+    }
+    nextEl.textContent = next
+      ? 'Next shift: ' + DAYS[next.day] + ' ' + next.row.shift_name + ' ' + startHM(next.row)
+      : '';
+    nextEl.style.display = next ? '' : 'none';
+
+    listEl.innerHTML = byDay.map((list, idx) => {
+      const isToday = idx === todayIdx;
+      const chips = list.length
+        ? list.map(r => '<span class="pill">' + escapeHtml(fmt(r)) + '</span>').join('')
+        : '<span class="text-muted fst-italic">Off</span>';
+      return '<div class="d-flex align-items-center gap-2 px-2 py-1 rounded' +
+        (isToday ? ' bg-primary-subtle fw-semibold' : '') + '">' +
+        '<span class="small text-uppercase' + (isToday ? '' : ' text-muted') +
+        '" style="min-width:36px;">' + DAYS[idx] + '</span>' +
+        '<span class="d-flex flex-wrap gap-1">' + chips + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  msLoad().catch(function(e) { console.error('My Shifts:', e); });  // card stays hidden (no toast)
+  // ===== End My Shifts =====
 </script>
 </body>
 </html>
