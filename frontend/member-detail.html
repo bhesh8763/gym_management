@@ -525,6 +525,8 @@ async function loadProfile(){
   var dh='<div class="empty-state"><i class="bi bi-egg-fried"></i><p>No active diet plan</p></div>';
   if(d.active_diet_plan){var dp=d.active_diet_plan;dh='<div style="border:1px solid var(--border-light);border-radius:12px;padding:1.25rem;background:var(--bg-root);"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;"><div><div style="font-size:1.1rem;font-weight:700;color:var(--text-primary);">'+dp.name+'</div><div style="font-size:.8rem;color:var(--text-secondary);margin-top:.25rem;">Goal: '+dp.goal+'</div></div><span style="background:#dcfce7;color:#166534;padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">Active</span></div><div style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap;"><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:var(--text-primary);">'+dp.daily_calories+'</div><div style="font-size:.65rem;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Calories</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#16a34a;">'+dp.protein_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Protein</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#d97706;">'+dp.carbs_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Carbs</div></div><div style="text-align:center;"><div style="font-size:1.2rem;font-weight:800;color:#dc2626;">'+dp.fats_g+'g</div><div style="font-size:.65rem;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Fats</div></div></div><div style="margin-top:.75rem;font-size:.8rem;color:var(--text-secondary);">'+dp.meal_count+' meals planned</div></div>';}
 
+  dh+='<div id="dietAdherenceBox" style="margin-top:1rem;border-top:1px solid var(--border-light);padding-top:.85rem;"><div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;margin-bottom:.5rem;">Meal Checklist · Last 14 Days</div><div style="color:var(--text-muted);font-size:.8rem;">Loading meal checklist…</div></div>';
+
   var wh='<div class="empty-state"><i class="bi bi-heart-pulse"></i><p>No active workout plan</p></div>';
   if(workouts.length){var dm={BEGINNER:'background:#dcfce7;color:#166534;',INTERMEDIATE:'background:#fef3c7;color:#92400e;',ADVANCED:'background:#fee2e2;color:#991b1b;'};wh='';workouts.forEach(function(w){wh+='<div style="border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem;background:#fafbfc;margin-bottom:0.75rem;"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;"><div><div style="font-size:1.1rem;font-weight:700;color:#1a1a2e;">'+w.template_name+'</div><div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">'+(w.start_date||'')+' to '+(w.end_date||'')+'</div></div><span style="'+(dm[w.difficulty]||'')+'padding:3px 12px;border-radius:999px;font-size:.75rem;font-weight:700;">'+(w.difficulty||'')+'</span></div>'+(w.goal_note?'<div style="margin-top:.5rem;font-size:.85rem;color:#6b7280;"><i class="bi bi-info-circle me-1"></i>'+w.goal_note+'</div>':'')+'<div style="margin-top:1rem;"><div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px;"><span style="font-weight:600;color:#374151;">Completion</span><span style="font-weight:700;color:#1a1a2e;">'+w.completion_pct+'%</span></div><div style="height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden;"><div style="height:100%;border-radius:3px;background:var(--brand-red);width:'+w.completion_pct+'%;"></div></div></div></div>';});}
 
@@ -600,7 +602,60 @@ async function loadProfile(){
     '<div id="acc-records" class="acc-panel">'+rh+'</div></div>'+
 
     '</div></div></div>';
+  loadDietAdherence();
 }
+
+function fmtChecklistDay(iso){var p=String(iso).split('-');var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return m[parseInt(p[1],10)-1]+' '+p[2];}
+
+async function loadDietAdherence(){
+  var box=document.getElementById('dietAdherenceBox');
+  // ?id= is the MemberProfile pk; the adherence endpoint wants the user pk.
+  var userId=profileData&&profileData.user?profileData.user.id:null;
+  if(!box||!userId)return;
+  try{
+    var res=await apiRequest('/diet/meal-checklist/adherence/?member='+encodeURIComponent(userId)+'&days=14');
+    if(!__isPageAlive())return;
+    if(!res||!res.ok){renderDietAdherence(null);return;}
+    var data=await res.json();
+    if(!__isPageAlive())return;
+    renderDietAdherence(data);
+  }catch(e){
+    if(!__isPageAlive())return;
+    renderDietAdherence(null);
+  }
+}
+
+function renderDietAdherence(data){
+  var box=document.getElementById('dietAdherenceBox');
+  if(!box)return;
+  var title='<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;margin-bottom:.5rem;">Meal Checklist · Last 14 Days</div>';
+  if(!data){box.innerHTML=title+'<div style="color:var(--text-muted);font-size:.8rem;">Could not load meal checklist.</div>';return;}
+  var s=data.summary||{},rows=data.days||[],h=title;
+  h+='<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem;">';
+  h+='<span style="background:#f3e8ff;color:#7e22ce;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;">'+(s.avg_progress_percent||0)+'% adherence</span>';
+  h+='<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;">'+(s.meals_missed_total||0)+' meals missed</span>';
+  h+='<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;">'+(s.full_days||0)+' full days</span>';
+  h+='<span style="background:var(--bg-card);color:var(--text-secondary);padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;">'+(s.no_checklist_days||0)+' without checklist</span>';
+  h+='</div>';
+  rows.forEach(function(r){
+    h+='<div style="display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;padding:.45rem 0;border-bottom:1px solid var(--border-light);font-size:.78rem;">';
+    h+='<span style="min-width:58px;font-weight:700;color:'+(r.is_today?'var(--brand-red)':'var(--text-primary)')+';">'+(r.is_today?'Today':fmtChecklistDay(r.date))+'</span>';
+    if(!r.has_record){
+      h+='<span style="color:var(--text-muted);font-style:italic;">No checklist</span>';
+    }else{
+      h+='<div style="flex:1;min-width:50px;height:6px;border-radius:3px;background:var(--bg-card);overflow:hidden;"><div style="height:100%;width:'+Math.min(100,r.progress_percent||0)+'%;background:'+(r.progress_percent>=100?'#16a34a':'var(--brand-red)')+';"></div></div>';
+      h+='<span style="font-weight:800;color:var(--text-primary);min-width:32px;text-align:right;">'+(r.completed_count||0)+'/'+(r.planned_count||0)+'</span>';
+      if(r.missed_labels&&r.missed_labels.length){
+        h+='<span style="color:#dc2626;font-size:.72rem;font-weight:600;">Missed: '+escapeHtml(r.missed_labels.join(', '))+'</span>';
+      }else{
+        h+='<span style="color:#16a34a;font-size:.72rem;font-weight:700;">✓ All meals</span>';
+      }
+    }
+    h+='</div>';
+  });
+  box.innerHTML=h;
+}
+
 loadProfile();
 setupEditFieldValidation();
 

@@ -532,6 +532,39 @@ class EffectiveDietPlanView(APIView):
 
 # ─── Daily Meal Checklist ─────────────────────────────────────────────────────
 
+def _effective_plan_meal_types(member):
+    """Resolve the meal types a member is expected to check off each day.
+
+    Personal active DietPlan first (same resolution as EffectiveDietPlanView),
+    general goal-based template otherwise. Returns (plan_info, meals) where
+    meals is an ordered, de-duplicated list of {'meal_type', 'label'} dicts —
+    the checklist stores meal_type codes, so duplicate plan entries collapse.
+    """
+    personal = (
+        DietPlan.objects.filter(member=member, is_active=True)
+        .prefetch_related('meals')
+        .order_by('-start_date')
+        .first()
+    )
+    label_map = dict(Meal.MealType.choices)
+    seen, meals = set(), []
+    if personal:
+        source, name = 'PERSONAL', personal.name
+        raw_types = [m.meal_type for m in personal.meals.all()]
+    else:
+        profile = getattr(member, 'member_profile', None)
+        fitness_goal = (getattr(profile, 'fitness_goal', '') or '').upper()
+        goal = FITNESS_GOAL_TO_DIET_GOAL.get(fitness_goal, 'MAINTENANCE')
+        source, name = 'GENERAL', f'General Plan — {GOAL_LABELS[goal]}'
+        raw_types = [m['meal_type'] for m in GENERAL_MEAL_PLANS[goal]]
+    for code in raw_types:
+        if code in seen:
+            continue
+        seen.add(code)
+        meals.append({'meal_type': code, 'label': label_map.get(code, code)})
+    return {'source': source, 'name': name}, meals
+
+
 class MealChecklistViewSet(viewsets.ModelViewSet):
     """
     CRUD + history for a member's daily meal checklist.
@@ -605,3 +638,121 @@ class MealChecklistViewSet(viewsets.ModelViewSet):
             defaults={'completed_meal_types': completed, 'total_meals': total},
         )
         return Response(MealChecklistSerializer(obj).data)
+
+    @action(detail=False, methods=['get'], url_path='adherence',
+            permission_classes=[IsAuthenticated])
+    def adherence(self, request):
+        """
+        GET /api/diet/meal-checklist/adherence/?member=<id>&days=14
+
+        Missed-meal monitor for owners/staff/trainers (and a member viewing
+        themself): one row per day over the last `days` days (default 14,
+        clamped 1–60), comparing the effective plan's meal types against the
+        checklist saved for that date. Days with no checklist row are flagged
+        has_record=False rather than counted as fully missed.
+
+        Planned meals are resolved from today's effective plan; completed
+        codes outside that set are dropped (an approximation when the plan
+        changed part-way through the range).
+        """
+        user = request.user
+        member_id = request.query_params.get('member')
+        if member_id:
+            try:
+                member = User.objects.get(pk=member_id, role=User.Role.MEMBER)
+            except (User.DoesNotExist, ValueError, TypeError):
+                return Response({'error': 'Member not found.'},
+                                status=status.HTTP_404_NOT_FOUND)
+            if user.is_member and member.pk != user.pk:
+                return Response({'error': 'Not allowed.'},
+                                status=status.HTTP_403_FORBIDDEN)
+            if user.is_trainer:
+                from apps.trainers.models import TrainerMemberAssignment
+                assigned = TrainerMemberAssignment.objects.filter(
+                    trainer=user, member=member, is_active=True,
+                ).exists()
+                if not assigned:
+                    return Response({'error': 'Not your assigned member.'},
+                                    status=status.HTTP_403_FORBIDDEN)
+        else:
+            if not user.is_member:
+                return Response(
+                    {'error': "Specify ?member=<id> to view a member's adherence."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            member = user
+
+        try:
+            days = int(request.query_params.get('days', 14))
+        except (TypeError, ValueError):
+            days = 14
+        days = max(1, min(days, 60))
+
+        plan_info, planned = _effective_plan_meal_types(member)
+        planned_codes = [m['meal_type'] for m in planned]
+        planned_set = set(planned_codes)
+        label_map = dict(Meal.MealType.choices)
+
+        today_date = timezone.localdate()
+        start = today_date - timedelta(days=days - 1)
+        records = {
+            r.date: r
+            for r in MealChecklist.objects.filter(
+                member=member, date__gte=start, date__lte=today_date,
+            )
+        }
+
+        rows = []
+        progress_sum = meals_missed_total = days_with_record = full_days = 0
+        cursor = start
+        while cursor <= today_date:
+            rec = records.get(cursor)
+            completed = []
+            if rec:
+                completed = [c for c in (rec.completed_meal_types or [])
+                             if c in planned_set]
+            completed_set = set(completed)
+            missed = [c for c in planned_codes
+                      if c not in completed_set] if rec else []
+            progress = (round(100 * len(completed) / len(planned_codes))
+                        if planned_codes else 0)
+            if rec:
+                days_with_record += 1
+                progress_sum += progress
+                meals_missed_total += len(missed)
+                if planned_codes and not missed:
+                    full_days += 1
+            rows.append({
+                'date':             cursor.isoformat(),
+                'is_today':         cursor == today_date,
+                'has_record':       rec is not None,
+                'completed':        completed,
+                'completed_labels': [label_map.get(c, c) for c in completed],
+                'missed':           missed,
+                'missed_labels':    [label_map.get(c, c) for c in missed],
+                'completed_count':  len(completed),
+                'planned_count':    len(planned_codes),
+                'progress_percent': progress,
+            })
+            cursor += timedelta(days=1)
+
+        rows.reverse()  # newest first
+        return Response({
+            'member': {'id': member.pk,
+                       'full_name': member.get_full_name()},
+            'plan': plan_info,
+            'range': {'from': start.isoformat(), 'to': today_date.isoformat(),
+                      'days': days},
+            'planned_meals': planned,
+            'summary': {
+                'days_with_record':     days_with_record,
+                'no_checklist_days':    days - days_with_record,
+                'avg_progress_percent': (
+                    round(progress_sum / days_with_record)
+                    if days_with_record else 0
+                ),
+                'meals_missed_total':   meals_missed_total,
+                'full_days':            full_days,
+            },
+            'days': rows,
+        })

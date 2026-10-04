@@ -350,7 +350,7 @@ Useful headers are `X-Gym-ID` (validated active membership) and `X-Branch-ID` (v
 |------|-----|---------|
 | Dashboard | `dashboard.html` | Role-aware KPIs, charts, and quick actions |
 | Members | `members.html` | Member list, search, and account creation |
-| Member Detail | `member-detail.html` | Individual member drill-down |
+| Member Detail | `member-detail.html` | Individual member drill-down, incl. the missed-meal adherence monitor in the Diet Plan panel |
 | Attendance | `attendance.html` | Manual and QR check-in/out management |
 | Attendance Devices | `attendance-devices.html` | Biometric enrollment and verification stats |
 | Memberships | `memberships.html` | Gym membership plans, assignments, renewals, and freezes |
@@ -739,6 +739,9 @@ In the tables below, **staff-side** follows the application's `IsAnyStaffRole` p
 | GET/POST/PATCH/DELETE | `/meal-logs/` | Authenticated / own-record write | Daily meal logs |
 | GET | `/meal-logs/daily-summary/` | Authenticated | Calorie and macro summary |
 | GET | `/meal-logs/weekly-summary/` | Authenticated | Seven-day meal summary |
+| GET/POST | `/meal-checklist/today/` | Member | Today's personal meal checklist (self-only) |
+| GET | `/meal-checklist/` | Role-scoped | Checklist history; `?member=<id>`, `?date=` |
+| GET | `/meal-checklist/adherence/` | Owner/Staff/Trainer/self | Missed-meal monitor: per-day planned vs. completed over `?days=` (1–60, default 14) for `?member=<id>` |
 
 #### Progress (`/api/progress/`)
 | Method | Endpoint | Auth | Description |
@@ -996,22 +999,23 @@ python manage.py test apps.reports.tests      # 60 tests
 | App | Tests | Main coverage |
 |-----|------:|---------------|
 | **accounts** | 62 | Owner-only registration, server-priced checkout/status, JWT rotation/versioning, password/reset/session security, display IDs |
-| **attendance** | 40 | Manual/self attendance, QR flows, biometric enrollment/scanning/stats, role scoping |
+| **attendance** | 57 | Manual/self attendance, QR flows, biometric enrollment/scanning/stats, role scoping |
 | **dataimport** | 25 | Workbook schema, template, dry-run/commit behavior, validation, owner-only access |
-| **diet** | 35 | Plans, meals, meal logs, daily/weekly summaries, filtering, RBAC |
+| **diet** | 50 | Plans, meals, meal logs, daily/weekly summaries, meal checklist + adherence monitor, filtering, RBAC |
 | **equipment** | 21 | Inventory and maintenance CRUD/validation/RBAC |
+| **gyms** | 53 | Tenant provisioning, custom roles and permission resolution, trash/restore |
 | **lockers** | 46 | Inventory, bulk creation, assignment lifecycle, status synchronization, filters |
-| **members** | 39 | Profile CRUD, reactivation, own-profile access, validation |
+| **members** | 44 | Profile CRUD, reactivation, own-profile access, validation |
 | **memberships** | 71 | Plans, assignment/renewal/cancel, freeze workflows, offers/promo codes, expiry sync, filters |
 | **notifications** | 77 | Notification types/read state/detail endpoint, scheduled services/commands, push payloads, group messaging and pins |
-| **payments** | 20 | Staff recording, member scoping, discounts, summaries and access control |
+| **payments** | 32 | Staff recording, member scoping, discounts, partial self-service payments, summaries and access control |
 | **progress** | 33 | Progress/PR CRUD, BMI, member stats, trainer/member scoping |
 | **reports** | 60 | JSON analytics plus CSV/Excel content, filters, empty datasets, and RBAC |
-| **staff** | 29 | Staff profiles/actions, password reset, leave lifecycle/review/date rules |
+| **staff** | 71 | Staff profiles/actions, shift templates and weekly schedules, roster, password reset, leave lifecycle/review/date rules |
 | **trainers** | 34 | Trainer profiles, assignments, trainer-scoped members and notifications |
 | **workouts** | 65 | Exercise/template/version workflows, assignments/completions, messaging, exports, RBAC |
 
-**Total: 744 tests across 16 local apps.** Latest full run: **744 passed**, with Django system checks clean.
+**Total: 801 tests across 16 local apps.** Latest full run: **801 passed**, with Django system checks clean.
 
 ### Test Patterns Used
 

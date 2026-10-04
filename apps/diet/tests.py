@@ -13,16 +13,19 @@ Coverage:
     - MealLog CRUD (member-scoped)
     - MealLog daily summary endpoint
     - Role-based access (Owner/Staff, Trainer, Member)
+    - Daily meal checklist (today + missed-meal adherence monitor)
 """
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.diet.models import DietPlan, Meal, MealLog
+from apps.diet.models import DietPlan, Meal, MealLog, MealChecklist
+from apps.trainers.models import TrainerMemberAssignment
 
 User = get_user_model()
 
@@ -597,3 +600,249 @@ class MealLogDailySummaryTestCase(APITestCase):
         r = self.client.get('/api/diet/meal-logs/daily-summary/')
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         self.assertIn('disclaimer', r.data)
+
+
+# ─── Daily Meal Checklist ─────────────────────────────────────────────────────
+
+
+class MealChecklistTodayTestCase(APITestCase):
+    """GET/POST /api/diet/meal-checklist/today/ + role-scoped list history."""
+
+    def setUp(self):
+        self.member = make_user('check-m1@gym.com', role=User.Role.MEMBER,
+                                first_name='Casey', last_name='Member')
+        self.other = make_user('check-m2@gym.com', role=User.Role.MEMBER)
+        self.trainer = make_user('check-trainer@gym.com', role=User.Role.TRAINER)
+        self.owner = make_user('check-owner@gym.com', role=User.Role.OWNER)
+
+    def test_member_today_get_returns_default_empty_shape(self):
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.get('/api/diet/meal-checklist/today/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['date'], timezone.localdate().isoformat())
+        self.assertEqual(r.data['completed_meal_types'], [])
+        self.assertEqual(r.data['completed_count'], 0)
+        self.assertEqual(r.data['progress_percent'], 0)
+
+    def test_member_today_post_creates_then_updates_single_row(self):
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.post('/api/diet/meal-checklist/today/', {
+            'completed_meal_types': ['BREAKFAST', 'LUNCH'], 'total_meals': 4,
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(MealChecklist.objects.filter(member=self.member).count(), 1)
+
+        r = self.client.post('/api/diet/meal-checklist/today/', {
+            'completed_meal_types': ['BREAKFAST'], 'total_meals': 4,
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        # Same day updates the same row instead of creating a second one.
+        self.assertEqual(MealChecklist.objects.filter(member=self.member).count(), 1)
+        obj = MealChecklist.objects.get(member=self.member)
+        self.assertEqual(obj.completed_meal_types, ['BREAKFAST'])
+        self.assertEqual(obj.date, timezone.localdate())
+
+    def test_owner_cannot_use_personal_today(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get('/api/diet/meal-checklist/today/')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_unauthenticated_today_rejected(self):
+        r = self.client.get('/api/diet/meal-checklist/today/')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_checklist_list_scoped_by_role(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        MealChecklist.objects.create(
+            member=self.member, date=yesterday,
+            completed_meal_types=['BREAKFAST'], total_meals=3)
+        MealChecklist.objects.create(
+            member=self.other, date=yesterday,
+            completed_meal_types=['LUNCH'], total_meals=3)
+
+        # A member sees only their own rows; ?member= cannot widen that.
+        self.client.credentials(**auth_headers(self.member))
+        r = self.client.get('/api/diet/meal-checklist/')
+        results = r.data.get('results', r.data)
+        self.assertEqual(len(results), 1)
+        r = self.client.get(f'/api/diet/meal-checklist/?member={self.other.id}')
+        results = r.data.get('results', r.data)
+        self.assertEqual(len(results), 1)
+
+        # An owner sees every row, and can filter down to one member.
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get('/api/diet/meal-checklist/')
+        results = r.data.get('results', r.data)
+        self.assertEqual(len(results), 2)
+        r = self.client.get(f'/api/diet/meal-checklist/?member={self.member.id}')
+        results = r.data.get('results', r.data)
+        self.assertEqual(len(results), 1)
+
+    def test_trainer_checklist_list_scoped_to_assignments(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        MealChecklist.objects.create(
+            member=self.member, date=yesterday,
+            completed_meal_types=['BREAKFAST'], total_meals=3)
+        MealChecklist.objects.create(
+            member=self.other, date=yesterday,
+            completed_meal_types=['LUNCH'], total_meals=3)
+        TrainerMemberAssignment.objects.create(
+            trainer=self.trainer, member=self.member, is_active=True)
+
+        assigned_row = MealChecklist.objects.get(member=self.member)
+        self.client.credentials(**auth_headers(self.trainer))
+        r = self.client.get('/api/diet/meal-checklist/')
+        results = r.data.get('results', r.data)
+        # Only the assigned member's row is visible (member is a HiddenField,
+        # so scope by row id rather than a member id in the payload).
+        self.assertEqual([row['id'] for row in results], [assigned_row.id])
+
+
+class MealChecklistAdherenceTestCase(APITestCase):
+    """GET /api/diet/meal-checklist/adherence/ — the missed-meal monitor."""
+
+    def setUp(self):
+        self.owner = make_user('adh-owner@gym.com', role=User.Role.OWNER)
+        self.trainer = make_user('adh-trainer@gym.com', role=User.Role.TRAINER,
+                                 first_name='Coach', last_name='Smith')
+        self.member = make_user('adh-m1@gym.com', role=User.Role.MEMBER,
+                                first_name='Alice', last_name='Jones')
+        self.other = make_user('adh-m2@gym.com', role=User.Role.MEMBER)
+        # Personal plan with 3 meal slots.
+        self.plan = DietPlan.objects.create(
+            member=self.member, created_by=self.trainer,
+            name='Cutting Plan', goal='WEIGHT_LOSS')
+        for meal_type in ('BREAKFAST', 'LUNCH', 'DINNER'):
+            Meal.objects.create(diet_plan=self.plan, meal_type=meal_type,
+                                food_name=f'{meal_type.title()} food')
+        TrainerMemberAssignment.objects.create(
+            trainer=self.trainer, member=self.member, is_active=True)
+
+    def test_owner_report_shows_missed_meals_and_summary(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        MealChecklist.objects.create(
+            member=self.member, date=yesterday,
+            completed_meal_types=['BREAKFAST'], total_meals=3)
+
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get(
+            f'/api/diet/meal-checklist/adherence/?member={self.member.id}&days=7')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['plan']['source'], 'PERSONAL')
+        self.assertEqual(r.data['plan']['name'], 'Cutting Plan')
+        # Meal rows follow the model's meal_type ordering (same as the
+        # member's plan view), de-duplicated to one slot per meal type.
+        self.assertEqual(
+            [m['meal_type'] for m in r.data['planned_meals']],
+            ['BREAKFAST', 'DINNER', 'LUNCH'])
+        self.assertEqual(r.data['range']['days'], 7)
+        self.assertEqual(len(r.data['days']), 7)
+        # Newest first: today leads the list and has no record yet.
+        self.assertEqual(r.data['days'][0]['date'],
+                         timezone.localdate().isoformat())
+        self.assertTrue(r.data['days'][0]['is_today'])
+        self.assertFalse(r.data['days'][0]['has_record'])
+
+        summary = r.data['summary']
+        self.assertEqual(summary['days_with_record'], 1)
+        self.assertEqual(summary['no_checklist_days'], 6)
+        self.assertEqual(summary['meals_missed_total'], 2)
+        self.assertEqual(summary['full_days'], 0)
+        self.assertEqual(summary['avg_progress_percent'], 33)
+
+        y_row = next(d for d in r.data['days']
+                     if d['date'] == yesterday.isoformat())
+        self.assertTrue(y_row['has_record'])
+        self.assertEqual(y_row['completed'], ['BREAKFAST'])
+        self.assertEqual(y_row['missed'], ['DINNER', 'LUNCH'])
+        self.assertEqual(y_row['missed_labels'], ['Dinner', 'Lunch'])
+        self.assertEqual(y_row['completed_count'], 1)
+        self.assertEqual(y_row['planned_count'], 3)
+        self.assertEqual(y_row['progress_percent'], 33)
+
+    def test_adherence_falls_back_to_general_plan(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get(
+            f'/api/diet/meal-checklist/adherence/?member={self.other.id}')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        # No personal plan and no fitness goal -> MAINTENANCE template.
+        self.assertEqual(r.data['plan']['source'], 'GENERAL')
+        self.assertEqual(
+            [m['meal_type'] for m in r.data['planned_meals']],
+            ['BREAKFAST', 'LUNCH', 'EVENING_SNACK', 'DINNER'])
+
+    def test_adherence_counts_fully_completed_day(self):
+        today = timezone.localdate()
+        MealChecklist.objects.create(
+            member=self.member, date=today,
+            completed_meal_types=['BREAKFAST', 'DINNER', 'LUNCH'],
+            total_meals=3)
+
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get(
+            f'/api/diet/meal-checklist/adherence/?member={self.member.id}&days=1')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        row = r.data['days'][0]
+        self.assertTrue(row['has_record'])
+        self.assertEqual(row['missed'], [])
+        self.assertEqual(row['progress_percent'], 100)
+        summary = r.data['summary']
+        self.assertEqual(summary['full_days'], 1)
+        self.assertEqual(summary['meals_missed_total'], 0)
+        self.assertEqual(summary['avg_progress_percent'], 100)
+
+    def test_adherence_trainer_requires_active_assignment(self):
+        self.client.credentials(**auth_headers(self.trainer))
+        # Assigned member is visible.
+        r = self.client.get(
+            f'/api/diet/meal-checklist/adherence/?member={self.member.id}')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        # Anyone else's member is not.
+        r = self.client.get(
+            f'/api/diet/meal-checklist/adherence/?member={self.other.id}')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_member_can_view_self_but_not_others(self):
+        self.client.credentials(**auth_headers(self.member))
+        # No ?member= -> own adherence.
+        r = self.client.get('/api/diet/meal-checklist/adherence/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['member']['id'], self.member.id)
+        # Another member is forbidden.
+        r = self.client.get(
+            f'/api/diet/meal-checklist/adherence/?member={self.other.id}')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_owner_without_member_param_400(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get('/api/diet/meal-checklist/adherence/')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_days_parameter_clamped(self):
+        self.client.credentials(**auth_headers(self.owner))
+        base = f'/api/diet/meal-checklist/adherence/?member={self.member.id}'
+
+        r = self.client.get(f'{base}&days=0')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(r.data['days']), 1)
+
+        r = self.client.get(f'{base}&days=999')
+        self.assertEqual(r.data['range']['days'], 60)
+        self.assertEqual(len(r.data['days']), 60)
+
+        r = self.client.get(f'{base}&days=abc')
+        self.assertEqual(r.data['range']['days'], 14)
+        self.assertEqual(len(r.data['days']), 14)
+
+    def test_adherence_unknown_or_non_member_404(self):
+        self.client.credentials(**auth_headers(self.owner))
+        r = self.client.get('/api/diet/meal-checklist/adherence/?member=999999')
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+        # A trainer's user id is not a member profile.
+        r = self.client.get(
+            f'/api/diet/meal-checklist/adherence/?member={self.trainer.id}')
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_adherence_unauthenticated_401(self):
+        r = self.client.get('/api/diet/meal-checklist/adherence/')
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
