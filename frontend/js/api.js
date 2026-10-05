@@ -1655,3 +1655,46 @@ function openChangePasswordModal() {
     // Realtime is optional — a failed include must never break the app.
   }
 })();
+
+// ── Mobile/PWA table scrolling ───────────────────────────────────────────────
+// A wide .table-bordered table used to stretch its card or get clipped at the
+// viewport edge on phones (e.g. Payments). Every top-level table — static or
+// rendered later by a page's fetch code — is wrapped in its own scroll
+// container, exactly like Bootstrap's .table-responsive, so it scrolls
+// horizontally instead of distorting the layout. Idempotent (already-wrapped
+// tables are skipped), MutationObserver-based so JS-injected tables (member
+// detail, diet history, …) are covered too, and nested layout tables
+// (receipts etc.) plus [data-no-table-scroll] are left untouched.
+(function ensureTableScroll() {
+  const wrap = (table) => {
+    try {
+      const parent = table.parentElement;
+      if (!parent) return;
+      if (parent.classList.contains('table-responsive')) return; // already wrapped
+      if (table.closest('table')) return;                        // nested layout table
+      if (table.hasAttribute('data-no-table-scroll')) return;    // explicit opt-out
+      const box = document.createElement('div');
+      box.className = 'table-responsive';
+      parent.insertBefore(box, table);
+      box.appendChild(table);
+    } catch (e) { /* a failed wrap must never break the page */ }
+  };
+  const scan = (root) => {
+    if (!root || root.nodeType !== 1) return;
+    if (root.tagName === 'TABLE') wrap(root);
+    if (root.querySelectorAll) root.querySelectorAll('table').forEach(wrap);
+  };
+  const start = () => scan(document.body);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+  try {
+    new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) scan(node);
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) { /* initial scan already ran; the observer is a bonus */ }
+})();

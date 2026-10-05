@@ -3654,3 +3654,27 @@ html:not([data-theme='light']) .skeleton-badge {
   animation: fadeIn 0.3s ease-out;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PWA / mobile fixes — APPENDED LAST ON PURPOSE.
+   theme.css currently contains three copies of the base sheet (tech debt);
+   later rules win, so these overrides must sit at the very end to beat all
+   copies of the selectors they adjust.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Sidebar drawer: the mobile block above sets top:0; bottom:0 AND
+   height:100vh — over-constrained, so `bottom` is ignored and the box is
+   pinned to the viewport height measured before the page scrolled. On
+   Android Chrome the URL bar collapses while scrolling, the visible
+   viewport grows, and a white band appears below the last menu item.
+   With height:auto the top/bottom pair stretches the drawer to the CURRENT
+   viewport at every scroll position; 100dvh is a belt-and-braces minimum
+   for browsers that freeze vh; overscroll-behavior:contain stops reaching
+   the end of the menu from chain-scrolling the page behind the drawer. */
+@media (max-width: 991.98px) {
+  .sidebar {
+    height: auto;
+    min-height: 100dvh;
+    overscroll-behavior: contain;
+  }
+}
