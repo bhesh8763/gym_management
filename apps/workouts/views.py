@@ -895,7 +895,10 @@ def _allowed_recipients(user, gym=None, branch=None):
             | Q(
                 gym_memberships__gym=gym,
                 gym_memberships__status=GymMembership.Status.ACTIVE,
-                branch_memberships__branch=branch,
+                # branch_memberships lives on GymMembership, not User — the
+                # lookup must be chained through gym_memberships or Django
+                # raises FieldError (500) for every branched non-owner.
+                gym_memberships__branch_memberships__branch=branch,
             )
         ).distinct()
     if gym is not None:
@@ -955,7 +958,10 @@ def _group_allowed_member_ids(user, gym=None, branch=None):
             | Q(
                 gym_memberships__gym=gym,
                 gym_memberships__status=GymMembership.Status.ACTIVE,
-                branch_memberships__branch=branch,
+                # branch_memberships lives on GymMembership, not User — the
+                # lookup must be chained through gym_memberships or Django
+                # raises FieldError (500) for every branched non-owner.
+                gym_memberships__branch_memberships__branch=branch,
             )
         ).distinct()
     membership = GymMembership.objects.filter(
@@ -1101,7 +1107,7 @@ class MessageGroupListCreateView(APIView):
                     | Q(
                         gym_memberships__gym=g.gym,
                         gym_memberships__status=GymMembership.Status.ACTIVE,
-                        branch_memberships__branch=g.branch,
+                        gym_memberships__branch_memberships__branch=g.branch,
                     )
                 ).distinct()
             data.append({

@@ -528,6 +528,92 @@ class MessagingPermissionsTestCase(WorkoutAPITestCase):
         self.assertIn(self.owner.pk, ids)
 
 
+class BranchedMessagingLookupTestCase(WorkoutAPITestCase):
+    """Regression: recipient/group lookups are User querysets, so the branch
+    condition must chain through ``gym_memberships__branch_memberships__``.
+
+    Written directly against ``branch_memberships__branch`` the lookup raises
+    FieldError (HTTP 500) for every non-owner who has an active branch — the
+    receptionist's New Message picker in production. Owners are exempt because
+    their ``request.branch`` is None, which is why local owner testing looked
+    healthy. Authenticated with a real JWT so the full
+    authentication -> resolve_request_tenant path sets gym/branch like it does
+    in production (force_authenticate bypasses that machinery)."""
+
+    def setUp(self):
+        from apps.gyms.models import BranchMembership, GymMembership
+        from apps.gyms.services import provision_owner_gym
+
+        self.owner = make_user('owner@branched.com', role=User.Role.OWNER)
+        self.gym, _ = provision_owner_gym(user=self.owner, name='Branched Gym')
+        self.branch = self.gym.branches.get(is_primary=True)
+
+        self.staff = make_user(
+            'staff@branched.com', role=User.Role.STAFF,
+            first_name='Bran', last_name='Ched',
+        )
+        self.member = make_user('member@branched.com', role=User.Role.MEMBER)
+        for user, role in (
+            (self.staff, GymMembership.Role.STAFF),
+            (self.member, GymMembership.Role.MEMBER),
+        ):
+            membership = GymMembership.objects.create(
+                user=user, gym=self.gym, role=role,
+                status=GymMembership.Status.ACTIVE,
+            )
+            BranchMembership.objects.create(
+                gym_membership=membership, branch=self.branch,
+            )
+
+    def _auth(self, user):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        access = str(RefreshToken.for_user(user).access_token)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+
+    def test_recipient_list_returns_for_branched_staff(self):
+        self._auth(self.staff)
+        r = self.client.get('/api/workouts/message-recipients/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = {u['user_id'] for u in r.data}
+        self.assertIn(self.owner.pk, ids)
+        self.assertIn(self.member.pk, ids)
+
+    def test_recipient_list_returns_for_branched_member(self):
+        self._auth(self.member)
+        r = self.client.get('/api/workouts/message-recipients/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = {u['user_id'] for u in r.data}
+        self.assertIn(self.staff.pk, ids)
+        self.assertNotIn(self.owner.pk, ids)
+
+    def test_group_recipient_lookup_returns_for_branched_staff(self):
+        # purpose=group goes through _group_allowed_member_ids, which had the
+        # same malformed lookup.
+        self._auth(self.staff)
+        r = self.client.get('/api/workouts/message-recipients/?purpose=group')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        ids = {u['user_id'] for u in r.data}
+        self.assertIn(self.member.pk, ids)
+
+    def test_group_list_renders_branch_scoped_group(self):
+        # The group-list serializer path filters visible members per branch
+        # (gym_memberships__branch_memberships__...) for groups with a branch.
+        from apps.notifications.models import MessageGroup
+
+        group = MessageGroup.objects.create(
+            name='Branch chat', gym=self.gym, branch=self.branch,
+            created_by=self.staff,
+        )
+        group.members.set([self.staff, self.member])
+        self._auth(self.member)
+        r = self.client.get('/api/workouts/message-groups/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(r.data), 1)
+        self.assertIn(self.staff.pk, r.data[0]['member_ids'])
+        self.assertIn(self.member.pk, r.data[0]['member_ids'])
+
+
 class GroupMessagingTestCase(WorkoutAPITestCase):
     """Group chat creation, membership rules, send + read flows."""
 

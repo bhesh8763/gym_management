@@ -1068,7 +1068,7 @@ python manage.py test apps.reports.tests      # 60 tests
 | **trainers** | 34 | Trainer profiles, assignments, trainer-scoped members and notifications |
 | **workouts** | 68 | Exercise/template/version workflows, assignments/completions, messaging (incl. live push + WebSocket delivery on commit), exports, RBAC |
 
-**Total: 810 tests across 16 local apps.** Latest full run: **810 passed**, with Django system checks clean.
+**Total: 814 tests across 16 local apps.** Latest full run: **814 passed**, with Django system checks clean.
 
 ### Test Patterns Used
 
