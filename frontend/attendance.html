@@ -20,6 +20,16 @@
 </head>
 <body data-allowed-roles="OWNER,STAFF,TRAINER">
 
+<!-- Toast container for save/update/delete feedback -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+  <div id="appToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="appToastBody">Saved.</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
 <nav class="topbar">
   <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
   <a href="dashboard.html" class="navbar-brand d-flex align-items-center text-decoration-none">
@@ -195,10 +205,10 @@
       <hr class="my-2">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-          <h5 class="mb-0"><i class="bi bi-calendar2-x me-2 text-danger"></i>My Leave</h5>
-          <small class="text-muted">Your leave requests</small>
+          <h5 class="mb-0" id="leaveSectionTitle"><i class="bi bi-calendar2-x me-2 text-danger"></i>My Leave</h5>
+          <small class="text-muted" id="leaveSectionSubtitle">Your leave requests</small>
         </div>
-        <button type="button" class="btn btn-danger"
+        <button type="button" class="btn btn-danger" id="applyLeaveBtn"
                 data-bs-toggle="modal" data-bs-target="#leaveModal">
           <i class="bi bi-plus-lg"></i> Apply for Leave
         </button>
@@ -241,7 +251,7 @@
         <table class="table table-bordered mb-0">
           <thead>
             <tr>
-              <th>#</th><th>Type</th><th>From</th><th>To</th><th>Days</th>
+              <th>#</th><th id="thRequester" class="d-none">Requester</th><th>Type</th><th>From</th><th>To</th><th>Days</th>
               <th>Reason</th><th>Status</th><th>Review Note</th><th>Actions</th>
             </tr>
           </thead>
@@ -1009,10 +1019,19 @@ buildSidebar('attendance');
 
 
 
-    // My Leave section - visible to STAFF and TRAINER, and OWNER too
+    // My Leave: staff/trainer apply for their own leave here. Owners don't file
+    // leave — for them the section becomes the review view (approve / reject).
     const myLeaveSection = document.getElementById('myLeaveSection');
     if (myLeaveSection) {
       myLeaveSection.style.display = '';
+      if (isLeaveReviewer) {
+        document.getElementById('leaveSectionTitle').innerHTML =
+          '<i class="bi bi-calendar2-check me-2 text-danger"></i>Leave Requests';
+        document.getElementById('leaveSectionSubtitle').textContent =
+          'Approve or reject leave requests from your staff';
+        document.getElementById('applyLeaveBtn').classList.add('d-none');
+        document.getElementById('thRequester').classList.remove('d-none');
+      }
       await loadMyLeaves();
     }
 
@@ -1022,9 +1041,14 @@ buildSidebar('attendance');
 
   // -- My Leave --------------------------------------------
   let leaveCache = [];   // kept at module level so openEditLeave can look up rows
+  let detailLeaveId = null;   // request currently shown in the detail modal
+  // Owners review leave on this page; only staff/trainer file it.
+  const isLeaveReviewer = (localStorage.getItem('user_role') || '') === 'OWNER';
 
   async function loadMyLeaves() {
-    const res = await apiRequest('/staff/leave-requests/');
+    // Owners review every request in the gym; staff/trainer see only their own
+    // ("My Leave") — the receptionist's review of trainers lives on trainers.html.
+    const res = await apiRequest('/staff/leave-requests/' + (isLeaveReviewer ? '' : '?mine=1'));
     if (!res) return;
     if (!__isPageAlive()) return;
     const data = await res.json();
@@ -1049,8 +1073,11 @@ buildSidebar('attendance');
     const pageRows = leaveCache.slice(start, start + pageSize);
 
     const tbody = document.getElementById('myLeaveTableBody');
+    const cols = isLeaveReviewer ? 10 : 9;
     if (!pageRows.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">You have no leave requests yet.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted py-4">` +
+        (isLeaveReviewer ? 'There are no leave requests.' : 'You have no leave requests yet.') +
+        '</td></tr>';
       document.getElementById('leavePageInfo').textContent = 'Showing 0 of 0';
       document.getElementById('leavePrevPageBtn').disabled = true;
       document.getElementById('leaveNextPageBtn').disabled = true;
@@ -1061,10 +1088,17 @@ buildSidebar('attendance');
       const reviewNote = row.review_note
         ? `<span class="text-muted small">${row.review_note}</span>`
         : '<span class="text-muted"></span>';
+      const requesterCell = isLeaveReviewer
+        ? `<td class="small">${escapeHtml(row.requester_name || '-')}</td>`
+        : '';
+      const actionLabel = isLeaveReviewer
+        ? (row.status === 'PENDING' ? 'Review' : 'View')
+        : 'Manage';
 
       return `
         <tr>
           <td class="text-muted small">#${row.id}</td>
+          ${requesterCell}
           <td>${leaveTypeBadge(row.leave_type)}</td>
           <td>${row.start_date}</td>
           <td>${row.end_date}</td>
@@ -1074,7 +1108,7 @@ buildSidebar('attendance');
           <td style="max-width:160px;white-space:normal">${reviewNote}</td>
           <td>
             <button class="btn btn-sm btn-dark" onclick="openLeaveDetail(${row.id})">
-              Manage
+              ${actionLabel}
             </button>
           </td>
         </tr>`;
@@ -1144,6 +1178,7 @@ buildSidebar('attendance');
   function openLeaveDetail(id) {
     const row = leaveCache.find(r => r.id === id);
     if (!row) return;
+    detailLeaveId = id;
 
     const typeLabels = { SICK: 'Sick', CASUAL: 'Casual', ANNUAL: 'Annual', UNPAID: 'Unpaid', OTHER: 'Other' };
     const statusColors = { APPROVED: 'success', PENDING: 'warning text-dark', REJECTED: 'danger', CANCELLED: 'secondary' };
@@ -1152,6 +1187,10 @@ buildSidebar('attendance');
       <dl class="row mb-0">
         <dt class="col-sm-4">Request #</dt>
         <dd class="col-sm-8 text-muted">#${row.id}</dd>
+
+        ${isLeaveReviewer ? `
+        <dt class="col-sm-4">Requester</dt>
+        <dd class="col-sm-8">${escapeHtml(row.requester_name || '-')}</dd>` : ''}
 
         <dt class="col-sm-4">Leave Type</dt>
         <dd class="col-sm-8">${leaveTypeBadge(row.leave_type)}</dd>
@@ -1182,7 +1221,20 @@ buildSidebar('attendance');
         <dt class="col-sm-4">Review Note</dt>
         <dd class="col-sm-8">${row.review_note}</dd>` : ''}
       </dl>
-      ${row.status === 'PENDING' ? `
+      ${row.status === 'PENDING' ? (isLeaveReviewer ? `
+      <hr>
+      <div class="mb-2">
+        <label class="form-label small fw-semibold mb-1" for="detailReviewNote">Review note <span class="text-muted fw-normal">(optional — shown to the requester)</span></label>
+        <textarea class="form-control" id="detailReviewNote" rows="2" placeholder="e.g. Coverage arranged — enjoy your leave"></textarea>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success btn-sm" onclick="submitDetailReview('APPROVED')">
+          <i class="bi bi-check-lg me-1"></i>Approve
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="submitDetailReview('REJECTED')">
+          <i class="bi bi-x-lg me-1"></i>Reject
+        </button>
+      </div>` : `
       <hr>
       <div class="d-flex gap-2">
         <button class="btn btn-outline-primary btn-sm" onclick="openEditLeave(${row.id})">
@@ -1191,10 +1243,56 @@ buildSidebar('attendance');
         <button class="btn btn-outline-danger btn-sm" onclick="cancelLeave(${row.id})">
           <i class="bi bi-x-circle me-1"></i>Cancel
         </button>
-      </div>` : ''}
+      </div>`) : ''}
     `;
 
     new bootstrap.Modal(document.getElementById('leaveDetailModal')).show();
+  }
+
+  // Owner: approve / reject the request shown in the detail modal.
+  async function submitDetailReview(status) {
+    if (!detailLeaveId) return;
+    const noteEl = document.getElementById('detailReviewNote');
+    const ok = await reviewLeaveRequest(detailLeaveId, status, noteEl ? noteEl.value.trim() : '');
+    if (ok) {
+      try {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('leaveDetailModal')).hide();
+      } catch (e) {
+        console.error('Could not close leave detail modal:', e);
+      }
+    }
+  }
+
+  async function reviewLeaveRequest(id, status, note) {
+    const res = await apiRequest(`/staff/leave-requests/${id}/review/`, {
+      method: 'POST',
+      body: JSON.stringify({ status, review_note: note || '' }),
+    });
+    if (res && res.ok) {
+      showToast(`Leave request ${status.toLowerCase()}.`);
+      await loadMyLeaves();
+      return true;
+    }
+    showToast(
+      res ? formatApiError(await res.json().catch(() => ({})))
+          : 'Request failed — check your connection.',
+      'error'
+    );
+    return false;
+  }
+
+  // Feedback toast (same pattern as equipment.html)
+  function showToast(message, variant) {
+    const toastEl = document.getElementById('appToast');
+    const bodyEl = document.getElementById('appToastBody');
+    if (!toastEl || !bodyEl) {
+      console.warn('Toast element missing from page — skipping toast:', message);
+      return;
+    }
+    toastEl.classList.remove('bg-success', 'bg-danger');
+    toastEl.classList.add(variant === 'error' ? 'bg-danger' : 'bg-success');
+    bodyEl.textContent = message;
+    bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 2500 }).show();
   }
 
   // Cancel (staff/trainer cancels own pending request - kept for staff.html compatibility)

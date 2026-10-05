@@ -253,6 +253,33 @@ class LeaveRequestTests(StaffAPITestCase):
         r = self.client.get(self.leaves_url)
         self.assertEqual(r.data['count'], 2)
 
+    def test_owner_cannot_submit_leave_request(self):
+        # Owners review leave requests; applying for leave is staff/trainer-only.
+        self.auth_as(self.owner)
+        start, end = self.get_future_dates()
+        r = self.client.post(self.leaves_url, {
+            'leave_type': 'CASUAL', 'start_date': start, 'end_date': end,
+            'reason': 'Vacation',
+        })
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(LeaveRequest.objects.count(), 0)
+
+    def test_mine_param_returns_only_own_requests(self):
+        LeaveRequest.objects.create(
+            requester=self.trainer, leave_type='SICK',
+            start_date='2026-07-20', end_date='2026-07-21', reason='Test',
+        )
+        LeaveRequest.objects.create(
+            requester=self.staff, leave_type='CASUAL',
+            start_date='2026-07-22', end_date='2026-07-22', reason='Test',
+        )
+        # Staff's default list is trainers' requests (for review on
+        # trainers.html); ?mine=1 gives back their own — "My Leave".
+        self.auth_as(self.staff)
+        r = self.client.get(self.leaves_url + '?mine=1')
+        self.assertEqual(r.data['count'], 1)
+        self.assertEqual(r.data['results'][0]['requester'], self.staff.id)
+
 
 class LeaveReviewTests(StaffAPITestCase):
     def setUp(self):

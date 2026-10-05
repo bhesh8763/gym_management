@@ -165,8 +165,9 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
     """
-    Any staff-side role can submit and view leave requests.
-    Only Owner/Staff can approve or reject (via the /review/ action).
+    Staff-side roles (staff/trainer) can submit and view leave requests.
+    Owners do not file leave — create is rejected for them; they review via
+    /review/ instead. ?mine=1 limits any list to the caller's own requests.
     """
     serializer_class = LeaveRequestSerializer
     permission_classes = [IsAnyStaffRole]
@@ -191,9 +192,14 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
             LeaveRequest.objects.select_related('requester', 'reviewed_by').all(),
             self.request,
         )
-        if getattr(self.request, 'gym_role', self.request.user.role) == 'OWNER':
+        role = getattr(self.request, 'gym_role', self.request.user.role)
+        if str(self.request.query_params.get('mine', '')).lower() in ('1', 'true', 'yes'):
+            # "My Leave" — the caller's own requests, whatever their role
+            # (otherwise e.g. a receptionist's trainers-only view hides their own).
+            qs = qs.filter(requester=self.request.user)
+        elif role == 'OWNER':
             pass  # Owners see all
-        elif getattr(self.request, 'gym_role', self.request.user.role) == 'STAFF':
+        elif role == 'STAFF':
             # Receptionists only see leave requests from trainers in this gym.
             from apps.gyms.models import GymMembership
             qs = qs.filter(
@@ -218,6 +224,12 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
+        # Owners review leave requests; they do not file them.
+        if getattr(self.request, 'gym_role', self.request.user.role) == 'OWNER':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(
+                'Owners review leave requests — they do not file them.'
+            )
         serializer.save(
             requester=self.request.user,
             gym=getattr(self.request, 'gym', None),
