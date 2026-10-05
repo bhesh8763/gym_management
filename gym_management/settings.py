@@ -290,14 +290,29 @@ if _render_host:
         CSRF_TRUSTED_ORIGINS.append(_render_origin)
 
 # ─── EMAIL ─────────────────────────────────────────────────────────────────────
-# In development: print emails to the console.
-# In production: switch to smtp and set EMAIL_HOST, EMAIL_PORT, etc. via .env
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+# Transport is chosen for you: set EMAIL_HOST_USER + EMAIL_HOST_PASSWORD (in
+# .env locally, or Render's environment in production) and the backend flips
+# to SMTP automatically — no EMAIL_BACKEND var needed. With no credentials it
+# prints to the console, which is what development wants. EMAIL_BACKEND, when
+# set explicitly, always wins over the automatic choice.
+_SMTP_USER = config('EMAIL_HOST_USER', default='')
+_SMTP_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND',
+    default=(
+        'django.core.mail.backends.smtp.EmailBackend'
+        if _SMTP_USER and _SMTP_PASSWORD
+        else 'django.core.mail.backends.console.EmailBackend'
+    ),
+)
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+# Seconds before an unresponsive SMTP server gives up; keeps a dead relay
+# from hanging the request that triggered the email.
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=15, cast=int)
+EMAIL_HOST_USER = _SMTP_USER
+EMAIL_HOST_PASSWORD = _SMTP_PASSWORD
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Gym Management <noreply@gym.local>')
 
 # Frontend base URL — used in password reset emails

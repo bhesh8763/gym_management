@@ -83,7 +83,8 @@ pip install -r requirements.txt
 
 ### 2. Configure environment
 
-Create a `.env` file in the project root:
+Copy the documented template (`.env.example` lists every variable) or create
+a `.env` file in the project root:
 
 ```env
 SECRET_KEY=your-secret-key-here
@@ -236,12 +237,13 @@ gym_management/          # Django project settings & URLs
 | `REQUIRE_OWNER_SUBSCRIPTION` | Production | `False` locally / `True` on Render | Enforce the paid owner-plan gate on management APIs, not only in JavaScript |
 | `DATA_UPLOAD_MAX_MEMORY_SIZE` | ❌ | `5242880` | Maximum non-file request body size (5 MiB) |
 | `FILE_UPLOAD_MAX_MEMORY_SIZE` | ❌ | `5242880` | In-memory file upload threshold (5 MiB) |
-| `EMAIL_BACKEND` | ❌ | Console backend | Django email transport |
+| `EMAIL_BACKEND` | ❌ | Auto: SMTP when credentials are set, otherwise console | Django email transport; an explicit value wins over the automatic choice |
 | `EMAIL_HOST` | SMTP | `smtp.gmail.com` | SMTP host |
 | `EMAIL_PORT` | SMTP | `587` | SMTP port |
-| `EMAIL_HOST_USER` | SMTP | — | SMTP username |
-| `EMAIL_HOST_PASSWORD` | SMTP | — | SMTP password |
+| `EMAIL_HOST_USER` | SMTP | — | SMTP username; setting it **together with** `EMAIL_HOST_PASSWORD` switches the backend to SMTP automatically |
+| `EMAIL_HOST_PASSWORD` | SMTP | — | SMTP password (Gmail: app password); pairs with `EMAIL_HOST_USER` to enable SMTP |
 | `EMAIL_USE_TLS` | SMTP | `True` | Enables STARTTLS |
+| `EMAIL_TIMEOUT` | ❌ | `15` | Seconds before an unresponsive SMTP server gives up |
 | `DEFAULT_FROM_EMAIL` | ❌ | `Gym Management <noreply@gym.local>` | Sender address |
 | `TRUST_X_FORWARDED_PROTO` | Production proxy | `False` | Trust the platform's HTTPS forwarding header |
 | `SESSION_COOKIE_SECURE` | Production | `False` | Send session cookies over HTTPS only |
@@ -1103,7 +1105,7 @@ Admin:     https://fitcore-k5zr.onrender.com/admin/
 4. Run `python manage.py migrate --noinput` during deployment.
 5. Run `python manage.py collectstatic --noinput`; WhiteNoise serves `frontend/` and collected static assets.
 6. Bind daphne (the ASGI server — HTTP + WebSocket) to the platform-assigned port (`-b 0.0.0.0 -p $PORT` on Render).
-7. Configure production SMTP if email is required.
+7. Configure email: set `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` and `DEFAULT_FROM_EMAIL` (the sender must be the same mailbox as `EMAIL_HOST_USER`, or Gmail will rewrite it) in Render's environment — the backend flips to SMTP automatically as soon as both credentials are present; leave them unset to print emails to the logs instead. Verify with a password-reset email.
 8. Use production Khalti/eSewa credentials for member dues; the owner-plan checkout remains simulated.
 9. Schedule reminders, Khalti reconciliation, database backups, and log monitoring.
 10. Configure persistent storage for `media/`; without a Render disk, uploaded files are ephemeral.
