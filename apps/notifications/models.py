@@ -78,15 +78,9 @@ class Notification(TenantScopedModel):
         """Persist the row and, when it's new, schedule its Web Push twin.
 
         The in-app row and the system notification are ONE event, so the
-        dispatch lives here instead of at each call site. Several flows create
-        notifications directly (payments, trainer assignment, freeze reviews,
-        the reminder cron) and used to skip push entirely — the user would see
-        the bell badge but never an OS-level notification.
-
-        Deferred with transaction.on_commit so a rolled-back row never wakes a
-        device, and wrapped so a push failure can never break the save that
-        already happened. ``services`` is imported lazily: it imports this
-        module, and updates (read flags, edits) must not re-push.
+        dispatch lives in ``schedule_push_on_commit`` — called here for every
+        insert, and directly by bulk flows (``bulk_create`` bypasses this
+        method entirely). Updates (read flags, edits) must never re-push.
         """
         is_new = self._state.adding
         # Resolve the FK only for inserts (updates — read flags, edits — never
@@ -94,28 +88,49 @@ class Notification(TenantScopedModel):
         # create(), so this rarely costs a query.
         recipient = self.recipient if (is_new and self.recipient_id) else None
         super().save(*args, **kwargs)
-        if recipient is None:
-            return
+        if recipient is not None:
+            schedule_push_on_commit(self, recipient)
 
-        from django.db import transaction
 
-        from apps.notifications import services
+def schedule_push_on_commit(notification, recipient=None):
+    """Schedule ``notification``'s Web Push twin for after the current commit.
 
-        def _push_after_commit():
-            try:
-                services.send_push(
-                    recipient,
-                    self.title,
-                    self.message,
-                    self.notification_type,
-                    self.pk,
-                )
-            except Exception as exc:  # noqa: BLE001 — push must never break the caller
-                logger.warning(
-                    f'Web Push dispatch for notification {self.pk} failed: {exc}',
-                )
+    One event, one dispatch: the in-app row and the OS-level notification are
+    the same thing, so the push is registered here instead of at each call
+    site. Two callers — ``Notification.save()`` for ordinary inserts, and
+    ``NotificationCreateSerializer`` directly, because ``bulk_create()``
+    bypasses ``save()`` and would otherwise deliver the bell badge without the
+    system notification (announcements looked exactly like that: messages
+    pushed, Notifications-page sends did not).
 
-        transaction.on_commit(_push_after_commit)
+    Deferred with ``transaction.on_commit`` so a rolled-back row never wakes a
+    device, and wrapped so a push failure can never break the operation that
+    already succeeded. ``services`` is imported lazily: it imports this module.
+    """
+    if not notification.recipient_id:
+        return
+    if recipient is None:
+        recipient = notification.recipient
+
+    from django.db import transaction
+
+    from apps.notifications import services
+
+    def _push_after_commit():
+        try:
+            services.send_push(
+                recipient,
+                notification.title,
+                notification.message,
+                notification.notification_type,
+                notification.pk,
+            )
+        except Exception as exc:  # noqa: BLE001 — push must never break the caller
+            logger.warning(
+                f'Web Push dispatch for notification {notification.pk} failed: {exc}',
+            )
+
+    transaction.on_commit(_push_after_commit)
 
 
 class PushSubscription(models.Model):

@@ -1060,7 +1060,7 @@ python manage.py test apps.reports.tests      # 60 tests
 | **lockers** | 46 | Inventory, bulk creation, assignment lifecycle, status synchronization, filters |
 | **members** | 44 | Profile CRUD, reactivation, own-profile access, validation |
 | **memberships** | 71 | Plans, assignment/renewal/cancel, freeze workflows, offers/promo codes, expiry sync, filters |
-| **notifications** | 90 | Notification types/read state/detail endpoint, scheduled services/commands, push payloads, model-level push parity hook + delivery test endpoint, group messaging and pins, WebSocket consumer (token handshake, keepalive, live fan-out) |
+| **notifications** | 91 | Notification types/read state/detail endpoint, scheduled services/commands, push payloads, model-level push parity hook (incl. the bulk-create/announcement path) + delivery test endpoint, group messaging and pins, WebSocket consumer (token handshake, keepalive, live fan-out) |
 | **payments** | 32 | Staff recording, member scoping, discounts, partial self-service payments, summaries and access control |
 | **progress** | 33 | Progress/PR CRUD, BMI, member stats, trainer/member scoping |
 | **reports** | 60 | JSON analytics plus CSV/Excel content, filters, empty datasets, and RBAC |
@@ -1068,7 +1068,7 @@ python manage.py test apps.reports.tests      # 60 tests
 | **trainers** | 34 | Trainer profiles, assignments, trainer-scoped members and notifications |
 | **workouts** | 72 | Exercise/template/version workflows, assignments/completions, messaging (incl. live push + WebSocket delivery on commit), exports, RBAC |
 
-**Total: 834 tests across 16 local apps.** Latest full run: **834 passed**, with Django system checks clean.
+**Total: 835 tests across 16 local apps.** Latest full run: **835 passed**, with Django system checks clean.
 
 ### Test Patterns Used
 

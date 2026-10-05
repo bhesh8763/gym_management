@@ -524,6 +524,49 @@ class NotificationListCreateViewTest(APITestCase):
         after_count = Notification.objects.filter(notification_type='ANNOUNCEMENT').count()
         self.assertEqual(after_count - before_count, 2)
 
+    @override_settings(
+        VAPID_PUBLIC_KEY='PUBKEY',
+        VAPID_PRIVATE_KEY='PRIVKEY',
+        VAPID_SUBJECT='mailto:test@example.com',
+    )
+    def test_owner_push_schedules_webpush_for_each_recipient(self):
+        """bulk_create bypasses save() — POST must schedule the push itself.
+
+        Regression: announcements created here reached the bell but never the
+        device (messages pushed, Notifications-page sends did not).
+        """
+        PushSubscription.objects.create(
+            user=self.member,
+            endpoint='https://push.example.com/ep-member',
+            p256dh='B' + 'a' * 110,
+            auth='b' * 50,
+        )
+        PushSubscription.objects.create(
+            user=self.other,
+            endpoint='https://push.example.com/ep-other',
+            p256dh='B' + 'c' * 110,
+            auth='d' * 50,
+        )
+        payload = {
+            'recipients': [self.member.pk, self.other.pk],
+            'notification_type': 'ANNOUNCEMENT',
+            'title': 'Big news',
+            'message': 'Something happened',
+        }
+        with mock.patch('pywebpush.webpush') as webpush_mock, \
+                self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(self.url, payload, format='json', **auth_header(self.owner))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(webpush_mock.call_count, 2)
+        endpoints = {
+            call.kwargs['subscription_info']['endpoint']
+            for call in webpush_mock.call_args_list
+        }
+        self.assertEqual(
+            endpoints,
+            {'https://push.example.com/ep-member', 'https://push.example.com/ep-other'},
+        )
+
 
 class UnreadCountViewTest(APITestCase):
 

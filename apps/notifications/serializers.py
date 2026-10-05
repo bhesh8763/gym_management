@@ -3,7 +3,7 @@ Serializers for the Notifications app.
 """
 from rest_framework import serializers
 
-from apps.notifications.models import Notification, PushSubscription
+from apps.notifications.models import Notification, PushSubscription, schedule_push_on_commit
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -67,7 +67,13 @@ class NotificationCreateSerializer(serializers.ModelSerializer):
             )
             for user in recipients
         ]
-        return Notification.objects.bulk_create(notifications)
+        created = Notification.objects.bulk_create(notifications)
+        # bulk_create() bypasses Model.save(), so the push-parity hook would
+        # never fire — announcements would reach the bell but not the device.
+        # Schedule each row explicitly: same event, same once-only guarantee.
+        for notification in created:
+            schedule_push_on_commit(notification)
+        return created
 
 
 class PushSubscriptionSerializer(serializers.ModelSerializer):
