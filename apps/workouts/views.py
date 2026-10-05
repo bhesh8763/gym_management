@@ -559,15 +559,11 @@ def _send_notification(sender, recipient, notification_type, title, message,
     )
 
     def _deliver_now():
-        # Both deliveries are deferred to commit so a rolled-back send never
-        # wakes anyone, and both are best-effort: the message row already
-        # exists, delivery problems must not fail the request.
-        try:
-            send_push(recipient, title, message, notification_type, notification.pk)
-        except Exception as exc:  # noqa: BLE001 — push must never break the send
-            logger.warning(
-                f'Web Push dispatch failed for notification {notification.pk}: {exc}',
-            )
+        # Deferred to commit so a rolled-back send never wakes anyone, and
+        # best-effort: the message row already exists, delivery problems must
+        # not fail the request. The Web Push twin is scheduled by
+        # Notification.save() on commit — this broadcast only wakes OPEN
+        # tabs; closed devices get the push from the model's hook.
         broadcast_to_user(recipient.pk, {
             'type': 'message.new',
             'kind': 'direct',

@@ -991,6 +991,149 @@ class NotifyPushHookTest(TestCase):
         webpush_mock.assert_not_called()
 
 
+class NotificationSavePushHookTest(TestCase):
+    """Notification.save() — the model-level parity hook.
+
+    Every NEW in-app row schedules exactly one Web Push after commit, so
+    flows that create notifications directly (payments, trainer assignment,
+    freeze reviews, the reminder cron) reach the device as a system
+    notification too; updates must never re-push.
+    """
+
+    def setUp(self):
+        self.member = make_user(role=User.Role.MEMBER)
+        self.sub = PushSubscription.objects.create(
+            user=self.member,
+            endpoint='https://push.example.com/ep-save',
+            p256dh='B' + 'a' * 110,
+            auth='b' * 50,
+        )
+
+    @override_settings(
+        VAPID_PUBLIC_KEY='PUBKEY',
+        VAPID_PRIVATE_KEY='PRIVKEY',
+        VAPID_SUBJECT='mailto:test@example.com',
+    )
+    def test_direct_create_schedules_push_after_commit(self):
+        """A bare Notification.objects.create() — no notify() wrapper — pushes."""
+        with mock.patch('pywebpush.webpush') as webpush_mock, \
+                self.captureOnCommitCallbacks(execute=True):
+            notification = Notification.objects.create(
+                recipient=self.member,
+                notification_type=Notification.NotificationType.PAYMENT_RECEIVED,
+                title='Payment received',
+                message='NPR 1,500 received.',
+            )
+        self.assertIsNotNone(notification.pk)
+        webpush_mock.assert_called_once()
+        kwargs = webpush_mock.call_args.kwargs
+        payload = json.loads(kwargs['data'])
+        self.assertEqual(payload['title'], 'Payment received')
+        self.assertIn(f'notification-detail.html?id={notification.pk}', payload['url'])
+        self.assertEqual(kwargs['subscription_info']['endpoint'], self.sub.endpoint)
+
+    @override_settings(
+        VAPID_PUBLIC_KEY='PUBKEY',
+        VAPID_PRIVATE_KEY='PRIVKEY',
+        VAPID_SUBJECT='mailto:test@example.com',
+    )
+    def test_saving_an_existing_row_does_not_push_again(self):
+        with mock.patch('pywebpush.webpush') as webpush_mock, \
+                self.captureOnCommitCallbacks(execute=True):
+            notification = Notification.objects.create(
+                recipient=self.member,
+                notification_type=Notification.NotificationType.GENERAL,
+                title='T',
+                message='B',
+            )
+        self.assertEqual(webpush_mock.call_count, 1)
+
+        with mock.patch('pywebpush.webpush') as update_mock, \
+                self.captureOnCommitCallbacks(execute=True):
+            notification.mark_read()
+        update_mock.assert_not_called()
+
+    @override_settings(VAPID_PUBLIC_KEY='', VAPID_PRIVATE_KEY='')
+    def test_unconfigured_server_creates_the_row_without_pushing(self):
+        with mock.patch('pywebpush.webpush') as webpush_mock, \
+                self.captureOnCommitCallbacks(execute=True):
+            notification = Notification.objects.create(
+                recipient=self.member,
+                notification_type=Notification.NotificationType.GENERAL,
+                title='T',
+                message='B',
+            )
+        self.assertIsNotNone(notification.pk)
+        webpush_mock.assert_not_called()
+
+
+class PushTestEndpointTests(APITestCase):
+    """POST /api/notifications/push/test/ — the one-tap delivery probe."""
+
+    url = '/api/notifications/push/test/'
+
+    def setUp(self):
+        self.member = make_user(role=User.Role.MEMBER)
+
+    def test_requires_authentication(self):
+        r = self.client.post(self.url)
+        self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @override_settings(
+        VAPID_PUBLIC_KEY='PUBKEY',
+        VAPID_PRIVATE_KEY='PRIVKEY',
+        VAPID_SUBJECT='mailto:test@example.com',
+    )
+    def test_reports_delivery_to_registered_devices(self):
+        sub = PushSubscription.objects.create(
+            user=self.member,
+            endpoint='https://push.example.com/ep-test',
+            p256dh='B' + 'a' * 110,
+            auth='b' * 50,
+        )
+        self.client.credentials(**auth_header(self.member))
+        with mock.patch('pywebpush.webpush') as webpush_mock:
+            r = self.client.post(self.url)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['subscriptions'], 1)
+        self.assertEqual(r.data['delivered'], 1)
+        self.assertTrue(r.data['configured'])
+        webpush_mock.assert_called_once()
+        self.assertEqual(
+            webpush_mock.call_args.kwargs['subscription_info']['endpoint'],
+            sub.endpoint,
+        )
+
+    @override_settings(
+        VAPID_PUBLIC_KEY='PUBKEY',
+        VAPID_PRIVATE_KEY='PRIVKEY',
+        VAPID_SUBJECT='mailto:test@example.com',
+    )
+    def test_reports_zero_when_device_never_subscribed(self):
+        self.client.credentials(**auth_header(self.member))
+        with mock.patch('pywebpush.webpush') as webpush_mock:
+            r = self.client.post(self.url)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['subscriptions'], 0)
+        self.assertEqual(r.data['delivered'], 0)
+        webpush_mock.assert_not_called()
+
+    @override_settings(VAPID_PUBLIC_KEY='', VAPID_PRIVATE_KEY='')
+    def test_reports_unconfigured_server(self):
+        PushSubscription.objects.create(
+            user=self.member,
+            endpoint='https://push.example.com/ep-nc',
+            p256dh='B' + 'a' * 110,
+            auth='b' * 50,
+        )
+        self.client.credentials(**auth_header(self.member))
+        r = self.client.post(self.url)
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['subscriptions'], 1)
+        self.assertEqual(r.data['delivered'], 0)
+        self.assertFalse(r.data['configured'])
+
+
 class MessageConsumerTests(TransactionTestCase):
     """WebSocket /ws/messages/: token handshake, keepalive, live fan-out.
 

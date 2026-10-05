@@ -975,7 +975,9 @@ class MessageLiveDeliveryTestCase(WorkoutAPITestCase):
 
     def test_direct_message_pushes_and_broadcasts_to_recipient(self):
         self.client.force_authenticate(self.owner)
-        with mock.patch('apps.workouts.views.send_push') as push_mock, \
+        # Push now dispatches from Notification.save() via services — the
+        # direct-message flow must keep its delivery (and only one push).
+        with mock.patch('apps.notifications.services.send_push') as push_mock, \
                 mock.patch('apps.workouts.views.broadcast_to_user') as broadcast_mock:
             with self.captureOnCommitCallbacks(execute=True):
                 r = self.client.post(
@@ -1002,7 +1004,8 @@ class MessageLiveDeliveryTestCase(WorkoutAPITestCase):
 
     def test_member_message_to_assigned_trainer_delivers_live(self):
         self.client.force_authenticate(self.member)
-        with mock.patch('apps.workouts.views.send_push') as push_mock, \
+        # Push dispatch lives in Notification.save() now (see models.py).
+        with mock.patch('apps.notifications.services.send_push') as push_mock, \
                 mock.patch('apps.workouts.views.broadcast_to_user') as broadcast_mock:
             with self.captureOnCommitCallbacks(execute=True):
                 r = self.client.post(

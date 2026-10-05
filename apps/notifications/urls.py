@@ -7,6 +7,7 @@ from apps.notifications.views import (
     NotificationListCreateView,
     PushPublicKeyView,
     PushSubscribeView,
+    PushTestView,
     PushUnsubscribeView,
     UnreadCountView,
 )
@@ -19,6 +20,7 @@ urlpatterns = [
     path('push/public-key/', PushPublicKeyView.as_view(), name='notification-push-key'),
     path('push/subscribe/', PushSubscribeView.as_view(), name='notification-push-subscribe'),
     path('push/unsubscribe/', PushUnsubscribeView.as_view(), name='notification-push-unsubscribe'),
+    path('push/test/', PushTestView.as_view(), name='notification-push-test'),
     path('<int:pk>/read/', MarkAsReadView.as_view(), name='notification-mark-read'),
     path('<int:pk>/', NotificationDeleteView.as_view(), name='notification-delete'),
 ]

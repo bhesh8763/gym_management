@@ -2,11 +2,15 @@
 Notification model for in-system alerts to users.
 Types: membership renewal, payment due, inactivity, general announcements.
 """
+import logging
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
 from apps.gyms.models import TenantScopedModel
+
+logger = logging.getLogger(__name__)
 
 
 class Notification(TenantScopedModel):
@@ -69,6 +73,49 @@ class Notification(TenantScopedModel):
             self.is_read = True
             self.read_at = timezone.now()
             self.save(update_fields=['is_read', 'read_at'])
+
+    def save(self, *args, **kwargs):
+        """Persist the row and, when it's new, schedule its Web Push twin.
+
+        The in-app row and the system notification are ONE event, so the
+        dispatch lives here instead of at each call site. Several flows create
+        notifications directly (payments, trainer assignment, freeze reviews,
+        the reminder cron) and used to skip push entirely — the user would see
+        the bell badge but never an OS-level notification.
+
+        Deferred with transaction.on_commit so a rolled-back row never wakes a
+        device, and wrapped so a push failure can never break the save that
+        already happened. ``services`` is imported lazily: it imports this
+        module, and updates (read flags, edits) must not re-push.
+        """
+        is_new = self._state.adding
+        # Resolve the FK only for inserts (updates — read flags, edits — never
+        # re-push); the instance is usually already cached by the caller's
+        # create(), so this rarely costs a query.
+        recipient = self.recipient if (is_new and self.recipient_id) else None
+        super().save(*args, **kwargs)
+        if recipient is None:
+            return
+
+        from django.db import transaction
+
+        from apps.notifications import services
+
+        def _push_after_commit():
+            try:
+                services.send_push(
+                    recipient,
+                    self.title,
+                    self.message,
+                    self.notification_type,
+                    self.pk,
+                )
+            except Exception as exc:  # noqa: BLE001 — push must never break the caller
+                logger.warning(
+                    f'Web Push dispatch for notification {self.pk} failed: {exc}',
+                )
+
+        transaction.on_commit(_push_after_commit)
 
 
 class PushSubscription(models.Model):

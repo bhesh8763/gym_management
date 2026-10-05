@@ -21,7 +21,6 @@ from typing import Optional
 
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from asgiref.sync import async_to_sync
@@ -298,16 +297,9 @@ def notify(
         related_payment_id=related_payment_id,
     )
 
-    # 2. Web Push to the recipient's installed devices. Deferred until the
-    #    surrounding transaction commits (never push for a rolled-back row)
-    #    and wrapped so a push failure can never break the caller.
-    def _push_now():
-        try:
-            send_push(recipient, title, message, notification_type, notification.pk)
-        except Exception as exc:  # noqa: BLE001 — push must never break the caller  # pragma: no cover
-            logger.warning(f'Web Push dispatch failed for user {getattr(recipient, "pk", recipient)}: {exc}')
-
-    transaction.on_commit(_push_now)
+    # 2. Web Push is dispatched by Notification.save() — the model schedules
+    #    it on commit for every NEW row, so the in-app row and the system
+    #    notification can never drift apart, whoever created the row.
 
     # 3. Send email if requested
     if send_email and recipient.email:
