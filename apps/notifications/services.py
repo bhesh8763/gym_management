@@ -14,6 +14,7 @@ Usage:
         send_sms=False,
     )
 """
+import asyncio
 import json
 import logging
 from typing import Optional
@@ -23,6 +24,8 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 from apps.notifications.models import Notification, PushSubscription
 
@@ -180,6 +183,61 @@ def send_push(
         except Exception as exc:  # noqa: BLE001 — must never raise to the caller
             logger.warning(f'Web Push error for user {recipient.pk}: {exc}')
     return delivered
+
+
+def _broadcast_done(future):
+    """Log (never raise) failures of a fire-and-forget broadcast task."""
+    try:
+        exc = future.exception()
+    except Exception:  # noqa: BLE001 — cancelled future, nothing to report
+        return
+    if exc is not None:
+        logger.warning(f'Realtime broadcast task failed: {exc}')
+
+
+def broadcast_to_user(user_id, payload):
+    """Fan an event out to every WebSocket tab of ``user_id``.
+
+    Best-effort and synchronous: callers wrap it in ``transaction.on_commit``
+    next to their Web Push dispatch so DB-derived events are only broadcast
+    once the rows they describe actually exist.
+
+    When the recipient has a live tab in this process, the group_send is
+    scheduled ON that tab's event loop (run_coroutine_threadsafe) — a blind
+    cross-thread put would not wake a loop parked in select(), delaying the
+    message until some unrelated timer or socket activity. With no tab
+    connected the send is a group no-op; either way a missing or misbehaving
+    channel layer is logged and swallowed — realtime delivery must never
+    break the send that triggered it.
+    """
+    try:
+        from channels.layers import get_channel_layer
+
+        from apps.notifications.consumers import loops_for_user
+
+        layer = get_channel_layer()
+        if layer is None:
+            return
+        group = f'ws_user_{user_id}'
+        message = {'type': 'message.new', 'payload': payload}
+        loops = loops_for_user(user_id)
+        if not loops:
+            # Nobody is connected: the group is empty and this is a no-op
+            # (kept for semantics in case a member exists without a loop).
+            async_to_sync(layer.group_send)(group, message)
+            return
+        for loop in loops:
+            try:
+                future = asyncio.run_coroutine_threadsafe(
+                    layer.group_send(group, message), loop,
+                )
+                future.add_done_callback(_broadcast_done)
+            except RuntimeError:
+                # Loop closed between the snapshot and scheduling — that tab
+                # vanished; any remaining loops still get the message.
+                continue
+    except Exception as exc:  # noqa: BLE001 — realtime must never break the caller
+        logger.warning(f'Realtime broadcast to user {user_id} failed: {exc}')
 
 
 def notify(

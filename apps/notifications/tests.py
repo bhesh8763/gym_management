@@ -20,23 +20,29 @@ Coverage:
       * DELETE /api/notifications/<id>/
 """
 import json
+import threading
 import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 from unittest import mock
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from channels.routing import URLRouter
+from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from apps.attendance.models import Attendance
 from apps.memberships.models import Membership, MembershipPlan
 from apps.notifications.models import Notification, PushSubscription
-from apps.notifications.services import notify, send_push
+from apps.notifications.routing import websocket_urlpatterns
+from apps.notifications.services import broadcast_to_user, notify, send_push
 from apps.payments.models import Payment
 from apps.workouts.models import (
     WorkoutAssignment,
@@ -983,3 +989,171 @@ class NotifyPushHookTest(TestCase):
             )
         self.assertEqual(Notification.objects.filter(recipient=self.member).count(), 1)
         webpush_mock.assert_not_called()
+
+
+class MessageConsumerTests(TransactionTestCase):
+    """WebSocket /ws/messages/: token handshake, keepalive, live fan-out.
+
+    The connection carries server -> client events only; every open tab of
+    the same user joins the same ws_user_<id> channel-layer group.
+
+    TransactionTestCase is required here (not TestCase): the consumer's
+    database_sync_to_async runs close_old_connections() around its token
+    lookup, which would close a TestCase's wrapped connection out from
+    under the test. Committed rows are also visible to the worker thread
+    that validates the token, regardless of thread-affinity.
+
+    serialized_rollback restores migration-seeded rows after each flush so
+    the rest of the suite sees the same database state as before.
+    """
+
+    serialized_rollback = True
+
+    def _communicator(self, token=None, origin=None):
+        headers = [(b'origin', origin.encode())] if origin else []
+        path = '/ws/messages/' + (f'?token={token}' if token else '')
+        return WebsocketCommunicator(
+            URLRouter(websocket_urlpatterns), path, headers=headers,
+        )
+
+    def test_connect_with_valid_token_is_accepted_and_greets(self):
+        user = make_user(role=User.Role.MEMBER)
+
+        async def scenario():
+            communicator = self._communicator(str(AccessToken.for_user(user)))
+            accepted, _ = await communicator.connect()
+            self.assertTrue(accepted)
+            hello = await communicator.receive_json_from()
+            self.assertEqual(hello, {'type': 'connected', 'user_id': user.pk})
+            await communicator.disconnect()
+
+        async_to_sync(scenario)()
+
+    def test_connect_refused_without_token_or_with_garbage_token(self):
+        async def scenario():
+            for token in (None, 'not-a-jwt'):
+                communicator = self._communicator(token)
+                accepted, close_code = await communicator.connect()
+                self.assertFalse(accepted)
+                self.assertEqual(close_code, 4401)
+
+        async_to_sync(scenario)()
+
+    def test_connect_refused_with_expired_token(self):
+        user = make_user(role=User.Role.MEMBER)
+        token = AccessToken.for_user(user)
+        token.set_exp(lifetime=timedelta(hours=-1))
+
+        async def scenario():
+            communicator = self._communicator(str(token))
+            accepted, close_code = await communicator.connect()
+            self.assertFalse(accepted)
+            self.assertEqual(close_code, 4401)
+
+        async_to_sync(scenario)()
+
+    def test_broadcast_reaches_every_open_tab_of_that_user_only(self):
+        user = make_user(role=User.Role.MEMBER)
+        other = make_user(role=User.Role.MEMBER)
+        payload = {
+            'type': 'message.new',
+            'kind': 'direct',
+            'notification_id': 7,
+            'preview': 'Live hello',
+        }
+
+        async def scenario():
+            first = self._communicator(str(AccessToken.for_user(user)))
+            second = self._communicator(str(AccessToken.for_user(user)))
+            stranger = self._communicator(str(AccessToken.for_user(other)))
+            for communicator in (first, second, stranger):
+                accepted, _ = await communicator.connect()
+                self.assertTrue(accepted)
+                await communicator.receive_json_from()  # 'connected' hello
+
+            # Same shape services.broadcast_to_user() emits for ws_user_<id>.
+            await get_channel_layer().group_send(
+                f'ws_user_{user.pk}',
+                {'type': 'message.new', 'payload': payload},
+            )
+            for communicator in (first, second):
+                received = await communicator.receive_json_from(timeout=2)
+                self.assertEqual(received, payload)
+            # The other user's socket stays quiet: only a ping gets an answer.
+            await stranger.send_json_to({'type': 'ping'})
+            self.assertEqual(
+                await stranger.receive_json_from(timeout=2), {'type': 'pong'},
+            )
+
+            for communicator in (first, second, stranger):
+                await communicator.disconnect()
+
+        async_to_sync(scenario)()
+
+    def test_broadcast_to_user_helper_reaches_connected_client(self):
+        """End-to-end: services.broadcast_to_user -> consumer -> browser.
+
+        The helper runs on its own thread with its own temporary event loop —
+        the same shape as a sync request thread hitting the real server while
+        the consumer lives on the server's loop.
+        """
+        user = make_user(role=User.Role.MEMBER)
+        joined = threading.Event()
+        payload = {
+            'type': 'message.new', 'kind': 'group', 'group_id': 3,
+            'preview': 'From the helper',
+        }
+
+        def broadcast_when_joined():
+            if not joined.wait(timeout=10):
+                raise AssertionError('consumer never joined ws_user_<id>')
+            broadcast_to_user(user.pk, payload)
+
+        broadcaster = threading.Thread(target=broadcast_when_joined)
+        broadcaster.start()
+        try:
+            async def scenario():
+                communicator = self._communicator(str(AccessToken.for_user(user)))
+                accepted, _ = await communicator.connect()
+                self.assertTrue(accepted)
+                await communicator.receive_json_from()  # 'connected' hello
+                joined.set()  # group_add already happened before the greeting
+                received = await communicator.receive_json_from(timeout=3)
+                await communicator.disconnect()
+                return received
+
+            received = async_to_sync(scenario)()
+        finally:
+            broadcaster.join(timeout=10)
+
+        self.assertEqual(received, payload)
+        # The consumer unregistered its loop on disconnect: no leak.
+        from apps.notifications.consumers import loops_for_user
+        self.assertEqual(loops_for_user(user.pk), [])
+
+    def test_foreign_origin_is_rejected_by_asgi_router(self):
+        """AllowedHostsOriginValidator (cross-site WebSocket hijacking)."""
+        from channels.security.websocket import AllowedHostsOriginValidator
+        from apps.notifications.routing import websocket_urlpatterns as routes
+
+        user = make_user(role=User.Role.MEMBER)
+        token = str(AccessToken.for_user(user))
+        app = AllowedHostsOriginValidator(URLRouter(routes))
+
+        async def scenario():
+            evil = WebsocketCommunicator(
+                app, f'/ws/messages/?token={token}',
+                headers=[(b'origin', b'http://evil.example')],
+            )
+            accepted, _ = await evil.connect()
+            self.assertFalse(accepted)
+
+            good = WebsocketCommunicator(
+                app, f'/ws/messages/?token={token}',
+                headers=[(b'origin', b'http://localhost')],
+            )
+            accepted, _ = await good.connect()
+            self.assertTrue(accepted)
+            await good.disconnect()
+
+        async_to_sync(scenario)()

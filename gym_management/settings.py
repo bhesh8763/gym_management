@@ -67,6 +67,7 @@ THIRD_PARTY_APPS = [
     'allauth.socialaccount.providers.facebook',
     'dj_rest_auth',
     'dj_rest_auth.registration',
+    'channels',
 ]
 
 LOCAL_APPS = [
@@ -89,6 +90,18 @@ LOCAL_APPS = [
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+# ─── Realtime messaging (Django Channels) ─────────────────────────────────────
+# InMemoryChannelLayer keeps the WebSocket fan-out inside this process, which
+# matches Render's single-instance free plan (no Redis required). If the
+# service ever scales past one worker/instance, switch to
+# 'channels.layers.RedisChannelLayer' with a shared Redis URL so every
+# process can reach every connection.
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 # ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
 MIDDLEWARE = [

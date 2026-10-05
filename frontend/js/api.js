@@ -1639,3 +1639,19 @@ function openChangePasswordModal() {
   document.getElementById('cpError').classList.add('d-none');
   new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
 }
+// ── Realtime (WebSocket) messaging ──────────────────────────────────────────
+// Lazy-load js/realtime.js so every signed-in page keeps its bell badge and
+// conversation list live without adding a script tag to all pages. The three
+// messaging pages include the tag explicitly as well; realtime.js guards
+// against being executed twice, so the double include is harmless.
+(function loadRealtime() {
+  try {
+    if (typeof getAccessToken !== 'function' || !getAccessToken()) return;
+    const s = document.createElement('script');
+    s.src = 'js/realtime.js';
+    s.defer = true;
+    document.head.appendChild(s);
+  } catch (e) {
+    // Realtime is optional — a failed include must never break the app.
+  }
+})();

@@ -47,6 +47,7 @@ The frontend and API are served from the same HTTPS origin. The health endpoint 
   - [Rate Limiting](#rate-limiting)
   - [Dark Mode](#dark-mode)
   - [Notifications System](#notifications-system)
+  - [Realtime Messaging (WebSockets)](#realtime-messaging-websockets)
   - [Scheduled Tasks](#scheduled-tasks)
 - [Testing](#-testing)
 - [Deployment](#-deployment)
@@ -436,7 +437,7 @@ The password-based `/api/auth/register/` endpoint is the owner-onboarding path. 
 | Database | PostgreSQL 14+ (`psycopg2`) |
 | Auth | SimpleJWT access/refresh rotation, token blacklist/versioning, django-allauth + dj-rest-auth |
 | Frontend | Vanilla HTML/CSS/JavaScript; Bootstrap 5 and Bootstrap Icons via CDN |
-| Production serving | Gunicorn + WhiteNoise; same-origin frontend/API |
+| Production serving | daphne (ASGI: HTTP + WebSocket) + WhiteNoise; same-origin frontend/API |
 | Payments | Simulated owner-plan checkout; eSewa/Khalti sandbox for member dues |
 | Imports/exports | `openpyxl` workbooks, CSV, ReportLab PDF receipts |
 | QR / images | `qrcode`, Pillow |
@@ -791,6 +792,11 @@ In the tables below, **staff-side** follows the application's `IsAnyStaffRole` p
 | GET | `/<id>/` | Authenticated / own notification | Fetch one notification (backs the detail page) |
 | DELETE | `/<id>/` | Owner/Staff or owning recipient | Delete a notification |
 
+**WebSocket (realtime, not REST):** `WS /ws/messages/?token=<JWT access token>`
+— server-pushed `message.new` events for open chat tabs (see
+[Realtime Messaging](#realtime-messaging-websockets)). Send paths stay plain
+HTTPS POST; only delivery back to the recipient is live.
+
 #### Offers & Promo Codes (`/api/memberships/offers/`, `/api/memberships/promo-codes/`)
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
@@ -946,6 +952,51 @@ The frontend supports light/dark mode with a toggle button in the topbar and def
 
 ---
 
+### Realtime Messaging (WebSockets)
+
+Messages reach the targeted user **live** — two delivery layers, both fired
+from the send path inside `transaction.on_commit` (a rolled-back send never
+wakes anyone):
+
+| Layer | Reaches | Mechanism |
+|-------|---------|-----------|
+| WebSocket | every open browser tab of the recipient | Django Channels consumer at `WS /ws/messages/` |
+| Web Push | the app when it's closed | `pywebpush` through `notifications.services.send_push` |
+
+**How it fits together:**
+
+- **Send stays HTTPS.** `POST /api/workouts/messages/direct/`, `.../message-trainer/`
+  and `POST /api/workouts/message-groups/<id>/messages/` create the rows, then
+  `_send_notification()` / `MessageGroupSendView` call
+  `services.send_push()` + `services.broadcast_to_user()` after commit.
+- **`broadcast_to_user(user_id, payload)`** fans a `message.new` event out to
+  the `ws_user_<id>` channel-layer group. If the recipient has a live tab, the
+  `group_send` is scheduled **on that tab's event loop**
+  (`asyncio.run_coroutine_threadsafe`) — a blind cross-thread put would resolve
+  the waiter future without waking a loop parked in `select()`, delaying
+  delivery until some unrelated timer or socket activity.
+- **The consumer** (`apps/notifications/consumers.py`) authenticates at
+  handshake time from `?token=<JWT>` (refused with close code 4401 when
+  missing/expired), joins `ws_user_<id>`, and only ever pushes server →
+  client (`connected`, `message.new`, `pong`). A ping every 30 s doubles as
+  Render free-tier inbound traffic so an open chat keeps the instance awake;
+  no server traffic for 90 s triggers a client reconnect.
+- **The client** (`frontend/js/realtime.js`) is loaded explicitly by
+  `messages.html`, `my-messages.html` and `trainer-messages.html` (and lazily
+  by `api.js` everywhere else for the bell badge). On `message.new` it calls
+  the page's own `loadMessages()` (open conversation included) and
+  `loadTopbarNotifications()`. While the socket is down and the tab is
+  visible it polls every 8 s, so updates are slower but never silent.
+- **Channel layer:** `InMemoryChannelLayer` (no Redis) — correct for the
+  single-process daphne deployment on Render's free plan; switch to
+  `RedisChannelLayer` if the service ever scales past one worker/instance.
+  The ASGI entrypoint is `gym_management.asgi.py` (HTTP → Django,
+  WebSocket → `AllowedHostsOriginValidator` → consumer), served by **daphne**
+  in production and by `manage.py runserver` in development (Channels
+  auto-switches runserver to ASGI once `channels` is in `INSTALLED_APPS`).
+
+---
+
 ### Scheduled Tasks
 
 Run the operational commands from an external scheduler (Render Cron, cron, or Windows Task Scheduler):
@@ -1007,15 +1058,15 @@ python manage.py test apps.reports.tests      # 60 tests
 | **lockers** | 46 | Inventory, bulk creation, assignment lifecycle, status synchronization, filters |
 | **members** | 44 | Profile CRUD, reactivation, own-profile access, validation |
 | **memberships** | 71 | Plans, assignment/renewal/cancel, freeze workflows, offers/promo codes, expiry sync, filters |
-| **notifications** | 77 | Notification types/read state/detail endpoint, scheduled services/commands, push payloads, group messaging and pins |
+| **notifications** | 83 | Notification types/read state/detail endpoint, scheduled services/commands, push payloads, group messaging and pins, WebSocket consumer (token handshake, keepalive, live fan-out) |
 | **payments** | 32 | Staff recording, member scoping, discounts, partial self-service payments, summaries and access control |
 | **progress** | 33 | Progress/PR CRUD, BMI, member stats, trainer/member scoping |
 | **reports** | 60 | JSON analytics plus CSV/Excel content, filters, empty datasets, and RBAC |
 | **staff** | 71 | Staff profiles/actions, shift templates and weekly schedules, roster, password reset, leave lifecycle/review/date rules |
 | **trainers** | 34 | Trainer profiles, assignments, trainer-scoped members and notifications |
-| **workouts** | 65 | Exercise/template/version workflows, assignments/completions, messaging, exports, RBAC |
+| **workouts** | 68 | Exercise/template/version workflows, assignments/completions, messaging (incl. live push + WebSocket delivery on commit), exports, RBAC |
 
-**Total: 801 tests across 16 local apps.** Latest full run: **801 passed**, with Django system checks clean.
+**Total: 810 tests across 16 local apps.** Latest full run: **810 passed**, with Django system checks clean.
 
 ### Test Patterns Used
 
@@ -1051,7 +1102,7 @@ Admin:     https://fitcore-k5zr.onrender.com/admin/
 3. Set `ALLOWED_HOSTS=fitcore-k5zr.onrender.com`, `CSRF_TRUSTED_ORIGINS=https://fitcore-k5zr.onrender.com`, and `FRONTEND_URL=https://fitcore-k5zr.onrender.com`.
 4. Run `python manage.py migrate --noinput` during deployment.
 5. Run `python manage.py collectstatic --noinput`; WhiteNoise serves `frontend/` and collected static assets.
-6. Bind Gunicorn to the platform-assigned port (`0.0.0.0:$PORT` on Render).
+6. Bind daphne (the ASGI server — HTTP + WebSocket) to the platform-assigned port (`-b 0.0.0.0 -p $PORT` on Render).
 7. Configure production SMTP if email is required.
 8. Use production Khalti/eSewa credentials for member dues; the owner-plan checkout remains simulated.
 9. Schedule reminders, Khalti reconciliation, database backups, and log monitoring.
@@ -1067,20 +1118,25 @@ The current service at `fitcore-k5zr.onrender.com` was created from `render.yaml
 2. Normal deployments run from the connected branch's auto-deploy configuration. For a first-time setup only, choose **New → Blueprint** and apply `render.yaml`.
 3. Render maps the managed database connection into the app's `DB_*` variables.
 4. The build runs `pip install -r requirements.txt && python manage.py collectstatic --noinput`.
-5. Startup runs migrations, then `gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT`.
+5. Startup runs migrations, then `daphne -b 0.0.0.0 -p $PORT gym_management.asgi:application` (ASGI — the WebSocket realtime endpoint needs it; gunicorn is WSGI-only).
 6. Render health-checks `/api/health/`, which also verifies database connectivity.
 
 The blueprint currently uses free plans. Free web services sleep after inactivity, and the free database is time-limited. If Render changes the generated service hostname, update `FRONTEND_URL`; `settings.py` automatically appends `RENDER_EXTERNAL_HOSTNAME` to host and CSRF allowlists.
 
-### Generic WSGI Deployment
+### Generic ASGI Deployment
 
 ```bash
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput
-gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT --workers 4
+daphne -b 0.0.0.0 -p $PORT gym_management.asgi:application
 ```
 
-There is no committed Dockerfile. The deployment path currently provided by the repository is the Render blueprint plus Gunicorn/WhiteNoise.
+daphne serves HTTP and WebSockets from the same process (the realtime
+messaging endpoint `/ws/messages/` requires ASGI). Gunicorn stays pinned in
+`requirements.txt` as a WSGI-only fallback for setups that don't need
+WebSockets: `gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT`.
+
+There is no committed Dockerfile. The deployment path currently provided by the repository is the Render blueprint plus daphne/WhiteNoise.
 
 ---
 
@@ -1315,7 +1371,7 @@ psql -d postgres -c "DROP DATABASE IF EXISTS test_gym_db;"
 - Confirm the live application is available at `https://fitcore-k5zr.onrender.com` and check `https://fitcore-k5zr.onrender.com/api/health/`.
 - Verify the public hostname in `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`.
 - `RENDER_EXTERNAL_HOSTNAME` is automatically added by settings when Render provides it.
-- Confirm Gunicorn binds to `0.0.0.0:$PORT` and `/api/health/` is reachable.
+- Confirm daphne binds to `0.0.0.0:$PORT` and `/api/health/` is reachable.
 
 **Static frontend or assets return 404 in production**
 - Run `python manage.py collectstatic --noinput`.

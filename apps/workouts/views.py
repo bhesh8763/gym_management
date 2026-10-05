@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.http import HttpResponse
 import csv
+import logging
 from datetime import date
 
 from apps.accounts.permissions import IsOwnerOrStaff, IsOwnerOrStaffOrTrainer
@@ -35,10 +36,13 @@ from .serializers import (
     WorkoutTemplateVersionSerializer,
 )
 from apps.notifications.models import Notification, MessageGroup, GroupMessage, PinnedConversation
+from apps.notifications.services import broadcast_to_user, send_push
 from apps.progress.models import PersonalRecord
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Exercise Library ───────────────────────────────────────────────────────
@@ -531,7 +535,8 @@ class AssignmentCancelView(APIView):
 def _send_notification(sender, recipient, notification_type, title, message,
                        related_membership_id=None, related_payment_id=None,
                        gym=None, branch=None):
-    """Create a tenant-scoped notification with an explicit sender."""
+    """Create a tenant-scoped notification with an explicit sender and wake
+    the recipient live: Web Push for a closed app, WebSocket for open tabs."""
     if gym is None:
         membership = recipient.gym_memberships.filter(
             status=GymMembership.Status.ACTIVE,
@@ -541,7 +546,7 @@ def _send_notification(sender, recipient, notification_type, title, message,
             if branch is None:
                 access = membership.branch_memberships.select_related('branch').first()
                 branch = access.branch if access else None
-    return Notification.objects.create(
+    notification = Notification.objects.create(
         gym=gym,
         branch=branch,
         sender=sender,
@@ -552,6 +557,29 @@ def _send_notification(sender, recipient, notification_type, title, message,
         related_membership_id=related_membership_id,
         related_payment_id=related_payment_id,
     )
+
+    def _deliver_now():
+        # Both deliveries are deferred to commit so a rolled-back send never
+        # wakes anyone, and both are best-effort: the message row already
+        # exists, delivery problems must not fail the request.
+        try:
+            send_push(recipient, title, message, notification_type, notification.pk)
+        except Exception as exc:  # noqa: BLE001 — push must never break the send
+            logger.warning(
+                f'Web Push dispatch failed for notification {notification.pk}: {exc}',
+            )
+        broadcast_to_user(recipient.pk, {
+            'type': 'message.new',
+            'kind': 'direct',
+            'notification_id': notification.pk,
+            'notification_type': notification_type,
+            'sender_name': sender.get_full_name() if sender else '',
+            'title': title,
+            'preview': message[:140],
+        })
+
+    transaction.on_commit(_deliver_now)
+    return notification
 
 
 class TrainerMessageView(APIView):
@@ -1186,6 +1214,35 @@ class MessageGroupSendView(APIView):
             message=message[:500],
         )
         msg.read_by.add(request.user)  # the sender has read their own message
+
+        # Live delivery to every OTHER member: Web Push (closed app) plus one
+        # WebSocket event per open tab. No Notification rows are created —
+        # group threads keep their own read state through read_by, so the bell
+        # badge keeps counting only direct notifications.
+        sender_name = request.user.get_full_name()
+        group_name = group.name
+
+        def _deliver_group_now():
+            members = group.members.exclude(pk=request.user.pk).filter(is_active=True)
+            for member in members:
+                try:
+                    send_push(member, f'New message in {group_name}', message[:200])
+                except Exception as exc:  # noqa: BLE001 — never break the send
+                    logger.warning(
+                        f'Web Push dispatch to user {member.pk} failed: {exc}',
+                    )
+                broadcast_to_user(member.pk, {
+                    'type': 'message.new',
+                    'kind': 'group',
+                    'group_id': group.pk,
+                    'group_name': group_name,
+                    'message_id': msg.pk,
+                    'sender_name': sender_name,
+                    'title': group_name,
+                    'preview': message[:140],
+                })
+
+        transaction.on_commit(_deliver_group_now)
         return Response({'id': msg.pk, 'detail': 'Sent.'}, status=status.HTTP_201_CREATED)
 
 

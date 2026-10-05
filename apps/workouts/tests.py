@@ -12,6 +12,8 @@ Coverage:
     - Duplicate() produces an independent Draft copy, not a shared reference
 """
 from datetime import date, timedelta
+from unittest import mock
+
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
@@ -865,3 +867,103 @@ class PersonalRecordDetectionTestCase(APITestCase):
         _detect_personal_records(log, self.member, self.assignment)
 
         self.assertFalse(self.member.personal_records.exists())
+
+class MessageLiveDeliveryTestCase(WorkoutAPITestCase):
+    """Every send wakes the recipient: Web Push (closed app) + WebSocket
+    (open tabs). Both deliveries run inside transaction.on_commit, so the
+    tests capture and execute commit callbacks around each request."""
+
+    def setUp(self):
+        self.owner = make_user('owner@gym.com', role=User.Role.OWNER)
+        self.trainer = make_user('trainer@gym.com', role=User.Role.TRAINER)
+        self.member = make_user('member@gym.com', role=User.Role.MEMBER)
+        self.member2 = make_user('member2@gym.com', role=User.Role.MEMBER)
+        self.template = WorkoutTemplate.objects.create(
+            name='PPL', trainer=self.trainer, duration_weeks=4,
+        )
+        for m in (self.member, self.member2):
+            WorkoutAssignment.objects.create(
+                template=self.template, member=m,
+                assigned_by=self.trainer, start_date=self.get_future_date(-1),
+            )
+
+    def test_direct_message_pushes_and_broadcasts_to_recipient(self):
+        self.client.force_authenticate(self.owner)
+        with mock.patch('apps.workouts.views.send_push') as push_mock, \
+                mock.patch('apps.workouts.views.broadcast_to_user') as broadcast_mock:
+            with self.captureOnCommitCallbacks(execute=True):
+                r = self.client.post(
+                    '/api/workouts/messages/direct/',
+                    {'recipient_id': self.member.pk, 'message': 'Front desk needs you'},
+                    format='json',
+                )
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+        push_mock.assert_called_once()
+        self.assertEqual(push_mock.call_args.args[0].pk, self.member.pk)
+        notification_id = push_mock.call_args.args[4]
+        self.assertTrue(
+            Notification.objects.filter(pk=notification_id, recipient=self.member).exists(),
+        )
+
+        broadcast_mock.assert_called_once()
+        broadcast_user_id, payload = broadcast_mock.call_args.args
+        self.assertEqual(broadcast_user_id, self.member.pk)
+        self.assertEqual(payload['type'], 'message.new')
+        self.assertEqual(payload['kind'], 'direct')
+        self.assertEqual(payload['notification_id'], notification_id)
+        self.assertEqual(payload['preview'], 'Front desk needs you')
+
+    def test_member_message_to_assigned_trainer_delivers_live(self):
+        self.client.force_authenticate(self.member)
+        with mock.patch('apps.workouts.views.send_push') as push_mock, \
+                mock.patch('apps.workouts.views.broadcast_to_user') as broadcast_mock:
+            with self.captureOnCommitCallbacks(execute=True):
+                r = self.client.post(
+                    '/api/workouts/message-trainer/',
+                    {'message': 'Can we move leg day?'},
+                    format='json',
+                )
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+        push_mock.assert_called_once()
+        self.assertEqual(push_mock.call_args.args[0].pk, self.trainer.pk)
+        broadcast_mock.assert_called_once()
+        self.assertEqual(broadcast_mock.call_args.args[0], self.trainer.pk)
+        self.assertEqual(broadcast_mock.call_args.args[1]['preview'], 'Can we move leg day?')
+
+    def test_group_message_pushes_and_broadcasts_to_other_members_only(self):
+        self.client.force_authenticate(self.trainer)
+        r = self.client.post(
+            '/api/workouts/message-groups/',
+            {'name': 'Squad', 'member_ids': [self.member.pk, self.member2.pk]},
+            format='json',
+        )
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        group_id = r.data['id']
+
+        with mock.patch('apps.workouts.views.send_push') as push_mock, \
+                mock.patch('apps.workouts.views.broadcast_to_user') as broadcast_mock:
+            with self.captureOnCommitCallbacks(execute=True):
+                r = self.client.post(
+                    f'/api/workouts/message-groups/{group_id}/messages/',
+                    {'message': 'Meet at 6'},
+                    format='json',
+                )
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+
+        pushed = sorted(call.args[0].pk for call in push_mock.call_args_list)
+        self.assertEqual(pushed, sorted([self.member.pk, self.member2.pk]))
+
+        broadcasted = sorted(call.args[0] for call in broadcast_mock.call_args_list)
+        self.assertEqual(broadcasted, sorted([self.member.pk, self.member2.pk]))
+        payload = broadcast_mock.call_args_list[0].args[1]
+        self.assertEqual(payload['type'], 'message.new')
+        self.assertEqual(payload['kind'], 'group')
+        self.assertEqual(payload['group_id'], group_id)
+        self.assertEqual(payload['sender_name'], self.trainer.get_full_name())
+        self.assertEqual(payload['preview'], 'Meet at 6')
+
+        # Group threads keep their own read state via read_by: no Notification
+        # rows are created for group sends (bell badge counts direct only).
+        self.assertFalse(Notification.objects.filter(sender=self.trainer).exists())

@@ -45,3 +45,8 @@ gunicorn==26.2.0
 whitenoise==6.12.0
 # ─── Web Push (PWA notifications) ───────────────────────────
 pywebpush==2.5.0
+# ─── Realtime messaging (WebSockets) ─────────────────────────
+# daphne is the ASGI server (render.yaml + local runserver once `channels`
+# is in INSTALLED_APPS); gunicorn stays listed as the WSGI fallback.
+channels==4.3.2
+daphne==4.2.3
