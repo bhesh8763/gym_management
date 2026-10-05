@@ -371,7 +371,7 @@ Useful headers are `X-Gym-ID` (validated active membership) and `X-Branch-ID` (v
 | Lockers | `lockers.html` | Locker inventory and assignments |
 | Equipment | `equipment.html` | Equipment inventory and maintenance |
 | Reports | `reports.html` | Owner analytics and CSV/Excel exports |
-| Import | `import.html` | Owner-only `.xlsx` template, dry run, and commit |
+| Import | `import.html` | Owner-only `.xlsx` / `.csv` import: template download, dry run, commit |
 | Messages | `messages.html` | Direct and group messaging |
 | Notifications | `notifications.html` | Notification center and read state |
 | Notification Detail | `notification-detail.html` | Single-notification detail view (bell, list, and push deep link) |
@@ -511,7 +511,7 @@ The password-based `/api/auth/register/` endpoint is the owner-onboarding path. 
 
 #### `dataimport` — Bulk Excel Import
 - **No models**
-- **Key features**: owner-only schema discovery, downloadable `.xlsx` template, dry-run validation, bounded multipart upload, transactional commit
+- **Key features**: owner-only schema discovery, downloadable `.xlsx` / per-sheet `.csv` templates, dry-run validation, bounded multipart upload, transactional commit
 
 ---
 
@@ -852,8 +852,8 @@ HTTPS POST; only delivery back to the recipient is live.
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/` | Owner | Supported workbook sheets, columns, and limits |
-| GET | `/template/` | Owner | Download `fitcore_import_template.xlsx` |
-| POST | `/` | Owner | Multipart `.xlsx` dry run (`dry_run=true`) or commit (`false`) |
+| GET | `/template/` | Owner | Download `fitcore_import_template.xlsx`, or `?sheet=<key>` for that sheet as `.csv` |
+| POST | `/` | Owner | Multipart `.xlsx` / `.csv` (CSVs also send `sheet=<key>`) dry run (`dry_run=true`) or commit (`false`) |
 
 ---
 
@@ -1068,14 +1068,14 @@ python manage.py test apps.reports.tests      # 60 tests
 | **trainers** | 34 | Trainer profiles, assignments, trainer-scoped members and notifications |
 | **workouts** | 68 | Exercise/template/version workflows, assignments/completions, messaging (incl. live push + WebSocket delivery on commit), exports, RBAC |
 
-**Total: 814 tests across 16 local apps.** Latest full run: **814 passed**, with Django system checks clean.
+**Total: 825 tests across 16 local apps.** Latest full run: **825 passed**, with Django system checks clean.
 
 ### Test Patterns Used
 
 - `APITestCase` from DRF for API endpoint testing
 - JWT token authentication via `RefreshToken.for_user()`
 - CSV parsing with `csv.reader` for content validation
-- Excel parsing with `openpyxl.load_workbook()` for .xlsx validation
+- Excel parsing with `openpyxl.load_workbook()` for .xlsx validation; CSV tables are sniffed (encoding + delimiter) and fed through the same pipeline as a one-tab workbook
 - Role-based test coverage (Owner, Staff, Trainer, Member, public kiosk/gateway callbacks)
 - Versioned-JWT and password/session invalidation tests
 - Server-authoritative price/amount and owner-plan tamper-resistance tests

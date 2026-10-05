@@ -13,6 +13,7 @@ Coverage:
     - Cross-sheet references (unknown plan / unknown member)
     - Role-derived attendance type, default passwords, permissions, extensions
 """
+import csv
 import io
 from decimal import Decimal
 
@@ -73,6 +74,15 @@ def build_upload(sheets):
     return SimpleUploadedFile(
         'import.xlsx', buffer.getvalue(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+def build_csv_upload(rows, name='import.csv', delimiter=',', encoding='utf-8-sig'):
+    """rows = [[header...], [row...]] → uploaded .csv (UTF-8 BOM + comma by default)."""
+    buffer = io.StringIO()
+    csv.writer(buffer, delimiter=delimiter).writerows(rows)
+    return SimpleUploadedFile(
+        name, buffer.getvalue().encode(encoding), content_type='text/csv',
     )
 
 
@@ -222,9 +232,9 @@ class ImportEndpointTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Excel', response.data['error'])
 
-    def test_non_excel_extension_rejected(self):
+    def test_unsupported_extension_rejected(self):
         self.client.credentials(**auth_headers(self.owner))
-        upload = SimpleUploadedFile('data.csv', b'a,b\n1,2\n', content_type='text/csv')
+        upload = SimpleUploadedFile('data.txt', b'a,b\n1,2\n', content_type='text/plain')
         response = self.client.post(
             IMPORT_URL, {'file': upload, 'dry_run': 'true'}, format='multipart',
         )
@@ -570,3 +580,120 @@ class ImportCommitTestCase(APITestCase):
         member = User.objects.get(email='anita.sharma@example.com')
         self.assertFalse(member.has_usable_password())
         self.assertFalse(member.check_password('anything'))
+
+
+class CsvImportTestCase(APITestCase):
+    """CSV uploads: one table per file, the sheet type declared by the caller.
+
+    A CSV has no tabs, so the API takes a `sheet` field (key, name or alias);
+    everything downstream is the same pipeline as an .xlsx workbook.
+    """
+
+    def setUp(self):
+        self.owner = make_user('owner@fit.test', role=User.Role.OWNER)
+
+    def _post(self, rows, sheet='members', dry_run=True, upload=None, **extra):
+        data = {'file': upload if upload is not None else build_csv_upload(rows)}
+        if sheet is not None:
+            data['sheet'] = sheet
+        data['dry_run'] = 'true' if dry_run else 'false'
+        data.update(extra)
+        self.client.credentials(**auth_headers(self.owner))
+        return self.client.post(IMPORT_URL, data, format='multipart')
+
+    def test_csv_without_sheet_type_is_rejected(self):
+        response = self._post(MEMBER_SHEET, sheet=None)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('single table', response.data['error'])
+        self.assertIn('members', response.data['error'])  # lists valid sheet keys
+
+    def test_csv_with_unknown_sheet_type_is_rejected(self):
+        response = self._post(MEMBER_SHEET, sheet='dinosaurs')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('members', response.data['error'])
+
+    def test_csv_sheet_key_name_and_alias_are_accepted(self):
+        for label in ('members', 'Members', 'Member List'):
+            response = self._post(MEMBER_SHEET, sheet=label)
+            self.assertEqual(response.status_code, status.HTTP_200_OK, label)
+            self.assertTrue(response.data['ok'], label)
+
+    def test_csv_dry_run_validates_and_writes_nothing(self):
+        response = self._post(MEMBER_SHEET)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        report = response.data
+        self.assertTrue(report['ok'])
+        self.assertTrue(report['dry_run'])
+        entry = sheet_entry(report, 'members')
+        self.assertTrue(entry['present'])
+        self.assertEqual(entry['to_create'], 2)
+        # The other 13 sheets simply aren't in a one-table CSV.
+        self.assertFalse(sheet_entry(report, 'plans')['present'])
+        self.assertEqual(User.objects.count(), 1)  # owner only — nothing written
+
+    def test_csv_bad_row_is_reported_and_blocks_commit(self):
+        rows = [
+            ['Email', 'First Name', 'Last Name'],
+            ['not-an-email', 'Bad', 'Row'],
+        ]
+        preview = self._post(rows)
+        self.assertEqual(preview.status_code, status.HTTP_200_OK)
+        entry = sheet_entry(preview.data, 'members')
+        self.assertEqual(entry['error_count'], 1)
+        self.assertIn('not a valid email', entry['errors'][0]['message'])
+
+        commit = self._post(rows, dry_run=False)
+        self.assertEqual(commit.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(User.objects.count(), 1)  # all-or-nothing held back
+
+    def test_csv_commit_creates_and_reupload_skips(self):
+        first = self._post(MEMBER_SHEET, dry_run=False)
+        self.assertEqual(first.status_code, status.HTTP_200_OK, first.data)
+        self.assertTrue(first.data['ok'])
+        self.assertEqual(User.objects.count(), 3)  # owner + 2 members
+        self.assertTrue(User.objects.filter(email='anita.sharma@example.com').exists())
+
+        again = self._post(MEMBER_SHEET, dry_run=False)
+        self.assertEqual(again.status_code, status.HTTP_200_OK, again.data)
+        entry = sheet_entry(again.data, 'members')
+        self.assertEqual(entry['to_create'], 0)
+        self.assertEqual(entry['skipped'], 2)
+        self.assertEqual(User.objects.count(), 3)  # idempotent, no duplicates
+
+    def test_csv_semicolon_delimiter_is_tolerated(self):
+        upload = build_csv_upload(MEMBER_SHEET, delimiter=';')
+        response = self._post(MEMBER_SHEET, upload=upload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'], response.data)
+
+    def test_csv_non_utf8_bytes_are_decoded(self):
+        rows = [['Email', 'First Name', 'Last Name'], ['jose@example.com', 'José', 'Cruz']]
+        upload = build_csv_upload(rows, encoding='cp1252')
+        response = self._post(rows, dry_run=False, upload=upload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertTrue(User.objects.filter(first_name='José').exists())
+
+    def test_csv_binary_junk_reports_friendly_error(self):
+        upload = SimpleUploadedFile('junk.csv', b'\x00\x01\x02\x03', content_type='text/csv')
+        response = self._post(None, upload=upload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('could not be read', response.data['error'])
+        self.assertIn('CSV', response.data['error'])
+
+    def test_csv_template_downloads_one_sheet(self):
+        self.client.credentials(**auth_headers(self.owner))
+        response = self.client.get(TEMPLATE_URL + '?sheet=members')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('text/csv', response['Content-Type'])
+        self.assertIn('fitcore_members_template.csv', response['Content-Disposition'])
+        text = response.content.decode('utf-8-sig')  # BOM present for Excel
+        lines = text.splitlines()
+        self.assertGreaterEqual(len(lines), 2)  # header + example row
+        self.assertIn('Email', lines[0])
+        self.assertIn('First Name', lines[0])
+
+    def test_csv_template_rejects_unknown_sheet(self):
+        self.client.credentials(**auth_headers(self.owner))
+        response = self.client.get(TEMPLATE_URL + '?sheet=bogus')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('members', response.data['error'])

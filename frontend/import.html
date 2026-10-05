@@ -191,9 +191,9 @@
             <h6 class="fw-semibold mb-3"><i class="bi bi-file-earmark-spreadsheet me-1 text-danger"></i>1. Choose your workbook</h6>
             <div class="dropzone" id="dropzone">
               <i class="bi bi-cloud-arrow-up dropzone-icon"></i>
-              <div class="dropzone-title">Drag &amp; drop your .xlsx file here</div>
+              <div class="dropzone-title">Drag &amp; drop your .xlsx or .csv file here</div>
               <div class="dropzone-hint">or click to browse — up to 4.5 MB, 20,000 rows per sheet</div>
-              <input type="file" id="fileInput" accept=".xlsx,.xlsm" hidden>
+              <input type="file" id="fileInput" accept=".xlsx,.xlsm,.csv" hidden>
             </div>
             <div class="file-meta" id="fileMeta" style="display:none;">
               <div class="d-flex align-items-center gap-2 text-truncate">
@@ -203,7 +203,15 @@
               </div>
               <button class="btn btn-sm btn-outline-secondary flex-shrink-0" onclick="clearFile()">Change</button>
             </div>
-            <div class="form-text mt-2">Only .xlsx / .xlsm workbooks. Download the template above for the exact headers and an example row per sheet.</div>
+            <div class="mt-3" id="csvSheetBox" style="display:none;">
+              <label class="form-label small fw-semibold mb-1" for="csvSheet">This CSV contains <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="csvSheet" onchange="onCsvSheetChange()">
+                <option value="">Choose a sheet…</option>
+              </select>
+              <div class="form-text">A CSV holds a single table, so tell us which one it is.
+                <a href="#" onclick="downloadCsvTemplate(); return false;">Download this sheet's CSV template</a> for the exact headers.</div>
+            </div>
+            <div class="form-text mt-2">Works with .xlsx / .xlsm workbooks and .csv files. Download the template above for the exact headers and an example row per sheet.</div>
           </div>
         </div>
       </div>
@@ -348,6 +356,12 @@ async function loadSchema() {
   var data = await res.json();
   if (!__isPageAlive()) return;
   if (data.limits && data.limits.max_file_bytes) maxFileBytes = data.limits.max_file_bytes;
+  document.getElementById('csvSheet').innerHTML =
+    '<option value="">Choose a sheet…</option>' +
+    data.sheets.map(function (s) {
+      return '<option value="' + escapeHtml(s.key) + '" title="' + escapeHtml(s.description) + '">' +
+        escapeHtml(s.name) + '</option>';
+    }).join('');
   document.getElementById('sheetList').innerHTML = data.sheets.map(function (s) {
     var required = s.columns.filter(function (c) { return c.required; }).length;
     return '<div class="sheet-chip" title="' + escapeHtml(s.description) + '">' +
@@ -359,10 +373,36 @@ async function loadSchema() {
 }
 
 // ── File selection (click + drag & drop) ────────────────────────────────────
+function fileExt(file) {
+  return (file.name.split('.').pop() || '').toLowerCase();
+}
+
+function isCsvFile() {
+  return !!selectedFile && fileExt(selectedFile) === 'csv';
+}
+
+// Preview is only available once a file is chosen — and, for a CSV, once the
+// sheet it represents has been picked (a CSV has no tabs of its own).
+function syncPreviewBtn() {
+  var sheetPicked = !isCsvFile() || !!document.getElementById('csvSheet').value;
+  document.getElementById('previewBtn').disabled = !selectedFile || !sheetPicked;
+}
+
+function onCsvSheetChange() {
+  syncPreviewBtn();
+  if (lastReport || previewedRun) {
+    // The previous preview was for a different table — force a fresh preview.
+    lastReport = null;
+    previewedRun = false;
+    committedOk = false;
+    document.getElementById('reportArea').style.display = 'none';
+  }
+}
+
 function setFile(file) {
-  var ext = (file.name.split('.').pop() || '').toLowerCase();
-  if (ext !== 'xlsx' && ext !== 'xlsm') {
-    showError('"' + file.name + '" is not an .xlsx workbook — download the template for the right format.');
+  var ext = fileExt(file);
+  if (ext !== 'xlsx' && ext !== 'xlsm' && ext !== 'csv') {
+    showError('"' + file.name + '" is not an .xlsx or .csv file — download the template for the right format.');
     return;
   }
   if (file.size > maxFileBytes) {
@@ -379,7 +419,10 @@ function setFile(file) {
   document.getElementById('fileMeta').style.display = '';
   document.getElementById('fileName').textContent = file.name;
   document.getElementById('fileSize').textContent = fmtSize(file.size);
-  document.getElementById('previewBtn').disabled = false;
+  var isCsv = ext === 'csv';
+  document.getElementById('csvSheetBox').style.display = isCsv ? '' : 'none';
+  if (!isCsv) document.getElementById('csvSheet').value = '';
+  syncPreviewBtn();
 }
 
 function clearFile() {
@@ -389,6 +432,8 @@ function clearFile() {
   previewedRun = false;
   document.getElementById('fileInput').value = '';
   document.getElementById('fileMeta').style.display = 'none';
+  document.getElementById('csvSheetBox').style.display = 'none';
+  document.getElementById('csvSheet').value = '';
   document.getElementById('reportArea').style.display = 'none';
   document.getElementById('previewBtn').disabled = true;
   hideError();
@@ -427,6 +472,7 @@ async function sendImport(dryRun) {
   var fd = new FormData();
   fd.append('file', selectedFile);
   fd.append('dry_run', dryRun ? 'true' : 'false');
+  if (isCsvFile()) fd.append('sheet', document.getElementById('csvSheet').value);
   var pwd = document.getElementById('defaultPassword').value.trim();
   if (pwd) fd.append('default_password', pwd);
 
@@ -453,7 +499,7 @@ async function previewImport() {
 
   var report = await sendImport(true);
 
-  btn.disabled = false;
+  syncPreviewBtn();
   document.getElementById('previewSpin').style.display = 'none';
   document.getElementById('previewIcon').style.display = '';
   if (!report || !__isPageAlive()) return;
@@ -628,6 +674,23 @@ async function downloadTemplate() {
   var a = document.createElement('a');
   a.href = url;
   a.download = 'fitcore_import_template.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+}
+
+async function downloadCsvTemplate() {
+  var key = document.getElementById('csvSheet').value;
+  if (!key) { showError('Choose which sheet your CSV is first — then its template downloads here.'); return; }
+  var res = await apiRequest('/import/template/?sheet=' + encodeURIComponent(key));
+  if (!res || !res.ok) { showError('Could not download the CSV template — please try again.'); return; }
+
+  var blob = await res.blob();
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'fitcore_' + key + '_template.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();

@@ -2,6 +2,7 @@
 Builds the downloadable .xlsx import template: a Read Me tab with the rules
 plus one tab per data type, headers styled and frozen, one example row each.
 """
+import csv
 import io
 
 from openpyxl import Workbook
@@ -28,7 +29,7 @@ _README = [
     ('• Sheets import in a fixed order: plans → people → offers → memberships → payments → attendance → equipment → lockers → assignments → progress.', 'text'),
     ('• Leave Password blank to create an account that cannot sign in until its password is reset.', 'text'),
     ('• Rows with errors block the whole import — fix them and re-upload. Nothing is saved until you confirm.', 'text'),
-    ('• Limits: .xlsx only, up to 4.5 MB, up to 20,000 rows per sheet.', 'text'),
+    ('• Limits: .xlsx or .csv, up to 4.5 MB, up to 20,000 rows per sheet.', 'text'),
     ('', 'text'),
     ('Sheets', 'heading'),
 ]
@@ -71,3 +72,18 @@ def build_template_bytes():
     buffer = io.BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
+
+
+def build_template_csv(sheet_cls):
+    """Return a one-sheet CSV template (header row + one example row) as bytes.
+
+    UTF-8 with BOM so Windows Excel renders non-ASCII names correctly.
+    """
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([column.label for column in sheet_cls.columns])
+    writer.writerow([
+        str(sheet_cls.example.get(column.key, ''))
+        for column in sheet_cls.columns
+    ])
+    return ('\ufeff' + buffer.getvalue()).encode('utf-8')

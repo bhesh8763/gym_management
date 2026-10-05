@@ -6,7 +6,8 @@ Bulk data import endpoints (Owner only).
     POST /api/import/           → validate (dry_run=true, default) or commit the file
 
 POST accepts multipart form data:
-    file             — the .xlsx workbook
+    file             — the .xlsx workbook (or a .csv table)
+    sheet            — .csv only: which sheet the table is (key, e.g. 'members')
     dry_run          — 'true' (preview only, no writes) or 'false' (import)
     default_password — optional shared password for created accounts
 """
@@ -21,10 +22,11 @@ from .importer import (
     ALLOWED_EXTENSIONS,
     MAX_FILE_BYTES,
     MAX_ROWS_PER_SHEET,
+    resolve_sheet,
     run_import,
 )
 from .schema import SHEETS
-from .template import build_template_bytes
+from .template import build_template_bytes, build_template_csv
 
 XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -60,14 +62,14 @@ class ImportView(APIView):
         upload = request.FILES.get('file')
         if upload is None:
             return Response(
-                {'error': 'Choose an Excel (.xlsx) file to import.'},
+                {'error': 'Choose an Excel (.xlsx) or CSV (.csv) file to import.'},
                 status=400,
             )
 
         filename = (upload.name or '').lower()
         if not filename.endswith(ALLOWED_EXTENSIONS):
             return Response(
-                {'error': 'Only Excel .xlsx workbooks are supported — download the '
+                {'error': 'Only .xlsx, .xlsm and .csv files are supported — download the '
                           'template to get the right format.'},
                 status=400,
             )
@@ -85,6 +87,7 @@ class ImportView(APIView):
                 {'error': 'The default password must be at least 6 characters.'},
                 status=400,
             )
+        sheet = (request.data.get('sheet') or '').strip() or None
 
         report = run_import(
             upload,
@@ -93,6 +96,7 @@ class ImportView(APIView):
             branch=getattr(request, 'branch', None),
             dry_run=dry_run,
             default_password=password,
+            sheet=sheet,
         )
         if report['error']:
             return Response(report, status=400)
@@ -102,11 +106,29 @@ class ImportView(APIView):
 
 
 class ImportTemplateView(APIView):
-    """Download the fill-in template workbook."""
+    """Download the fill-in template workbook — or, with ?sheet=<key>, that
+    one sheet as a .csv (a CSV holds a single table)."""
 
     permission_classes = [IsOwner]
 
     def get(self, request):
+        sheet_key = (request.query_params.get('sheet') or '').strip()
+        if sheet_key:
+            sheet_cls = resolve_sheet(sheet_key)
+            if sheet_cls is None:
+                return Response(
+                    {'error': 'Unknown sheet — one of: '
+                              + ', '.join(sheet.key for sheet in SHEETS) + '.'},
+                    status=400,
+                )
+            response = HttpResponse(
+                build_template_csv(sheet_cls), content_type='text/csv; charset=utf-8',
+            )
+            response['Content-Disposition'] = (
+                f'attachment; filename="fitcore_{sheet_cls.key}_template.csv"'
+            )
+            return response
+
         response = HttpResponse(build_template_bytes(), content_type=XLSX_CONTENT_TYPE)
         response['Content-Disposition'] = 'attachment; filename="fitcore_import_template.xlsx"'
         return response

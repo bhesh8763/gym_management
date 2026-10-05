@@ -13,10 +13,12 @@ Two passes:
       import back, so the database either receives the complete file or
       nothing at all.
 """
+import csv
+import io
 import logging
 
 from django.db import transaction
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 
 from apps.accounts.models import User
 from apps.lockers.models import Locker
@@ -30,7 +32,8 @@ MAX_FILE_BYTES = 4_500_000          # the project caps request bodies at 5 MB
 MAX_ROWS_PER_SHEET = 20_000
 MAX_ERRORS_PER_SHEET = 50
 MAX_SKIPS_SHOWN = 15
-ALLOWED_EXTENSIONS = ('.xlsx', '.xlsm')
+ALLOWED_EXTENSIONS = ('.xlsx', '.xlsm', '.csv')
+CSV_EXTENSION = '.csv'
 
 
 class _Abort(Exception):
@@ -417,8 +420,52 @@ def _commit_sheet(sheet_cls, entry, rows, ctx):
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_import(upload, *, actor, dry_run=True, default_password=None, gym=None, branch=None):
-    """Validate (dry_run=True) or import an uploaded workbook.
+def resolve_sheet(value):
+    """Sheet class for a key, name or alias ('members', 'Members', 'Member List')."""
+    wanted = norm_header(value)
+    if not wanted:
+        return None
+    for sheet_cls in SHEETS:
+        candidates = {norm_header(sheet_cls.key), norm_header(sheet_cls.name)}
+        candidates.update(norm_header(alias) for alias in sheet_cls.aliases)
+        if wanted in candidates:
+            return sheet_cls
+    return None
+
+
+def _csv_to_workbook(upload, sheet_cls):
+    """Read a single-table CSV into an in-memory workbook with one tab.
+
+    A CSV has no tabs, so the caller declares which sheet the table is; the
+    tab is titled with that sheet's name so the normal validation pipeline
+    finds it exactly like an .xlsx tab. Encoding and delimiter follow what
+    spreadsheet apps actually emit, with tolerant fallbacks: UTF-8 with BOM
+    (Excel's "CSV UTF-8") or cp1252, comma or semicolon/tab.
+    """
+    raw = upload.read()
+    try:
+        text = raw.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        text = raw.decode('cp1252', errors='replace')
+    if '\x00' in text:
+        raise ValueError('not a text file')
+    try:
+        dialect = csv.Sniffer().sniff(text[:8192], delimiters=',;\t|')
+    except csv.Error:
+        dialect = csv.excel
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = sheet_cls.name
+    for row in csv.reader(io.StringIO(text), dialect=dialect):
+        worksheet.append(row)
+    return workbook
+
+
+def run_import(upload, *, actor, dry_run=True, default_password=None, gym=None,
+               branch=None, sheet=None):
+    """Validate (dry_run=True) or import an uploaded workbook (or a CSV table
+    whose sheet type is given via `sheet`).
 
     Always returns a report dict; `report['ok']` is True only when the file
     parsed cleanly and every row is importable.
@@ -440,15 +487,38 @@ def run_import(upload, *, actor, dry_run=True, default_password=None, gym=None, 
         branch=branch,
     )
 
-    try:
-        workbook = load_workbook(upload, read_only=True, data_only=True)
-    except Exception:
-        logger.exception('Could not parse uploaded workbook %s', report['file'])
-        report['error'] = (
-            'This file could not be read as an Excel workbook. '
-            'Save it as .xlsx (not .csv, .xls or a password-protected file) and try again.'
-        )
-        return report
+    is_csv = (report['file'] or '').lower().endswith(CSV_EXTENSION)
+    sheet_cls = None
+    if is_csv:
+        sheet_cls = resolve_sheet(sheet) if sheet else None
+        if sheet_cls is None:
+            report['error'] = (
+                'A CSV holds a single table, so tell us which one this is. '
+                'Pick a sheet type (one of: ' + ', '.join(s.key for s in SHEETS) + ') '
+                'or upload the .xlsx template instead.'
+            )
+            return report
+
+    if is_csv:
+        try:
+            workbook = _csv_to_workbook(upload, sheet_cls)
+        except Exception:
+            logger.exception('Could not parse uploaded CSV %s', report['file'])
+            report['error'] = (
+                'This file could not be read as a CSV file. Re-save it as a '
+                'comma-separated UTF-8 .csv from your spreadsheet app and try again.'
+            )
+            return report
+    else:
+        try:
+            workbook = load_workbook(upload, read_only=True, data_only=True)
+        except Exception:
+            logger.exception('Could not parse uploaded workbook %s', report['file'])
+            report['error'] = (
+                'This file could not be read as an Excel workbook. '
+                'Save it as .xlsx or .csv (not .xls or a password-protected file) and try again.'
+            )
+            return report
 
     try:
         ctx.load()
