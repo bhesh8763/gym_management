@@ -603,7 +603,7 @@ nav.topbar > a.navbar-brand,nav.topbar > a.navbar-brand span{color:#fff !importa
 .manage-action-btn i{font-size:0.95rem}
 
 /* ── Tables ───────────────────────────────────────────────────────────────── */
-.table-responsive{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-card);overflow:hidden}
+.table-responsive{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-card);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 .table{background-color:transparent;margin-bottom:0}
 .table thead th{border:none !important;background:var(--bg-topbar);color:rgba(255,255,255,0.85);font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:12px var(--sp-4);vertical-align:middle;white-space:nowrap}
 .table tbody td{border:none !important;border-bottom:1px solid var(--border-light) !important;padding:12px var(--sp-4);vertical-align:middle;font-size:var(--text-sm);color:var(--text-primary)}
@@ -1796,7 +1796,7 @@ html:not([data-theme="light"]) .trainer-card,html:not([data-theme="light"]) .pr-
 .manage-action-btn i{font-size:0.95rem}
 
 /* ── Tables ───────────────────────────────────────────────────────────────── */
-.table-responsive{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-card);overflow:hidden}
+.table-responsive{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-card);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 .table{background-color:transparent;margin-bottom:0}
 .table thead th{border:none !important;background:var(--bg-topbar);color:rgba(255,255,255,0.85);font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:12px var(--sp-4);vertical-align:middle;white-space:nowrap}
 .table tbody td{border:none !important;border-bottom:1px solid var(--border-light) !important;padding:12px var(--sp-4);vertical-align:middle;font-size:var(--text-sm);color:var(--text-primary)}
@@ -3050,7 +3050,7 @@ html:not([data-theme="light"]) .trainer-card,html:not([data-theme="light"]) .pr-
 .manage-action-btn i{font-size:0.95rem}
 
 /* ── Tables ───────────────────────────────────────────────────────────────── */
-.table-responsive{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-card);overflow:hidden}
+.table-responsive{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-card);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 .table{background-color:transparent;margin-bottom:0}
 .table thead th{border:none !important;background:var(--bg-topbar);color:rgba(255,255,255,0.85);font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:12px var(--sp-4);vertical-align:middle;white-space:nowrap}
 .table tbody td{border:none !important;border-bottom:1px solid var(--border-light) !important;padding:12px var(--sp-4);vertical-align:middle;font-size:var(--text-sm);color:var(--text-primary)}
