@@ -8,7 +8,6 @@ API Endpoints:
     PATCH  /api/notifications/<id>/read/       - Mark one notification as read
     POST   /api/notifications/mark-all-read/   - Mark all my notifications as read
     DELETE /api/notifications/<id>/            - Delete a notification (Owner/Staff, or the recipient)
-    POST   /api/notifications/push/test/       - Send a test Web Push to my own devices
 
 Search/Filter (query params on list):
     ?is_read=<true|false>
@@ -201,38 +200,3 @@ class PushUnsubscribeView(APIView):
             user=request.user, endpoint=endpoint,
         ).delete()
         return Response({'deleted': deleted})
-
-
-class PushTestView(APIView):
-    """
-    POST /api/notifications/push/test/ — fire a real Web Push at the caller's
-    own devices so the whole chain can be verified in one tap from a phone:
-    subscription saved? VAPID keys configured? push service delivering?
-
-    The three response fields are needed together to interpret a failure:
-      - subscriptions=0  → this device never completed the opt-in
-      - configured=false → the server has no VAPID keys in its environment
-      - delivered=0 with both of the above fine → the push service rejected
-        the send; the response explains where it stopped.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        from apps.notifications.services import send_push
-
-        subscriptions = PushSubscription.objects.filter(user=request.user).count()
-        delivered = send_push(
-            request.user,
-            'FitCore test',
-            'If you can read this on your device, push notifications work end to end.',
-            Notification.NotificationType.GENERAL,
-        )
-        configured = bool(
-            getattr(settings, 'VAPID_PUBLIC_KEY', '')
-            and getattr(settings, 'VAPID_PRIVATE_KEY', '')
-        )
-        return Response({
-            'subscriptions': subscriptions,
-            'delivered': delivered,
-            'configured': configured,
-        })
