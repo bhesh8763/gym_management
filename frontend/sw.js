@@ -15,7 +15,7 @@
  */
 'use strict';
 
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE_PREFIX = 'fitcore-';
 const STATIC_CACHE = `${CACHE_PREFIX}static-${VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-${VERSION}`;

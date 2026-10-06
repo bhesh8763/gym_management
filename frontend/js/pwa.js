@@ -224,14 +224,12 @@ window.FitCorePush = (function () {
  *   iOS Safari (no such event exists): shows step-by-step
  *     "Share → Add to Home Screen" instructions instead.
  *
- * The buttons are injected by this file (no per-page HTML needed):
- *   - a floating "Install app" pill on logged-out PUBLIC pages — the
- *     dedicated pre-login install entry point. It is deliberately NOT
- *     shown after login (no floating button over the app); the profile
- *     dropdown item below covers installed-from-here users instead.
- *   - an "Install app" item in the profile dropdown on app pages —
- *     always reachable after login, so the app can be (re-)installed at
- *     any time, including after the user uninstalled it
+ * The button is injected by this file (no per-page HTML needed): a
+ * floating "Install app" pill on the LANDING PAGE ONLY (index.html) —
+ * and nowhere else: not on the other public pages, not after login, and
+ * not in the profile menu (the former profile-menu entry point was
+ * removed at the user's request). index.html itself bounces logged-in
+ * users to their dashboard, so this stays a pre-login entry point.
  * The pill's × hides it for the current session only (sessionStorage), so
  * the option always comes back on the next visit — it can never get lost
  * permanently the way the old localStorage dismissal could.
@@ -261,19 +259,17 @@ window.FitCorePWA = (function () {
     installed = true;
     deferredPrompt = null;
     removePill();
-    removeMenuItem();
     document.dispatchEvent(new Event('fitcore:installed'));
   });
 
   // Keep the install UI in sync with the real display mode: when the app is
   // uninstalled (the browser tab's display-mode flips back to "browser") the
-  // entry points must reappear so the app can be installed again.
+  // entry point must reappear so the app can be installed again.
   const standaloneQuery = window.matchMedia('(display-mode: standalone)');
   const onDisplayModeChange = () => {
     installed = standaloneQuery.matches || window.navigator.standalone === true;
     if (installed) {
       removePill();
-      removeMenuItem();
     } else {
       inject();
     }
@@ -370,11 +366,6 @@ window.FitCorePWA = (function () {
     if (pill) pill.remove();
   }
 
-  function removeMenuItem() {
-    const item = document.getElementById('fitcoreInstallMenuItem');
-    if (item) item.remove();
-  }
-
   function ensurePill() {
     if (!document.body) return; // event fired before the DOM was parsed
     if (installed || platform() === 'installed') return;
@@ -382,14 +373,14 @@ window.FitCorePWA = (function () {
     // next visit, so the dedicated install option is always available again.
     if (sessionStorage.getItem(FLAG_DISMISSED) === '1') return;
     if (document.getElementById('fitcoreInstallPill')) return;
-    // After login the install option lives in the profile menu instead —
-    // no floating button over the app (user request). The menu entry is
-    // always available, so the app can still be installed/reinstalled
-    // anytime from any logged-in page.
-    if (document.getElementById('profilePanel')) return;
-    if (localStorage.getItem('access_token')) return;
-    // Shown on logged-out public pages and on every platform, WITHOUT
-    // waiting for beforeinstallprompt: the browser may withhold that event
+    // Landing page ONLY (user request): index.html and nowhere else — not
+    // on the other public pages, not on app pages, and the profile-menu
+    // entry point was removed entirely. index.html redirects logged-in
+    // users to their dashboard, so this remains a pre-login pill.
+    const path = location.pathname;
+    if (path !== '/' && !/(^|\/)index\.html$/.test(path)) return;
+    // Shown on every platform, without waiting for beforeinstallprompt:
+    // the browser may withhold that event
     // (engagement heuristics, right after an uninstall, …), and the install
     // option must work anyway. Clicking runs the native dialog when one was
     // captured, and falls back to the step-by-step instructions otherwise.
@@ -416,23 +407,9 @@ window.FitCorePWA = (function () {
     document.body.appendChild(pill);
   }
 
-  function ensureMenuItem() {
-    if (installed || platform() === 'installed') return;
-    const panel = document.getElementById('profilePanel');
-    if (!panel || document.getElementById('fitcoreInstallMenuItem')) return;
-    const item = document.createElement('button');
-    item.id = 'fitcoreInstallMenuItem';
-    item.type = 'button';
-    item.innerHTML = '<i class="bi bi-download"></i> Install app';
-    item.addEventListener('click', () => window.FitCorePWA.install());
-    const hr = panel.querySelector('hr');
-    if (hr) panel.insertBefore(item, hr);
-    else panel.appendChild(item);
-  }
-
   // Both hooks: inject as soon as the DOM exists and whenever the
   // installability event arrives (Android/Chrome fires it late).
-  function inject() { ensureMenuItem(); ensurePill(); }
+  function inject() { ensurePill(); }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inject, { once: true });
   } else {
@@ -467,7 +444,7 @@ window.FitCorePWA = (function () {
     platform: platform,
     isInstallable: () => !!deferredPrompt,
 
-    // One call for every entry point (dropdown item, floating pill, …).
+    // One call for the install entry point (the floating landing-page pill).
     install: async function () {
       const kind = platform();
       if (installed || kind === 'installed') return 'installed';
