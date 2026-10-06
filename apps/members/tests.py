@@ -335,24 +335,27 @@ class MemberBulkDeleteTests(MemberAPITestCase):
         self.bulk_url = '/api/members/bulk-delete/'
 
     def test_owner_deletes_clean_member(self):
-        """A member with no payment/attendance history is hard-deleted."""
+        """A member with no history is moved to Trash instead of hard-deleted."""
         from apps.members.models import MemberProfile
         clean = make_member('clean@gym.com', first_name='Clean', last_name='Member')
         self.auth_as(self.owner)
         r = self.client.post(self.bulk_url, {'ids': [clean.user_id]}, format='json')
         self.assertEqual(r.status_code, status.HTTP_200_OK)
-        self.assertEqual(r.data['deleted'], 1)
-        self.assertEqual(r.data['deactivated'], 0)
+        self.assertEqual(r.data['trashed'], 1)
+        self.assertEqual(r.data['deactivated'], 1)
         self.assertEqual(r.data['skipped'], [])
-        self.assertFalse(User.objects.filter(pk=clean.user_id).exists())
-        self.assertFalse(MemberProfile.objects.filter(pk=clean.pk).exists())
+        self.assertIsNone(MemberProfile.objects.filter(pk=clean.pk).first())
+        self.assertTrue(MemberProfile.all_objects.filter(pk=clean.pk).first().is_deleted)
+        clean.user.refresh_from_db()
+        self.assertFalse(clean.user.is_active)
 
-    def test_member_with_payment_is_deactivated_and_payment_kept(self):
-        """History rows force a soft delete; the Payment row must survive."""
+    def test_member_with_payment_is_trashed_and_payment_kept(self):
+        """History must survive, so the profile goes to Trash and is recoverable."""
         from decimal import Decimal
 
         from django.utils import timezone
 
+        from apps.members.models import MemberProfile
         from apps.payments.models import Payment
         hist = make_member('hist@gym.com', first_name='Hist', last_name='Member')
         payment = Payment.objects.create(
@@ -363,18 +366,21 @@ class MemberBulkDeleteTests(MemberAPITestCase):
         self.auth_as(self.owner)
         r = self.client.post(self.bulk_url, {'ids': [hist.user_id]}, format='json')
         self.assertEqual(r.status_code, status.HTTP_200_OK)
-        self.assertEqual(r.data['deleted'], 0)
+        self.assertEqual(r.data['trashed'], 1)
         self.assertEqual(r.data['deactivated'], 1)
         self.assertEqual(r.data['skipped'], [])
         hist.user.refresh_from_db()
         self.assertFalse(hist.user.is_active)
+        self.assertTrue(MemberProfile.all_objects.filter(pk=hist.pk).first().is_deleted)
         self.assertTrue(Payment.objects.filter(pk=payment.pk).exists())
 
-    def test_already_inactive_member_with_history_is_skipped(self):
+    def test_already_inactive_member_is_still_moved_to_trash(self):
+        """Inactive-but-live profiles are invisible everywhere else; Trash too."""
         from decimal import Decimal
 
         from django.utils import timezone
 
+        from apps.members.models import MemberProfile
         from apps.payments.models import Payment
         inactive = make_member('inactive@gym.com', first_name='Idle', last_name='Member')
         inactive.user.is_active = False
@@ -387,13 +393,26 @@ class MemberBulkDeleteTests(MemberAPITestCase):
         self.auth_as(self.owner)
         r = self.client.post(self.bulk_url, {'ids': [inactive.user_id]}, format='json')
         self.assertEqual(r.status_code, status.HTTP_200_OK)
-        self.assertEqual(r.data['deleted'], 0)
+        self.assertEqual(r.data['trashed'], 1)
         self.assertEqual(r.data['deactivated'], 0)
-        self.assertEqual(r.data['skipped'], [
-            {'id': inactive.user_id, 'reason': 'already inactive (has history)'},
-        ])
+        self.assertEqual(r.data['skipped'], [])
+        self.assertTrue(MemberProfile.all_objects.filter(pk=inactive.pk).first().is_deleted)
         inactive.user.refresh_from_db()
         self.assertFalse(inactive.user.is_active)
+
+    def test_member_already_in_trash_is_skipped(self):
+        """Deleting twice must not re-process a profile that is already trashed."""
+        from apps.members.models import MemberProfile
+        twice = make_member('twice@gym.com', first_name='Twice', last_name='Member')
+        self.auth_as(self.owner)
+        self.client.post(self.bulk_url, {'ids': [twice.user_id]}, format='json')
+        r = self.client.post(self.bulk_url, {'ids': [twice.user_id]}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data['trashed'], 0)
+        self.assertEqual(r.data['skipped'], [
+            {'id': twice.user_id, 'reason': 'already in trash'},
+        ])
+        self.assertTrue(MemberProfile.all_objects.filter(pk=twice.pk).first().is_deleted)
 
     def test_staff_gets_403(self):
         self.auth_as(self.staff)
@@ -409,7 +428,7 @@ class MemberBulkDeleteTests(MemberAPITestCase):
             format='json',
         )
         self.assertEqual(r.status_code, status.HTTP_200_OK)
-        self.assertEqual(r.data['deleted'], 0)
+        self.assertEqual(r.data['trashed'], 0)
         self.assertEqual(r.data['deactivated'], 0)
         self.assertEqual(
             [s['id'] for s in r.data['skipped']],

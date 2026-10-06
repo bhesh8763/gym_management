@@ -163,6 +163,39 @@ class TrashAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(MemberProfile.objects.filter(pk=profile.pk).first())
 
+    def test_member_delete_then_trash_restore_reactivates_account(self):
+        """Trash restore must undo the deactivation done on delete, not just
+        clear deleted_at — otherwise the member comes back unable to log in."""
+        member = make_member('trash.revive@example.com', 'Trash', 'Revive')
+        profile = MemberProfile.objects.create(user=member, gym=self.gym)
+        membership = GymMembership.objects.create(
+            user=member,
+            gym=self.gym,
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+        )
+
+        response = self.client.delete(reverse('members:member-detail', args=[profile.id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        member.refresh_from_db()
+        self.assertFalse(member.is_active)
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, GymMembership.Status.INACTIVE)
+        self.assertIsNotNone(
+            MemberProfile.all_objects.filter(pk=profile.pk).first().deleted_at
+        )
+
+        response = self.client.post(
+            reverse('gyms:trash-restore', args=['members', profile.id]),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        profile.refresh_from_db()
+        self.assertFalse(profile.is_deleted)
+        member.refresh_from_db()
+        self.assertTrue(member.is_active)
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, GymMembership.Status.ACTIVE)
+
     def test_restore_conflict_guard_returns_409(self):
         """DB unique constraints normally block duplicate live rows before
         restore could clash; the guard stays as defense-in-depth. Exercised

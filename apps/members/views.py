@@ -9,7 +9,7 @@ API Endpoints:
     PATCH  /api/members/<id>/             - Partial update profile (Owner/Staff or self)
     DELETE /api/members/<id>/             - Deactivate member (Owner/Staff)
     POST   /api/members/<id>/reactivate/  - Reactivate member (Owner/Staff)
-    POST   /api/members/bulk-delete/      - Hybrid bulk delete/deactivate (Owner/Admin)
+    POST   /api/members/bulk-delete/      - Bulk-delete members into Trash (Owner/Admin)
     GET    /api/members/me/               - Own profile (Member)
     PATCH  /api/members/me/              - Update own profile (Member)
 
@@ -55,6 +55,34 @@ def get_profile_or_404(pk):
         return MemberProfile.objects.select_related('user').get(pk=pk)
     except MemberProfile.DoesNotExist:
         raise NotFound(f'Member profile with id={pk} not found.')
+
+
+def deactivate_and_trash(profile, actor, gym):
+    """Deactivate a member's login and move their profile to Trash.
+
+    Shared by the single DELETE and the bulk-delete endpoints so both leave
+    the same recoverable trace: the profile is soft-deleted (visible in Trash,
+    restorable from there) and the account is switched off while the member
+    has no other active gym membership.
+    """
+    from apps.gyms.models import GymMembership
+    user = profile.user
+    if gym is not None:
+        GymMembership.objects.filter(
+            user=user,
+            gym=gym,
+            role=GymMembership.Role.MEMBER,
+            status=GymMembership.Status.ACTIVE,
+        ).update(status=GymMembership.Status.INACTIVE)
+        still_member_somewhere = user.gym_memberships.filter(
+            status=GymMembership.Status.ACTIVE,
+        ).exists()
+    else:
+        still_member_somewhere = False
+    if not still_member_somewhere:
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+    profile.delete(user=actor)
 
 
 # ─── Member List + Create ─────────────────────────────────────────────────────
@@ -230,25 +258,8 @@ class MemberDetailView(APIView):
             raise PermissionDenied('Only Owner/Staff can deactivate members.')
         profile = self._get_profile(pk)
         user = profile.user
-        gym = getattr(request, 'gym', None)
-        if gym is not None:
-            from apps.gyms.models import GymMembership
-            GymMembership.objects.filter(
-                user=user,
-                gym=gym,
-                role=GymMembership.Role.MEMBER,
-                status=GymMembership.Status.ACTIVE,
-            ).update(status=GymMembership.Status.INACTIVE)
-            if not user.gym_memberships.filter(
-                status=GymMembership.Status.ACTIVE,
-            ).exists():
-                user.is_active = False
-                user.save(update_fields=['is_active'])
-        else:
-            user.is_active = False
-            user.save(update_fields=['is_active'])
-        # Soft delete the profile → recoverable from Trash.
-        profile.delete(user=request.user)
+        # Deactivate the login and soft-delete the profile → recoverable from Trash.
+        deactivate_and_trash(profile, actor=request.user, gym=getattr(request, 'gym', None))
         return Response(
             {'detail': f'Member {user.get_full_name()} has been deactivated and moved to trash.'},
             status=status.HTTP_200_OK,
@@ -259,26 +270,22 @@ class MemberDetailView(APIView):
 
 class MemberBulkDeleteView(APIView):
     """
-    POST /api/members/bulk-delete/ — Bulk delete/deactivate members (Owner/Admin only).
+    POST /api/members/bulk-delete/ — Bulk-delete members into Trash (Owner/Admin only).
 
     Body: {"ids": [<user_id>, ...]}
 
     Per id (each wrapped in its own savepoint so one failure never aborts the batch):
-      1. Not found / role != MEMBER / superuser / the requesting user -> skipped.
-      2. Has any Payment, Attendance, Membership or PromoCodeUsage row ->
-         deactivated (is_active=False); skipped if already inactive.
-      3. No such rows -> hard delete (cascades the member's own profile,
-         progress, locker, workout, diet and assignment rows).
+      1. Not a member of this gym / role != MEMBER / superuser / the requesting
+         user -> skipped.
+      2. Profile already in Trash -> skipped.
+      3. Otherwise -> the login is switched off and the profile is soft-deleted,
+         i.e. moved to Trash, from where it can be restored.
 
-    Response: {"deleted": n, "deactivated": n, "skipped": [{"id", "reason"}]}
+    Response: {"trashed": n, "deactivated": n, "skipped": [{"id", "reason"}]}
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from apps.attendance.models import Attendance
-        from apps.memberships.models import Membership, PromoCodeUsage
-        from apps.payments.models import Payment
-
         if request.user.role not in (User.Role.OWNER, User.Role.ADMIN):
             raise PermissionDenied('Only Owners/Admins can bulk delete members.')
 
@@ -303,32 +310,20 @@ class MemberBulkDeleteView(APIView):
             seen.add(pk)
             ids.append(pk)
 
-        # Batch-load users and the "has history" id sets — one query per model,
-        # not one per id.
-        users = {u.id: u for u in User.objects.filter(id__in=ids)}
-        has_history = set()
-        if ids:
-            has_history |= set(
-                Payment.objects.filter(member_id__in=ids)
-                .values_list('member_id', flat=True).distinct()
-            )
-            has_history |= set(
-                Attendance.objects.filter(user_id__in=ids)
-                .values_list('user_id', flat=True).distinct()
-            )
-            has_history |= set(
-                Membership.objects.filter(member_id__in=ids)
-                .values_list('member_id', flat=True).distinct()
-            )
-            has_history |= set(
-                PromoCodeUsage.objects.filter(member_id__in=ids)
-                .values_list('member_id', flat=True).distinct()
-            )
+        # One query for the whole batch. all_objects (not objects) so profiles
+        # already sitting in Trash are recognised instead of re-processed; the
+        # manager plus the explicit filter keep the batch inside this gym.
+        gym = getattr(request, 'gym', None)
+        profiles = MemberProfile.all_objects.select_related('user').filter(user_id__in=ids)
+        if gym is not None:
+            profiles = profiles.filter(gym=gym)
+        profiles_by_user = {p.user_id: p for p in profiles}
 
-        deleted = deactivated = 0
+        trashed = deactivated = 0
         with transaction.atomic():
             for pk in ids:
-                user = users.get(pk)
+                profile = profiles_by_user.get(pk)
+                user = profile.user if profile is not None else None
                 if (
                     user is None
                     or user.role != User.Role.MEMBER
@@ -337,27 +332,22 @@ class MemberBulkDeleteView(APIView):
                 ):
                     skipped.append({'id': pk, 'reason': 'not a deletable member'})
                     continue
+                if profile.is_deleted:
+                    skipped.append({'id': pk, 'reason': 'already in trash'})
+                    continue
                 try:
                     with transaction.atomic():
-                        if pk in has_history:
-                            if user.is_active:
-                                user.is_active = False
-                                user.save(update_fields=['is_active'])
-                                deactivated += 1
-                            else:
-                                skipped.append({
-                                    'id': pk,
-                                    'reason': 'already inactive (has history)',
-                                })
-                        else:
-                            user.delete()
-                            deleted += 1
+                        was_active = user.is_active
+                        deactivate_and_trash(profile, actor=request.user, gym=gym)
+                        trashed += 1
+                        if was_active:
+                            deactivated += 1
                 except Exception:
                     logger.exception('Bulk delete failed for member user id=%s', pk)
                     skipped.append({'id': pk, 'reason': 'could not be deleted'})
 
         return Response(
-            {'deleted': deleted, 'deactivated': deactivated, 'skipped': skipped},
+            {'trashed': trashed, 'deactivated': deactivated, 'skipped': skipped},
             status=status.HTTP_200_OK,
         )
 

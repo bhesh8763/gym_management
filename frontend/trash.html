@@ -234,11 +234,21 @@ async function loadTrashList() {
   }).join('');
 }
 
-// Best-effort human label for each category's serialized row.
+// Best-effort human label for each category's serialized row. Serializers use
+// different field names for the "name" (full_name, user_name, name, code…), so
+// try them all, including a nested `user` object, before falling back.
 function trashRowLabel(row) {
-  return row.full_name || row.name || row.member_name || row.plan_name
-    || row.receipt_number || row.equipment_name || row.locker_number && `Locker ${row.locker_number}`
-    || row.code || row.title || `${row.label || 'Item'} #${row.id}`;
+  const user = row.user && typeof row.user === 'object' ? row.user : null;
+  const personName = user
+    ? (user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '))
+    : '';
+  const label = [
+    row.full_name, row.user_name, personName, row.name, row.member_name,
+    row.plan_name, row.receipt_number, row.equipment_name,
+    row.locker_number ? `Locker ${row.locker_number}` : '',
+    row.code, row.title, row.email, row.user_email,
+  ].find(v => v !== undefined && v !== null && v !== '');
+  return label || `${row.label || 'Item'} #${row.id}`;
 }
 
 async function restoreRow(id) {

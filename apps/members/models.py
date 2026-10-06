@@ -83,6 +83,26 @@ class MemberProfile(TenantScopedModel):
     def __str__(self):
         return f'Profile: {self.user.get_full_name()}'
 
+    def revive(self):
+        """Undo the account deactivation done when this profile went to Trash.
+
+        ``restore()`` only clears ``deleted_at``/``deleted_by`` — without this
+        the member would come back unable to log in. Called by Trash restore.
+        """
+        from apps.gyms.models import GymMembership
+        user = self.user
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=['is_active'])
+        if self.gym_id:
+            GymMembership.objects.filter(
+                user=user,
+                gym_id=self.gym_id,
+                role=GymMembership.Role.MEMBER,
+                status=GymMembership.Status.INACTIVE,
+            ).update(status=GymMembership.Status.ACTIVE)
+        return user
+
     @property
     def bmi(self):
         """Calculate BMI if height and weight are available."""

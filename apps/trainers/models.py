@@ -54,6 +54,27 @@ class TrainerProfile(TenantScopedModel):
     def __str__(self):
         return f'Trainer: {self.user.get_full_name()}'
 
+    def revive(self):
+        """Undo the deactivation done when this profile went to Trash.
+
+        Deleting a trainer deactivates their gym membership; ``restore()``
+        only clears the soft-delete markers, so without this the trainer would
+        come back unable to work in the gym. Called by Trash restore.
+        """
+        from apps.gyms.models import GymMembership
+        user = self.user
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=['is_active'])
+        if self.gym_id:
+            GymMembership.objects.filter(
+                user=user,
+                gym_id=self.gym_id,
+                role=GymMembership.Role.TRAINER,
+                status=GymMembership.Status.INACTIVE,
+            ).update(status=GymMembership.Status.ACTIVE)
+        return user
+
 
 class TrainerMemberAssignment(TenantScopedModel):
     """

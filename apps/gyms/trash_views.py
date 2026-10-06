@@ -114,6 +114,12 @@ class TrashRestoreView(APIView):
             return Response({'detail': conflict}, status=409)
 
         row.restore(user=request.user)
+        # restore() only clears the soft-delete markers. Profile rows also
+        # switched off their account when they were trashed, so let the model
+        # undo that — otherwise a restored member comes back unable to log in.
+        revive = getattr(row, 'revive', None)
+        if callable(revive):
+            revive()
         record_audit(
             gym=gym,
             actor=request.user,

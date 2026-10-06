@@ -655,7 +655,7 @@ buildSidebar('members');
     const ids = Array.from(selectedMemberIds);
     if (ids.length === 0) return;
     const confirmed = await confirmAction(
-      'Members with no payment or attendance history will be permanently deleted. Members with history will be deactivated instead so their records are kept.',
+      'The selected members will be deactivated and moved to Trash, keeping all of their records. You can bring them back from Trash at any time.',
       { title: `Delete ${ids.length} selected member(s)?`, confirmText: 'Delete', variant: 'danger', icon: 'bi-trash' }
     );
     if (!confirmed) return;
@@ -676,7 +676,10 @@ buildSidebar('members');
       }
       const data = await res.json();
       const skipped = data.skipped || [];
-      showToast(`${data.deleted} deleted, ${data.deactivated} deactivated, ${skipped.length} skipped.`);
+      const summary = [`${data.trashed} moved to Trash`];
+      if (data.deactivated) summary.push(`${data.deactivated} deactivated`);
+      if (skipped.length) summary.push(`${skipped.length} skipped`);
+      showToast(summary.join(', ') + '.');
       if (skipped.length) {
         alert('Skipped members:\n' + skipped.map(s => {
           const row = allMembers.find(m => m.user_id === s.id);
@@ -962,7 +965,7 @@ buildSidebar('members');
     const action = makeActive ? 'Activate' : 'Deactivate';
     const msg = makeActive
       ? 'Activate this member? Their account will be marked active again.'
-      : 'Deactivate this member? Their account will be marked inactive but not deleted.';
+      : 'Deactivate this member? They will be moved to Trash (along with their login) and can be restored from there at any time.';
     if (!(await confirmAction(msg, { confirmText: makeActive ? 'Activate' : 'Deactivate', variant: makeActive ? 'success' : 'warning', icon: makeActive ? 'bi-person-check' : 'bi-person-x' }))) return;
 
     let res;
