@@ -839,7 +839,18 @@ function toggleDropdown(id) {
     if (p.id !== id) p.classList.remove('show');
   });
   const panel = document.getElementById(id);
-  if (panel) panel.classList.toggle('show');
+  if (!panel) return;
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) {
+    // Keep the panel inside the viewport: it's right-anchored at its
+    // trigger, so on narrow screens (bell pushed left by the profile
+    // cluster) a wide panel — #notifPanel is 340px min — would extend
+    // past the LEFT edge and get clipped, hiding the start of every
+    // line. Slide it back until its left edge sits 8px from the screen.
+    panel.style.right = ''; // recompute from a clean state each open
+    const left = panel.getBoundingClientRect().left;
+    if (left < 8) panel.style.right = (left - 8) + 'px';
+  }
 }
 
 function logout() {
