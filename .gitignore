@@ -42,3 +42,4 @@ AGENTS.md
 .empryo/
 
 # (CI workflow removed — nothing to ignore here)
+.neon
