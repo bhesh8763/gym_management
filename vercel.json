@@ -4,6 +4,7 @@
   "services": {
     "fitcore": {
       "root": ".",
+      "entrypoint": "gym_management.asgi:application",
       "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then python manage.py migrate --noinput; fi && python manage.py collectstatic --noinput",
       "functions": {
         "gym_management/asgi.py": {
