@@ -14,10 +14,10 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 TENANCY_REQUIRE_MEMBERSHIP = config('TENANCY_REQUIRE_MEMBERSHIP', default=False, cast=bool)
 REQUIRE_OWNER_SUBSCRIPTION = config('REQUIRE_OWNER_SUBSCRIPTION', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
-# Render publishes the service's real public hostname in RENDER_EXTERNAL_HOSTNAME
-# (a random suffix is appended when the requested name is taken, e.g.
-# fitcore-k5zr.onrender.com).  Append it unconditionally so host checks never
-# reject requests with a 400 DisallowedHost, whatever the env var says.
+# Legacy: Render published the service's real public hostname in
+# RENDER_EXTERNAL_HOSTNAME. Append it unconditionally when present so host
+# checks never reject requests with a 400 DisallowedHost on older
+# environments; the current production (Vercel) is handled below.
 _render_host = config('RENDER_EXTERNAL_HOSTNAME', default='')
 if _render_host and _render_host not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_render_host)

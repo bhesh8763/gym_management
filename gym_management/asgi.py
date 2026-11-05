@@ -2,10 +2,10 @@
 ASGI config for gym_management project.
 
 HTTP requests go to Django exactly as before; WebSocket upgrades are routed
-to the realtime messaging consumer via Django Channels. Served by daphne in
-production (see render.yaml) and by `manage.py runserver` in development —
-Channels swaps runserver over to ASGI automatically once `channels` is in
-INSTALLED_APPS.
+to the realtime messaging consumer via Django Channels. Served by Vercel's
+ASGI runtime in production (see vercel.json) and by `manage.py runserver` in
+development — Channels swaps runserver over to ASGI automatically once
+`channels` is in INSTALLED_APPS.
 """
 import os
 

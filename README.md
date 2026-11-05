@@ -6,16 +6,16 @@ Public registration is a **gym-owner onboarding flow**: it creates an `OWNER` ac
 
 ## 🌐 Live Deployment
 
-The production FitCore application is deployed on Render:
+The production FitCore application is deployed on **Vercel** (project `fitcore`, team `bhesh-team`, region `sin1` Singapore, Hobby plan):
 
 | Resource | URL |
 |----------|-----|
-| **Application** | **[https://fitcore-k5zr.onrender.com](https://fitcore-k5zr.onrender.com)** |
-| API base | `https://fitcore-k5zr.onrender.com/api` |
-| Health check | `https://fitcore-k5zr.onrender.com/api/health/` |
-| Django admin | `https://fitcore-k5zr.onrender.com/admin/` |
+| **Application** | **[https://fitcore-gym-manage.vercel.app](https://fitcore-gym-manage.vercel.app)** |
+| API base | `https://fitcore-gym-manage.vercel.app/api` |
+| Health check | `https://fitcore-gym-manage.vercel.app/api/health/` |
+| Django admin | `https://fitcore-gym-manage.vercel.app/admin/` |
 
-The frontend and API are served from the same HTTPS origin. The health endpoint returns `200` when the application and PostgreSQL database are healthy.
+One origin serves both frontend and API: WhiteNoise serves `frontend/` and Django serves `/api/*`. The health endpoint returns `200` when the application and the Neon PostgreSQL database are healthy.
 
 ![Stack](https://img.shields.io/badge/Django-5.2-092E20?style=flat-square&logo=django)
 ![Stack](https://img.shields.io/badge/DRF-3.15-A93C2D?style=flat-square)
@@ -60,8 +60,8 @@ The frontend and API are served from the same HTTPS origin. The health endpoint 
 
 ### Prerequisites
 
-- Python 3.10+
-- PostgreSQL 14+
+- Python 3.13 (pinned in `.python-version`; Vercel and GitHub Actions run 3.13)
+- A Neon (Lakebase Postgres) database — the connection comes from `.env`, so no local PostgreSQL install is needed
 - A static HTTP server for local frontend development (for example, VS Code Live Server)
 
 ### 1. Clone & set up
@@ -84,18 +84,23 @@ pip install -r requirements.txt
 ### 2. Configure environment
 
 Copy the documented template (`.env.example` lists every variable) or create
-a `.env` file in the project root:
+a `.env` file in the project root. In this project `.env` is normally written
+by `neon init` / `neonctl`, which fills in the shared Neon connection (`.env`
+is gitignored and also carries `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and
+`NEON_BRANCH`):
 
 ```env
 SECRET_KEY=your-secret-key-here
 DEBUG=True
 ALLOWED_HOSTS=127.0.0.1,localhost
 
-DB_NAME=gym_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_HOST=localhost
+# Neon (Lakebase Postgres) — the same DB_* values production uses
+DB_NAME=<database>
+DB_USER=<user>
+DB_PASSWORD=<password>
+DB_HOST=<project>-<branch>.neon.tech
 DB_PORT=5432
+DB_SSLMODE=require
 
 # Browser origins used when the frontend runs separately from Django
 CORS_ALLOWED_ORIGINS=http://127.0.0.1:5500
@@ -107,7 +112,7 @@ EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 # Public frontend URL (password-reset and OAuth redirects)
 FRONTEND_URL=http://127.0.0.1:5500
 
-# Local rollout compatibility (Render enables both)
+# Local rollout compatibility (production sets both to True)
 TENANCY_REQUIRE_MEMBERSHIP=False
 REQUIRE_OWNER_SUBSCRIPTION=False
 
@@ -123,16 +128,17 @@ REQUIRE_OWNER_SUBSCRIPTION=False
 # ESEWA_SECRET_KEY=8gBm/:&EnhH.1/q
 ```
 
-### 3. Create database & migrate
-
-```sql
--- In PostgreSQL:
-CREATE DATABASE gym_db;
-```
+### 3. Migrate the database
 
 ```bash
 python manage.py migrate
 ```
+
+There is no local Postgres anymore: `.env` points local `runserver` at the
+same **Neon** database production uses (free tier, region `aws-ap-southeast-1`
+Singapore, branch `main`, pooled `*.neon.tech` connection with
+`sslmode=require`). Neon compute scales to zero when idle, so the first query
+after a quiet period may pause briefly.
 
 ### 4. Prepare django-allauth and the optional Django admin
 
@@ -197,11 +203,12 @@ gym_management/          # Django project settings & URLs
 │   ├── css/             # theme, landing, and authentication styles
 │   └── js/              # shared API client, validation, mobile navigation
 ├── templates/           # Django/allauth and notification email templates
-├── scripts/             # Windows Task Scheduler helpers
+├── scripts/             # PWA maintenance scripts (icon generation, tag injection)
 ├── static/              # Project static assets
 ├── staticfiles/         # collectstatic output
 ├── logs/                # Rotating application logs
-├── render.yaml          # Render blueprint (web service + PostgreSQL)
+├── .github/workflows/   # reminders.yml — nightly send_reminders cron (GitHub Actions)
+├── vercel.json          # Vercel services config: ASGI entrypoint, sin1 region, catch-all rewrite
 └── manage.py
 ```
 
@@ -223,20 +230,21 @@ gym_management/          # Django project settings & URLs
 |----------|----------|-----------------------|-------------|
 | `SECRET_KEY` | ✅ | — | Django signing key; generate a unique production value |
 | `DEBUG` | ❌ | `False` | Enables Django debug mode |
-| `ALLOWED_HOSTS` | Production | `fitcore-k5zr.onrender.com` | Comma-separated host allowlist |
-| `RENDER_EXTERNAL_HOSTNAME` | Render only | Provided by Render | Public Render hostname; auto-added to host/CSRF allowlists |
-| `DB_NAME` | Production | `gym_db` | PostgreSQL database name |
-| `DB_USER` | Production | `postgres` | PostgreSQL user |
-| `DB_PASSWORD` | Production | `postgres` | PostgreSQL password |
-| `DB_HOST` | Production | `localhost` | PostgreSQL host |
+| `ALLOWED_HOSTS` | Automatic on Vercel | `.vercel.app` + `VERCEL_*` hosts (added by settings) | Comma-separated host allowlist; only needed for a custom domain |
+| `DB_NAME` | Production | Neon database name | PostgreSQL database name (Neon) |
+| `DB_USER` | Production | Neon role | PostgreSQL user |
+| `DB_PASSWORD` | Production | Neon password | PostgreSQL password |
+| `DB_HOST` | Production | `<project>-<branch>.neon.tech` (pooled) | PostgreSQL host (Neon, `aws-ap-southeast-1` Singapore) |
 | `DB_PORT` | Production | `5432` | PostgreSQL port |
+| `DB_SSLMODE` | Production | `prefer` locally / `require` on Neon | TLS mode for the managed Postgres connection |
 | `CORS_ALLOWED_ORIGINS` | ❌ | Local origins built in | Extra comma-separated browser origins for a split frontend |
-| `CSRF_TRUSTED_ORIGINS` | Production | `https://fitcore-k5zr.onrender.com` | Comma-separated full origins used by Django CSRF checks |
-| `FRONTEND_URL` | Production | `https://fitcore-k5zr.onrender.com` | Public frontend URL for reset emails and OAuth redirects |
-| `TENANCY_REQUIRE_MEMBERSHIP` | Production | `False` locally / `True` on Render | Reject API requests without an active gym membership |
-| `REQUIRE_OWNER_SUBSCRIPTION` | Production | `False` locally / `True` on Render | Enforce the paid owner-plan gate on management APIs, not only in JavaScript |
-| `DATA_UPLOAD_MAX_MEMORY_SIZE` | ❌ | `5242880` | Maximum non-file request body size (5 MiB) |
-| `FILE_UPLOAD_MAX_MEMORY_SIZE` | ❌ | `5242880` | In-memory file upload threshold (5 MiB) |
+| `CSRF_TRUSTED_ORIGINS` | Automatic on Vercel | `https://*.vercel.app` + exact origins (added by settings) | Comma-separated full origins used by Django CSRF checks; only needed for a custom domain |
+| `FRONTEND_URL` | Production | `https://fitcore-gym-manage.vercel.app` | Public frontend URL for reset emails and OAuth redirects |
+| `TENANCY_REQUIRE_MEMBERSHIP` | Production | `False` locally / `True` on Vercel | Reject API requests without an active gym membership |
+| `REQUIRE_OWNER_SUBSCRIPTION` | Production | `False` locally / `True` on Vercel | Enforce the paid owner-plan gate on management APIs, not only in JavaScript |
+| `CLOUDINARY_URL` | Production media | Unset locally (filesystem `media/`) | Cloudinary credential string; switches `STORAGES['default']` to `MediaCloudinaryStorage` |
+| `DATA_UPLOAD_MAX_MEMORY_SIZE` | ❌ | `5242880` (`4000000` on Vercel) | Maximum non-file request body size; Vercel caps request bodies at ~4.5 MB |
+| `FILE_UPLOAD_MAX_MEMORY_SIZE` | ❌ | `5242880` (`4000000` on Vercel) | In-memory file upload threshold; Vercel caps request bodies at ~4.5 MB |
 | `EMAIL_BACKEND` | ❌ | Auto: SMTP when credentials are set, otherwise console | Django email transport; an explicit value wins over the automatic choice |
 | `EMAIL_HOST` | SMTP | `smtp.gmail.com` | SMTP host |
 | `EMAIL_PORT` | SMTP | `587` | SMTP port |
@@ -245,10 +253,10 @@ gym_management/          # Django project settings & URLs
 | `EMAIL_USE_TLS` | SMTP | `True` | Enables STARTTLS |
 | `EMAIL_TIMEOUT` | ❌ | `15` | Seconds before an unresponsive SMTP server gives up |
 | `DEFAULT_FROM_EMAIL` | ❌ | `Gym Management <noreply@gym.local>` | Sender address |
-| `TRUST_X_FORWARDED_PROTO` | Production proxy | `False` | Trust the platform's HTTPS forwarding header |
-| `SESSION_COOKIE_SECURE` | Production | `False` | Send session cookies over HTTPS only |
-| `CSRF_COOKIE_SECURE` | Production | `False` | Send CSRF cookies over HTTPS only |
-| `SECURE_SSL_REDIRECT` | Production | `False` | Redirect HTTP requests to HTTPS; enable after health checks are green |
+| `TRUST_X_FORWARDED_PROTO` | Production | `True` on Vercel | Trust the platform's HTTPS forwarding header |
+| `SESSION_COOKIE_SECURE` | Production | `True` on Vercel | Send session cookies over HTTPS only |
+| `CSRF_COOKIE_SECURE` | Production | `True` on Vercel | Send CSRF cookies over HTTPS only |
+| `SECURE_SSL_REDIRECT` | Production | `False` on Vercel | Redirect HTTP requests to HTTPS; Vercel's edge already redirects — planned flip to `True` after burn-in |
 | `SECURE_HSTS_SECONDS` | ❌ | `0` | HSTS duration in seconds |
 | `SECURE_HSTS_INCLUDE_SUBDOMAINS` | ❌ | `False` | Add HSTS to subdomains |
 | `SECURE_HSTS_PRELOAD` | ❌ | `False` | Opt into HSTS preload |
@@ -436,10 +444,10 @@ The password-based `/api/auth/register/` endpoint is the owner-onboarding path. 
 | Layer | Technology |
 |-------|-----------|
 | Backend | Django 5.2.16, Django REST Framework 3.15.2 |
-| Database | PostgreSQL 14+ (`psycopg2`) |
+| Database | PostgreSQL (`psycopg2`) on Neon (Lakebase) — the same database for local dev and production |
 | Auth | SimpleJWT access/refresh rotation, token blacklist/versioning, django-allauth + dj-rest-auth |
 | Frontend | Vanilla HTML/CSS/JavaScript; Bootstrap 5 and Bootstrap Icons via CDN |
-| Production serving | daphne (ASGI: HTTP + WebSocket) + WhiteNoise; same-origin frontend/API |
+| Production serving | Vercel serverless ASGI (`gym_management.asgi:application`) + WhiteNoise; same-origin frontend/API |
 | Payments | Simulated owner-plan checkout; eSewa/Khalti sandbox for member dues |
 | Imports/exports | `openpyxl` workbooks, CSV, ReportLab PDF receipts |
 | QR / images | `qrcode`, Pillow |
@@ -543,7 +551,7 @@ User ──1:N──> MessageGroup; MessageGroup ──1:N──> GroupMessage
 
 ```text
 Local backend:  http://127.0.0.1:8000/api
-Production API: https://fitcore-k5zr.onrender.com/api
+Production API: https://fitcore-gym-manage.vercel.app/api
 ```
 
 ### Authentication
@@ -883,10 +891,10 @@ HTTPS POST; only delivery back to the recipient is live.
 1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/) or [Facebook Developers](https://developers.facebook.com/)
 2. Register the applicable redirect URIs:
    - Local: `http://localhost:8000/api/auth/<provider>/callback/`
-   - Production: `https://fitcore-k5zr.onrender.com/api/auth/<provider>/callback/`
+   - Production: `https://fitcore-gym-manage.vercel.app/api/auth/<provider>/callback/`
 
-   The custom adapters use `localhost` for local HTTP OAuth; Render uses the HTTPS production origin above.
-3. Add client ID and secret to `.env` file
+   The custom adapters use `localhost` for local HTTP OAuth; production (Vercel) uses the HTTPS origin above.
+3. Add the client ID and secret to `.env` and to Vercel's environment variables (no Google/Facebook credentials are configured yet — social login stays unconfigured until they are added)
 
 ---
 
@@ -980,28 +988,33 @@ wakes anyone):
 - **The consumer** (`apps/notifications/consumers.py`) authenticates at
   handshake time from `?token=<JWT>` (refused with close code 4401 when
   missing/expired), joins `ws_user_<id>`, and only ever pushes server →
-  client (`connected`, `message.new`, `pong`). A ping every 30 s doubles as
-  Render free-tier inbound traffic so an open chat keeps the instance awake;
-  no server traffic for 90 s triggers a client reconnect.
+  client (`connected`, `message.new`, `pong`). A ping every 30 s detects a
+  dead connection; no server traffic for 90 s triggers a client reconnect.
 - **The client** (`frontend/js/realtime.js`) is loaded explicitly by
   `messages.html`, `my-messages.html` and `trainer-messages.html` (and lazily
   by `api.js` everywhere else for the bell badge). On `message.new` it calls
   the page's own `loadMessages()` (open conversation included) and
   `loadTopbarNotifications()`. While the socket is down and the tab is
-  visible it polls every 8 s, so updates are slower but never silent.
-- **Channel layer:** `InMemoryChannelLayer` (no Redis) — correct for the
-  single-process daphne deployment on Render's free plan; switch to
-  `RedisChannelLayer` if the service ever scales past one worker/instance.
+  visible it polls every 8 s, so updates are slower but never silent. On
+  Vercel this polling is the fallback production relies on: the in-memory
+  channel layer cannot fan out across separate serverless instances, so an
+  event emitted on one instance never reaches a tab served by another.
+- **Channel layer:** `InMemoryChannelLayer` (no Redis) — fine for the
+  single-process local deployment; cross-instance delivery on Vercel would
+  need a shared layer such as `RedisChannelLayer`.
   The ASGI entrypoint is `gym_management.asgi.py` (HTTP → Django,
-  WebSocket → `AllowedHostsOriginValidator` → consumer), served by **daphne**
-  in production and by `manage.py runserver` in development (Channels
-  auto-switches runserver to ASGI once `channels` is in `INSTALLED_APPS`).
+  WebSocket → `AllowedHostsOriginValidator` → consumer), invoked directly by
+  Vercel as a serverless function in production (see `vercel.json`) and by
+  `manage.py runserver` in development (Channels auto-switches runserver to
+  ASGI once `channels` is in `INSTALLED_APPS`).
 
 ---
 
 ### Scheduled Tasks
 
-Run the operational commands from an external scheduler (Render Cron, cron, or Windows Task Scheduler):
+Production has no long-lived process to cron, so reminders run from **GitHub Actions**: the `.github/workflows/reminders.yml` workflow runs `python manage.py send_reminders` daily at `15 2 * * *` UTC (08:00 NPT) and also supports manual runs via `workflow_dispatch` from the Actions tab. The workflow's header comment documents which repository secrets are required and which are optional (Settings → Secrets and variables → Actions); all 14 are configured and the job was verified green end-to-end ("Done. 0 auto-unfrozen, 0 renewal, 0 payment-due, 0 inactivity, 0 workout-reminder notifications").
+
+Run the remaining operational commands from any scheduler (cron or GitHub Actions) or by hand:
 
 | Command | Purpose | Suggested cadence |
 |---------|---------|-------------------|
@@ -1013,13 +1026,10 @@ Run the operational commands from an external scheduler (Render Cron, cron, or W
 
 Choose one notification schedule if both reminder commands would create overlapping alerts.
 
-**Windows (Task Scheduler):**
-```powershell
-# Import the included daily reminder definition:
-schtasks /create /xml "scripts\GymDailyReminders.xml" /tn "GymDailyReminders"
+**Manual run (any OS):**
 
-# Manual run:
-schtasks /run /tn "GymDailyReminders"
+```powershell
+python manage.py send_reminders
 ```
 
 **Linux (cron):**
@@ -1056,9 +1066,9 @@ python manage.py test apps.reports.tests      # 60 tests
 | **dataimport** | 36 | Workbook schema, template, CSV+XLSX import (validate/dry-run/commit), validation, owner-only access |
 | **diet** | 50 | Plans, meals, meal logs, daily/weekly summaries, meal checklist + adherence monitor, filtering, RBAC |
 | **equipment** | 21 | Inventory and maintenance CRUD/validation/RBAC |
-| **gyms** | 53 | Tenant provisioning, custom roles and permission resolution, trash/restore |
+| **gyms** | 54 | Tenant provisioning, custom roles and permission resolution, trash/restore |
 | **lockers** | 46 | Inventory, bulk creation, assignment lifecycle, status synchronization, filters |
-| **members** | 44 | Profile CRUD, reactivation, own-profile access, validation |
+| **members** | 45 | Profile CRUD, reactivation, own-profile access, validation |
 | **memberships** | 71 | Plans, assignment/renewal/cancel, freeze workflows, offers/promo codes, expiry sync, filters |
 | **notifications** | 87 | Notification types/read state/detail endpoint, scheduled services/commands, push payloads, model-level push parity hook (incl. the bulk-create/announcement path), group messaging and pins, WebSocket consumer (token handshake, keepalive, live fan-out) |
 | **payments** | 32 | Staff recording, member scoping, discounts, partial self-service payments, summaries and access control |
@@ -1068,7 +1078,7 @@ python manage.py test apps.reports.tests      # 60 tests
 | **trainers** | 34 | Trainer profiles, assignments, trainer-scoped members and notifications |
 | **workouts** | 72 | Exercise/template/version workflows, assignments/completions, messaging (incl. live push + WebSocket delivery on commit), exports, RBAC |
 
-**Total: 831 tests across 16 local apps.** Latest full run: **831 passed**, with Django system checks clean.
+**Total: 833 tests across 16 local apps.** Latest full run: **833 passed** on Python 3.13 (`.python-version`), with Django system checks clean.
 
 ### Test Patterns Used
 
@@ -1086,44 +1096,58 @@ python manage.py test apps.reports.tests      # 60 tests
 
 ### Current Production Deployment
 
-FitCore is currently deployed at **https://fitcore-k5zr.onrender.com**. The checked-in `render.yaml` configures this hostname for `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, and `FRONTEND_URL`; settings also reads Render's `RENDER_EXTERNAL_HOSTNAME` automatically.
+FitCore is currently deployed at **https://fitcore-gym-manage.vercel.app** on **Vercel** (project `fitcore`, team `bhesh-team`, Hobby plan, region `sin1` Singapore). `vercel.json` uses Vercel's `services` schema: one service `fitcore`, rooted at `.`, whose entrypoint is the ASGI application `gym_management.asgi:application`. A catch-all rewrite `/(.*)` sends every path to that service, so a single origin serves both WhiteNoise (`frontend/` + collected static) and Django (`/api/*`, `/admin/*`).
 
 Production requests use:
 
 ```text
-Frontend:  https://fitcore-k5zr.onrender.com
-API:       https://fitcore-k5zr.onrender.com/api
-Health:    https://fitcore-k5zr.onrender.com/api/health/
-Admin:     https://fitcore-k5zr.onrender.com/admin/
+Frontend:  https://fitcore-gym-manage.vercel.app
+API:       https://fitcore-gym-manage.vercel.app/api
+Health:    https://fitcore-gym-manage.vercel.app/api/health/
+Admin:     https://fitcore-gym-manage.vercel.app/admin/
 ```
+
+`settings.py` auto-detects Vercel (`VERCEL=1` plus `VERCEL_URL` / `VERCEL_PROD_URL` / `VERCEL_TARGET_URL`) and appends `.vercel.app` and those hosts to `ALLOWED_HOSTS`, plus `https://*.vercel.app` and the exact origins to `CSRF_TRUSTED_ORIGINS` — no `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, or `RENDER_EXTERNAL_HOSTNAME` environment variables are needed in production (the `RENDER_EXTERNAL_HOSTNAME` handling in settings remains only as legacy). The old Render deployment is defunct — its free database expired and the data is gone — and the Render-era `render.yaml` has been removed.
 
 ### Production Checklist
 
 1. Set `DEBUG=False` and generate a unique `SECRET_KEY`.
-2. Configure PostgreSQL through `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`.
-3. Set `ALLOWED_HOSTS=fitcore-k5zr.onrender.com`, `CSRF_TRUSTED_ORIGINS=https://fitcore-k5zr.onrender.com`, and `FRONTEND_URL=https://fitcore-k5zr.onrender.com`.
-4. Run `python manage.py migrate --noinput` during deployment.
-5. Run `python manage.py collectstatic --noinput`; WhiteNoise serves `frontend/` and collected static assets.
-6. Bind daphne (the ASGI server — HTTP + WebSocket) to the platform-assigned port (`-b 0.0.0.0 -p $PORT` on Render).
-7. Configure email: set `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` and `DEFAULT_FROM_EMAIL` (the sender must be the same mailbox as `EMAIL_HOST_USER`, or Gmail will rewrite it) in Render's environment — the backend flips to SMTP automatically as soon as both credentials are present; leave them unset to print emails to the logs instead. Verify with a password-reset email.
+2. Configure the Neon database through `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and `DB_SSLMODE=require` — the same values local development reads from `.env`.
+3. Set `FRONTEND_URL=https://fitcore-gym-manage.vercel.app`; host and CSRF allowlists are automatic on Vercel (see above), so only a custom domain would need `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS`.
+4. Migrations run automatically during the Vercel build, but only when `VERCEL_ENV=production` (see `vercel.json`).
+5. `python manage.py collectstatic --noinput` runs on every deploy; WhiteNoise serves `frontend/` and the collected static assets.
+6. The ASGI entrypoint `gym_management.asgi:application` runs as a Vercel function (`functions: { gym_management/asgi.py: { maxDuration: 300 } }`) — there is no long-lived process to bind to `$PORT`.
+7. Configure email: set `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` and `DEFAULT_FROM_EMAIL` (the sender must be the same mailbox as `EMAIL_HOST_USER`, or Gmail will rewrite it) in Vercel's environment for Production + Preview — the backend flips to SMTP automatically as soon as both credentials are present; leave them unset to print emails to the logs instead. Verify with a password-reset email.
 8. Use production Khalti/eSewa credentials for member dues; the owner-plan checkout remains simulated.
-9. Schedule reminders, Khalti reconciliation, database backups, and log monitoring.
-10. Configure persistent storage for `media/`; without a Render disk, uploaded files are ephemeral.
-11. Create the allauth site if it is missing: `python manage.py ensure_site --domain fitcore-k5zr.onrender.com --name FitCore`; update an existing `Site(id=1)` in Django admin when its domain changes.
-12. Keep `logs/` and any database backups outside the deployed source tree when possible.
+9. Schedule reminders through GitHub Actions (see [Scheduled Tasks](#scheduled-tasks)); serverless has no long-lived process to cron, so they run there or by hand with `python manage.py send_reminders`.
+10. Configure media storage: when `CLOUDINARY_URL` is set, `settings.py` switches `STORAGES['default']` to `MediaCloudinaryStorage` (Vercel's filesystem is read-only). Without it, local development falls back to the filesystem `media/` directory.
+11. Create the allauth site if it is missing: `python manage.py ensure_site --domain fitcore-gym-manage.vercel.app --name FitCore`. The command only creates (`get_or_create`); to change the domain later, update `Site(id=1)` in Django admin or shell.
+12. Treat `logs/` and on-disk backups as local-only: Vercel's filesystem is ephemeral, so production logging and backups must live outside the deployed source tree.
 
-### Redeploy to Render with the Included Blueprint
+### Deploying to Vercel
 
-The current service at `fitcore-k5zr.onrender.com` was created from `render.yaml`. The blueprint provisions one Python web service and one PostgreSQL database in the same region (Singapore). The frontend and API share one origin, so production does not require split-origin CORS.
+Production deploys in either of two ways:
 
-1. Push the repository to the GitHub/GitLab repository connected to the existing Render service.
-2. Normal deployments run from the connected branch's auto-deploy configuration. For a first-time setup only, choose **New → Blueprint** and apply `render.yaml`.
-3. Render maps the managed database connection into the app's `DB_*` variables.
-4. The build runs `pip install -r requirements.txt && python manage.py collectstatic --noinput`.
-5. Startup runs migrations, then `daphne -b 0.0.0.0 -p $PORT gym_management.asgi:application` (ASGI — the WebSocket realtime endpoint needs it; gunicorn is WSGI-only).
-6. Render health-checks `/api/health/`, which also verifies database connectivity.
+1. **Manual:** `vercel deploy --prod` from a logged-in Vercel CLI.
+2. **Git integration:** push to `main` once the integration is connected in the Vercel dashboard (Project → Settings → Git).
 
-The blueprint currently uses free plans. Free web services sleep after inactivity, and the free database is time-limited. If Render changes the generated service hostname, update `FRONTEND_URL`; `settings.py` automatically appends `RENDER_EXTERNAL_HOSTNAME` to host and CSRF allowlists.
+On each deploy, `vercel.json`:
+
+- Declares one service `fitcore` with `root: "."` and entrypoint `gym_management.asgi:application`.
+- Runs `buildCommand` = `if [ "$VERCEL_ENV" = "production" ]; then python manage.py migrate --noinput; fi && python manage.py collectstatic --noinput` — migrations only for production deployments, `collectstatic` always.
+- Sets `functions: { gym_management/asgi.py: { maxDuration: 300 } }` so a request may run for up to 300 seconds.
+- Pins execution to Singapore with the top-level `regions: ["sin1"]`.
+- Routes every request (`/(.*)` → service `fitcore`) to the single origin.
+
+Environment variables are configured for **Production + Preview** (via `vercel env add` or the dashboard): `SECRET_KEY`, `DEBUG=False`, the `DB_*` set plus `DB_SSLMODE=require` (Neon), `FRONTEND_URL`, `CLOUDINARY_URL`, the VAPID keys, SMTP settings, eSewa/Khalti credentials, `TENANCY_REQUIRE_MEMBERSHIP=True`, `REQUIRE_OWNER_SUBSCRIPTION=True`, `TRUST_X_FORWARDED_PROTO=True`, `SESSION_COOKIE_SECURE=True`, `CSRF_COOKIE_SECURE=True`, `SECURE_SSL_REDIRECT=False` (planned flip to `True` after burn-in), and `DATA_UPLOAD_MAX_MEMORY_SIZE=4000000` / `FILE_UPLOAD_MAX_MEMORY_SIZE=4000000` (Vercel caps request bodies at ~4.5 MB). `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` are not needed — settings derives them from `VERCEL*` variables. Deployment Protection (team SSO) was disabled for this project so the site is public.
+
+The database is **Neon** (Lakebase Postgres) free tier: project `fitcore`, region `aws-ap-southeast-1` (Singapore), branch `main`, pooled `*.neon.tech` connection with `sslmode=require`. Neon scales to zero when idle, and local development uses the same database through `.env`.
+
+After a deploy, check the live health endpoint:
+
+```bash
+curl -fS https://fitcore-gym-manage.vercel.app/api/health/
+```
 
 ### Generic ASGI Deployment
 
@@ -1138,7 +1162,7 @@ messaging endpoint `/ws/messages/` requires ASGI). Gunicorn stays pinned in
 `requirements.txt` as a WSGI-only fallback for setups that don't need
 WebSockets: `gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT`.
 
-There is no committed Dockerfile. The deployment path currently provided by the repository is the Render blueprint plus daphne/WhiteNoise.
+There is no committed Dockerfile. Production runs on Vercel — `vercel.json` invokes `gym_management.asgi:application` behind WhiteNoise — and the Render-era `render.yaml` has been removed. The daphne commands above remain valid for any self-hosted ASGI deployment.
 
 ---
 
@@ -1215,7 +1239,7 @@ automatically.
 
 | Piece | Purpose |
 |-------|---------|
-| `manage.py generate_vapid_keys` | Generates the VAPID keypair; paste the output into `.env` and Render's env vars |
+| `manage.py generate_vapid_keys` | Generates the VAPID keypair; paste the output into `.env` and Vercel's environment variables |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Identify this server to the browser push services (see Environment Variables) |
 | `apps.notifications.models.PushSubscription` | One row per browser endpoint; a user may have several devices |
 | `GET /api/notifications/push/public-key/` | Hands the VAPID public key to the browser |
@@ -1241,8 +1265,9 @@ explicit explanation instead of failing silently.
 
 1. `python manage.py generate_vapid_keys` and copy the printed keys.
 2. Add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` to
-   Render → Environment (keep the private key secret; changing keys only
-   invalidates subscriptions — users re-subscribe on next login).
+   Vercel → Settings → Environment Variables for Production + Preview (keep
+   the private key secret; changing keys only invalidates subscriptions —
+   users re-subscribe on next login).
 3. Deploy — no other wiring needed; `notify()` already pushes everywhere it runs
    (signals, reminders command, messaging, manual announcements).
 
@@ -1259,7 +1284,7 @@ python scripts/inject_pwa_tags.py
 **Maintenance notes:**
 - Add the injection script run to your routine whenever you add a new `frontend/*.html` page — new pages need `js/pwa.js` to register the worker.
 - Bump `VERSION` in `sw.js` to force every client to drop its caches and refetch the shell.
-- Browsers only grant service workers/installability over HTTPS or on `localhost` — production (Render, HTTPS) and the local dev origins both qualify.
+- Browsers only grant service workers/installability over HTTPS or on `localhost` — production (Vercel, HTTPS) and the local dev origins both qualify.
 - Verify with Chrome DevTools → **Application → Manifest / Service Workers**, or a Lighthouse audit.
 
 ### Design System (`theme.css`)
@@ -1346,7 +1371,8 @@ python manage.py migrate
 # Reuse an existing test database when its schema is disposable:
 python manage.py test --keepdb
 
-# Or terminate connections and remove it with PostgreSQL tools:
+# Or terminate connections and remove it (the test runner creates
+# `test_<DB_NAME>` on the configured database server) with PostgreSQL tools:
 psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='test_gym_db';"
 psql -d postgres -c "DROP DATABASE IF EXISTS test_gym_db;"
 ```
@@ -1368,11 +1394,11 @@ psql -d postgres -c "DROP DATABASE IF EXISTS test_gym_db;"
 - Run migrations if `PlanSubscription` queries fail.
 - The gate fails open if the status request cannot complete, so a persistent redirect normally means a successful API response with `has_plan: false`.
 
-**Render returns HTTP 400 / `DisallowedHost`**
-- Confirm the live application is available at `https://fitcore-k5zr.onrender.com` and check `https://fitcore-k5zr.onrender.com/api/health/`.
-- Verify the public hostname in `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`.
-- `RENDER_EXTERNAL_HOSTNAME` is automatically added by settings when Render provides it.
-- Confirm daphne binds to `0.0.0.0:$PORT` and `/api/health/` is reachable.
+**Vercel returns HTTP 400 / `DisallowedHost`**
+- Confirm the live application is available at `https://fitcore-gym-manage.vercel.app` and check `https://fitcore-gym-manage.vercel.app/api/health/`.
+- On Vercel there is nothing to configure: settings auto-allows `.vercel.app` plus the `VERCEL_URL` / `VERCEL_PROD_URL` / `VERCEL_TARGET_URL` hosts and trusts `https://*.vercel.app` origins.
+- A custom domain would need its host added to `ALLOWED_HOSTS` and its full origin to `CSRF_TRUSTED_ORIGINS` as environment variables; `RENDER_EXTERNAL_HOSTNAME` is legacy Render handling and is no longer part of the deployment.
+- Check the function logs in the Vercel dashboard (or `vercel logs`) and confirm `/api/health/` is reachable.
 
 **Static frontend or assets return 404 in production**
 - Run `python manage.py collectstatic --noinput`.

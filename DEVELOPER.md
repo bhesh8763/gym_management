@@ -26,14 +26,14 @@ Technical documentation for developers working on the Gym Management System.
 
 ## Live Deployment
 
-The production environment is hosted on Render:
+The production environment is hosted on **Vercel** (project `fitcore`, team `bhesh-team`, region `sin1` Singapore, Hobby plan):
 
 | Resource | URL |
 |----------|-----|
-| Application | **[https://fitcore-k5zr.onrender.com](https://fitcore-k5zr.onrender.com)** |
-| API base | `https://fitcore-k5zr.onrender.com/api` |
-| Health check | `https://fitcore-k5zr.onrender.com/api/health/` |
-| Django admin | `https://fitcore-k5zr.onrender.com/admin/` |
+| Application | **[https://fitcore-gym-manage.vercel.app](https://fitcore-gym-manage.vercel.app)** |
+| API base | `https://fitcore-gym-manage.vercel.app/api` |
+| Health check | `https://fitcore-gym-manage.vercel.app/api/health/` |
+| Django admin | `https://fitcore-gym-manage.vercel.app/admin/` |
 
 Production uses a single origin: WhiteNoise serves `frontend/` while Django/DRF serves `/api/`. See [Production Deployment](#production-deployment) for environment and release details.
 
@@ -547,17 +547,20 @@ function socialLogin(provider) {
 }
 ```
 
-After successful OAuth, allauth redirects to `FRONTEND_URL` (set in `.env`). Server-rendered allauth error/cancelled pages use `gym_management.context_processors.deployment_context` so their login links target the configured frontend rather than hard-coding a localhost or Render URL.
+After successful OAuth, allauth redirects to `FRONTEND_URL` (set in `.env`). Server-rendered allauth error/cancelled pages use `gym_management.context_processors.deployment_context` so their login links target the configured frontend rather than hard-coding a localhost or the production URL.
 
 ### Setup Steps
 
 1. **Google**: Create OAuth 2.0 credentials in [Google Cloud Console](https://console.cloud.google.com/)
    - Local redirect URI: `http://localhost:8000/api/auth/google/callback/`
-   - Production redirect URI: `https://fitcore-k5zr.onrender.com/api/auth/google/callback/`
+   - Production redirect URI: `https://fitcore-gym-manage.vercel.app/api/auth/google/callback/`
 2. **Facebook**: Create an app in [Facebook Developers](https://developers.facebook.com/)
    - Local redirect URI: `http://localhost:8000/api/auth/facebook/callback/`
-   - Production redirect URI: `https://fitcore-k5zr.onrender.com/api/auth/facebook/callback/`
-3. Add credentials to local `.env` and the corresponding Render environment variables:
+   - Production redirect URI: `https://fitcore-gym-manage.vercel.app/api/auth/facebook/callback/`
+3. Add credentials to local `.env` and the corresponding Vercel environment variables (Production + Preview):
+
+   No Google/Facebook credentials are configured yet — social login stays unconfigured until they are added to `.env` and Vercel.
+
    ```env
    GOOGLE_CLIENT_ID=your-client-id
    GOOGLE_CLIENT_SECRET=your-client-secret
@@ -566,9 +569,9 @@ After successful OAuth, allauth redirects to `FRONTEND_URL` (set in `.env`). Ser
    ```
 4. Ensure `Site(id=1)` exists (allauth requires it):
    - Local development: `domain=localhost:5500`, `name=FitCore`
-   - Production: `domain=fitcore-k5zr.onrender.com`, `name=FitCore`
+   - Production: `domain=fitcore-gym-manage.vercel.app`, `name=FitCore`
 
-   Run `python manage.py ensure_site --domain fitcore-k5zr.onrender.com --name FitCore` for a new site, or update an existing row in Django admin.
+   Run `python manage.py ensure_site --domain fitcore-gym-manage.vercel.app --name FitCore` for a new site. The command only creates (`get_or_create`) — to change the domain later, update the existing row in Django admin or shell.
 
 ---
 
@@ -918,7 +921,7 @@ python manage.py migrate
 python manage.py check
 ```
 
-Keep `TENANCY_REQUIRE_MEMBERSHIP` and `REQUIRE_OWNER_SUBSCRIPTION` disabled during the compatibility rollout. Once the backfill has been verified, enable them in the Render environment and redeploy.
+Keep `TENANCY_REQUIRE_MEMBERSHIP` and `REQUIRE_OWNER_SUBSCRIPTION` disabled during the compatibility rollout. Once the backfill has been verified, enable them in Vercel's environment (Production + Preview) and redeploy (`vercel deploy --prod` or a push to `main`).
 
 ### Common Patterns
 
@@ -955,12 +958,12 @@ migrations.RunPython(forward),
 
 | Resource | Production URL |
 |----------|----------------|
-| Frontend and application | `https://fitcore-k5zr.onrender.com` |
-| REST API | `https://fitcore-k5zr.onrender.com/api` |
-| Health check | `https://fitcore-k5zr.onrender.com/api/health/` |
-| Django admin | `https://fitcore-k5zr.onrender.com/admin/` |
+| Frontend and application | `https://fitcore-gym-manage.vercel.app` |
+| REST API | `https://fitcore-gym-manage.vercel.app/api` |
+| Health check | `https://fitcore-gym-manage.vercel.app/api/health/` |
+| Django admin | `https://fitcore-gym-manage.vercel.app/admin/` |
 
-The canonical production hostname is `fitcore-k5zr.onrender.com`.
+The canonical production hostname is `fitcore-gym-manage.vercel.app`.
 
 ### Local URL Separation
 
@@ -973,55 +976,89 @@ The canonical production hostname is `fitcore-k5zr.onrender.com`.
 
 With `DEBUG=True`, `gym_management/settings.py` sets `WHITENOISE_ROOT=None` and disables its index file. The `backend_root` URL then returns JSON identifying the API service, so port `8000` does not duplicate the frontend on port `5500`. `api.js` detects a non-8000 local port and calls `http://<current-host>:8000/api`.
 
-Production uses `DEBUG=False`: WhiteNoise serves `frontend/` from the Render origin, and the frontend calls same-origin `/api`.
+Production uses `DEBUG=False`: WhiteNoise serves `frontend/` from the Vercel origin, and the frontend calls same-origin `/api`.
 
-### Render Topology
+### Vercel Topology
 
-`render.yaml` defines:
+`vercel.json` uses Vercel's `services` schema and defines:
 
-- One Python web service in Render's Singapore region
-- One managed PostgreSQL database in the same region
+- One service `fitcore` with `root: "."` and entrypoint `gym_management.asgi:application`
 - A same-origin deployment where WhiteNoise serves `frontend/` and Django serves the API
-- Gunicorn bound to Render's assigned `0.0.0.0:$PORT`
-- `/api/health/` as the Render health-check path
+- `functions: { gym_management/asgi.py: { maxDuration: 300 } }`
+- Top-level `regions: ["sin1"]` (Singapore)
+- A catch-all rewrite `/(.*)` → service `fitcore`, so every path hits the one origin
 
-The build and start commands are:
+The effective build command is:
 
 ```bash
-# Build
-pip install -r requirements.txt
+# Build (migrations run only when VERCEL_ENV=production)
+if [ "$VERCEL_ENV" = "production" ]; then python manage.py migrate --noinput; fi
 python manage.py collectstatic --noinput
-
-# Start
-python manage.py migrate
-gunicorn gym_management.wsgi:application --bind 0.0.0.0:$PORT
 ```
+
+Each request is then served by `gym_management.asgi:application` as a serverless function — there is no long-lived process to bind to a port. `settings.py` auto-detects Vercel (`VERCEL=1` plus `VERCEL_URL` / `VERCEL_PROD_URL` / `VERCEL_TARGET_URL`) and appends `.vercel.app` and those hosts to `ALLOWED_HOSTS`, plus `https://*.vercel.app` and the exact origins to `CSRF_TRUSTED_ORIGINS`.
 
 ### Required Production Environment
 
+Configured for **Production + Preview** (via `vercel env add` or the dashboard):
+
 ```env
+SECRET_KEY=...
 DEBUG=False
-ALLOWED_HOSTS=fitcore-k5zr.onrender.com
-CSRF_TRUSTED_ORIGINS=https://fitcore-k5zr.onrender.com
-FRONTEND_URL=https://fitcore-k5zr.onrender.com
+
+# Neon (Lakebase Postgres) — same values local development reads from .env
+DB_HOST=<project>-<branch>.neon.tech
+DB_PORT=5432
+DB_NAME=...
+DB_USER=...
+DB_PASSWORD=...
+DB_SSLMODE=require
+
+FRONTEND_URL=https://fitcore-gym-manage.vercel.app
+CLOUDINARY_URL=cloudinary://...
+
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=...
+EMAIL_HOST_PASSWORD=...
+DEFAULT_FROM_EMAIL=...
+
+ESEWA_MERCHANT_CODE=...
+ESEWA_SECRET_KEY=...
+ESEWA_BASE_URL=...
+ESEWA_STATUS_CHECK_URL=...
+KHALTI_SECRET_KEY=...
+KHALTI_BASE_URL=...
+
+TENANCY_REQUIRE_MEMBERSHIP=True
+REQUIRE_OWNER_SUBSCRIPTION=True
 TRUST_X_FORWARDED_PROTO=True
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
 SECURE_SSL_REDIRECT=False
+DATA_UPLOAD_MAX_MEMORY_SIZE=4000000
+FILE_UPLOAD_MAX_MEMORY_SIZE=4000000
 ```
 
-Render supplies `SECRET_KEY` and maps the managed database values into `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD`. `RENDER_EXTERNAL_HOSTNAME` is also supplied automatically and is appended to Django's host and CSRF allowlists.
+`ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` are **not** needed: settings derives them from the `VERCEL*` variables (a custom domain would need explicit values). `RENDER_EXTERNAL_HOSTNAME` handling still exists in settings purely as legacy. The `4000000` upload limits keep Django under Vercel's ~4.5 MB request-body cap.
 
-Keep `SECURE_SSL_REDIRECT=False` until Render's health checks remain green through an HTTPS redirect. Enable HSTS only after confirming the final hostname and HTTPS configuration.
+The database is **Neon** (Lakebase Postgres) free tier: project `fitcore`, region `aws-ap-southeast-1` (Singapore), branch `main`, pooled `*.neon.tech` connection with `sslmode=require`. Neon scales to zero when idle, and local development uses the same database through `.env` — there is no local Postgres.
+
+Keep `SECURE_SSL_REDIRECT=False` until the post-burn-in flip to `True` (Vercel's edge already redirects HTTP→HTTPS). Enable HSTS only after confirming the final hostname and HTTPS configuration.
 
 ### Release Workflow
 
-1. Push the validated change to the repository branch connected to the Render service.
-2. Let Render run the build, `collectstatic`, startup migration, and Gunicorn boot.
+1. Deploy with `vercel deploy --prod` (Vercel CLI), or push to `main` once the Git integration is connected (Project → Settings → Git).
+2. Vercel installs dependencies, runs the build command (production-only migration + `collectstatic`), and serves the ASGI function.
 3. Check the live health endpoint before declaring the release complete:
 
    ```bash
-   curl -fS https://fitcore-k5zr.onrender.com/api/health/
+   curl -fS https://fitcore-gym-manage.vercel.app/api/health/
    ```
 
    A healthy response includes:
@@ -1036,20 +1073,22 @@ Keep `SECURE_SSL_REDIRECT=False` until Render's health checks remain green throu
 
 4. Smoke-test the landing page, owner signup/checkout, login, and one role-scoped dashboard.
 
-The free web service may sleep after inactivity, so the first request can take longer while Render wakes it. Configure reminder, gateway-reconciliation, and backup jobs separately; `render.yaml` does not schedule management commands.
+There is no web service to wake: Vercel serves each request on demand, and Neon's compute scales to zero when idle (the first query after a quiet period may pause briefly). Scheduled management commands — reminders, gateway reconciliation, backups — run from GitHub Actions (`.github/workflows/reminders.yml` runs `send_reminders` nightly at `15 2 * * *` UTC); serverless has no long-lived process to cron.
 
 ### Production OAuth and Media
 
 Register these OAuth callback URLs with each provider:
 
 ```text
-https://fitcore-k5zr.onrender.com/api/auth/google/callback/
-https://fitcore-k5zr.onrender.com/api/auth/facebook/callback/
+https://fitcore-gym-manage.vercel.app/api/auth/google/callback/
+https://fitcore-gym-manage.vercel.app/api/auth/facebook/callback/
 ```
 
-The persistent media disk is currently commented out in `render.yaml`. Until a disk or external object-storage service is configured, uploaded profile pictures, equipment images, and staff documents are ephemeral and may disappear on redeploy or instance replacement.
+No Google/Facebook credentials are configured yet — social login stays unconfigured until `GOOGLE_*` / `FACEBOOK_*` values are added to `.env` and to Vercel's environment variables.
 
-If Render assigns a different hostname, update the values in `render.yaml` and `FRONTEND_URL`; `RENDER_EXTERNAL_HOSTNAME` protects host/CSRF checks automatically.
+Media uploads use **Cloudinary**: when `CLOUDINARY_URL` is set, `settings.py` switches `STORAGES['default']` to `MediaCloudinaryStorage` and appends the cloudinary apps (Vercel's filesystem is read-only, so uploaded profile pictures, equipment images, and staff documents must live off-platform). Without `CLOUDINARY_URL`, local development falls back to the filesystem `media/` directory.
+
+If the production hostname changes, update `FRONTEND_URL`, the allauth `Site(id=1)` row, and the registered OAuth redirect URIs. Host and CSRF allowlists stay automatic for `*.vercel.app`; a custom domain would need explicit `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` values. The old Render deployment is defunct (its free database expired and the data is gone) — the Render-era `render.yaml` has been removed.
 
 ---
 

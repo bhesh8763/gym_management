@@ -9,29 +9,16 @@ Run manually:
     python manage.py send_reminders
 
 ────────────────────────────────────────────────────────────────────────────────
-Windows Task Scheduler — daily at 08:00
+Scheduling
 ────────────────────────────────────────────────────────────────────────────────
-A ready-made batch script is provided at:
-    scripts\\run_reminders.bat
+Production runs this nightly via GitHub Actions:
+    .github/workflows/reminders.yml (cron 15 2 * * * UTC == 08:00 NPT,
+    manual runs via workflow_dispatch; required repository secrets are
+    documented in the workflow's header comment).
 
-To register it with Task Scheduler, open an elevated PowerShell and run:
-
-    schtasks /create ^
-      /tn "GymDailyReminders" ^
-      /tr "C:\\path\\to\\gym\\scripts\\run_reminders.bat" ^
-      /sc DAILY ^
-      /st 08:00 ^
-      /ru SYSTEM ^
-      /f
-
-Or import the included XML task definition:
-    schtasks /create /xml scripts\\GymDailyReminders.xml /tn "GymDailyReminders"
-
-To verify the task is registered:
-    schtasks /query /tn "GymDailyReminders"
-
-To run it immediately for testing:
-    schtasks /run /tn "GymDailyReminders"
+For local or self-hosted scheduling, point cron / Task Scheduler straight
+at the command, e.g.:
+    0 8 * * * cd /path/to/gym && venv/bin/python manage.py send_reminders
 
 ────────────────────────────────────────────────────────────────────────────────
 Idempotent: skips creating a duplicate reminder if one was already sent

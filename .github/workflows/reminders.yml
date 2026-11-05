@@ -1,5 +1,5 @@
-# Nightly reminder job — replaces scripts/run_reminders.bat and the crontab
-# example in README.md now that production runs on Vercel (serverless: there
+# Nightly reminder job — replaces the old manual reminder scripts and
+# crontab examples now that production runs on Vercel (serverless: there
 # is no long-lived process to cron on).
 #
 # Repository secrets (Settings -> Secrets and variables -> Actions):
