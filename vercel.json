@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sin1"],
+  "functions": {
+    "gym_management/asgi.py": {
+      "maxDuration": 300
+    }
+  },
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then python manage.py migrate --noinput; fi && python manage.py collectstatic --noinput"
+}

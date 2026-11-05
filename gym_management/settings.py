@@ -22,6 +22,26 @@ _render_host = config('RENDER_EXTERNAL_HOSTNAME', default='')
 if _render_host and _render_host not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_render_host)
 
+# Vercel sets VERCEL=1 plus VERCEL_URL (this deployment) and, once aliased,
+# VERCEL_PROD_URL/VERCEL_TARGET_URL — all https://<name>.vercel.app. Append
+# them unconditionally so host checks never 400 DisallowedHost when the
+# random deployment hostname changes, and allowlist the whole *.vercel.app
+# zone (preview deployments get their own subdomain).
+_is_vercel = config('VERCEL', default='0') == '1'
+if _is_vercel and '.vercel.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('.vercel.app')
+_vercel_hosts = []
+for _vercel_url in (
+    config('VERCEL_URL', default=''),
+    config('VERCEL_PROD_URL', default=''),
+    config('VERCEL_TARGET_URL', default=''),
+):
+    _vercel_host = _vercel_url.split('://', 1)[-1].rstrip('/')
+    if _vercel_host and _vercel_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_vercel_host)
+    if _vercel_host and _vercel_host not in _vercel_hosts:
+        _vercel_hosts.append(_vercel_host)
+
 # ─── PRODUCTION SECURITY (env-gated, off by default) ────────────────────────────
 # These default OFF so local dev is unaffected. Setting the matching env vars to
 # True / nonzero in .env when we deploy is the entire path to a hardened production
@@ -144,6 +164,10 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'gym_management.wsgi.application'
+# Vercel prefers ASGI_APPLICATION when both are set — one function then serves
+# HTTP *and* the Channels WebSocket route (/ws/messages/). Locally `runserver`
+# already uses ASGI (channels is in INSTALLED_APPS); daphne uses it in prod.
+ASGI_APPLICATION = 'gym_management.asgi.application'
 
 # ─── DATABASE ─────────────────────────────────────────────────────────────────
 DATABASES = {
@@ -154,6 +178,10 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default='postgres'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
+        # 'or prefer': GitHub Actions maps an unset secret to '' — libpq would
+        # reject that, so fall back. Neon then negotiates SSL automatically;
+        # set DB_SSLMODE=require on Vercel to fail fast instead of falling back.
+        'OPTIONS': {'sslmode': config('DB_SSLMODE', default='prefer') or 'prefer'},
     }
 }
 
@@ -197,6 +225,20 @@ STORAGES = {
 }
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Media on Cloudinary — Vercel's filesystem is read-only, so uploads (profile
+# photos, equipment images, staff ID docs) need an external host. Setting
+# CLOUDINARY_URL (cloudinary://<api_key>:<api_secret>@<cloud_name>, from the
+# Cloudinary dashboard) flips the default file storage to Cloudinary's CDN.
+# Unset locally => FileSystemStorage + MEDIA_ROOT exactly as before.
+# Static files deliberately stay on whitenoise: cloudinary_storage must come
+# AFTER django.contrib.staticfiles so Django's own collectstatic keeps winning.
+CLOUDINARY_URL = config('CLOUDINARY_URL', default='')
+if CLOUDINARY_URL:
+    STORAGES['default'] = {
+        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+    }
+    INSTALLED_APPS = INSTALLED_APPS + ['cloudinary_storage', 'cloudinary']
 
 # ─── AUTH (for template views) ────────────────────────────────────────────────
 LOGIN_URL = '/api/auth/login/'
@@ -288,6 +330,16 @@ if _render_host:
     _render_origin = f'https://{_render_host}'
     if _render_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(_render_origin)
+# Vercel: CSRF origins must be full origins, and Django's wildcard form for
+# subdomains is "scheme://*.domain" (leading-dot patterns are ALLOWED_HOSTS
+# only). Cover every *.vercel.app deployment — preview deploys get random
+# <hash>-<project> names — plus the exact hostnames discovered above.
+if _is_vercel:
+    for _origin in ['https://*.vercel.app'] + [
+        f'https://{_host}' for _host in _vercel_hosts
+    ]:
+        if _origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_origin)
 
 # ─── EMAIL ─────────────────────────────────────────────────────────────────────
 # Transport is chosen for you: set EMAIL_HOST_USER + EMAIL_HOST_PASSWORD (in
@@ -329,7 +381,12 @@ VAPID_SUBJECT = config('VAPID_SUBJECT', default='mailto:admin@localhost')
 
 # ─── LOGGING ─────────────────────────────────────────────────────────────────
 LOG_DIR = BASE_DIR / 'logs'
-LOG_DIR.mkdir(exist_ok=True)
+try:
+    LOG_DIR.mkdir(exist_ok=True)
+except OSError:
+    # Read-only filesystem (Vercel function): logs/ either already exists in
+    # the bundle or cannot be created — file handlers are disabled below.
+    pass
 
 LOGGING = {
     'version': 1,
@@ -436,6 +493,20 @@ LOGGING = {
         },
     },
 }
+
+# On Vercel the filesystem is read-only: a RotatingFileHandler raises OSError
+# the first time it writes or rotates (killing the request), so drop every
+# file handler and keep console — stdout lands in Vercel's function logs.
+if _is_vercel:
+    LOGGING['handlers'] = {
+        name: handler
+        for name, handler in LOGGING['handlers'].items()
+        if not name.startswith('file_')
+    }
+    for _logger_cfg in LOGGING['loggers'].values():
+        _logger_cfg['handlers'] = [
+            h for h in _logger_cfg.get('handlers', []) if not h.startswith('file_')
+        ]
 
 # ─── KHALTI (sandbox) ───────────────────────────────────────────────────────
 # Get KHALTI_SECRET_KEY from your merchant dashboard at test-admin.khalti.com

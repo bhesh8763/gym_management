@@ -14,6 +14,14 @@ cryptography==50.0.1
 # ─── Database ────────────────────────────────────────────────────────────────
 psycopg2-binary==2.9.12
 
+# ─── Media storage (production / Vercel only) ────────────────────────────────
+# Uploaded files (profile pictures, equipment photos, staff ID docs) go to
+# Cloudinary's CDN when CLOUDINARY_URL is set; local dev keeps using media/.
+# Must sit in INSTALLED_APPS AFTER django.contrib.staticfiles (see settings.py)
+# so Django's collectstatic — which Vercel runs at build — stays in charge of
+# static files instead of this package's override.
+django-cloudinary-storage==0.3.0
+
 # ─── Utilities ───────────────────────────────────────────────────────────────
 python-decouple==3.8
 requests==2.32.3

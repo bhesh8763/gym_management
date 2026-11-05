@@ -1,0 +1,56 @@
+# Nightly reminder job — replaces scripts/run_reminders.bat and the crontab
+# example in README.md now that production runs on Vercel (serverless: there
+# is no long-lived process to cron on).
+#
+# Repository secrets (Settings -> Secrets and variables -> Actions):
+#   Required: SECRET_KEY, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+#   Optional but recommended (otherwise reminders only log, never deliver):
+#     EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL,
+#     VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, FRONTEND_URL
+
+name: Daily reminders
+
+on:
+  schedule:
+    # 02:15 UTC == 08:00 Asia/Kathmandu (UTC+05:45). GitHub schedules are
+    # best-effort and can drift by several minutes — fine for daily reminders.
+    - cron: "15 2 * * *"
+  # Manual run from the Actions tab (e.g. to verify secrets after setup).
+  workflow_dispatch:
+
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send reminders
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DEBUG: "False"
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_SSLMODE: ${{ secrets.DB_SSLMODE }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+          DEFAULT_FROM_EMAIL: ${{ secrets.DEFAULT_FROM_EMAIL }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          python manage.py send_reminders
+          # Alternate 7/3/1-day expiry schedule — uncomment if you start using it:
+          # python manage.py send_scheduled_notifications
