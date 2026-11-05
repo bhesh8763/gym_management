@@ -73,6 +73,10 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # django-allauth's SITE_ID=1 points at this app's Site row (created by
+    # `manage.py ensure_site`). Without the app installed, ensure_site and
+    # any sociallogin flow that touches Site crash with "not in INSTALLED_APPS".
+    'django.contrib.sites',
 ]
 
 THIRD_PARTY_APPS = [
